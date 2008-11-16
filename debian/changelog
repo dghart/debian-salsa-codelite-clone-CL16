@@ -1,14 +1,11 @@
 codelite (1.0.2432-0ubuntu1) jaunty; urgency=low
 
-  * New upstream release
-  * debian/dirs:
-    + Dropped, not needed any more since change_log.txt removed
-
- -- Chow Loong Jin <hyperair@gmail.com>  Mon, 17 Nov 2008 00:41:12 +0800
-
-codelite (1.0.2419-0ubuntu1) jaunty; urgency=low
-
   * Initial release (LP: #298030)
+  * debian/patches/01_fix-symlink.patch:
+    + Fix issue where /usr/bin/CodeLite points at the build directory
+  * debian/patches/02_fix-desktop.patch:
+    + Fix issue where no menu entry appears for CodeLite
+    + Fix issue where menu entry has no icon
 
- -- Chow Loong Jin <hyperair@gmail.com>  Mon, 17 Nov 2008 00:41:00 +0800
+ -- Chow Loong Jin <hyperair@gmail.com>  Mon, 17 Nov 2008 02:31:45 +0800
 
