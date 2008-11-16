@@ -1,0 +1,12 @@
+diff -Nur -x '*.orig' -x '*~' codelite-1.0.2419/configure codelite-1.0.2419.new/configure
+--- codelite-1.0.2419/configure	2008-11-07 13:55:38.000000000 +0800
++++ codelite-1.0.2419.new/configure	2008-11-14 18:03:52.000000000 +0800
+@@ -370,7 +370,7 @@
+ 	echo "	@mkdir -p \$(DESTDIR)$prefix/bin" >> Makefile
+ 	echo "	@cp \$(EXE_NAME) \$(DESTDIR)$prefix/bin/" >> Makefile
+ 	if [ "$make_symlink" = "yes" ] ; then
+-	  echo "	@ln -s \$(DESTDIR)$prefix/bin/\$(EXE_NAME_NO_PATH) \$(DESTDIR)$prefix/bin/CodeLite" >> Makefile
++	  echo "	@ln -s \$(EXE_NAME_NO_PATH) \$(DESTDIR)$prefix/bin/CodeLite" >> Makefile
+ 	  echo "	@chmod +x \$(DESTDIR)$prefix/bin/CodeLite" >> Makefile
+ 	fi
+ 	echo "	@cp Runtime/le_dos2unix.sh \$(DESTDIR)$prefix/bin/" >> Makefile

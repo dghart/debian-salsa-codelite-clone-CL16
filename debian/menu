@@ -1,0 +1,5 @@
+?package(codelite):needs="X11" \
+ section="Applications/Programming" \
+ title="CodeLite" \ 
+ command="/usr/bin/codelite" \
+ icon="/usr/local/share/codelite/cubes.png"

@@ -1,0 +1,10 @@
+#!/usr/bin/make -f
+
+include /usr/share/cdbs/1/rules/debhelper.mk
+include /usr/share/cdbs/1/class/autotools.mk
+include /usr/share/cdbs/1/rules/simple-patchsys.mk
+
+# Add here any variable or target overrides you need.
+clean::
+	find $(CURDIR) -name Makefile ! -wholename '*sdk*' -delete
+	rm -f $(CURDIR)/fakeroot/DEBIAN/control

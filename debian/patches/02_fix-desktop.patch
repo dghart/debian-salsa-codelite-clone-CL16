@@ -1,0 +1,20 @@
+diff -Nur -x '*.orig' -x '*~' codelite-1.0.2419/Runtime/codelite.desktop codelite-1.0.2419.new/Runtime/codelite.desktop
+--- codelite-1.0.2419/Runtime/codelite.desktop	2008-03-31 05:50:39.000000000 +0800
++++ codelite-1.0.2419.new/Runtime/codelite.desktop	2008-11-14 18:16:41.000000000 +0800
+@@ -1,12 +1,13 @@
+ [Desktop Entry]
+-Version=0.9
++Version=1.0
++Encoding=UTF-8
+ Name=CodeLite
+ Comment=An Open Source IDE for C/C++
+ TryExec=CodeLite
+ Exec=CodeLite %f
+-Icon=/usr/local/share/codelite/images/cubes.png
++Icon=/usr/share/codelite/images/cubes.png
+ Terminal=false
+ X-MultipleArgs=false
+ Type=Application
+-Categories=Development;
++Categories=Application;Development;
+ StartupNotify=true
