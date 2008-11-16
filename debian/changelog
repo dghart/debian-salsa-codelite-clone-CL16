@@ -1,6 +1,14 @@
 codelite (1.0.2432-0ubuntu1) jaunty; urgency=low
 
+  * New upstream release
+  * debian/dirs:
+    + Dropped, not needed any more since change_log.txt removed
+
+ -- Chow Loong Jin <hyperair@gmail.com>  Mon, 17 Nov 2008 00:41:12 +0800
+
+codelite (1.0.2419-0ubuntu1) jaunty; urgency=low
+
   * Initial release (LP: #298030)
 
- -- Chow Loong Jin <hyperair@gmail.com>  Mon, 17 Nov 2008 00:06:16 +0800
+ -- Chow Loong Jin <hyperair@gmail.com>  Mon, 17 Nov 2008 00:41:00 +0800
 
