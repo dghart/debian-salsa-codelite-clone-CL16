@@ -1,9 +1,11 @@
 Source: codelite
 Section: devel
 Priority: optional
-Maintainer: Chow Loong Jin <hyperair@gmail.com>
+Maintainer: Ubuntu MOTU Developers <ubuntu-motu@lists.ubuntu.com>
+XSBC-Original-Maintainer: Chow Loong Jin <hyperair@gmail.com>
 Build-Depends: cdbs, 
                debhelper (>= 7), 
+               quilt,
                autotools-dev,
                libgtk2.0-dev,
                libwxgtk2.8-dev
@@ -20,17 +22,17 @@ Suggests: gdb,
 Description: A powerful and lightweight C/C++ IDE
  CodeLite is a powerful and lightweight C/C++ IDE which comes with but is not
  limited to the following features:
- * Generic support for compilers
- * Built-in GDB support
- * Plugins:
-   + Subversion plugin
-   + cscope plugin
-   + External Tools plugin
-   + Gizmos plugin - for creation of classes, projects, plugins
- * Database-based Code Completion mechanism
- * Syntax highlighting for C/C++, Java, Perl, XML, Makefile, Lua, Diff files,
-   PHP, JavaScript, Python, HTML, and ASP
- * Text Folding
- * Bookmarks
- * Find and Replace
- * doxygen comment generator
+  * Generic support for compilers
+  * Built-in GDB support
+  * Plugins:
+    + Subversion plugin
+    + cscope plugin
+    + External Tools plugin
+    + Gizmos plugin - for creation of classes, projects, plugins
+  * Database-based Code Completion mechanism
+  * Syntax highlighting for C/C++, Java, Perl, XML, Makefile, Lua, Diff files,
+    PHP, JavaScript, Python, HTML, and ASP
+  * Text Folding
+  * Bookmarks
+  * Find and Replace
+  * doxygen comment generator

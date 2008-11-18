@@ -1,11 +1,11 @@
-diff -Nur -x '*.orig' -x '*~' codelite-1.0.2419/Runtime/codelite.desktop codelite-1.0.2419.new/Runtime/codelite.desktop
---- codelite-1.0.2419/Runtime/codelite.desktop	2008-03-31 05:50:39.000000000 +0800
-+++ codelite-1.0.2419.new/Runtime/codelite.desktop	2008-11-14 18:16:41.000000000 +0800
-@@ -1,12 +1,13 @@
+Index: codelite-1.0.2432/Runtime/codelite.desktop
+===================================================================
+--- codelite-1.0.2432.orig/Runtime/codelite.desktop	2008-03-31 05:50:39.000000000 +0800
++++ codelite-1.0.2432/Runtime/codelite.desktop	2008-11-18 15:28:32.000000000 +0800
+@@ -1,10 +1,10 @@
  [Desktop Entry]
 -Version=0.9
 +Version=1.0
-+Encoding=UTF-8
  Name=CodeLite
  Comment=An Open Source IDE for C/C++
  TryExec=CodeLite
@@ -15,6 +15,3 @@ diff -Nur -x '*.orig' -x '*~' codelite-1.0.2419/Runtime/codelite.desktop codelit
  Terminal=false
  X-MultipleArgs=false
  Type=Application
--Categories=Development;
-+Categories=Application;Development;
- StartupNotify=true
