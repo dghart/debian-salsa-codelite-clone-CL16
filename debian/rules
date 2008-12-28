@@ -5,9 +5,21 @@ include /usr/share/cdbs/1/class/autotools.mk
 include /usr/share/cdbs/1/rules/patchsys-quilt.mk
 
 install/codelite::
-	find $(CURDIR)/debian/codelite/usr/share -type f -exec chmod 0644 '{}' \;
-	install -D -m644 $(CURDIR)/debian/codelite.xpm \
-	                 $(CURDIR)/debian/codelite/usr/share/pixmaps/codelite.xpm
+	cd "$(DEB_SRCDIR)/debian/codelite"
+	find "$(DEB_SRCDIR)/debian/codelite/usr/share" -type f -exec chmod 0644 '{}' \;
+	
+	mkdir -p "$(DEB_SRCDIR)"/debian/codelite/usr/lib/codelite/plugins
+	mkdir -p "$(DEB_SRCDIR)"/debian/codelite/usr/lib/codelite/debuggers
+	mv "$(DEB_SRCDIR)"/debian/codelite/usr/share/codelite/plugins/*.so \
+	   "$(DEB_SRCDIR)"/debian/codelite/usr/lib/codelite/plugins
+	mv "$(DEB_SRCDIR)"/debian/codelite/usr/share/codelite/debuggers/*.so \
+	   "$(DEB_SRCDIR)"/debian/codelite/usr/lib/codelite/debuggers
+	
+	( cd "$(DEB_SRCDIR)"/debian/codelite/usr/share/codelite/plugins; \
+	ln -s ../../../lib/codelite/plugins/*.so . )
+	
+	( cd "$(DEB_SRCDIR)"/debian/codelite/usr/share/codelite/debuggers; \
+	ln -s ../../../lib/codelite/debuggers/*.so . )
 clean::
-	find $(CURDIR) -name Makefile ! -wholename '*sdk*' -delete
-	rm -f $(CURDIR)/fakeroot/DEBIAN/control
+	find "$(DEB_SRCDIR)" -name Makefile ! -wholename '*sdk*' -delete
+	rm -f "$(DEB_SRCDIR)"/fakeroot/DEBIAN/control
