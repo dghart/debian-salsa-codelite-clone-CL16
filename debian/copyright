@@ -1,18 +1,19 @@
-This package was debianized by Chow Loong Jin <hyperair@gmail.com> on
-Fri, 14 Nov 2008 11:42:19 +0800.
+Format-Specification: http://wiki.debian.org/Proposals/CopyrightFormat
+Upstream-Name: CodeLite
+Upstream-Maintainer: Eran Ifrah <eranif@users.sourceforge.net>
+Upstream-Source: http://www.codelite.org
 
-It was downloaded from http://www.codelite.org
+Files: *
+Copyright: Copyright (C) 2008 Eran Ifrah <eranif@users.sourceforge.net>
+License: GPL-2+
 
-Upstream Author:
+Files: CodeFormatter/AS*.cpp, CodeFormatter/astyle_main.cpp
+License: LGPL-2.1+
 
-    Eran Ifrah <eranif@users.sourceforge.net>
+Files: sdk/astyle/src/*.cpp
+License: LGPL-2.1+
 
-Copyright:
-
-    Copyright (C) 2008  Eran Ifrah
-
-License:
-
+License: GPL-2
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation; either version 2 of the License, or
@@ -27,6 +28,18 @@ License:
     with this program; if not, write to the Free Software Foundation, Inc.,
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-The Debian packaging is (C) 2008, Chow Loong Jin <hyperair@gmail.com> and
-is licensed under the GPL, see `/usr/share/common-licenses/GPL'.
+License: LGPL-2.1
+    This library is free software; you can redistribute it and/or
+    modify it under the terms of the GNU Lesser General Public
+    License as published by the Free Software Foundation; either
+    version 2.1 of the License, or (at your option) any later version.
+
+    This library is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public
+    License along with this library; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
