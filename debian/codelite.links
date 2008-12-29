@@ -1,1 +1,10 @@
 usr/share/man/man1/CodeLite.1.gz usr/share/man/man1/CodeLiteUR.1.gz
+usr/share/codelite/astyle.sample usr/lib/codelite/astyle.sample
+usr/share/codelite/config usr/lib/codelite/config
+usr/share/codelite/images usr/lib/codelite/images
+usr/share/codelite/index.html usr/lib/codelite/index.html
+usr/share/codelite/lexers usr/lib/codelite/lexers
+usr/share/codelite/rc usr/lib/codelite/rc
+usr/share/codelite/src usr/lib/codelite/src
+usr/share/codelite/svnreport.html usr/lib/codelite/svnreport.html
+usr/share/codelite/templates usr/lib/codelite/templates

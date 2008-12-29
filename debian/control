@@ -17,18 +17,13 @@ Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Suggests: gdb,
           gcc,
-          subversion,
-          xterm
-Description: A powerful and lightweight C/C++ IDE
+          xterm,
+          codelite-plugins
+Description: Powerful and lightweight C/C++ IDE
  CodeLite is a powerful and lightweight C/C++ IDE which comes with but is not
  limited to the following features:
   * Generic support for compilers
   * Built-in GDB support
-  * Plugins:
-    + Subversion plugin
-    + cscope plugin
-    + External Tools plugin
-    + Gizmos plugin - for creation of classes, projects, plugins
   * Database-based Code Completion mechanism
   * Syntax highlighting for C/C++, Java, Perl, XML, Makefile, Lua, Diff files,
     PHP, JavaScript, Python, HTML, and ASP
@@ -36,3 +31,22 @@ Description: A powerful and lightweight C/C++ IDE
   * Bookmarks
   * Find and Replace
   * doxygen comment generator
+
+Package: codelite-plugins
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, codelite (= ${binary:Version})
+Suggests: subversion
+Description: Powerful and lightweight C/C++ IDE - plugins
+ This package extends CodeLite functionality a great deal with the included 
+ plugins. These are:
+  * Subversion
+  * Gizmos
+  * External Tools
+  * wxFormBuilder
+  * Source Code Formatter
+  * Copyrights
+  * Abbreviation
+  * cscope
+  * SnipWiz
+  * UnitTest++
+

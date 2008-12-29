@@ -1,0 +1,13 @@
+Index: codelite-1.0.2527/LiteEditor/app.cpp
+===================================================================
+--- codelite-1.0.2527.orig/LiteEditor/app.cpp	2008-12-29 04:25:31.000000000 +0800
++++ codelite-1.0.2527/LiteEditor/app.cpp	2008-12-29 04:29:46.000000000 +0800
+@@ -218,7 +218,7 @@
+ 		wxMkDir((homeDir + wxT("/config/")).ToAscii(), 0777);
+ 
+ 		//copy the settings from the global location if needed
+-		wxString installPath( wxStandardPaths::Get().GetDataDir() );
++		wxString installPath( wxStandardPaths::Get().GetPluginsDir() );
+ 		if ( ! CopySettings(homeDir, installPath ) ) return false;
+ 		ManagerST::Get()->SetInstallDir( installPath );
+ 

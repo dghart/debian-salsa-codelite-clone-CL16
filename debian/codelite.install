@@ -1,1 +1,12 @@
 debian/codelite.xpm /usr/share/pixmaps
+usr/share/codelite/debuggers/*.so /usr/lib/codelite/debuggers
+usr/share/codelite/astyle.sample
+usr/share/codelite/config
+usr/share/codelite/images
+usr/share/codelite/index.html
+usr/share/codelite/lexers
+usr/share/codelite/rc
+usr/share/codelite/src
+usr/share/codelite/svnreport.html
+usr/share/codelite/templates
+usr/bin
