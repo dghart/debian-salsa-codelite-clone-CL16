@@ -1,0 +1,4 @@
+usr/share/codelite/plugins/Subversion.so usr/lib/codelite/plugins
+usr/share/codelite/plugins/resources/wxfb_conflict.png
+usr/share/codelite/plugins/resources/wxfb_modified.png
+usr/share/codelite/plugins/resources/wxfb_ok.png

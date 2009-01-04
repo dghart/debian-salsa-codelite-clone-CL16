@@ -8,3 +8,4 @@ usr/share/codelite/rc usr/lib/codelite/rc
 usr/share/codelite/src usr/lib/codelite/src
 usr/share/codelite/svnreport.html usr/lib/codelite/svnreport.html
 usr/share/codelite/templates usr/lib/codelite/templates
+usr/share/codelite/plugins/resources usr/lib/codelite/plugins/resources
