@@ -1,4 +1,4 @@
-codelite (1.0.2527-0ubuntu1) jaunty; urgency=low
+codelite (1.0.2674-0ubuntu1) jaunty; urgency=low
 
   * Initial release (LP: #298030)
   * debian/patches/01_fix-symlink.patch:
@@ -7,5 +7,5 @@ codelite (1.0.2527-0ubuntu1) jaunty; urgency=low
     + Fix issue where no menu entry appears for CodeLite
     + Fix issue where menu entry has no icon
 
- -- Chow Loong Jin <hyperair@gmail.com>  Fri, 19 Dec 2008 18:29:48 +0800
+ -- Chow Loong Jin <hyperair@gmail.com>  Mon, 12 Jan 2009 15:46:55 +0800
 

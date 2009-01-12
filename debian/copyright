@@ -6,18 +6,6 @@ Upstream-Source: http://www.codelite.org
 Files: *
 Copyright: Copyright (C) 2008 Eran Ifrah <eranif@users.sourceforge.net>
 License: GPL-2+
-
-Files: CodeFormatter/AS*.cpp, CodeFormatter/astyle_main.cpp
-License: LGPL-2.1+
-
-Files: sdk/astyle/src/*.cpp
-License: LGPL-2.1+
-
-Files: debian/*
-Copyright: Copyright 2009, Chow Loong Jin <hyperair@gmail.com>
-License: GPL-2+
-
-License: GPL-2
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation; either version 2 of the License, or
@@ -34,7 +22,135 @@ License: GPL-2
 
     A full copy of this license can be found in /usr/share/common-licenses/GPL-2
 
-License: LGPL-2.1
+Files: sdk/ctags/*
+Copyright: 1996-2003, Daniel Hiebert
+
+Files: sdk/ctags/argproc.c
+Copyright: 1989, Mark Pizzolato (mark@infopiz.uucp)
+
+Files: sdk/ctags/beta.c
+Copyright: 1999-2000, Mjølner Informatics
+
+Files: sdk/ctags/slang.c
+Copyright: 2000-2001, Francesc Roscher
+
+Files: sdk/ctags/lua.c
+Copyright: 2000-2001, Max Ischenko
+
+Files: sdk/ctags/php.c
+Copyright: 2000, Jesus Castagnetto <jmcastagnetto@zkey.com>
+
+Files: sdk/ctags/asp.c
+Copyright: 2000, Patrick Dahne <patrick@steidle.net>
+
+Files: sdk/ctags/yacc.c
+Copyright: 2001-2002, Nick Hibma <n_hibma@van-laarhoven.org>
+
+Files: sdk/ctags/mac.c
+Copyright: 2001, Maarten L. Hekkelman
+
+Files: sdk/ctags/ruby.c
+Copyright: 2002, Matthias Veit <matthias_veit@yahoo.de>
+Copyright: 2000-2001, Thaddeus Covert <sahuagin@mediaone.net>
+Copyright: 2004, Elliott Hughes <enh@acm.org>
+
+Files: sdk/ctags/erlang.c
+Copyright: 2003, 2003, Brent Fulgham <bfulgham@debian.org>
+
+Files: sdk/wxconfig/wx-config-win.cpp
+Copyright: Takeshi Miya
+
+Files: sdk/wxflatnotebook/src/wxFlatNotebook/xh_fnb.cpp
+Copyright: 2006i, Armel Asselin (copied from Vaclav Slavik xh_notbk)
+
+Files: sdk/wxscintilla/*
+Copyright: 1998-2008, Neil Hodgson <neilh@scintilla.org>
+
+Files: sdk/wxscintilla/src/scintilla/src/LexPLM.cxx
+Copyright: 1990-2007, Scientific Toolworks, Inc
+
+Files: sdk/wxscintilla/src/scintilla/src/LexTCL.cxx
+Copyright: 1998-2001, Andre Arpin <arpin@kingston.net>
+
+Files: sdk/wxscintilla/src/scintilla/LexGCC.cxx,
+       sdk/wxscintilla/src/scintilla/LexSVN.cxx,
+       sdk/wxscintilla/src/scintilla/LexFIF.cxx 
+Copyright: 1998-2001 Eran Ifrah <eran.ifrah@gmail.com>
+
+Files: sdk/wxscintilla/src/ScintillaWX.cpp
+Copyright: 2000, Total Control Software
+
+Files: sdk/wxscintilla/src/scintilla/src/LexRuby.cxx
+Copyright: 2001, Clemens Wyss <wys@helbling.ch>
+
+Files: sdk/wxscintilla/src/scintilla/src/LexBean.cxx
+Copyright: 2001, Vamsi Potluru <vamsi@who.net>
+Copyright: 2001, Praveen Ambekar <ambekarpraveen@yahoo.com>
+
+Files: sdk/wxscintilla/src/scintilla/src/ExternalLexer.cxx
+Copyright: 2001, Simon Steele <ss@notepad.org>
+
+Files: sdk/wxscintilla/src/scintilla/src/LexAda.cxx
+Copyright: 2002, Sergey Koshcheyev <sergey.k@seznam.cz>
+
+Files: sdk/wxscintilla/src/scintilla/src/LexCLW.cxx
+Copyright: 2003-2004, Ron Schofield <ron@schofieldcomputer.com>
+
+Files: sdk/wxscintilla/src/scintilla/src/LexNsis.cxx
+Copyright: 2003-2005, Angelo Mandato <angelo@spaceblue.com>
+
+Files: sdk/wxscintilla/src/scintilla/src/LexLout.cxx
+Copyright: 2003, Kein-Hong Man <mkh@pl.jaring.my>
+
+Files: sdk/wxscintilla/src/scintilla/src/LexMPT.cxx
+Copyright: 2003, Marius Gheorghe <mgheorghe@cabletest.com>
+
+Files: sdk/wxscintilla/src/scintilla/src/LexEScript.cxx
+Copyright: 2003, Patrizio Bekerle <patrizio@bekerle.com>
+
+Files: sdk/wxscintilla/src/scintilla/src/LexYAML.cxx
+Copyright: 2003, Sean O'Dell <sean@celsoft.com>
+
+Files: sdk/wxscintilla/src/scintilla/src/LexAsn1.cxx
+Copyright: 2004, Herr Pfarrer <rpfarrer@yahoo.de>
+
+Files: sdk/wxscintilla/src/scintilla/src/LexKix.cxx
+Copyright: 2004, Manfred Becker <manfred@becker-trdf.de>
+
+Files: sdk/wxscintilla/src/scintilla/src/wxscintilla.cpp
+Copyright: 2004, wxCode
+
+Files: sdk/wxscintilla/src/scintilla/src/LexRebol.cxx
+Copyright: 2005, Pascal Hurni <pascal_hurni@fastmail.fm>
+
+Files: sdk/wxscintilla/src/scintilla/src/LexFlagship.cxx
+Copyright: 1998-2003, Neil Hodgson <neilh@scintilla.org>
+Copyright: 2005, Randy Butler
+
+Files: sdk/wxscintilla/src/scintilla/src/LexCaml.cxx
+Copyright: 2005, Robert Roessler <robertr@rftp.com>
+
+Files: sdk/wxscintilla/src/scintilla/src/LexProgress.cxx
+Copyright: 2006-2007, Yuval Papish <Yuval@YuvCom.com>
+
+Files: sdk/wxscintilla/src/scintilla/src/LexCmake.cxx
+Copyright: 2007, Cristian Adam <cristian.adam@gmx.net>
+
+Files: sdk/wxscintilla/src/scintilla/src/LexGAP.cxx
+Copyright: 2007, Istvan Szollosi <szteven@gmail.com>
+
+Files: sdk/wxscintilla/src/scintilla/src/LexPowerShell.cxx
+Copyright: 2008, Tim Gerundt <tim@gerundt.de>
+
+Files: sdk/wxsqlite3/*
+Copyright: Ulrich Telle
+
+Files: sdk/wxsqlite3/sqlite3/secure/src/codec/codec.cpp
+Copyright: 1990, RSA Data Security, Inc. All rights reserved.
+Copyright: Ulrich Telle
+
+Files: CodeFormatter/AS*.cpp, CodeFormatter/astyle_main.cpp
+License: LGPL-2.1+
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Lesser General Public
     License as published by the Free Software Foundation; either
@@ -50,4 +166,11 @@ License: LGPL-2.1
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
     A full copy of this license can be found in /usr/share/common-licenses/LGPL-2.1
+
+Files: sdk/astyle/src/*.cpp
+License: LGPL-2.1+
+
+Files: debian/*
+Copyright: Copyright 2009, Chow Loong Jin <hyperair@gmail.com>
+License: GPL-2+
 
