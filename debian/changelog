@@ -6,6 +6,11 @@ codelite (1.0.2674-0ubuntu1) jaunty; urgency=low
   * debian/patches/02_fix-desktop.patch:
     + Fix issue where no menu entry appears for CodeLite
     + Fix issue where menu entry has no icon
+  * debian/patches/03_fix-sh.patch:
+    + Removed .sh suffix from /usr/bin/le_*
+  * debian/patches/04_change-installpath.patch:
+    + Make CodeLite look in /usr/lib/codelite for files instead of
+      /usr/share/codelite
 
  -- Chow Loong Jin <hyperair@gmail.com>  Mon, 12 Jan 2009 15:46:55 +0800
 
