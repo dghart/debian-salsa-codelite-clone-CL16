@@ -6,7 +6,6 @@ usr/share/codelite/images
 usr/share/codelite/index.html
 usr/share/codelite/lexers
 usr/share/codelite/rc
-usr/share/codelite/src
 usr/share/codelite/svnreport.html
 usr/share/codelite/templates/projects/custom-makefile
 usr/share/codelite/templates/projects/dynamic-library
