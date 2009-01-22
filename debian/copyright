@@ -2,6 +2,10 @@ Format-Specification: http://wiki.debian.org/Proposals/CopyrightFormat
 Upstream-Name: CodeLite
 Upstream-Maintainer: Eran Ifrah <eranif@users.sourceforge.net>
 Upstream-Source: http://www.codelite.org
+X-Upstream-Source-Repackaged: Original .tar.gz has been repackaged, removing
+                              all .exe and .dll files, as well as sdk/curl,
+                              sdk/astyle, sdk/src, and sdk/wxconfig, which are 
+                              Windows-specific and/or unneeded.
 
 Files: *
 Copyright: Copyright (C) 2008 Eran Ifrah <eranif@users.sourceforge.net>
@@ -166,9 +170,6 @@ License: LGPL-2.1+
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
     A full copy of this license can be found in /usr/share/common-licenses/LGPL-2.1
-
-Files: sdk/astyle/src/*.cpp
-License: LGPL-2.1+
 
 Files: debian/*
 Copyright: Copyright 2009, Chow Loong Jin <hyperair@gmail.com>

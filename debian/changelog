@@ -1,4 +1,4 @@
-codelite (1.0.2674-0ubuntu1) jaunty; urgency=low
+codelite (1.0.2674+dfsg-0ubuntu1) jaunty; urgency=low
 
   * Initial release (LP: #298030)
   * debian/patches/01_fix-symlink.patch:

@@ -1,2 +1,4 @@
 version=3
-http://sf.net/codelite/codelite-(.+)\.tar\.gz
+
+options=dversionmangle=s/\+dfsg.*// \
+    http://sf.net/codelite/codelite-(.+)\.tar\.gz

@@ -4,9 +4,28 @@ include /usr/share/cdbs/1/rules/debhelper.mk
 include /usr/share/cdbs/1/class/autotools.mk
 include /usr/share/cdbs/1/rules/patchsys-quilt.mk
 
+DEBIAN_DIR := $(shell echo $(MAKEFILE_LIST) | awk '{print $$1}' | xargs dirname)
+SOURCE_DIR := $(DEBIAN_DIR)/..
+UPSTREAM_VERSION ?= $(shell cd $(SOURCE_DIR) && \
+	uscan --dehs | \
+	sed -n 's/.*<upstream-version>\(.*\)<\/upstream-version>.*/\1/p')
+
 install/codelite::
 	find "$(DEB_SRCDIR)/debian/tmp/usr/share" -type f -exec chmod 0644 '{}' \;
 
 clean::
 	find "$(DEB_SRCDIR)" -name Makefile ! -wholename '*sdk*' -delete
 	rm -f "$(DEB_SRCDIR)"/fakeroot/DEBIAN/control
+
+get-orig-source:
+	cd $(SOURCE_DIR) && uscan --force-download
+	tar -xzf $(SOURCE_DIR)/../codelite-$(UPSTREAM_VERSION).tar.gz
+	mv codelite-$(UPSTREAM_VERSION) codelite-$(UPSTREAM_VERSION)+dfsg
+	GZIP=-9fn tar --exclude=*.dll --exclude=*.exe --exclude=sdk/curl \
+	              --exclude=sdk/src --exclude=sdk/wxconfig --exclude=sdk/astyle \
+				  -czf codelite_$(UPSTREAM_VERSION)+dfsg.orig.tar.gz \
+				  codelite-$(UPSTREAM_VERSION)+dfsg
+	rm -rf $(SOURCE_DIR)/../codelite-$(UPSTREAM_VERSION).tar.gz \
+	       $(SOURCE_DIR)/../codelite_$(UPSTREAM_VERSION).orig.tar.gz \
+	       codelite-$(UPSTREAM_VERSION)+dfsg \
+		   *.cdbs-config_list
