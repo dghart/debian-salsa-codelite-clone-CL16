@@ -21,7 +21,7 @@ get-orig-source:
 	cd $(SOURCE_DIR) && uscan --force-download
 	tar -xzf $(SOURCE_DIR)/../codelite-$(UPSTREAM_VERSION).tar.gz
 	mv codelite-$(UPSTREAM_VERSION) codelite-$(UPSTREAM_VERSION)+dfsg
-	GZIP=-9fn tar --exclude=*.dll --exclude=*.exe --exclude=sdk/curl \
+	GZIP=-9fn tar --exclude=*.dll --exclude=*.exe --exclude=sdk/curl --exclude=sdk/wxsqlite3/sqlite3 \
 	              --exclude=sdk/src --exclude=sdk/wxconfig --exclude=sdk/astyle \
 				  -czf codelite_$(UPSTREAM_VERSION)+dfsg.orig.tar.gz \
 				  codelite-$(UPSTREAM_VERSION)+dfsg

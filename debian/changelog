@@ -1,5 +1,6 @@
 codelite (1.0.2674+dfsg-0ubuntu1) jaunty; urgency=low
 
+  [ Chow Loong Jin ]
   * Initial release (LP: #298030)
   * debian/patches/01_fix-symlink.patch:
     + Fix issue where /usr/bin/CodeLite points at the build directory
@@ -11,6 +12,13 @@ codelite (1.0.2674+dfsg-0ubuntu1) jaunty; urgency=low
   * debian/patches/04_change-installpath.patch:
     + Make CodeLite look in /usr/lib/codelite for files instead of
       /usr/share/codelite
+  * Original .tar.gz has been repackaged, removing all .exe and .dll
+    files, as well as sdk/curl, sdk/astyle, sdk/src, and sdk/wxconfig, 
+    which are Windows-specific and/or unneeded.
 
+  [ Morten Kjeldgaard ]
+  * removed sdk/wxsqlite3/sqlite3 from upstream tarball, and added
+    libsqlite3-dev as Build-Depends. Added README.source.
+  
  -- Chow Loong Jin <hyperair@gmail.com>  Mon, 12 Jan 2009 15:46:55 +0800
 

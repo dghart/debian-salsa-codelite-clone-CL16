@@ -2,10 +2,10 @@ Format-Specification: http://wiki.debian.org/Proposals/CopyrightFormat
 Upstream-Name: CodeLite
 Upstream-Maintainer: Eran Ifrah <eranif@users.sourceforge.net>
 Upstream-Source: http://www.codelite.org
-X-Upstream-Source-Repackaged: Original .tar.gz has been repackaged, removing
-                              all .exe and .dll files, as well as sdk/curl,
-                              sdk/astyle, sdk/src, and sdk/wxconfig, which are 
-                              Windows-specific and/or unneeded.
+X-Upstream-Source-Repackaged: Original .tar.gz has been repackaged,
+ removing all .exe and .dll files, as well as sdk/curl, sdk/astyle, 
+ sdk/src,  sdk/wxsqlite/sqlite3 and sdk/wxconfig, which are Windows-
+ specific and/or unneeded.
 
 Files: *
 Copyright: Copyright (C) 2008 Eran Ifrah <eranif@users.sourceforge.net>

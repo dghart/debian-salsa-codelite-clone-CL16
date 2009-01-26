@@ -1,0 +1,27 @@
+Repackaging
+-----------
+
+The upstream tarball used to build this package has been repackaged to
+remove unneeded/unwanted files and directories. The steps taken to do
+do this were:
+
+ cd $(SOURCE_DIR) && uscan --force-download
+ tar -xzf $(SOURCE_DIR)/../codelite-$(UPSTREAM_VERSION).tar.gz
+ mv codelite-$(UPSTREAM_VERSION) codelite-$(UPSTREAM_VERSION)+dfsg
+ GZIP=-9fn tar --exclude=*.dll \
+               --exclude=*.exe \
+               --exclude=sdk/curl \
+               --exclude=sdk/wxsqlite3/sqlite3 \
+	       --exclude=sdk/src \
+               --exclude=sdk/wxconfig \
+               --exclude=sdk/astyle \
+	       -czf codelite_$(UPSTREAM_VERSION)+dfsg.orig.tar.gz \
+		    codelite-$(UPSTREAM_VERSION)+dfsg
+
+Patching
+--------
+
+Patches are stored in debian/patches. You can apply these patches 
+manually from the top of the source tree. You can also quilt to apply 
+patches. Install quilt and see /usr/share/doc/quilt/README.source
+Also, see quilt(1).
