@@ -12,7 +12,7 @@ do this were:
                --exclude=*.exe \
                --exclude=sdk/curl \
                --exclude=sdk/wxsqlite3/sqlite3 \
-	       --exclude=sdk/src \
+               --exclude=sdk/src \
                --exclude=sdk/wxconfig \
                --exclude=sdk/astyle \
 	       -czf codelite_$(UPSTREAM_VERSION)+dfsg.orig.tar.gz \
