@@ -1,3 +1,12 @@
+codelite (1.0.2674+dfsg-0ubuntu2) jaunty; urgency=low
+
+  * debian/rules,
+    debian/README.source:
+    + Fixed get-orig-source rule and list of files removed from upstream
+      tarball
+
+ -- Chow Loong Jin <hyperair@gmail.com>  Wed, 28 Jan 2009 18:06:51 +0800
+
 codelite (1.0.2674+dfsg-0ubuntu1) jaunty; urgency=low
 
   [ Chow Loong Jin ]
