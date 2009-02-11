@@ -1,3 +1,12 @@
+codelite (1.0.2759+dfsg-0ubuntu2) jaunty; urgency=low
+
+  * debian/patches/00_add-fPIC.patch,
+    debian/patches/series:
+    + Add -fPIC to compiler options for all architectures instead of just
+      64-bit architectures, to fix FTBFS on hppa (LP: #328063)
+
+ -- Chow Loong Jin <hyperair@gmail.com>  Wed, 11 Feb 2009 21:24:08 +0800
+
 codelite (1.0.2759+dfsg-0ubuntu1) jaunty; urgency=low
 
   * New upstream release
