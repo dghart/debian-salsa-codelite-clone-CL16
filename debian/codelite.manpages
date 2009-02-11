@@ -1,5 +1,5 @@
 debian/CodeLite.1
-debian/ctags-le.1
+debian/codelite_indexer.1
 debian/le_dos2unix.1
 debian/le_exec.1
 debian/le_killproc.1

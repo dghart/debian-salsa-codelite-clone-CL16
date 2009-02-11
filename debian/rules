@@ -18,7 +18,7 @@ clean::
 	rm -f "$(DEB_SRCDIR)"/fakeroot/DEBIAN/control
 
 get-orig-source:
-	cd $(SOURCE_DIR) && uscan --force-download
+	cd $(SOURCE_DIR) && uscan --force-download --upstream-version $(UPSTREAM_VERSION)
 	tar -xzf $(SOURCE_DIR)/../codelite-$(UPSTREAM_VERSION).tar.gz
 	mv codelite-$(UPSTREAM_VERSION) codelite-$(UPSTREAM_VERSION)+dfsg
 	GZIP=-9fn tar --exclude=*.dll --exclude=*.exe --exclude=sdk/curl --exclude=sdk/wxsqlite3/sqlite3 \

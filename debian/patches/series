@@ -1,4 +1,3 @@
-00_fix-ia64-build.patch
 01_fix-symlink.patch
 02_fix-desktop.patch
 03_fix-sh.patch

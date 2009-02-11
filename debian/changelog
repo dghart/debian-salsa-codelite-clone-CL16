@@ -1,3 +1,24 @@
+codelite (1.0.2759+dfsg-0ubuntu1) jaunty; urgency=low
+
+  * New upstream release
+  * debian/patches/series, debian/patches/00_fix-ia64-build.patch:
+    + Dropped, applied upstream already.
+  * debian/patches/02_fix-desktop.patch:
+    + Refreshed to patch cleanly
+    + Fix name in desktop file
+    debian/patches/03_fix-sh.patch:
+    + Refreshed to patch cleanly.
+  * debian/rules:
+    + Make get-orig-source honour UPSTREAM_VERSION if set.
+  * debian/ctags-le.1,
+    debian/codelite_indexer.1,
+    debian/codelite.manpages:
+    + Dropped ctags-le manpage, since ctags-le was replaced by
+      codelite_indexer.
+    + Added codelite_indexer manpage.
+
+ -- Chow Loong Jin <hyperair@gmail.com>  Tue, 10 Feb 2009 02:27:55 +0800
+
 codelite (1.0.2674+dfsg-0ubuntu2) jaunty; urgency=low
 
   * debian/rules,
