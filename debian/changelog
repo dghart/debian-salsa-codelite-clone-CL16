@@ -1,49 +1,9 @@
-codelite (1.0.2759+dfsg-0ubuntu2) jaunty; urgency=low
+codelite (1.0.2759+dfsg-1) unstable; urgency=low
 
-  * debian/patches/00_add-fPIC.patch,
-    debian/patches/series:
+  * Initial release (Closes: #516896)
+  * debian/patches/00_add-fPIC.patch:
     + Add -fPIC to compiler options for all architectures instead of just
-      64-bit architectures, to fix FTBFS on hppa (LP: #328063)
-
- -- Chow Loong Jin <hyperair@gmail.com>  Wed, 11 Feb 2009 21:24:08 +0800
-
-codelite (1.0.2759+dfsg-0ubuntu1) jaunty; urgency=low
-
-  * New upstream release
-  * debian/patches/series, debian/patches/00_fix-ia64-build.patch:
-    + Dropped, applied upstream already.
-  * debian/patches/02_fix-desktop.patch:
-    + Refreshed to patch cleanly
-    + Fix name in desktop file
-    debian/patches/03_fix-sh.patch:
-    + Refreshed to patch cleanly.
-  * debian/rules:
-    + Make get-orig-source honour UPSTREAM_VERSION if set.
-  * debian/ctags-le.1,
-    debian/codelite_indexer.1,
-    debian/codelite.manpages:
-    + Dropped ctags-le manpage, since ctags-le was replaced by
-      codelite_indexer.
-    + Added codelite_indexer manpage.
-
- -- Chow Loong Jin <hyperair@gmail.com>  Tue, 10 Feb 2009 02:27:55 +0800
-
-codelite (1.0.2674+dfsg-0ubuntu2) jaunty; urgency=low
-
-  * debian/rules,
-    debian/README.source:
-    + Fixed get-orig-source rule and list of files removed from upstream
-      tarball (LP: #322896)
-  * debian/patches/series,
-    debian/patches/00_fix-ia64-build.patch:
-    + Patched configure to detect ia64 as a 64-bit architecture (LP: #322899)
-
- -- Chow Loong Jin <hyperair@gmail.com>  Fri, 30 Jan 2009 04:17:00 +0800
-
-codelite (1.0.2674+dfsg-0ubuntu1) jaunty; urgency=low
-
-  [ Chow Loong Jin ]
-  * Initial release (LP: #298030)
+      64-bit architectures, to fix FTBFS on hppa
   * debian/patches/01_fix-symlink.patch:
     + Fix issue where /usr/bin/CodeLite points at the build directory
   * debian/patches/02_fix-desktop.patch:
@@ -56,11 +16,6 @@ codelite (1.0.2674+dfsg-0ubuntu1) jaunty; urgency=low
       /usr/share/codelite
   * Original .tar.gz has been repackaged, removing all .exe and .dll
     files, as well as sdk/curl, sdk/astyle, sdk/src, and sdk/wxconfig, 
-    which are Windows-specific and/or unneeded.
-
-  [ Morten Kjeldgaard ]
-  * removed sdk/wxsqlite3/sqlite3 from upstream tarball, and added
-    libsqlite3-dev as Build-Depends. Added README.source.
+    sdk/wxsqlite3/sqlite3 which are Windows-specific and/or unneeded.
   
- -- Chow Loong Jin <hyperair@gmail.com>  Mon, 12 Jan 2009 15:46:55 +0800
-
+ -- Chow Loong Jin <hyperair@gmail.com>  Wed, 25 Feb 2009 04:01:09 +0800

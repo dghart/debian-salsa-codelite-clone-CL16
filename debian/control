@@ -1,15 +1,14 @@
 Source: codelite
 Section: devel
 Priority: optional
-Maintainer: Ubuntu MOTU Developers <ubuntu-motu@lists.ubuntu.com>
-XSBC-Original-Maintainer: Chow Loong Jin <hyperair@gmail.com>
+Maintainer: Chow Loong Jin <hyperair@gmail.com>
 Build-Depends: cdbs, 
                debhelper (>= 7), 
                quilt,
                autotools-dev,
                libgtk2.0-dev,
                libwxgtk2.8-dev,
-	       libsqlite3-dev
+               libsqlite3-dev
 Standards-Version: 3.8.0
 Homepage: http://www.codelite.org
 
