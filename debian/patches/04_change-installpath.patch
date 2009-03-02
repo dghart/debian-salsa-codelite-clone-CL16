@@ -1,13 +1,13 @@
-Index: codelite-1.0.2527/LiteEditor/app.cpp
+Index: codelite-1.0.2785+dfsg/configure
 ===================================================================
---- codelite-1.0.2527.orig/LiteEditor/app.cpp	2008-12-29 04:25:31.000000000 +0800
-+++ codelite-1.0.2527/LiteEditor/app.cpp	2008-12-29 04:29:46.000000000 +0800
-@@ -218,7 +218,7 @@
- 		wxMkDir((homeDir + wxT("/config/")).ToAscii(), 0777);
- 
- 		//copy the settings from the global location if needed
--		wxString installPath( wxStandardPaths::Get().GetDataDir() );
-+		wxString installPath( wxStandardPaths::Get().GetPluginsDir() );
- 		if ( ! CopySettings(homeDir, installPath ) ) return false;
- 		ManagerST::Get()->SetInstallDir( installPath );
+--- codelite-1.0.2785+dfsg.orig/configure	2009-03-03 04:18:22.000000000 +0800
++++ codelite-1.0.2785+dfsg/configure	2009-03-03 04:18:44.000000000 +0800
+@@ -55,7 +55,7 @@
+ 	echo "WXCFG=${wxcfg}" >> Makefile
+ 	echo "DESTDIR=" >> Makefile
+ 	echo "" >> Makefile
+-	echo "CCFLAGS= -Wall \$(shell wx-config --cxxflags \$(WXCFG)) -fno-strict-aliasing -DASTYLE_LIB -DYY_NEVER_INTERACTIVE=1 -DGTK -DSCI_LEXER -DLINK_LEXERS -D__WX__ -DINSTALL_DIR=\\\"${prefix}/share/codelite\\\" -DPLUGINS_DIR=\\\"${plugins_dir}\\\"" >> Makefile
++	echo "CCFLAGS= -Wall \$(shell wx-config --cxxflags \$(WXCFG)) -fno-strict-aliasing -DASTYLE_LIB -DYY_NEVER_INTERACTIVE=1 -DGTK -DSCI_LEXER -DLINK_LEXERS -D__WX__ -DINSTALL_DIR=\\\"${prefix}/lib/codelite\\\" -DPLUGINS_DIR=\\\"${plugins_dir}\\\"" >> Makefile
+ 	echo "LINK_FLAGS =  -L${base_dir}/\$(OUTPUT_DIR) -lplugin\$(EXT) -lcodelite\$(EXT) -lwxsqlite3\$(EXT) \\" >> Makefile
+ 	echo "	-lwxscintilla\$(EXT) -lwxpropgrid\$(EXT) -L${base_dir}/sdk/sqlite3/lib \$(shell wx-config --libs \$(WXCFG))" >> Makefile
  

@@ -1,3 +1,16 @@
+codelite (1.0.2785+dfsg-0ubuntu1) karmic; urgency=low
+
+  * New upstream release
+  * debian/copyright:
+    + Added Files section for sdk/wxpropgrid
+    + Made license text RFC compliant (add . for empty lines)
+  * debian/patches/02_fix-desktop.patch,
+    debian/patches/03_fix-sh.patch,
+    debian/patches/04_change-installpath.patch
+    + Refreshed to patch cleanly
+
+ -- Chow Loong Jin <hyperair@gmail.com>  Tue, 03 Mar 2009 04:25:11 +0800
+
 codelite (1.0.2759+dfsg-0ubuntu2) jaunty; urgency=low
 
   * debian/patches/00_add-fPIC.patch,
