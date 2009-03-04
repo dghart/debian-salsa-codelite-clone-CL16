@@ -1,22 +1,4 @@
 debian/codelite.xpm /usr/share/pixmaps
-usr/share/codelite/debuggers/*.so /usr/lib/codelite/debuggers
-usr/share/codelite/astyle.sample
-usr/share/codelite/config
-usr/share/codelite/images
-usr/share/codelite/index.html
-usr/share/codelite/lexers
-usr/share/codelite/rc
-usr/share/codelite/svnreport.html
-usr/share/codelite/templates/projects/custom-makefile
-usr/share/codelite/templates/projects/dynamic-library
-usr/share/codelite/templates/projects/dynamic-library-wx-enabled
-usr/share/codelite/templates/projects/executable
-usr/share/codelite/templates/projects/non-code-project
-usr/share/codelite/templates/projects/static-library
-usr/share/codelite/templates/projects/static-library-wx-enabled
-usr/share/codelite/templates/projects/vc-dynamic-library
-usr/share/codelite/templates/projects/vc-executable
-usr/share/codelite/templates/projects/vc-static-lib
-usr/share/applications
+usr/lib/codelite/debuggers
+usr/share
 usr/bin
-

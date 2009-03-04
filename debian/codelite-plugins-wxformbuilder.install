@@ -1,2 +1,2 @@
-usr/share/codelite/plugins/wxformbuilder.so usr/lib/codelite/plugins
+usr/lib/codelite/wxformbuilder.so
 usr/share/codelite/templates/formbuilder

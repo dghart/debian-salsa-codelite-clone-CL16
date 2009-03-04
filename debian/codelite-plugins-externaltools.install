@@ -1,2 +1,2 @@
-usr/share/codelite/plugins/ExternalTools.so usr/lib/codelite/plugins
-usr/share/codelite/plugins/resources/external_tools.accelerators
+usr/lib/codelite/ExternalTools.so
+usr/lib/codelite/resources/external_tools.accelerators usr/share/codelite/plugins/resources

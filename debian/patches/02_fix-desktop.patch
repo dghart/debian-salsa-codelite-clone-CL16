@@ -1,18 +1,16 @@
-Index: codelite-1.0.2759+dfsg/Runtime/codelite.desktop
+Index: codelite-1.0.2785+dfsg/Runtime/codelite.desktop.template
 ===================================================================
---- codelite-1.0.2759+dfsg.orig/Runtime/codelite.desktop	2009-02-10 00:56:58.000000000 +0800
-+++ codelite-1.0.2759+dfsg/Runtime/codelite.desktop	2009-02-10 00:57:05.000000000 +0800
-@@ -1,10 +1,10 @@
+--- codelite-1.0.2785+dfsg.orig/Runtime/codelite.desktop.template	2009-02-24 22:58:14.000000000 +0800
++++ codelite-1.0.2785+dfsg/Runtime/codelite.desktop.template	2009-03-03 04:13:46.000000000 +0800
+@@ -1,9 +1,8 @@
  [Desktop Entry]
--Version=0.9
-+Version=1.0
+-Encoding=UTF-8
 -Name=codelite
 +Name=CodeLite
- Comment=An Open Source IDE for C/C++
- TryExec=codelite
  Exec=codelite %f
--Icon=/usr/local/share/codelite/images/cubes.png
-+Icon=/usr/share/codelite/images/cubes.png
+ Icon=%%PREFIX%%/share/codelite/images/cubes.png
  Terminal=false
- X-MultipleArgs=false
  Type=Application
+-Categories=Development
++Categories=Development;
+ StartupNotify=true
