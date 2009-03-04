@@ -2,4 +2,3 @@
 01_fix-symlink.patch
 02_fix-desktop.patch
 03_fix-sh.patch
-04_change-installpath.patch

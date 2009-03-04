@@ -1,2 +1,2 @@
-usr/share/codelite/plugins/ContinuousBuild.so usr/lib/codelite/plugins
-usr/share/codelite/plugins/resources/compfile.png
+usr/lib/codelite/ContinuousBuild.so
+usr/lib/codelite/resources/compfile.png usr/share/codelite/plugins/resources

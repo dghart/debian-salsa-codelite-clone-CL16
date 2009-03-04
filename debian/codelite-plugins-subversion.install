@@ -1,4 +1,4 @@
-usr/share/codelite/plugins/Subversion.so usr/lib/codelite/plugins
-usr/share/codelite/plugins/resources/wxfb_conflict.png
-usr/share/codelite/plugins/resources/wxfb_modified.png
-usr/share/codelite/plugins/resources/wxfb_ok.png
+usr/lib/codelite/Subversion.so
+usr/lib/codelite/resources/wxfb_conflict.png usr/share/codelite/plugins/resources
+usr/lib/codelite/resources/wxfb_modified.png usr/share/codelite/plugins/resources
+usr/lib/codelite/resources/wxfb_ok.png usr/share/codelite/plugins/resources

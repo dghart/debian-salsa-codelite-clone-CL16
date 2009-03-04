@@ -10,8 +10,14 @@ UPSTREAM_VERSION ?= $(shell cd $(SOURCE_DIR) && \
 	uscan --dehs | \
 	sed -n 's/.*<upstream-version>\(.*\)<\/upstream-version>.*/\1/p')
 
-install/codelite::
-	find "$(DEB_SRCDIR)/debian/tmp/usr/share" -type f -exec chmod 0644 '{}' \;
+#install/codelite::
+#	find "$(DEB_SRCDIR)/debian/tmp/usr/share" -type f -exec chmod 0644 '{}' \;
+
+binary-install/codelite::
+	rm -rf debian/codelite/usr/share/codelite/templates/gizmos \
+	       debian/codelite/usr/share/codelite/templates/projects/UnitTest++ \
+		   debian/codelite/usr/share/codelite/src/unittest++1.3.tar.gz \
+		   debian/codelite/usr/share/codelite/templates/formbuilder
 
 clean::
 	find "$(DEB_SRCDIR)" -name Makefile ! -wholename '*sdk*' -delete

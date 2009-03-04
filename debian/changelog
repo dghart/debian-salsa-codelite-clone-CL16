@@ -5,11 +5,22 @@ codelite (1.0.2785+dfsg-0ubuntu1) karmic; urgency=low
     + Added Files section for sdk/wxpropgrid
     + Made license text RFC compliant (add . for empty lines)
   * debian/patches/02_fix-desktop.patch,
-    debian/patches/03_fix-sh.patch,
-    debian/patches/04_change-installpath.patch
+    debian/patches/03_fix-sh.patch:
     + Refreshed to patch cleanly
+  * debian/*.install,
+    debian/codelite.dirs,
+    debian/codelite.links,
+    debian/patches/04_change-installpath.patch,
+    debian/patches/series:
+    + Updated for new upstream directory structure
+    + Patch dropped, no longer needed.
+  * debian/codelite.menu,
+    debian/CodeLite.1,
+    debian/codelite.1,
+    debian/codelite.manpages:
+    + Updated to reflect new command (CodeLite => codelite)
 
- -- Chow Loong Jin <hyperair@gmail.com>  Tue, 03 Mar 2009 04:25:11 +0800
+ -- Chow Loong Jin <hyperair@gmail.com>  Thu, 05 Mar 2009 02:57:53 +0800
 
 codelite (1.0.2759+dfsg-0ubuntu2) jaunty; urgency=low
 
