@@ -1,13 +1,15 @@
-.TH "le_killproc" "1"
+.TH "codelite_fix_files" "1"
 .SH NAME
-.B le_killproc
-\- Kill child processes of a given process.
+.B codelite_fix_files
+\- Convert a CodeLite project and workspace from the DOS environment to the *nix
+environment
 .SH SYNOPSIS
-.B le_killproc 
-\fIPID\fR
+.B codelite_fix_files
 .SH DESCRIPTION
-.B le_killproc
-takes a single \fIPID\fR as its argument, and kills all child processes of the process with the given \fIPID\fR.
+.B codelite_fix_files
+is a trivial script which converts all CodeLite project files (*.project) and
+workspace files (*.workspace) in the current directory and all its
+subdirectories from the DOS environment to the *nix environment.
 .SH COPYRIGHT
 This manual page was written by Chow Loong Jin <hyperair@gmail.com> for the
 Debian system (but may be used by others). Permission is granted to copy,
@@ -17,4 +19,3 @@ Foundation.
 
 On Debian systems, the complete text of the GNU General Public License can be
 found in /usr/share/common-licenses.
-
