@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CodeLite_Project Name="SymbolView">
+  <VirtualDirectory Name="src">
+    <File Name="symbolview.cpp"/>
+  </VirtualDirectory>
+  <VirtualDirectory Name="include">
+    <File Name="symbolview.h"/>
+  </VirtualDirectory>
+  <Dependencies/>
+  <Dependencies Name="DebugUnicode"/>
+  <Dependencies Name="ReleaseUnicode"/>
+  <Dependencies Name="WinDebugUnicode"/>
+  <Settings Type="Dynamic Library">
+    <Configuration Name="DebugUnicode" CompilerType="gnu g++" DebuggerType="GNU gdb debugger" Type="Dynamic Library">
+      <General OutputFile="$(ConfigurationName)/SymbolView.dll" IntermediateDirectory="./DebugUnicode" Command="" CommandArguments="" WorkingDirectory="./DebugUnicode" PauseExecWhenProcTerminates="yes"/>
+      <Compiler Required="yes" Options="-g;$(shell wx-config --cxxflags --debug=yes --unicode=yes)">
+        <IncludePath Value="."/>
+        <IncludePath Value="../Interfaces"/>
+        <IncludePath Value="../CodeLite"/>
+        <IncludePath Value="../Plugin"/>
+        <IncludePath Value="../sqlite3"/>
+        <IncludePath Value="../sdk/wxsqlite3/include"/>
+        <IncludePath Value="../sdk/wxpropgrid/include"/>
+        <Preprocessor Value="__WX__"/>
+        <Preprocessor Value="WXUSINGDLL"/>
+        <Preprocessor Value="YY_NEVER_INTERACTIVE=1"/>
+      </Compiler>
+      <Linker Required="yes" Options="$(shell wx-config --debug=yes --libs --unicode=yes);">
+        <LibraryPath Value="../lib/gcc_lib"/>
+        <Library Value="libplugin_sdkud.a"/>
+        <Library Value="libCodeLiteud.a"/>
+        <Library Value="libwxsqlite3ud.a"/>
+        <Library Value="libsqlite3.a"/>
+        <Library Value="libwxpropgridud.a"/>
+      </Linker>
+      <Debugger IsRemote="no" RemoteHostName="" RemoteHostPort="" DebuggerPath="">
+        <PostConnectCommands/>
+        <StartupCommands/>
+      </Debugger>
+      <ResourceCompiler Required="no" Options=""/>
+      <PreBuild/>
+      <PostBuild>
+        <Command Enabled="yes">cp $(OutputFile) ../lib/gcc_lib</Command>
+      </PostBuild>
+      <CustomBuild Enabled="no">
+        <CleanCommand/>
+        <BuildCommand/>
+        <PreprocessFileCommand/>
+        <SingleFileCommand/>
+        <MakefileGenerationCommand/>
+        <ThirdPartyToolName>None</ThirdPartyToolName>
+        <WorkingDirectory/>
+      </CustomBuild>
+      <AdditionalRules>
+        <CustomPostBuild/>
+        <CustomPreBuild/>
+      </AdditionalRules>
+    </Configuration>
+    <Configuration Name="ReleaseUnicode" CompilerType="gnu g++" DebuggerType="GNU gdb debugger" Type="Dynamic Library">
+      <General OutputFile="../Runtime/plugins/SymbolView.so" IntermediateDirectory="./ReleaseUnicode" Command="" CommandArguments="" WorkingDirectory="./ReleaseUnicode" PauseExecWhenProcTerminates="yes"/>
+      <Compiler Required="yes" Options="$(shell wx-config --cxxflags --debug=no --unicode=yes); -O2;-fPIC">
+        <IncludePath Value="."/>
+        <IncludePath Value="../Interfaces"/>
+        <IncludePath Value="../CodeLite"/>
+        <IncludePath Value="../Plugin"/>
+        <IncludePath Value="../sqlite3"/>
+        <IncludePath Value="../sdk/wxsqlite3/include"/>
+        <IncludePath Value="../sdk/wxpropgrid/include"/>
+        <Preprocessor Value="__WX__"/>
+        <Preprocessor Value="WXUSINGDLL"/>
+        <Preprocessor Value="YY_NEVER_INTERACTIVE=1"/>
+      </Compiler>
+      <Linker Required="yes" Options="-O2;$(shell wx-config --debug=no --libs --unicode=yes);">
+        <LibraryPath Value="../lib/gcc_lib"/>
+        <Library Value="libplugin_sdku.a"/>
+        <Library Value="libCodeLiteu.a"/>
+        <Library Value="libwxsqlite3u.a"/>
+        <Library Value="libsqlite3.a"/>
+        <Library Value="libwxpropgridu.a"/>
+      </Linker>
+      <Debugger IsRemote="no" RemoteHostName="" RemoteHostPort="" DebuggerPath="">
+        <PostConnectCommands/>
+        <StartupCommands/>
+      </Debugger>
+      <ResourceCompiler Required="no" Options=""/>
+      <PreBuild/>
+      <PostBuild/>
+      <CustomBuild Enabled="no">
+        <CleanCommand/>
+        <BuildCommand/>
+        <PreprocessFileCommand/>
+        <SingleFileCommand/>
+        <MakefileGenerationCommand/>
+        <ThirdPartyToolName>None</ThirdPartyToolName>
+        <WorkingDirectory/>
+      </CustomBuild>
+      <AdditionalRules>
+        <CustomPostBuild/>
+        <CustomPreBuild/>
+      </AdditionalRules>
+    </Configuration>
+    <Configuration Name="WinDebugUnicode" CompilerType="gnu g++" DebuggerType="GNU gdb debugger" Type="Dynamic Library">
+      <General OutputFile="../Runtime/plugins/SymbolView.dll" IntermediateDirectory="./WinDebugUnicode" Command="./CodeLite" CommandArguments="-b ." WorkingDirectory="$(WorkspacePath)/Runtime" PauseExecWhenProcTerminates="no"/>
+      <Compiler Required="yes" Options="-g;$(shell wx-config --cxxflags --unicode=yes --debug=yes)">
+        <IncludePath Value="."/>
+        <IncludePath Value="../Interfaces"/>
+        <IncludePath Value="../CodeLite"/>
+        <IncludePath Value="../Plugin"/>
+        <IncludePath Value="../sqlite3"/>
+        <IncludePath Value="../sdk/wxsqlite3/include"/>
+        <IncludePath Value="../sdk/wxpropgrid/include"/>
+        <Preprocessor Value="__WX__"/>
+        <Preprocessor Value="WXUSINGDLL"/>
+        <Preprocessor Value="_WIN32_WINNT=0x501"/>
+        <Preprocessor Value="ASTYLE_LIB"/>
+        <Preprocessor Value="WXMAKINGLIB_PROPGRID"/>
+      </Compiler>
+      <Linker Required="yes" Options="-O2;$(shell wx-config --debug=yes --libs --unicode=yes);">
+        <LibraryPath Value="../lib/gcc_lib"/>
+        <Library Value="libplugin_sdkud.a"/>
+        <Library Value="libCodeLiteud.a"/>
+        <Library Value="libwxsqlite3ud.a"/>
+        <Library Value="libsqlite3.a"/>
+        <Library Value="libwxpropgridud.a"/>
+        <Library Value="libwxmsw28ud.a"/>
+      </Linker>
+      <Debugger IsRemote="no" RemoteHostName="" RemoteHostPort="" DebuggerPath="">
+        <PostConnectCommands/>
+        <StartupCommands/>
+      </Debugger>
+      <ResourceCompiler Required="no" Options=""/>
+      <PreBuild/>
+      <PostBuild/>
+      <CustomBuild Enabled="no">
+        <CleanCommand/>
+        <BuildCommand/>
+        <PreprocessFileCommand/>
+        <SingleFileCommand/>
+        <MakefileGenerationCommand/>
+        <ThirdPartyToolName>None</ThirdPartyToolName>
+        <WorkingDirectory/>
+      </CustomBuild>
+      <AdditionalRules>
+        <CustomPostBuild/>
+        <CustomPreBuild/>
+      </AdditionalRules>
+    </Configuration>
+    <Configuration Name="WinReleaseUnicode" CompilerType="gnu g++" DebuggerType="GNU gdb debugger" Type="Dynamic Library">
+      <General OutputFile="../Runtime/plugins/SymbolView.dll" IntermediateDirectory="./WinReleaseUnicode" Command="./CodeLite" CommandArguments="-b ." WorkingDirectory="$(WorkspacePath)/Runtime" PauseExecWhenProcTerminates="no"/>
+      <Compiler Required="yes" Options="$(shell wx-config --cxxflags --unicode=yes --debug=no);-O2">
+        <IncludePath Value="."/>
+        <IncludePath Value="../Interfaces"/>
+        <IncludePath Value="../CodeLite"/>
+        <IncludePath Value="../Plugin"/>
+        <IncludePath Value="../sqlite3"/>
+        <IncludePath Value="../sdk/wxsqlite3/include"/>
+        <IncludePath Value="../sdk/wxpropgrid/include"/>
+        <Preprocessor Value="__WX__"/>
+        <Preprocessor Value="WXUSINGDLL"/>
+        <Preprocessor Value="_WIN32_WINNT=0x501"/>
+        <Preprocessor Value="ASTYLE_LIB"/>
+        <Preprocessor Value="WXMAKINGLIB_PROPGRID"/>
+      </Compiler>
+      <Linker Required="yes" Options="-O2;$(shell wx-config --debug=no --libs --unicode=yes);">
+        <LibraryPath Value="../lib/gcc_lib"/>
+        <Library Value="libplugin_sdku.a"/>
+        <Library Value="libCodeLiteu.a"/>
+        <Library Value="libwxsqlite3u.a"/>
+        <Library Value="libsqlite3.a"/>
+        <Library Value="libwxpropgridu.a"/>
+        <Library Value="libwxmsw28u.a"/>
+      </Linker>
+      <Debugger IsRemote="no" RemoteHostName="" RemoteHostPort="" DebuggerPath="">
+        <PostConnectCommands/>
+        <StartupCommands/>
+      </Debugger>
+      <ResourceCompiler Required="no" Options=""/>
+      <PreBuild/>
+      <PostBuild/>
+      <CustomBuild Enabled="no">
+        <CleanCommand/>
+        <BuildCommand/>
+        <PreprocessFileCommand/>
+        <SingleFileCommand/>
+        <MakefileGenerationCommand/>
+        <ThirdPartyToolName>None</ThirdPartyToolName>
+        <WorkingDirectory/>
+      </CustomBuild>
+      <AdditionalRules>
+        <CustomPostBuild/>
+        <CustomPreBuild/>
+      </AdditionalRules>
+    </Configuration>
+  </Settings>
+  <Dependencies Name="WinReleaseUnicode"/>
+</CodeLite_Project>
