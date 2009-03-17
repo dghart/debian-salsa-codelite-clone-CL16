@@ -3,9 +3,10 @@ codelite (1.0.2797+dfsg-1) unstable; urgency=low
   * New Upstream Version
   * debian/patches/03_fix-sh.patch:
     + Dropped, no longer needed
-  * debian/rules:
+  * debian/rules, debian/README.source:
     + Change get-orig-source rule to no longer exclude sdk/curl since it does
-      not exist upstream anymore.
+      not exist upstream anymore
+    + Update documentation of this in README.source
   * debian/codelite.manpages,
     debian/le_exec.1,
     debian/le_killproc.1,
@@ -15,7 +16,7 @@ codelite (1.0.2797+dfsg-1) unstable; urgency=low
       - le_killproc => codelite_kill_children
       - le_dos2unix => codelite_fix_files
 
- -- Chow Loong Jin <hyperair@gmail.com>  Wed, 18 Mar 2009 05:31:31 +0800
+ -- Chow Loong Jin <hyperair@gmail.com>  Wed, 18 Mar 2009 05:38:15 +0800
 
 codelite (1.0.2785+dfsg-1) unstable; urgency=low
 
