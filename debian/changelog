@@ -3,8 +3,11 @@ codelite (1.0.2797-1) unstable; urgency=low
   * New Upstream Version
   * debian/patches/03_fix-sh.patch:
     + Dropped, no longer needed
+  * debian/rules:
+    + Change get-orig-source rule to no longer exclude sdk/curl since it does
+      not exist upstream anymore.
 
- -- Chow Loong Jin <hyperair@gmail.com>  Wed, 18 Mar 2009 04:31:54 +0800
+ -- Chow Loong Jin <hyperair@gmail.com>  Wed, 18 Mar 2009 04:34:53 +0800
 
 codelite (1.0.2785+dfsg-1) unstable; urgency=low
 
