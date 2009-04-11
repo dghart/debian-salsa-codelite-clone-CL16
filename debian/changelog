@@ -1,12 +1,13 @@
-codelite (1.0.2797+dfsg-2) UNRELEASED; urgency=low
+codelite (1.0.2797+dfsg-2) unstable; urgency=low
 
   * debian/control:
     + Shifted gdb, gcc, xterm to Recommends because CodeLite cannot compile
       and run anything without them.
     + Added g++ to Recommends
     + Bump Standards-Version to 3.8.1
+    + Add Vcs-* fields
 
- -- Chow Loong Jin <hyperair@gmail.com>  Sun, 12 Apr 2009 05:57:49 +0800
+ -- Chow Loong Jin <hyperair@gmail.com>  Sun, 12 Apr 2009 06:00:49 +0800
 
 codelite (1.0.2797+dfsg-1) unstable; urgency=low
 
