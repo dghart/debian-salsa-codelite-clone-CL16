@@ -1,3 +1,11 @@
+codelite (1.0.2759+dfsg-0ubuntu3) jaunty; urgency=low
+
+  * debian/control:
+    + Shift xterm, gcc, and gdb from Suggests to Recommends, add g++ to
+      Recommends (LP: #363742)
+
+ -- Chow Loong Jin <hyperair@gmail.com>  Sun, 19 Apr 2009 22:15:22 +0800
+
 codelite (1.0.2759+dfsg-0ubuntu2) jaunty; urgency=low
 
   * debian/patches/00_add-fPIC.patch,
