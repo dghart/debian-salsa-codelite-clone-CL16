@@ -22,6 +22,14 @@ codelite (1.0.2785+dfsg-0ubuntu1) karmic; urgency=low
 
  -- Chow Loong Jin <hyperair@gmail.com>  Thu, 05 Mar 2009 02:57:53 +0800
 
+codelite (1.0.2759+dfsg-0ubuntu3) jaunty; urgency=low
+
+  * debian/control:
+    + Shift xterm, gcc, and gdb from Suggests to Recommends, add g++ to
+      Recommends (LP: #363742)
+
+ -- Chow Loong Jin <hyperair@gmail.com>  Sun, 19 Apr 2009 22:15:22 +0800
+
 codelite (1.0.2759+dfsg-0ubuntu2) jaunty; urgency=low
 
   * debian/patches/00_add-fPIC.patch,
