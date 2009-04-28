@@ -10,7 +10,7 @@ Build-Depends: cdbs,
                libgtk2.0-dev,
                libwxgtk2.8-dev,
     	       libsqlite3-dev
-Standards-Version: 3.8.0
+Standards-Version: 3.8.1
 Homepage: http://www.codelite.org
 
 Package: codelite

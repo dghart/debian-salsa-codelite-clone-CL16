@@ -4,6 +4,8 @@ codelite (1.0.2822+dfsg-0ubuntu1) karmic; urgency=low
   * debian/copyright:
     + Added Files section for sdk/wxpropgrid
     + Made license text RFC compliant (add . for empty lines)
+  * debian/control:
+    + Bump Standards-Version to 3.8.1
   * debian/patches/02_fix-desktop.patch,
     debian/patches/03_fix-sh.patch:
     + Refreshed to patch cleanly
@@ -20,7 +22,7 @@ codelite (1.0.2822+dfsg-0ubuntu1) karmic; urgency=low
     debian/codelite.manpages:
     + Updated to reflect new command (CodeLite => codelite)
 
- -- Chow Loong Jin <hyperair@gmail.com>  Tue, 28 Apr 2009 16:04:43 +0800
+ -- Chow Loong Jin <hyperair@gmail.com>  Tue, 28 Apr 2009 16:11:13 +0800
 
 codelite (1.0.2759+dfsg-0ubuntu3) jaunty; urgency=low
 
