@@ -181,6 +181,10 @@
       <File Name="closetab-active.xpm"/>
       <File Name="tabicons.h"/>
       <File Name="tabicons.cpp"/>
+      <File Name="notebookcustomdlgbase.h"/>
+      <File Name="notebookcustomdlg.cpp"/>
+      <File Name="notebookcustomdlg.h"/>
+      <File Name="notebookcustomdlgbase.cpp"/>
     </VirtualDirectory>
   </VirtualDirectory>
   <VirtualDirectory Name="TokenScanner">
