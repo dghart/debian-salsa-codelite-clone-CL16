@@ -1,15 +1,13 @@
-.TH "le_dos2unix" "1"
+.TH "codelite_kill_children" "1"
 .SH NAME
-.B le_dos2unix
-\- Convert a CodeLite project and workspace from the DOS environment to the *nix
-environment
+.B codelite_kill_children
+\- Kill child processes of a given process.
 .SH SYNOPSIS
-.B le_dos2unix
+.B codelite_kill_children 
+\fIPID\fR
 .SH DESCRIPTION
-.B le_dos2unix
-is a trivial script which converts all CodeLite project files (*.project) and
-workspace files (*.workspace) in the current directory and all its
-subdirectories from the DOS environment to the *nix environment.
+.B codelite_kill_children
+takes a single \fIPID\fR as its argument, and kills all child processes of the process with the given \fIPID\fR.
 .SH COPYRIGHT
 This manual page was written by Chow Loong Jin <hyperair@gmail.com> for the
 Debian system (but may be used by others). Permission is granted to copy,
@@ -19,3 +17,4 @@ Foundation.
 
 On Debian systems, the complete text of the GNU General Public License can be
 found in /usr/share/common-licenses.
+

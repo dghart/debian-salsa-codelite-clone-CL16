@@ -17,15 +17,18 @@ codelite (1.0.2822+dfsg-0ubuntu1) karmic; urgency=low
     + Updated for new upstream directory structure
     + Patch dropped, no longer needed.
   * debian/codelite.menu,
-    debian/CodeLite.1,
-    debian/codelite.1,
+    debian/*.1,
     debian/codelite.manpages:
-    + Updated to reflect new command (CodeLite => codelite)
+    + Updated to reflect change in command names
+      - CodeLite    => codelite
+      - le_exec     => codelite_exec
+      - le_dos2unix => codelite_fix_files
+      - le_killproc => codelite_kill_children
   * debian/patches/series,
     debian/patches/03_fix-sh.patch:
     + Dropped, not needed any more.
 
- -- Chow Loong Jin <hyperair@gmail.com>  Tue, 28 Apr 2009 16:11:13 +0800
+ -- Chow Loong Jin <hyperair@gmail.com>  Tue, 28 Apr 2009 19:48:08 +0800
 
 codelite (1.0.2759+dfsg-0ubuntu3) jaunty; urgency=low
 
