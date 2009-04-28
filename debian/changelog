@@ -1,4 +1,4 @@
-codelite (1.0.2785+dfsg-0ubuntu1) karmic; urgency=low
+codelite (1.0.2822+dfsg-0ubuntu1) karmic; urgency=low
 
   * New upstream release
   * debian/copyright:
@@ -20,7 +20,7 @@ codelite (1.0.2785+dfsg-0ubuntu1) karmic; urgency=low
     debian/codelite.manpages:
     + Updated to reflect new command (CodeLite => codelite)
 
- -- Chow Loong Jin <hyperair@gmail.com>  Thu, 05 Mar 2009 02:57:53 +0800
+ -- Chow Loong Jin <hyperair@gmail.com>  Tue, 28 Apr 2009 16:04:43 +0800
 
 codelite (1.0.2759+dfsg-0ubuntu3) jaunty; urgency=low
 
