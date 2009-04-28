@@ -27,8 +27,12 @@ codelite (1.0.2822+dfsg-0ubuntu1) karmic; urgency=low
   * debian/patches/series,
     debian/patches/03_fix-sh.patch:
     + Dropped, not needed any more.
+  * debian/README.source,
+    debian/rules:
+    + Remove sdk/curl from the list of excluded files, since it doesn't exist
+      any more
 
- -- Chow Loong Jin <hyperair@gmail.com>  Tue, 28 Apr 2009 19:48:08 +0800
+ -- Chow Loong Jin <hyperair@gmail.com>  Tue, 28 Apr 2009 20:27:03 +0800
 
 codelite (1.0.2759+dfsg-0ubuntu3) jaunty; urgency=low
 
