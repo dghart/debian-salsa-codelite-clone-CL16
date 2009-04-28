@@ -2354,6 +2354,10 @@ wxString TagsManager::NormalizeFunctionSig(const wxString &sig, size_t flags, st
 			str_output << wxT(" ") << _U(v.m_name.c_str());
 		}
 
+		if (v.m_arrayBrackets.empty() == false) {
+			str_output << wxT(" ") << _U(v.m_arrayBrackets.c_str());
+		}
+
 		if (v.m_defaultValue.empty() == false && (flags & Normalize_Func_Default_value)) {
 			str_output << wxT(" = ") << _U(v.m_defaultValue.c_str());
 		}

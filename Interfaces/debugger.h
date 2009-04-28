@@ -153,6 +153,7 @@ public:
 	bool      resolveThis;
 	bool      showTerminal;
 	wxString  consoleCommand;
+	bool      useRelativeFilePaths;
 
 public:
 	DebuggerInformation()
@@ -170,6 +171,7 @@ public:
 #else
 			, consoleCommand(wxT(""))
 #endif
+			, useRelativeFilePaths(false)
 	{}
 	~DebuggerInformation() {}
 };

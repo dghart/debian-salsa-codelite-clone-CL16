@@ -34,18 +34,19 @@
 
 
 BEGIN_EVENT_TABLE(ReplaceInFilesPanel, FindResultsTab)
-	EVT_BUTTON(XRCID("unmark_all"),    ReplaceInFilesPanel::OnUnmarkAll)
-	EVT_BUTTON(XRCID("mark_all"),      ReplaceInFilesPanel::OnMarkAll)
-	EVT_BUTTON(XRCID("replace"),       ReplaceInFilesPanel::OnReplace)
+	EVT_BUTTON(XRCID("unmark_all"),             ReplaceInFilesPanel::OnUnmarkAll)
+	EVT_BUTTON(XRCID("mark_all"),               ReplaceInFilesPanel::OnMarkAll)
+	EVT_BUTTON(XRCID("replace"),                ReplaceInFilesPanel::OnReplace)
 
-	EVT_UPDATE_UI(XRCID("unmark_all"), ReplaceInFilesPanel::OnUnmarkAllUI)
-	EVT_UPDATE_UI(XRCID("mark_all"),   ReplaceInFilesPanel::OnMarkAllUI)
-	EVT_UPDATE_UI(XRCID("replace"),    ReplaceInFilesPanel::OnReplaceUI)
+	EVT_UPDATE_UI(XRCID("unmark_all"),          ReplaceInFilesPanel::OnUnmarkAllUI)
+	EVT_UPDATE_UI(XRCID("mark_all"),            ReplaceInFilesPanel::OnMarkAllUI)
+	EVT_UPDATE_UI(XRCID("replace"),             ReplaceInFilesPanel::OnReplaceUI)
+	EVT_UPDATE_UI(XRCID("replace_with_combo"),  ReplaceInFilesPanel::OnReplaceWithComboUI)
 END_EVENT_TABLE()
 
 
 ReplaceInFilesPanel::ReplaceInFilesPanel(wxWindow* parent, int id, const wxString &name)
-    : FindResultsTab(parent, id, name, 1)
+    : FindResultsTab(parent, id, name)
 {
 
 	wxBoxSizer *horzSizer = new wxBoxSizer(wxHORIZONTAL);
@@ -59,7 +60,7 @@ ReplaceInFilesPanel::ReplaceInFilesPanel(wxWindow* parent, int id, const wxStrin
 	wxStaticText *text = new wxStaticText( this, wxID_ANY, wxT("Replace With:"));
 	horzSizer->Add(text, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT|wxLEFT, 5);
 
-	m_replaceWith = new wxComboBox(this, wxID_ANY);
+	m_replaceWith = new wxComboBox(this, XRCID("replace_with_combo"));
 	horzSizer->Add(m_replaceWith, 2, wxALIGN_CENTER_VERTICAL|wxRIGHT|wxLEFT, 5);
 
 	wxButton *repl = new wxButton(this, XRCID("replace"), wxT("&Replace Marked"));
@@ -76,6 +77,9 @@ ReplaceInFilesPanel::ReplaceInFilesPanel(wxWindow* parent, int id, const wxStrin
 	mainSizer->Detach(m_sci);
 	vertSizer->Add(m_sci, 1, wxEXPAND | wxALL, 1);
 
+	m_tb->RemoveTool ( XRCID ( "repeat_output" ) );
+	m_tb->Realize();
+
 	mainSizer->Add(vertSizer, 1, wxEXPAND | wxALL, 1);
 	mainSizer->Layout();
 
@@ -87,16 +91,26 @@ ReplaceInFilesPanel::ReplaceInFilesPanel(wxWindow* parent, int id, const wxStrin
 
 void ReplaceInFilesPanel::OnSearchStart(wxCommandEvent &e)
 {
+	SearchData *data = (SearchData*) e.GetClientData();
+	wxString label = data ? data->GetFindString() : wxT("");
+
 	FindResultsTab::OnSearchStart(e);
-	m_replaceWith->Clear();
+
+	// set the search string to be the 'replace with' string as well
+	if(label.IsEmpty() == false) {
+		m_replaceWith->SetValue(label);
+		m_replaceWith->SetSelection(-1, -1);
+		m_replaceWith->SetFocus();
+	}
 }
 
 void ReplaceInFilesPanel::OnSearchMatch(wxCommandEvent &e)
 {
 	FindResultsTab::OnSearchMatch(e);
-	if (m_matchInfo[0].size() != 1 || !m_replaceWith->GetValue().IsEmpty())
+	const MatchInfo& matchInfo = GetMatchInfo();
+	if (matchInfo.size() != 1 || !m_replaceWith->GetValue().IsEmpty())
 		return;
-	m_replaceWith->SetValue(m_matchInfo[0].begin()->second.GetFindWhat());
+	m_replaceWith->SetValue(matchInfo.begin()->second.GetFindWhat());
 	m_replaceWith->SetSelection(-1, -1);
 	m_replaceWith->SetFocus();
 }
@@ -110,7 +124,8 @@ void ReplaceInFilesPanel::OnSearchEnded(wxCommandEvent &e)
 void ReplaceInFilesPanel::OnMarginClick(wxScintillaEvent& e)
 {
 	int line = m_sci->LineFromPosition(e.GetPosition());
-	if (m_matchInfo[0].find(line) == m_matchInfo[0].end()) {
+	const MatchInfo& matchInfo = GetMatchInfo();
+	if (matchInfo.find(line) == matchInfo.end()) {
 		FindResultsTab::OnMarginClick(e);
 	} else if (m_sci->MarkerGet(line) & 7<<0x7) {
 		m_sci->MarkerDelete(line, 0x7);
@@ -121,7 +136,8 @@ void ReplaceInFilesPanel::OnMarginClick(wxScintillaEvent& e)
 
 void ReplaceInFilesPanel::OnMarkAll(wxCommandEvent& e)
 {
-	for (std::map<int,SearchResult>::iterator i = m_matchInfo[0].begin(); i != m_matchInfo[0].end(); i++) {
+	const MatchInfo& matchInfo = GetMatchInfo();
+	for (MatchInfo::const_iterator i = matchInfo.begin(); i != matchInfo.end(); ++i) {
 		if (m_sci->MarkerGet(i->first) & 7<<0x7)
 			continue;
 		m_sci->MarkerAdd(i->first, 0x7);
@@ -192,7 +208,7 @@ wxScintilla *ReplaceInFilesPanel::DoGetEditor(const wxString &fileName)
 
 void ReplaceInFilesPanel::OnReplace(wxCommandEvent& e)
 {
-	if (m_replaceWith->FindString(m_replaceWith->GetValue()) == wxNOT_FOUND) {
+	if (m_replaceWith->FindString(m_replaceWith->GetValue(), true) == wxNOT_FOUND) {
 		m_replaceWith->Append(m_replaceWith->GetValue());
 	}
 
@@ -205,10 +221,11 @@ void ReplaceInFilesPanel::OnReplace(wxCommandEvent& e)
 	long delta = 0;
 
 	// remembers first entry in the file being updated
-	std::map<int,SearchResult>::iterator firstInFile = m_matchInfo[0].begin();
+	MatchInfo& matchInfo = GetMatchInfo();
+	MatchInfo::iterator firstInFile = matchInfo.begin();
 
-	m_progress->SetRange(m_matchInfo[0].size());
-	for (std::map<int,SearchResult>::iterator i = firstInFile; i != m_matchInfo[0].end(); i++) {
+	m_progress->SetRange(matchInfo.size());
+	for (MatchInfo::iterator i = firstInFile; i != matchInfo.end(); i++) {
 		m_progress->SetValue(m_progress->GetValue()+1);
 		m_progress->Update();
 
@@ -270,7 +287,7 @@ void ReplaceInFilesPanel::OnReplace(wxCommandEvent& e)
 		i->second.SetLen(m_replaceWith->GetValue().Length());
 	}
 	m_progress->SetValue(0);
-	DoSaveResults(sci, firstInFile, m_matchInfo[0].end());
+	DoSaveResults(sci, firstInFile, matchInfo.end());
 
 	// Step 2: Update the Replace pane
 
@@ -282,7 +299,7 @@ void ReplaceInFilesPanel::OnReplace(wxCommandEvent& e)
 	m_sci->SetReadOnly(false);
 
 	std::vector<int> itemsToRemove;
-	for (std::map<int, SearchResult>::iterator i = m_matchInfo[0].begin();i != m_matchInfo[0].end(); i++) {
+	for (MatchInfo::iterator i = matchInfo.begin();i != matchInfo.end(); i++) {
 		int line = i->first + delta;
 		if (i->second.GetFileName() != lastFile) {
 			if (lastLine == line-2) {
@@ -310,22 +327,22 @@ void ReplaceInFilesPanel::OnReplace(wxCommandEvent& e)
 			delta--;
 		} else if (line != i->first) {
 			// need to adjust line number
-			m_matchInfo[0][line] = i->second;
+			matchInfo[line] = i->second;
 			itemsToRemove.push_back(i->first);
 		}
 	}
 
 	// update the match info map
 	for(std::vector<int>::size_type i=0; i<itemsToRemove.size(); i++){
-		std::map<int, SearchResult>::iterator iter = m_matchInfo.at(0).find(itemsToRemove.at(i));
-		if(iter != m_matchInfo[0].end()){
-			m_matchInfo.at(0).erase(iter);
+		MatchInfo::iterator iter = matchInfo.find(itemsToRemove.at(i));
+		if (iter != matchInfo.end()){
+			matchInfo.erase(iter);
 		}
 	}
 
 	m_sci->SetReadOnly(true);
 	m_sci->GotoLine(0);
-	if (m_matchInfo[0].empty()) {
+	if (matchInfo.empty()) {
 		Clear();
 	}
 
@@ -352,4 +369,9 @@ void ReplaceInFilesPanel::OnReplace(wxCommandEvent& e)
 void ReplaceInFilesPanel::OnReplaceUI(wxUpdateUIEvent& e)
 {
     e.Enable(m_sci->GetLength() > 0);
+}
+
+void ReplaceInFilesPanel::OnReplaceWithComboUI(wxUpdateUIEvent& e)
+{
+	e.Enable(m_sci->GetLength() > 0);
 }
