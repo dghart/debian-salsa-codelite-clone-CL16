@@ -21,6 +21,9 @@ codelite (1.0.2822+dfsg-0ubuntu1) karmic; urgency=low
     debian/codelite.1,
     debian/codelite.manpages:
     + Updated to reflect new command (CodeLite => codelite)
+  * debian/patches/series,
+    debian/patches/03_fix-sh.patch:
+    + Dropped, not needed any more.
 
  -- Chow Loong Jin <hyperair@gmail.com>  Tue, 28 Apr 2009 16:11:13 +0800
 
