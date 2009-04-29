@@ -31,8 +31,11 @@ codelite (1.0.2822+dfsg-0ubuntu1) karmic; urgency=low
     debian/rules:
     + Remove sdk/curl from the list of excluded files, since it doesn't exist
       any more
+  * debian/patches/03_cstdio-include.patch,
+    debian/patches/series:
+    + Include cstdio for C++ and stdio.h for C, since it seems to be missing
 
- -- Chow Loong Jin <hyperair@gmail.com>  Tue, 28 Apr 2009 20:27:03 +0800
+ -- Chow Loong Jin <hyperair@gmail.com>  Wed, 29 Apr 2009 14:28:22 +0800
 
 codelite (1.0.2759+dfsg-0ubuntu3) jaunty; urgency=low
 
