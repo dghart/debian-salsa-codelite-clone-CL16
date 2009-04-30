@@ -1,4 +1,4 @@
-codelite (1.0.2822+dfsg-1) UNRELEASED; urgency=low
+codelite (1.0.2822+dfsg-1) unstable; urgency=low
 
   * New upstream release
   * debian/patches/03_cstdio-include.patch,
