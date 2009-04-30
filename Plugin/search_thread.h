@@ -46,12 +46,12 @@ class SearchThread;
 
 class SearchData : public ThreadRequest
 {
-	wxString m_rootDir;
+	wxArrayString m_rootDirs;
 	wxString m_findString;
 	size_t m_flags;
 	wxString m_validExt;
 	wxArrayString m_files;
-	int m_outputTab;
+	bool m_newTab;
 	wxEvtHandler *m_owner;
 
 	friend class SearchThread;
@@ -70,10 +70,9 @@ public:
 	// Ctor-Dtor
 	SearchData()
 			: ThreadRequest()
-			, m_rootDir(wxEmptyString)
 			, m_findString(wxEmptyString)
 			, m_flags(0)
-			, m_outputTab(0)
+			, m_newTab(false)
 			, m_owner(NULL) {}
 
 	SearchData(const SearchData &rhs) {
@@ -89,14 +88,14 @@ public:
 		m_findString = rhs.m_findString.c_str();
 		m_flags = rhs.m_flags;
 		m_validExt = rhs.m_validExt.c_str();
-		m_rootDir = rhs.m_rootDir.c_str();
+		m_rootDirs = rhs.m_rootDirs;
 
 		m_files.clear();
 		for(size_t i=0; i<rhs.m_files.GetCount(); i++){
 			m_files.Add(rhs.m_files.Item(i).c_str());
 		}
 
-		m_outputTab = rhs.m_outputTab;
+		m_newTab = rhs.m_newTab;
 		m_owner = rhs.m_owner;
 		return *this;
 	}
@@ -117,8 +116,8 @@ public:
 		return m_flags & wxSD_REGULAREXPRESSION ? true : false;
 	}
 
-	const wxString &GetRootDir() const {
-		return m_rootDir;
+	const wxArrayString &GetRootDirs() const {
+		return m_rootDirs;
 	}
 
 	void SetMatchCase(bool matchCase) {
@@ -137,8 +136,8 @@ public:
 		m_validExt = exts;
 	}
 
-	void SetRootDir(const wxString &rootDir) {
-		m_rootDir = rootDir;
+	void SetRootDirs(const wxArrayString &rootDirs) {
+		m_rootDirs = rootDirs;
 	}
 
 	const wxString& GetExtensions() const;
@@ -159,12 +158,12 @@ public:
 		return m_files;
 	}
 
-	void SetOutputTab(const int& outputTab) {
-		this->m_outputTab = outputTab;
+	void UseNewTab(bool useNewTab) {
+		m_newTab = useNewTab;
 	}
-
-	const int& GetOutputTab() const {
-		return m_outputTab;
+	
+	bool UseNewTab() const {
+		return m_newTab;
 	}
 
 	bool UseEditorFontConfig() const {

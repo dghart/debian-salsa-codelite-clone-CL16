@@ -1217,6 +1217,13 @@ void Frame::OnClose(wxCloseEvent& event)
 	DetachedPanesInfo dpi(panes);
 	EditorConfigST::Get()->WriteObject(wxT("DetachedPanesList"), &dpi);
 
+	// save the notebooks styles
+	EditorConfigST::Get()->SaveLongValue(wxT("MainBook"),      GetMainBook()->GetBookStyle());
+	EditorConfigST::Get()->SaveLongValue(wxT("DebuggerBook"),  GetDebuggerPane()->GetNotebook()->GetBookStyle());
+	EditorConfigST::Get()->SaveLongValue(wxT("OutputPane"),    GetOutputPane()->GetNotebook()->GetBookStyle());
+	EditorConfigST::Get()->SaveLongValue(wxT("WorkspaceView"), GetWorkspacePane()->GetNotebook()->GetBookStyle());
+	EditorConfigST::Get()->SaveLongValue(wxT("FindResults"),   GetOutputPane()->GetFindResultsTab()->GetBookStyle());
+
 	event.Skip();
 }
 
@@ -3104,10 +3111,10 @@ void Frame::OnQuickDebug(wxCommandEvent& e)
 			DebuggerInformation dinfo;
 			DebuggerMgr::Get().GetDebuggerInformation(dlg->GetDebuggerName(), dinfo);
 			dinfo.breakAtWinMain = true;
-			
+
 			// read the console command
 			dinfo.consoleCommand = EditorConfigST::Get()->GetOptions()->GetProgramConsoleCommand();
-			
+
 			// ManagerST::Get()->GetBreakpointsMgr()->DelAllBreakpoints(); TODO: Reimplement this when UpdateBreakpoints() updates only alterations, rather than delete/re-enter
 
 			wxString dbgname = dinfo.path;

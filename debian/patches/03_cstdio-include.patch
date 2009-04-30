@@ -1,0 +1,15 @@
+Index: codelite/configure
+===================================================================
+--- codelite.orig/configure	2009-04-29 14:27:41.000000000 +0800
++++ codelite/configure	2009-04-29 14:27:55.000000000 +0800
+@@ -16,8 +16,8 @@
+ createVariables()
+ {
+ 	## set the compiler name
+-	compiler_name="g++ -fPIC "
+-	c_compiler_name="gcc -fPIC "
++	compiler_name="g++ -fPIC -include cstdio "
++	c_compiler_name="gcc -fPIC -include stdio.h "
+ 	exe_name="Runtime/codelite"
+ 	exe_name1="codelite"
+ 	is_plugin=$1

@@ -23,6 +23,8 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 #include <wx/xrc/xmlres.h>
+#include "custom_tabcontainer.h"
+#include "custom_tab.h"
 #include <wx/tokenzr.h>
 #include "globals.h"
 #include "manager.h"
@@ -44,30 +46,29 @@ END_EVENT_TABLE()
 
 FindInFilesDialog* FindResultsTab::m_find = NULL;
 
-FindResultsTab::FindResultsTab(wxWindow *parent, wxWindowID id, const wxString &name, size_t numpages)
-    : OutputTabWindow(parent, id, name)
-    , m_book(NULL)
-    , m_recv(NULL)
+FindResultsTab::FindResultsTab(wxWindow *parent, wxWindowID id, const wxString &name, bool useBook)
+		: OutputTabWindow(parent, id, name)
+		, m_book(NULL)
+		, m_recv(NULL)
+		, m_matchInfo(1)
 {
-	m_matchInfo.resize(numpages);
-	if (numpages > 1) {
-		m_book = new Notebook(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxVB_BOTTOM|wxVB_NODND|wxVB_BG_GRADIENT);
-		for (size_t i = 1; i <= numpages; i++) {
-			wxScintilla *sci = new wxScintilla(m_book);
-			SetStyles(sci);
-			m_book->AddPage(sci, wxString::Format(wxT("Find Results %u"), i), wxEmptyString);
-		}
-		m_book->SetSelection(size_t(0));
+	if (useBook) {
+
+		// load the book style from the settings file
+		long bookStyle = wxVB_BOTTOM|wxVB_NODND|wxVB_HAS_X|wxVB_MOUSE_MIDDLE_CLOSE_TAB|wxVB_FIXED_WIDTH;
+		EditorConfigST::Get()->GetLongValue(wxT("FindResults"), bookStyle);
+
+		m_book = new Notebook(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, bookStyle);
+		m_book->SetFixedTabWidth(120);
+
 		m_book->Connect(wxEVT_COMMAND_BOOK_PAGE_CHANGED, NotebookEventHandler(FindResultsTab::OnPageChanged), NULL, this);
+		m_book->Connect(wxEVT_COMMAND_BOOK_PAGE_CLOSED , NotebookEventHandler(FindResultsTab::OnPageClosed) , NULL, this);
 
 		// get rid of base class scintilla component
 		wxSizer *sz = GetSizer();
 		sz->Detach(m_sci);
 		m_sci->Destroy();
-
-		// use base class scintilla ptr as ref to currently selected Find Results tab
-		// so that base class functions (eg AppendText) go to the correct tab
-		m_sci = dynamic_cast<wxScintilla*>(m_book->GetCurrentPage());
+		m_sci = NULL;
 
 		sz->Add(m_book, 1, wxALL|wxEXPAND);
 		sz->Layout();
@@ -87,6 +88,18 @@ FindResultsTab::~FindResultsTab()
 	}
 }
 
+MatchInfo& FindResultsTab::GetMatchInfo(size_t idx)
+{
+	// assert(idx < m_matchInfo.size());
+	ListMatchInfos::iterator itMatchInfo = m_matchInfo.begin();
+	if (m_book) {
+		for (size_t i = 0; i < idx; ++i) {
+			++itMatchInfo;
+		}
+	}
+	return *itMatchInfo;
+}
+
 void FindResultsTab::LoadFindInFilesData()
 {
 	if (m_find != NULL)
@@ -94,7 +107,7 @@ void FindResultsTab::LoadFindInFilesData()
 
 	FindReplaceData data;
 	EditorConfigST::Get()->ReadObject(wxT("FindInFilesData"), &data);
-	m_find = new FindInFilesDialog(NULL, wxID_ANY, data, Frame::Get()->GetOutputPane()->GetFindResultsTab()->GetPageCount());
+	m_find = new FindInFilesDialog(NULL, wxID_ANY, data);
 }
 
 void FindResultsTab::SaveFindInFilesData()
@@ -106,7 +119,7 @@ void FindResultsTab::SaveFindInFilesData()
 
 void FindResultsTab::SetStyles(wxScintilla *sci)
 {
-    InitStyle(sci, wxSCI_LEX_FIF, true);
+	InitStyle(sci, wxSCI_LEX_FIF, true);
 
 	sci->StyleSetForeground(wxSCI_LEX_FIF_DEFAULT, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
 	sci->StyleSetBackground(wxSCI_LEX_FIF_DEFAULT, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
@@ -162,7 +175,8 @@ void FindResultsTab::AppendText(const wxString& line)
 
 void FindResultsTab::Clear()
 {
-	m_matchInfo[m_book ? m_book->GetSelection() : 0].clear();
+	MatchInfo& matchInfo = GetMatchInfo(m_book ? m_book->GetSelection() : 0);
+	matchInfo.clear();
 	OutputTabWindow::Clear();
 }
 
@@ -171,6 +185,21 @@ void FindResultsTab::OnPageChanged(NotebookEvent& e)
 	// this function can't be called unless m_book != NULL
 	m_sci = dynamic_cast<wxScintilla*>(m_book->GetCurrentPage());
 	m_tb->ToggleTool(XRCID("word_wrap_output"), m_sci->GetWrapMode() == wxSCI_WRAP_WORD);
+}
+
+void FindResultsTab::OnPageClosed(NotebookEvent& e)
+{
+	// this function can't be called unless m_book != NULL
+	ListMatchInfos::iterator itMatchInfo = m_matchInfo.begin();
+	for (size_t i = 0; i < e.GetSelection(); ++i) {
+		++itMatchInfo;
+	}
+	m_matchInfo.erase(itMatchInfo);
+
+	// Create a page if there is no more
+	if (m_book->GetPageCount() == 0) {
+		m_sci = NULL;
+	}
 }
 
 void FindResultsTab::OnFindInFiles(wxCommandEvent &e)
@@ -191,23 +220,55 @@ void FindResultsTab::OnFindInFiles(wxCommandEvent &e)
 
 void FindResultsTab::OnSearchStart(wxCommandEvent& e)
 {
-	if (m_book) {
-		m_book->SetSelection(e.GetInt());
+	SearchData *data = (SearchData*) e.GetClientData();
+	wxString label = data ? data->GetFindString() : wxT("");
+
+	if (e.GetInt() != 0 || m_sci == NULL) {
+		if(m_book){
+			wxScintilla *sci = new wxScintilla(m_book);
+			SetStyles(sci);
+
+			// add new page
+			m_book->AddPage(sci, label, label, wxNullBitmap, true);
+			size_t where = m_book->GetPageCount() - 1;
+
+			// keep the search data used for this tab
+			CustomTab *tab = m_book->GetTabContainer()->IndexToTab(where);
+			if (tab) {
+				tab->SetUserData(data);
+			}
+
+			m_matchInfo.push_back(MatchInfo());
+			m_sci = sci;
+		}
+	} else if(m_book){
+		// using current tab, update the tab title and the search data
+		size_t where = m_book->GetPageIndex(m_sci);
+		if (where != Notebook::npos) {
+			m_book->SetPageText(where, label, label);
+			// delete the old search data
+			CustomTab *tab = m_book->GetTabContainer()->IndexToTab(where);
+			SearchData *oldData = (SearchData *)tab->GetUserData();
+			if (oldData) {
+				delete oldData;
+			}
+			// set the new search data
+			tab->SetUserData(data);
+		}
 	}
+
 	m_recv = m_sci;
 	Clear();
 
-	SearchData *data = (SearchData*) e.GetClientData();
-	m_data = data ? *data : SearchData();
-	delete data;
-
-	wxString message;
-	message << wxT("====== Searching for: '") <<  m_data.GetFindString()
-	<< wxT("'; Match case: ")         << (m_data.IsMatchCase()         ? wxT("true") : wxT("false"))
-	<< wxT(" ; Match whole word: ")   << (m_data.IsMatchWholeWord()    ? wxT("true") : wxT("false"))
-	<< wxT(" ; Regular expression: ") << (m_data.IsRegularExpression() ? wxT("true") : wxT("false"))
-	<< wxT(" ======\n");
-	AppendText(message);
+	if (data) {
+		wxString message;
+		message << wxT("====== Searching for: '") <<  data->GetFindString()
+		<< wxT("'; Match case: ")         << (data->IsMatchCase()         ? wxT("true") : wxT("false"))
+		<< wxT(" ; Match whole word: ")   << (data->IsMatchWholeWord()    ? wxT("true") : wxT("false"))
+		<< wxT(" ; Regular expression: ") << (data->IsRegularExpression() ? wxT("true") : wxT("false"))
+		<< wxT(" ======\n");
+		AppendText( message );
+	}
 }
 
 void FindResultsTab::OnSearchMatch(wxCommandEvent& e)
@@ -215,20 +276,24 @@ void FindResultsTab::OnSearchMatch(wxCommandEvent& e)
 	SearchResultList *res = (SearchResultList*) e.GetClientData();
 	if (!res)
 		return;
-	int m = m_book ? m_book->GetPageIndex(m_recv) : 0;
+
+	size_t m = m_book ? m_book->GetPageIndex(m_recv) : 0;
+	MatchInfo& matchInfo = GetMatchInfo(m);
 	for (SearchResultList::iterator iter = res->begin(); iter != res->end(); iter++) {
-		if (m_matchInfo[m].empty() || m_matchInfo[m].rbegin()->second.GetFileName() != iter->GetFileName()) {
+		if (matchInfo.empty() || matchInfo.rbegin()->second.GetFileName() != iter->GetFileName()) {
 			AppendText(iter->GetFileName() + wxT("\n"));
 		}
 		int lineno = m_recv->GetLineCount()-1;
-		m_matchInfo[m].insert(std::make_pair(lineno, *iter));
+		matchInfo.insert(std::make_pair(lineno, *iter));
 		wxString text = iter->GetPattern();
 		int delta = -text.Length();
 		text.Trim(false);
 		delta += text.Length();
 		text.Trim();
 		wxString linenum = wxString::Format(wxT(" %4u: "), iter->GetLineNumber());
-		if (m_data.GetDisplayScope()) {
+
+		SearchData d = GetSearchData(m_recv);
+		if (d.GetDisplayScope()) {
 			TagEntryPtr tag = TagsManagerST::Get()->FunctionFromFileLine(iter->GetFileName(), iter->GetLineNumber());
 			if (tag) {
 				linenum << wxT("[") << tag->GetPath() << wxT("] ");
@@ -267,26 +332,38 @@ void FindResultsTab::OnSearchCancel(wxCommandEvent &e)
 void FindResultsTab::OnClearAll(wxCommandEvent &e)
 {
 	wxUnusedVar(e);
-    if (m_recv != NULL) {
-        SearchThreadST::Get()->StopSearch();
-    }
-    Clear();
+	if (m_recv != NULL) {
+		SearchThreadST::Get()->StopSearch();
+	}
+	Clear();
 }
 
 void FindResultsTab::OnClearAllUI(wxUpdateUIEvent& e)
 {
-    e.Enable(m_recv != NULL || m_sci->GetLength() > 0);
+	e.Enable(m_recv != NULL || (m_sci && m_sci->GetLength() > 0));
 }
 
 void FindResultsTab::OnRepeatOutput(wxCommandEvent &e)
 {
 	wxUnusedVar(e);
-	SearchThreadST::Get()->PerformSearch(m_data);
+
+	if (m_book) {
+		size_t sel = m_book->GetSelection();
+		if (sel != Notebook::npos) {
+			// get the search data used to generate the output on the selected tab
+			CustomTab *tab = m_book->GetTabContainer()->IndexToTab(sel);
+			if (tab) {
+				SearchData *searchData = (SearchData *)tab->GetUserData();
+				searchData->UseNewTab(false);
+				SearchThreadST::Get()->PerformSearch(*searchData);
+			}
+		}
+	}
 }
 
 void FindResultsTab::OnRepeatOutputUI(wxUpdateUIEvent& e)
 {
-    e.Enable(m_recv == NULL && m_sci->GetLength() > 0);
+	e.Enable(m_recv == NULL && m_sci && m_sci->GetLength() > 0);
 }
 
 void FindResultsTab::OnMouseDClick(wxScintillaEvent &e)
@@ -298,9 +375,10 @@ void FindResultsTab::OnMouseDClick(wxScintillaEvent &e)
 	if (style == wxSCI_LEX_FIF_FILE || style == wxSCI_LEX_FIF_PROJECT) {
 		m_sci->ToggleFold(line);
 	} else {
-		int n = m_book ? m_book->GetSelection() : 0;
-		std::map<int,SearchResult>::iterator m = m_matchInfo[n].find(line);
-		if (m != m_matchInfo[n].end() && !m->second.GetFileName().IsEmpty()) {
+		size_t n = m_book ? m_book->GetSelection() : 0;
+		const MatchInfo& matchInfo = GetMatchInfo(n);
+		MatchInfo::const_iterator m = matchInfo.find(line);
+		if (m != matchInfo.end() && !m->second.GetFileName().IsEmpty()) {
 			LEditor *editor = Frame::Get()->GetMainBook()->OpenFile(m->second.GetFileName(), wxEmptyString, m->second.GetLineNumber()-1);
 			if (editor && m->second.GetColumn() >= 0 && m->second.GetLen() >= 0) {
 				int offset = editor->PositionFromLine(m->second.GetLineNumber()-1) + m->second.GetColumn();
@@ -313,3 +391,24 @@ void FindResultsTab::OnMouseDClick(wxScintillaEvent &e)
 	m_sci->SetSelection(wxNOT_FOUND, pos);
 }
 
+long FindResultsTab::GetBookStyle()
+{
+	return m_book->GetBookStyle();
+}
+
+SearchData FindResultsTab::GetSearchData(wxScintilla* sci)
+{
+	if (m_book) {
+		size_t i = m_book->GetPageIndex(sci);
+		if (i != Notebook::npos) {
+			CustomTab *tab = m_book->GetTabContainer()->IndexToTab(i);
+			if (tab) {
+				SearchData *data = (SearchData *) tab->GetUserData();
+				if (data) {
+					return *data;
+				}
+			}
+		}
+	}
+	return SearchData();
+}
