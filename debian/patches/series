@@ -1,4 +1,3 @@
 00_add-fPIC.patch
-01_fix-symlink.patch
 02_fix-desktop.patch
-03_cstdio-include.patch
+#03_cstdio-include.patch
