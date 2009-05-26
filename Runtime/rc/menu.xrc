@@ -506,6 +506,18 @@
         </object>
 	</object>
 
+	<object class="wxMenu" name="find_in_files_right_click_menu">
+		<object class="wxMenuItem" name="close_fif_tab">
+            <label>Close</label>
+        </object>
+		<object class="wxMenuItem" name="close_all_fif_tabs">
+            <label>Close All</label>
+        </object>
+		<object class="wxMenuItem" name="close_other_fif_tabs">
+            <label>Close Other Tabs</label>
+        </object>
+	</object>
+
     <object class="wxMenu" name="debugger_view_right_click_menu">
 		<object class="wxMenuItem" name="detach_dv_tab">
             <label>Detach</label>

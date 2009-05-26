@@ -41,13 +41,23 @@ BEGIN_EVENT_TABLE(FindResultsTab, OutputTabWindow)
 	EVT_COMMAND(wxID_ANY, wxEVT_SEARCH_THREAD_MATCHFOUND,     FindResultsTab::OnSearchMatch)
 	EVT_COMMAND(wxID_ANY, wxEVT_SEARCH_THREAD_SEARCHEND,      FindResultsTab::OnSearchEnded)
 	EVT_COMMAND(wxID_ANY, wxEVT_SEARCH_THREAD_SEARCHCANCELED, FindResultsTab::OnSearchCancel)
-END_EVENT_TABLE()
 
+	// Right click menu options
+	EVT_MENU(XRCID("close_fif_tab"),             FindResultsTab::OnCloseTab     )
+	EVT_MENU(XRCID("close_all_fif_tabs"),        FindResultsTab::OnCloseAllTabs )
+	EVT_MENU(XRCID("close_other_fif_tabs"),      FindResultsTab::OnCloseOtherTab)
+
+	EVT_UPDATE_UI(XRCID("close_fif_tab"),        FindResultsTab::OnTabMenuUI    )
+	EVT_UPDATE_UI(XRCID("close_all_fif_tabs"),   FindResultsTab::OnTabMenuUI    )
+	EVT_UPDATE_UI(XRCID("close_other_fif_tabs"), FindResultsTab::OnTabMenuUI    )
+
+END_EVENT_TABLE()
 
 FindInFilesDialog* FindResultsTab::m_find = NULL;
 
 FindResultsTab::FindResultsTab(wxWindow *parent, wxWindowID id, const wxString &name, bool useBook)
 		: OutputTabWindow(parent, id, name)
+		, m_searchInProgress(false)
 		, m_book(NULL)
 		, m_recv(NULL)
 		, m_matchInfo(1)
@@ -60,6 +70,8 @@ FindResultsTab::FindResultsTab(wxWindow *parent, wxWindowID id, const wxString &
 
 		m_book = new Notebook(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, bookStyle);
 		m_book->SetFixedTabWidth(120);
+
+		m_book->SetRightClickMenu( wxXmlResource::Get()->LoadMenu(wxT("find_in_files_right_click_menu")) );
 
 		m_book->Connect(wxEVT_COMMAND_BOOK_PAGE_CHANGED, NotebookEventHandler(FindResultsTab::OnPageChanged), NULL, this);
 		m_book->Connect(wxEVT_COMMAND_BOOK_PAGE_CLOSED , NotebookEventHandler(FindResultsTab::OnPageClosed) , NULL, this);
@@ -220,6 +232,7 @@ void FindResultsTab::OnFindInFiles(wxCommandEvent &e)
 
 void FindResultsTab::OnSearchStart(wxCommandEvent& e)
 {
+	m_searchInProgress = true;
 	SearchData *data = (SearchData*) e.GetClientData();
 	wxString label = data ? data->GetFindString() : wxT("");
 
@@ -261,6 +274,8 @@ void FindResultsTab::OnSearchStart(wxCommandEvent& e)
 	Clear();
 
 	if (data) {
+		m_searchData = *data;
+
 		wxString message;
 		message << wxT("====== Searching for: '") <<  data->GetFindString()
 		<< wxT("'; Match case: ")         << (data->IsMatchCase()         ? wxT("true") : wxT("false"))
@@ -308,9 +323,11 @@ void FindResultsTab::OnSearchMatch(wxCommandEvent& e)
 
 void FindResultsTab::OnSearchEnded(wxCommandEvent& e)
 {
+	m_searchInProgress = false;
 	SearchSummary *summary = (SearchSummary*) e.GetClientData();
 	if (!summary)
 		return;
+
 	AppendText(summary->GetMessage());
 	delete summary;
 	m_recv = NULL;
@@ -321,6 +338,7 @@ void FindResultsTab::OnSearchEnded(wxCommandEvent& e)
 
 void FindResultsTab::OnSearchCancel(wxCommandEvent &e)
 {
+	m_searchInProgress = false;
 	wxString *str = (wxString*) e.GetClientData();
 	if (!str)
 		return;
@@ -409,6 +427,52 @@ SearchData FindResultsTab::GetSearchData(wxScintilla* sci)
 				}
 			}
 		}
+		return SearchData();
+	} else {
+		// in case we dont have a notebook (e.g. 'Replace In Files')
+		// we use the global saved search data
+		return m_searchData;
 	}
-	return SearchData();
+}
+
+void FindResultsTab::OnCloseAllTabs(wxCommandEvent& e)
+{
+	wxUnusedVar( e );
+	if(m_book) {
+		m_book->DeleteAllPages(true);
+	}
+}
+
+void FindResultsTab::OnCloseOtherTab(wxCommandEvent& e)
+{
+	wxUnusedVar( e );
+	if(m_book) {
+		size_t idx = m_book->GetSelection();
+		if(idx != Notebook::npos) {
+			for(size_t i=0; i<idx; i++){
+				m_book->DeletePage((size_t)0);
+			}
+
+			size_t number = m_book->GetPageCount();
+			for(size_t i = number - 1; i>0; i--){
+				m_book->DeletePage(i);
+			}
+		}
+	}
+}
+
+void FindResultsTab::OnCloseTab(wxCommandEvent& e)
+{
+	wxUnusedVar( e );
+	if(m_book) {
+		size_t idx = m_book->GetSelection();
+		if(idx != Notebook::npos) {
+			m_book->DeletePage(idx);
+		}
+	}
+}
+
+void FindResultsTab::OnTabMenuUI(wxUpdateUIEvent& e)
+{
+	e.Enable( !m_searchInProgress );
 }

@@ -469,7 +469,7 @@ createInstallTarget()
 	echo "	@mkdir -p \$(DESTDIR)$prefix/bin" >> Makefile
 	echo "	@cp \$(EXE_NAME) \$(DESTDIR)$prefix/bin/" >> Makefile
 	if [ "$make_symlink" = "yes" ] ; then
-	  echo "	@ln -s \$(DESTDIR)$prefix/bin/\$(EXE_NAME_NO_PATH) \$(DESTDIR)$prefix/bin/CodeLite" >> Makefile
+	  echo "	@ln -s \$(EXE_NAME_NO_PATH) \$(DESTDIR)$prefix/bin/CodeLite" >> Makefile
 	  echo "	@chmod +x \$(DESTDIR)$prefix/bin/CodeLite" >> Makefile
 	fi
 	echo "	@cp Runtime/codelite_fix_files \$(DESTDIR)$prefix/bin/" >> Makefile

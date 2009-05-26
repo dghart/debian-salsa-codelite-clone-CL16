@@ -293,7 +293,7 @@ postfix3: ','
 		| ')'
 		;
 
-postfix2: /*empty*/
+postfix2: /*empty*/ {$$ = "";}
 		| '=' {var_consumeDefaultValue(',', ')'); $$ = ""; }
 		| ')' { $$ = ""; }
 		| '[' { $$ = $1 + var_consumBracketsContent('[');}

@@ -157,6 +157,7 @@ FindInFilesDialogBase::FindInFilesDialogBase( wxWindow* parent, wxWindowID id, c
 	bSizer2 = new wxBoxSizer( wxVERTICAL );
 	
 	m_find = new wxButton( this, wxID_ANY, _("&Find"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_find->SetDefault(); 
 	bSizer2->Add( m_find, 0, wxALL|wxEXPAND, 5 );
 	
 	m_replaceAll = new wxButton( this, wxID_ANY, _("Find &Replace Candidates"), wxDefaultPosition, wxDefaultSize, 0 );
