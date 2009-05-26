@@ -42,6 +42,7 @@ BEGIN_EVENT_TABLE(ReplaceInFilesPanel, FindResultsTab)
 	EVT_UPDATE_UI(XRCID("mark_all"),            ReplaceInFilesPanel::OnMarkAllUI)
 	EVT_UPDATE_UI(XRCID("replace"),             ReplaceInFilesPanel::OnReplaceUI)
 	EVT_UPDATE_UI(XRCID("replace_with_combo"),  ReplaceInFilesPanel::OnReplaceWithComboUI)
+	EVT_UPDATE_UI(XRCID("replace_with_label"),  ReplaceInFilesPanel::OnReplaceWithComboUI)
 END_EVENT_TABLE()
 
 
@@ -57,8 +58,8 @@ ReplaceInFilesPanel::ReplaceInFilesPanel(wxWindow* parent, int id, const wxStrin
 	wxButton *mark = new wxButton(this, XRCID("mark_all"), wxT("Mark &All"));
 	horzSizer->Add(mark, 0, wxRIGHT|wxLEFT|wxALIGN_CENTER_VERTICAL, 5);
 
-	wxStaticText *text = new wxStaticText( this, wxID_ANY, wxT("Replace With:"));
-	horzSizer->Add(text, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT|wxLEFT, 5);
+	m_replaceWithText = new wxStaticText( this, XRCID("replace_with_label"), wxT("Replace With:"));
+	horzSizer->Add(m_replaceWithText, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT|wxLEFT, 5);
 
 	m_replaceWith = new wxComboBox(this, XRCID("replace_with_combo"));
 	horzSizer->Add(m_replaceWith, 2, wxALIGN_CENTER_VERTICAL|wxRIGHT|wxLEFT, 5);
@@ -208,6 +209,8 @@ wxScintilla *ReplaceInFilesPanel::DoGetEditor(const wxString &fileName)
 
 void ReplaceInFilesPanel::OnReplace(wxCommandEvent& e)
 {
+	// FIX bug#2770561
+	LEditor *activeEditor = Frame::Get()->GetMainBook()->GetActiveEditor();
 	if (m_replaceWith->FindString(m_replaceWith->GetValue(), true) == wxNOT_FOUND) {
 		m_replaceWith->Append(m_replaceWith->GetValue());
 	}
@@ -363,6 +366,11 @@ void ReplaceInFilesPanel::OnReplace(wxCommandEvent& e)
 				}
 			}
 		}
+	}
+
+	// FIX bug#2770561
+	if(activeEditor) {
+		Frame::Get()->GetMainBook()->SelectPage(activeEditor);
 	}
 }
 

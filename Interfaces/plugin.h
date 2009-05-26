@@ -135,7 +135,11 @@ enum {
 	//clientData is NULL
 	wxEVT_BUILD_ENDED,
 	//clientData is the builded project name (wxString*)
-	wxEVT_BUILD_STARTING
+	wxEVT_BUILD_STARTING,
+
+	// This event is sent from plugins to the application to tell it to reload
+	// any open files (and re-tag them as well)
+	wxEVT_CMD_RELOAD_EXTERNALLY_MODIFIED
 };
 
 //------------------------------------------------------------------

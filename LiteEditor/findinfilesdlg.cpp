@@ -62,8 +62,10 @@ FindInFilesDialog::FindInFilesDialog(wxWindow* parent, wxWindowID id, const Find
 	m_checkBoxSaveFilesBeforeSearching->SetValue(m_data.GetFlags() & wxFRD_SAVE_BEFORE_SEARCH);
 
 	GetSizer()->Fit(this);
-	GetSizer()->SetMinSize(wxSize(600, 300));
-	GetSizer()->SetSizeHints(this);
+	//GetSizer()->SetMinSize(wxSize(600, 300));
+	//GetSizer()->SetSizeHints(this);
+
+	Centre();
 }
 
 FindInFilesDialog::~FindInFilesDialog()

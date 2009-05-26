@@ -30,8 +30,9 @@
 
 class ReplaceInFilesPanel : public FindResultsTab
 {
-    wxComboBox *m_replaceWith;
-	wxGauge    *m_progress;
+    wxComboBox   *m_replaceWith;
+	wxGauge      *m_progress;
+	wxStaticText *m_replaceWithText;
 
 	void DoSaveResults(wxScintilla *sci, std::map<int,SearchResult>::iterator begin,
                                          std::map<int,SearchResult>::iterator end);
