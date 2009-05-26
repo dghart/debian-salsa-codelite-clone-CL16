@@ -1,37 +1,57 @@
 #!/usr/bin/make -f
 
-include /usr/share/cdbs/1/rules/debhelper.mk
-include /usr/share/cdbs/1/class/autotools.mk
-include /usr/share/cdbs/1/rules/patchsys-quilt.mk
-
-DEBIAN_DIR := $(shell echo $(MAKEFILE_LIST) | awk '{print $$1}' | xargs dirname)
+MAKEFILE := $(firstword $(MAKEFILE_LIST))
+DEBIAN_DIR := $(dir $(MAKEFILE))
 SOURCE_DIR := $(DEBIAN_DIR)/..
-UPSTREAM_VERSION ?= $(shell cd $(SOURCE_DIR) && \
-	uscan --dehs | \
+DEB_SOURCE_NAME := $(shell grep ^Source $(DEBIAN_DIR)/control | cut -f2 -d' ')
+VERSION ?= $(shell uscan --watchfile $(DEBIAN_DIR)/watch --dehs --no-download |\
 	sed -n 's/.*<upstream-version>\(.*\)<\/upstream-version>.*/\1/p')
 
-#install/codelite::
-#	find "$(DEB_SRCDIR)/debian/tmp/usr/share" -type f -exec chmod 0644 '{}' \;
+# this is a hack so we can grab everything in /usr/share/codelite for
+# codelite while splitting these directories away into separate plugins
+override_dh_install:
+	dh_install
+	cd debian/codelite/usr/share/codelite; \
+	rm -rf \
+		templates/gizmos \
+		templates/projects/UnitTest++ \
+		src/unittest*.tar.gz \
+		templates/formbuilder
 
-binary-install/codelite::
-	rm -rf debian/codelite/usr/share/codelite/templates/gizmos \
-	       debian/codelite/usr/share/codelite/templates/projects/UnitTest++ \
-		   debian/codelite/usr/share/codelite/src/unittest++1.3.tar.gz \
-		   debian/codelite/usr/share/codelite/templates/formbuilder
-
-clean::
-	find "$(DEB_SRCDIR)" -name Makefile ! -wholename '*sdk*' -delete
-	rm -f "$(DEB_SRCDIR)"/fakeroot/DEBIAN/control
+override_dh_auto_clean:
+	find -name Makefile ! -wholename '*sdk*' -delete
+	rm -f fakeroot/DEBIAN/control
 
 get-orig-source:
-	cd $(SOURCE_DIR) && uscan --force-download --upstream-version $(UPSTREAM_VERSION)
-	tar -xzf $(SOURCE_DIR)/../codelite-$(UPSTREAM_VERSION).tar.gz
-	mv codelite-$(UPSTREAM_VERSION) codelite-$(UPSTREAM_VERSION)+dfsg
-	GZIP=-9fn tar --exclude=*.dll --exclude=*.exe --exclude=sdk/wxsqlite3/sqlite3 \
-	              --exclude=sdk/src --exclude=sdk/wxconfig --exclude=sdk/astyle \
-				  -czf codelite_$(UPSTREAM_VERSION)+dfsg.orig.tar.gz \
-				  codelite-$(UPSTREAM_VERSION)+dfsg
-	rm -rf $(SOURCE_DIR)/../codelite-$(UPSTREAM_VERSION).tar.gz \
-	       $(SOURCE_DIR)/../codelite_$(UPSTREAM_VERSION).orig.tar.gz \
-	       codelite-$(UPSTREAM_VERSION)+dfsg \
-		   *.cdbs-config_list
+	uscan \
+		--package $(DEB_SOURCE_NAME) \
+		--watchfile $(DEBIAN_DIR)/watch \
+		--destdir . \
+		--upstream-version $(VERSION) \
+		--force-download \
+		--rename
+	if [ -d $(DEB_SOURCE_NAME)-$(VERSION) ]; then \
+		echo "$(DEB_SOURCE_NAME)-$(VERSION) is in the way, bailing out!"; \
+		exit 1; \
+	fi
+	tar -xzf $(DEB_SOURCE_NAME)_$(VERSION).orig.tar.gz
+	mv \
+		$(DEB_SOURCE_NAME)-$(VERSION) \
+		$(DEB_SOURCE_NAME)-$(VERSION)+dfsg
+	GZIP=-9fn tar \
+		 --exclude=*.dll \
+		 --exclude=*.exe \
+		 --exclude=sdk/wxsqlite3/sqlite3 \
+		 --exclude=sdk/src \
+		 --exclude=sdk/wxconfig \
+		 --exclude=sdk/astyle \
+		 -czf $(DEB_SOURCE_NAME)_$(VERSION)+dfsg.orig.tar.gz \
+		 $(DEB_SOURCE_NAME)-$(VERSION)+dfsg
+	rm -rf \
+		$(DEB_SOURCE_NAME)_$(VERSION).orig.tar.gz \
+		$(DEB_SOURCE_NAME)-$(VERSION)+dfsg
+
+%:
+	dh --with=quilt $@
+
+.PHONY: get-orig-source
