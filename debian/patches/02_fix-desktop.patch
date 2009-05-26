@@ -1,3 +1,4 @@
+Fix broken desktop file
 Index: codelite-1.0.2785+dfsg/Runtime/codelite.desktop.template
 ===================================================================
 --- codelite-1.0.2785+dfsg.orig/Runtime/codelite.desktop.template	2009-02-24 22:58:14.000000000 +0800
