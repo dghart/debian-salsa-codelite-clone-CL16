@@ -5,17 +5,33 @@ The upstream tarball used to build this package has been repackaged to
 remove unneeded/unwanted files and directories. The steps taken to do
 do this were:
 
- cd $(SOURCE_DIR) && uscan --force-download
- tar -xzf $(SOURCE_DIR)/../codelite-$(UPSTREAM_VERSION).tar.gz
- mv codelite-$(UPSTREAM_VERSION) codelite-$(UPSTREAM_VERSION)+dfsg
- GZIP=-9fn tar --exclude=*.dll \
-               --exclude=*.exe \
-               --exclude=sdk/wxsqlite3/sqlite3 \
-               --exclude=sdk/src \
-               --exclude=sdk/wxconfig \
-               --exclude=sdk/astyle \
-	       -czf codelite_$(UPSTREAM_VERSION)+dfsg.orig.tar.gz \
-		    codelite-$(UPSTREAM_VERSION)+dfsg
+    uscan \
+        --package $(DEB_SOURCE_NAME) \
+        --watchfile $(DEBIAN_DIR)/watch \
+        --destdir . \
+        --upstream-version $(VERSION) \
+        --force-download \
+        --rename
+    if [ -d $(DEB_SOURCE_NAME)-$(VERSION) ]; then \
+        echo "$(DEB_SOURCE_NAME)-$(VERSION) is in the way, bailing out!"; \
+        exit 1; \
+    fi
+    tar -xzf $(DEB_SOURCE_NAME)_$(VERSION).orig.tar.gz
+    mv \
+        $(DEB_SOURCE_NAME)-$(VERSION) \
+        $(DEB_SOURCE_NAME)-$(VERSION)+dfsg
+    GZIP=-9fn tar \
+         --exclude=*.dll \
+         --exclude=*.exe \
+         --exclude=sdk/wxsqlite3/sqlite3 \
+         --exclude=sdk/src \
+         --exclude=sdk/wxconfig \
+         --exclude=sdk/astyle \
+         -czf $(DEB_SOURCE_NAME)_$(VERSION)+dfsg.orig.tar.gz \
+         $(DEB_SOURCE_NAME)-$(VERSION)+dfsg
+    rm -rf \
+        $(DEB_SOURCE_NAME)_$(VERSION).orig.tar.gz \
+        $(DEB_SOURCE_NAME)-$(VERSION)+dfsg
 
 Patching
 --------
