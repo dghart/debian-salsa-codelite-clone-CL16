@@ -5,4 +5,4 @@ codelite (1.0.2841+dfsg-1) unstable; urgency=low
     files, as well as sdk/curl, sdk/astyle, sdk/src, and sdk/wxconfig, 
     sdk/wxsqlite3/sqlite3 which are Windows-specific and/or unneeded.
   
- -- Chow Loong Jin <hyperair@gmail.com>  Wed, 25 Feb 2009 04:01:09 +0800
+ -- Chow Loong Jin <hyperair@gmail.com>  Wed, 27 May 2009 02:22:46 +0800
