@@ -371,6 +371,7 @@ protected:
 	void OnLoadWelcomePage(wxCommandEvent &event);
 	void OnLoadWelcomePageUI(wxUpdateUIEvent &event);
 	void OnAppActivated(wxActivateEvent &event);
+	void OnReloadExternallModified(wxCommandEvent &e);
 	void OnCompileFile(wxCommandEvent &e);
 	void OnCompileFileUI(wxUpdateUIEvent &e);
 	void OnCloseAllButThis(wxCommandEvent &e);

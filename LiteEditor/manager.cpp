@@ -782,6 +782,31 @@ bool Manager::RemoveFile ( const wxString &fileName, const wxString &vdFullPath 
 	return true;
 }
 
+bool Manager::RenameFile(const wxString &origName, const wxString &newName, const wxString &vdFullPath)
+{
+	// remove the file from the workspace (this will erase it from the symbol database and will
+	// also close the editor that it is currently opened in (if any)
+	if (!RemoveFile(origName, vdFullPath))
+		return false;
+
+	// rename the file on filesystem
+	wxRenameFile(origName, newName);
+
+	// readd file to project with the new name
+	wxString projName = vdFullPath.BeforeFirst(wxT(':'));
+	ProjectPtr proj = GetProject(projName);
+	proj->FastAddFile(newName, vdFullPath.AfterFirst(wxT(':')));
+
+	RetagFile(newName);
+
+	// notify of file addition
+	wxArrayString files;
+	files.Add(newName);
+	SendCmdEvent(wxEVT_PROJ_FILE_ADDED, (void*)&files);
+
+	return true;
+}
+
 bool Manager::MoveFileToVD ( const wxString &fileName, const wxString &srcVD, const wxString &targetVD )
 {
 	// to move the file between targets, we need to change the file path, we do this

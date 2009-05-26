@@ -912,6 +912,9 @@ case 32:
 							yyval = yyvsp[-3] + yyvsp[-2] + " " + yyvsp[-1] + yyvsp[0];
 						}
 break;
+case 35:
+{yyval = "";}
+break;
 case 36:
 {var_consumeDefaultValue(',', ')'); yyval = ""; }
 break;

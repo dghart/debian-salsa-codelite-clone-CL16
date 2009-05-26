@@ -39,6 +39,8 @@ typedef std::list<MatchInfo> ListMatchInfos;
 
 class FindResultsTab : public OutputTabWindow
 {
+	SearchData m_searchData;
+	bool       m_searchInProgress;
 protected:
     static FindInFilesDialog *m_find;
 
@@ -62,8 +64,13 @@ protected:
     virtual void OnClearAll      (wxCommandEvent   &e);
     virtual void OnRepeatOutput  (wxCommandEvent   &e);
 
-    virtual void OnClearAllUI    (wxUpdateUIEvent  &e);
-    virtual void OnRepeatOutputUI(wxUpdateUIEvent  &e);
+	virtual void OnCloseTab      (wxCommandEvent   &e);
+	virtual void OnCloseAllTabs  (wxCommandEvent   &e);
+	virtual void OnCloseOtherTab (wxCommandEvent   &e);
+	virtual void OnTabMenuUI     (wxUpdateUIEvent  &e);
+
+	virtual void OnClearAllUI    (wxUpdateUIEvent  &e);
+	virtual void OnRepeatOutputUI(wxUpdateUIEvent  &e);
 	virtual void OnMouseDClick   (wxScintillaEvent &e);
 	SearchData   GetSearchData   (wxScintilla *sci   );
     DECLARE_EVENT_TABLE()

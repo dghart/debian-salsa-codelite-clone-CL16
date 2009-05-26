@@ -103,7 +103,7 @@ void MainBook::OnFocus(wxFocusEvent &e)
 	if (!SelectPage(dynamic_cast<wxWindow*>(e.GetEventObject()))) {
 		e.Skip();
 	}
-    m_quickFindBar->SetEditor(GetActiveEditor());
+	m_quickFindBar->SetEditor(GetActiveEditor());
 }
 
 void MainBook::OnPaneClosed(wxAuiManagerEvent &e)
@@ -128,7 +128,7 @@ void MainBook::OnPageClosing(NotebookEvent &e)
 void MainBook::OnPageClosed(NotebookEvent &e)
 {
 	SelectPage(m_book->GetCurrentPage());
-    m_quickFindBar->SetEditor(GetActiveEditor());
+	m_quickFindBar->SetEditor(GetActiveEditor());
 
 	// any editors left open?
 	LEditor *editor = NULL;
@@ -341,9 +341,15 @@ LEditor *MainBook::FindEditor(const wxString &fileName)
 wxWindow *MainBook::FindPage(const wxString &text)
 {
 	for (size_t i = 0; i < m_book->GetPageCount(); i++) {
+		LEditor *editor = dynamic_cast<LEditor*>(m_book->GetPage(i));
+		if (editor && editor->GetFileName().GetFullPath() == text) {
+			return editor;
+		}
+
 		if (m_book->GetPageText(i) == text)
 			return m_book->GetPage(i);
 	}
+
 	for (std::set<wxWindow*>::iterator i = m_detachedTabs.begin(); i != m_detachedTabs.end(); i++) {
 		if (Frame::Get()->GetDockingManager().GetPane(*i).caption == text)
 			return *i;
@@ -378,17 +384,17 @@ LEditor *MainBook::OpenFile(const wxString &file_name, const wxString &projectNa
 	}
 
 	LEditor* editor = GetActiveEditor();
-    BrowseRecord jumpfrom = editor ? editor->CreateBrowseRecord() : BrowseRecord();
+	BrowseRecord jumpfrom = editor ? editor->CreateBrowseRecord() : BrowseRecord();
 
-    editor = FindEditor(fileName.GetFullPath());
+	editor = FindEditor(fileName.GetFullPath());
 	if (editor) {
 		editor->SetProject(projName);
 	} else if (fileName.IsOk() == false) {
 		wxLogMessage(wxT("Invalid file name: ") + fileName.GetFullPath());
-        return NULL;
+		return NULL;
 	} else if (!fileName.FileExists()) {
 		wxLogMessage(wxT("File: ") + fileName.GetFullPath() + wxT(" does not exist!"));
-        return NULL;
+		return NULL;
 	} else {
 		editor = new LEditor(m_book);
 		editor->Create(projName, fileName);
@@ -397,51 +403,51 @@ LEditor *MainBook::OpenFile(const wxString &file_name, const wxString &projectNa
 		// mark the editor as read only if needed
 		MarkEditorReadOnly(editor, IsFileReadOnly(editor->GetFileName()));
 
-        if (position == wxNOT_FOUND && lineno == wxNOT_FOUND && editor->GetContext()->GetName() == wxT("C++")) {
-            // try to find something interesting in the file to put the caret at
-            // for now, just skip past initial blank lines and comments
-            for (lineno = 0; lineno < editor->GetLineCount(); lineno++) {
-                switch (editor->GetStyleAt(editor->PositionFromLine(lineno))) {
-                    case wxSCI_C_DEFAULT:
-                    case wxSCI_C_COMMENT:
-                    case wxSCI_C_COMMENTDOC:
-                    case wxSCI_C_COMMENTLINE:
-                    case wxSCI_C_COMMENTLINEDOC:
-                        continue;
-                }
-                // if we got here, it's a line to stop on
-                break;
-            }
-            if (lineno == editor->GetLineCount()) {
-                lineno = 1; // makes sure a navigation record gets saved
-            }
-        }
+		if (position == wxNOT_FOUND && lineno == wxNOT_FOUND && editor->GetContext()->GetName() == wxT("C++")) {
+			// try to find something interesting in the file to put the caret at
+			// for now, just skip past initial blank lines and comments
+			for (lineno = 0; lineno < editor->GetLineCount(); lineno++) {
+				switch (editor->GetStyleAt(editor->PositionFromLine(lineno))) {
+				case wxSCI_C_DEFAULT:
+				case wxSCI_C_COMMENT:
+				case wxSCI_C_COMMENTDOC:
+				case wxSCI_C_COMMENTLINE:
+				case wxSCI_C_COMMENTLINEDOC:
+					continue;
+				}
+				// if we got here, it's a line to stop on
+				break;
+			}
+			if (lineno == editor->GetLineCount()) {
+				lineno = 1; // makes sure a navigation record gets saved
+			}
+		}
 	}
 
-    if (position != wxNOT_FOUND) {
-        editor->SetCaretAt(position);
-    } else if (lineno != wxNOT_FOUND) {
-        editor->GotoLine(lineno);
-    }
-    editor->EnsureCaretVisible();
-    if (GetActiveEditor() == editor) {
-        editor->SetActive();
-    } else {
-        SelectPage(editor);
-    }
+	if (position != wxNOT_FOUND) {
+		editor->SetCaretAt(position);
+	} else if (lineno != wxNOT_FOUND) {
+		editor->GotoLine(lineno);
+	}
+	editor->EnsureCaretVisible();
+	if (GetActiveEditor() == editor) {
+		editor->SetActive();
+	} else {
+		SelectPage(editor);
+	}
 
-    // Add this file to the history. Don't check for uniqueness:
-    // if it's already on the list, wxFileHistory will move it to the top
-    // Also, sync between the history object and the configuration file
-    m_recentFiles.AddFileToHistory ( fileName.GetFullPath() );
-    wxArrayString files;
-    m_recentFiles.GetFiles ( files );
-    EditorConfigST::Get()->SetRecentlyOpenedFies ( files );
+	// Add this file to the history. Don't check for uniqueness:
+	// if it's already on the list, wxFileHistory will move it to the top
+	// Also, sync between the history object and the configuration file
+	m_recentFiles.AddFileToHistory ( fileName.GetFullPath() );
+	wxArrayString files;
+	m_recentFiles.GetFiles ( files );
+	EditorConfigST::Get()->SetRecentlyOpenedFies ( files );
 
-    if (addjump) {
-        BrowseRecord jumpto = editor->CreateBrowseRecord();
-        NavMgr::Get()->AddJump(jumpfrom, jumpto);
-    }
+	if (addjump) {
+		BrowseRecord jumpto = editor->CreateBrowseRecord();
+		NavMgr::Get()->AddJump(jumpfrom, jumpto);
+	}
 	return editor;
 }
 
@@ -786,12 +792,12 @@ void MainBook::UpdateBreakpoints()
 
 void MainBook::MarkEditorReadOnly(LEditor* editor, bool ro)
 {
-	if(!editor){
+	if (!editor) {
 		return;
 	}
 
 	for (size_t i = 0; i < m_book->GetPageCount(); i++) {
-		if(editor == m_book->GetPage(i)){
+		if (editor == m_book->GetPage(i)) {
 			m_book->SetPageBitmap(i, ro ? wxXmlResource::Get()->LoadBitmap(wxT("read_only")) : wxNullBitmap );
 			break;
 		}

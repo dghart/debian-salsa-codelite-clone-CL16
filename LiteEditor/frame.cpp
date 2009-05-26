@@ -479,6 +479,7 @@ BEGIN_EVENT_TABLE(Frame, wxFrame)
 	EVT_COMMAND(wxID_ANY, wxEVT_CMD_NEW_DOCKPANE,    Frame::OnNewDetachedPane)
 	EVT_COMMAND(wxID_ANY, wxEVT_CMD_DELETE_DOCKPANE, Frame::OnDestroyDetachedPane)
 
+	EVT_MENU(wxEVT_CMD_RELOAD_EXTERNALLY_MODIFIED, Frame::OnReloadExternallModified)
 END_EVENT_TABLE()
 
 
@@ -3246,4 +3247,10 @@ void Frame::OnSetStatusMessage(wxCommandEvent& e)
 	wxString msg = e.GetString();
 	int col = e.GetInt();
 	SetStatusMessage(msg, col);
+}
+
+void Frame::OnReloadExternallModified(wxCommandEvent& e)
+{
+	wxUnusedVar(e);
+	GetMainBook()->ReloadExternallyModified();
 }
