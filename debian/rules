@@ -4,7 +4,7 @@ MAKEFILE := $(firstword $(MAKEFILE_LIST))
 DEBIAN_DIR := $(dir $(MAKEFILE))
 SOURCE_DIR := $(DEBIAN_DIR)/..
 DEB_SOURCE_NAME := $(shell grep ^Source $(DEBIAN_DIR)/control | cut -f2 -d' ')
-VERSION ?= $(shell uscan --watchfile $(DEBIAN_DIR)/watch --dehs --no-download |\
+VERSION ?= $(shell cd $(SOURCE_DIR) && uscan --dehs --no-download |\
 	sed -n 's/.*<upstream-version>\(.*\)<\/upstream-version>.*/\1/p')
 
 # this is a hack so we can grab everything in /usr/share/codelite for
