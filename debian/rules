@@ -4,7 +4,13 @@ MAKEFILE := $(firstword $(MAKEFILE_LIST))
 DEBIAN_DIR := $(dir $(MAKEFILE))
 SOURCE_DIR := $(DEBIAN_DIR)/..
 DEB_SOURCE_NAME := $(shell grep ^Source $(DEBIAN_DIR)/control | cut -f2 -d' ')
-VERSION ?= $(shell cd $(SOURCE_DIR) && uscan --dehs --no-download |\
+CURRENT_VERSION = $(shell dpkg-parsechangelog -l$(DEBIAN_DIR)/changelog | \
+		sed -n 's/+dfsg-.*$$//; s/^Version: //p')
+USCAN = uscan \
+			--package=$(DEB_SOURCE_NAME) \
+			--watchfile=$(DEBIAN_DIR)/watch \
+			--upstream-version=$(CURRENT_VERSION)
+VERSION ?= $(shell $(USCAN) --dehs --no-download | \
 	sed -n 's/.*<upstream-version>\(.*\)<\/upstream-version>.*/\1/p')
 
 # this is a hack so we can grab everything in /usr/share/codelite for
@@ -23,12 +29,11 @@ override_dh_auto_clean:
 	rm -f fakeroot/DEBIAN/control
 
 get-orig-source:
-	uscan \
-		--package $(DEB_SOURCE_NAME) \
-		--watchfile $(DEBIAN_DIR)/watch \
-		--destdir . \
-		--upstream-version $(VERSION) \
+	$(USCAN) \
+		--download-version=$(VERSION) \
+		--destdir=. \
 		--force-download \
+		--download \
 		--rename
 	if [ -d $(DEB_SOURCE_NAME)-$(VERSION) ]; then \
 		echo "$(DEB_SOURCE_NAME)-$(VERSION) is in the way, bailing out!"; \
