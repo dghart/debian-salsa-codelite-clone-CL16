@@ -125,9 +125,11 @@
 			<object class="wxMenuItem" name="convert_eol_unix">
 				<label>Convert to Unix Format</label>
 			</object>
+			<!--
 			<object class="wxMenuItem" name="convert_eol_mac">
 				<label>Convert to Mac Format</label>
 			</object>
+			-->
         </object>
 
         <object class="wxMenu" name="view_menu">

@@ -550,7 +550,7 @@ bool MainBook::UserSelectFiles(std::vector<std::pair<wxFileName,bool> > &files, 
 	if (files.empty())
 		return true;
 
-	FileCheckList dlg(this, wxID_ANY, title);
+	FileCheckList dlg(Frame::Get(), wxID_ANY, title);
 	dlg.SetCaption(caption);
 	dlg.SetFiles(files);
 	dlg.SetCancellable(cancellable);

@@ -28,7 +28,7 @@
   </VirtualDirectory>
   <Dependencies/>
   <VirtualDirectory Name="test_suite">
-    <File Name="Release\test.h"/>
+    <File Name="Release/test.h"/>
   </VirtualDirectory>
   <Settings Type="Executable">
     <Configuration Name="Release" CompilerType="gnu g++" DebuggerType="GNU gdb debugger" Type="Executable" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
@@ -47,8 +47,8 @@
       </Debugger>
       <PreBuild/>
       <PostBuild>
-        <Command Enabled="yes">copy *.h ..\CodeLite\.</Command>
-        <Command Enabled="yes">copy *.cpp ..\CodeLite\.</Command>
+        <Command Enabled="yes">copy *.h ../CodeLite/.</Command>
+        <Command Enabled="yes">copy *.cpp ../CodeLite/.</Command>
       </PostBuild>
       <CustomBuild Enabled="no">
         <CleanCommand/>

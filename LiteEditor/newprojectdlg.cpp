@@ -24,6 +24,7 @@
 //////////////////////////////////////////////////////////////////////////////
 #include "newprojectdlg.h"
 #include "windowattrmanager.h"
+#include <wx/xrc/xmlres.h>
 #include "globals.h"
 #include "macros.h"
 #include "workspace.h"
@@ -98,10 +99,10 @@ void NewProjectDlg::GetProjectTemplateList ( std::list<ProjectPtr> &list )
 			wxString imageFileName(fn.GetPath( wxPATH_GET_SEPARATOR ) + wxT("icon.png") );
 			if( wxFileExists( imageFileName )) {
 				int img_id = lstImages->Add( wxBitmap( fn.GetPath( wxPATH_GET_SEPARATOR ) + wxT("icon.png"), wxBITMAP_TYPE_PNG ) );;
-//				wxLogMessage(wxString::Format(wxT("%s, ID=%d, was added for project %s"), imageFileName.c_str(), img_id, proj->GetName().c_str()));
 				m_mapImages[proj->GetName()] = img_id;
 			} else {
-//				wxLogMessage(wxString::Format(wxT("The file %s does not exist"), imageFileName.c_str()));
+				int img_id = lstImages->Add( wxXmlResource::Get()->LoadBitmap(wxT("plugin24")) );
+				m_mapImages[proj->GetName()] = img_id;
 			}
 		}
 	} else {
