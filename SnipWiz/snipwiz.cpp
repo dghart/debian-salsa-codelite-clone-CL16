@@ -114,7 +114,8 @@ SnipWiz::SnipWiz( IManager *manager )
 	m_topWin = NULL;
 	m_longName = wxT( "Snippet wizard" );
 	m_shortName = plugName;
-	m_topWin = wxTheApp;
+	m_topWin = m_mgr->GetTheApp();
+
 	// get plugin path
 	m_pluginPath = m_mgr->GetStartupDirectory();
 	m_pluginPath += wxFILE_SEP_PATH;
@@ -142,14 +143,6 @@ SnipWiz::~SnipWiz()
 {
 	if ( m_modified )
 		m_StringDb.Save( m_pluginPath + defaultTmplFile );
-
-	m_topWin->Disconnect( IDM_SETTINGS, wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( SnipWiz::OnSettings ), NULL, this );
-	m_topWin->Disconnect( IDM_CLASS_WIZ, wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( SnipWiz::OnClassWizard ), NULL, this );
-
-	m_topWin->Disconnect( IDM_EXP_SWITCH, wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( SnipWiz::OnMenuExpandSwitch ), NULL, this );
-	m_topWin->Disconnect( IDM_PASTE, wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( SnipWiz::OnMenuPaste ), NULL, this );
-
-	DetachDynMenus();
 }
 //------------------------------------------------------------
 
@@ -223,8 +216,15 @@ void SnipWiz::UnHookPopupMenu( wxMenu *menu, MenuType type )
 
 void SnipWiz::UnPlug()
 {
-	//TODO:: perform the unplug action for this plugin
+	m_topWin->Disconnect( IDM_SETTINGS, wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( SnipWiz::OnSettings ), NULL, this );
+	m_topWin->Disconnect( IDM_CLASS_WIZ, wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( SnipWiz::OnClassWizard ), NULL, this );
+
+	m_topWin->Disconnect( IDM_EXP_SWITCH, wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( SnipWiz::OnMenuExpandSwitch ), NULL, this );
+	m_topWin->Disconnect( IDM_PASTE, wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( SnipWiz::OnMenuPaste ), NULL, this );
+
+	DetachDynMenus();
 }
+
 //------------------------------------------------------------
 void SnipWiz::OnMenuExpandSwitch( wxCommandEvent& e )
 {

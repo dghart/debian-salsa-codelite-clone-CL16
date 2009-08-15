@@ -194,15 +194,25 @@ void FindInFilesDialog::OnClick(wxCommandEvent &event)
 {
 	wxObject *btnClicked = event.GetEventObject();
 	size_t flags = m_data.GetFlags();
+
+	wxString findWhat = m_findString->GetValue();
+	findWhat = findWhat.Trim().Trim(false);
+
 	m_data.SetFindString( m_findString->GetValue() );
 
 	if(btnClicked == m_stop){
 		SearchThreadST::Get()->StopSearch();
 
 	} else if(btnClicked == m_find){
+		if( findWhat.IsEmpty() ) {
+			return;
+		}
 		DoSearch();
 
 	} else if(btnClicked == m_replaceAll){
+		if( findWhat.IsEmpty() ) {
+			return;
+		}
 		DoSearchReplace();
 
 	} else if(btnClicked == m_cancel){

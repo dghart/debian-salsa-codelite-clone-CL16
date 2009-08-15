@@ -307,7 +307,6 @@ wxMenu *SubversionPlugin::CreatePopMenu()
 SubversionPlugin::~SubversionPlugin()
 {
 	SvnCommitMsgsMgr::Release();
-	UnPlug();
 }
 
 void SubversionPlugin::OnSvnAbort(wxCommandEvent &event)
