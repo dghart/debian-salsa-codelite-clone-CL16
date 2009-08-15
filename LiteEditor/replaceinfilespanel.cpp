@@ -210,7 +210,12 @@ wxScintilla *ReplaceInFilesPanel::DoGetEditor(const wxString &fileName)
 void ReplaceInFilesPanel::OnReplace(wxCommandEvent& e)
 {
 	// FIX bug#2770561
+	int lineNumber(0);
 	LEditor *activeEditor = Frame::Get()->GetMainBook()->GetActiveEditor();
+	if( activeEditor ) {
+		lineNumber = activeEditor->GetCurrentLine();
+	}
+
 	if (m_replaceWith->FindString(m_replaceWith->GetValue(), true) == wxNOT_FOUND) {
 		m_replaceWith->Append(m_replaceWith->GetValue());
 	}
@@ -370,7 +375,12 @@ void ReplaceInFilesPanel::OnReplace(wxCommandEvent& e)
 
 	// FIX bug#2770561
 	if(activeEditor) {
+
 		Frame::Get()->GetMainBook()->SelectPage(activeEditor);
+
+		// restore the line
+		activeEditor->GotoLine( lineNumber );
+
 	}
 }
 

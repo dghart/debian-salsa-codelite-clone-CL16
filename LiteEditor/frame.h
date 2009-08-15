@@ -259,6 +259,8 @@ private:
 	void AutoLoadExternalDb();
 	void DoBuildExternalDatabase(const wxString &dir = wxEmptyString);
 
+	void ReloadExternallyModifiedProjectFiles();
+
 protected:
 	//----------------------------------------------------
 	// event handlers
