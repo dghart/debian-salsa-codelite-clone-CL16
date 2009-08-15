@@ -1,7 +1,7 @@
 Source: codelite
 Section: devel
 Priority: optional
-Maintainer: Chow Loong Jin <hyperair@gmail.com>
+Maintainer: Chow Loong Jin <hyperair@ubuntu.com>
 Build-Depends: debhelper (>= 7.0.50),
                quilt (>= 0.46-7~),
                autotools-dev,
