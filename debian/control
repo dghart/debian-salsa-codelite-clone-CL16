@@ -2,14 +2,13 @@ Source: codelite
 Section: devel
 Priority: optional
 Maintainer: Chow Loong Jin <hyperair@gmail.com>
-Build-Depends: cdbs, 
-               debhelper (>= 7.0.50), 
-               quilt (>= 0.46-7),
+Build-Depends: debhelper (>= 7.0.50),
+               quilt (>= 0.46-7~),
                autotools-dev,
                libgtk2.0-dev,
                libwxgtk2.8-dev,
     	       libsqlite3-dev
-Standards-Version: 3.8.1
+Standards-Version: 3.8.2
 Homepage: http://www.codelite.org
 Vcs-Git: git://git.debian.org/git/collab-maint/codelite.git
 Vcs-Browser: http://git.debian.org/?p=collab-maint/codelite.git

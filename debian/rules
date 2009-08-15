@@ -25,6 +25,7 @@ override_dh_install:
 		templates/formbuilder
 
 override_dh_auto_clean:
+	dh_auto_clean
 	find -name Makefile ! -wholename '*sdk*' -delete
 	rm -f fakeroot/DEBIAN/control
 
