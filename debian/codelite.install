@@ -1,4 +1,5 @@
 debian/codelite.xpm /usr/share/pixmaps
 usr/lib/codelite/debuggers
+usr/lib/codelite/lib*.so
 usr/share
 usr/bin
