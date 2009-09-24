@@ -121,20 +121,16 @@ FileViewTree::FileViewTree( wxWindow *parent, const wxWindowID id, const wxPoint
 {
 	Create( parent, id, pos, size, style );
 
-
-//	SetBackgroundColour(*wxBLACK);
-//	SetForegroundColour(wxT("GREY"));
-
 	// Initialise images map
 	wxImageList *images = new wxImageList( 16, 16, true );
-	images->Add( wxXmlResource::Get()->LoadBitmap( wxT( "project" ) ) );				//0
-	images->Add( wxXmlResource::Get()->LoadBitmap( wxT( "folder" ) ) );					//1
-	images->Add( wxXmlResource::Get()->LoadBitmap( wxT( "page_white_c" ) ) );			//2
-	images->Add( wxXmlResource::Get()->LoadBitmap( wxT( "page_white_cplusplus" ) ) );	//3
-	images->Add( wxXmlResource::Get()->LoadBitmap( wxT( "page_white_h" ) ) );			//4
-	images->Add( wxXmlResource::Get()->LoadBitmap( wxT( "page_white_text" ) ) );		//5
-	images->Add( wxXmlResource::Get()->LoadBitmap( wxT( "workspace" ) ) );				//6
-	images->Add( wxXmlResource::Get()->LoadBitmap( wxT( "wxfb" ) ) );					//7
+	images->Add( wxXmlResource::Get()->LoadBitmap( wxT( "project" ) ) );              //0
+	images->Add( wxXmlResource::Get()->LoadBitmap( wxT( "folder" ) ) );               //1
+	images->Add( wxXmlResource::Get()->LoadBitmap( wxT( "page_white_c" ) ) );         //2
+	images->Add( wxXmlResource::Get()->LoadBitmap( wxT( "page_white_cplusplus" ) ) ); //3
+	images->Add( wxXmlResource::Get()->LoadBitmap( wxT( "page_white_h" ) ) );         //4
+	images->Add( wxXmlResource::Get()->LoadBitmap( wxT( "page_white_text" ) ) );      //5
+	images->Add( wxXmlResource::Get()->LoadBitmap( wxT( "workspace" ) ) );            //6
+	images->Add( wxXmlResource::Get()->LoadBitmap( wxT( "formbuilder" ) ) );          //7
 	AssignImageList( images );
 
 	Connect( GetId(), wxEVT_COMMAND_TREE_ITEM_RIGHT_CLICK, wxTreeEventHandler( FileViewTree::OnPopupMenu ) );
@@ -478,15 +474,26 @@ void FileViewTree::DoItemActivated( wxTreeItemId &item, wxEvent &event )
 
 	//if file item was hit, open it
 	if ( itemData->GetData().GetKind() == ProjectItem::TypeFile ) {
+
 		wxString filename = itemData->GetData().GetFile();
 		wxString project  = itemData->GetData().Key().BeforeFirst( wxT( ':' ) );
 
 		// Convert the file name to be in absolute path
 		wxFileName fn( filename );
 		fn.MakeAbsolute( ManagerST::Get()->GetProjectCwd( project ) );
+
+		// send event to the plugins to see if they want the file opening in another way
+		wxString file_path = fn.GetFullPath();
+		if (SendCmdEvent(wxEVT_TREE_ITEM_FILE_ACTIVATED, &file_path)) {
+			return;
+		}
+
 		Frame::Get()->GetMainBook()->OpenFile( fn.GetFullPath(), project, -1 );
-		return;
-	} else { // if(itemData->GetData().GetKind() == ProjectItem::TypeVirtualDirectory)
+
+	} else if ( itemData->GetData().GetKind() == ProjectItem::TypeProject ) {
+		// make it active
+		DoSetProjectActive(item);
+	} else {
 		event.Skip();
 	}
 }
@@ -1206,7 +1213,7 @@ wxTreeItemId FileViewTree::FindItemByPath(wxTreeItemId &parent, const wxString &
 		FilewViewTreeItemData *childData = static_cast<FilewViewTreeItemData*>( GetItemData( child ) );
 		wxFileName fn(childData->GetData().GetFile());
 		fn.MakeAbsolute( projectPath );
-		if (fn.GetFullPath() == fileName) {
+		if (fn.GetFullPath().CmpNoCase(fileName) == 0) {
 			return child;
 		}
 
@@ -1267,6 +1274,12 @@ void FileViewTree::OnImportDirectory(wxCommandEvent &e)
 	wxString mask = dlg->GetFileMask();
 	dlg->Destroy();
 
+	//{ Fixe bug 2847625
+	if (path.EndsWith(wxT("/")) || path.EndsWith(wxT("\\"))) {
+		path.RemoveLast();
+	}
+	//} bug 2847625
+	
 	wxFileName rootPath(path);
 
 	//Collect all candidates files

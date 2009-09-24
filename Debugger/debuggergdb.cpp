@@ -23,6 +23,7 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 #include "debuggergdb.h"
+#include <wx/ffile.h>
 #include "exelocator.h"
 #include "environmentconfig.h"
 #include "dirkeeper.h"
@@ -137,12 +138,7 @@ static void StripString(wxString &string)
 	string = string.BeforeLast(wxT('"'));
 	string.Replace(wxT("\\\""), wxT("\""));
 
-	string = string.Trim().Trim(false);
-
-//	string.Replace(wxT("\\\\"), wxT("\\"));
-//	string.Replace(wxT("\\\\n"), wxT("\n"));
-//	string.Replace(wxT("\\n"), wxEmptyString);
-//	string.Replace(wxT("\\\\t"), wxT("\t"));
+	string = string.Trim();
 }
 
 static wxString MakeId()
@@ -211,25 +207,12 @@ void DbgGdb::EmptyQueue()
 
 bool DbgGdb::Start(const wxString &debuggerPath, const wxString & exeName, int pid, const std::vector<BreakpointInfo> &bpList, const wxArrayString &cmds)
 {
-	if (IsBusy()) {
-		//dont allow second instance of the debugger
+	wxString dbgExeName;
+	if ( ! DoLocateGdbExecutable(debuggerPath, dbgExeName) ) {
 		return false;
 	}
-	SetBusy(true);
+
 	wxString cmd;
-
-	wxString dbgExeName(debuggerPath);
-	if (dbgExeName.IsEmpty()) {
-		dbgExeName = wxT("gdb");
-	}
-
-	wxString actualPath;
-	if (ExeLocator::Locate(dbgExeName, actualPath) == false) {
-		wxMessageBox(wxString::Format(wxT("Failed to locate gdb! at '%s'"), dbgExeName.c_str()),
-		             wxT("CodeLite"));
-		SetBusy(false);
-		return false;
-	}
 
 #if defined (__WXGTK__) || defined (__WXMAC__)
 	//On GTK and other platforms, open a new terminal and direct all
@@ -268,39 +251,7 @@ bool DbgGdb::Start(const wxString &debuggerPath, const wxString & exeName, int p
 			return false;
 		}
 
-		Connect(wxEVT_TIMER, wxTimerEventHandler(DbgGdb::OnTimer), NULL, this);
-		m_proc->Connect(wxEVT_END_PROCESS, wxProcessEventHandler(DbgGdb::OnProcessEndEx), NULL, this);
-		m_canUse = true;
-		m_timer->Start(10);
-		wxWakeUpIdle();
-		//place breakpoint at first line
-#ifdef __WXMSW__
-		ExecuteCmd(wxT("set new-console on"));
-#endif
-		ExecuteCmd(wxT("set unwindonsignal on"));
-		//dont wrap lines
-		ExecuteCmd(wxT("set width 0"));
-		// no pagination
-		ExecuteCmd(wxT("set height 0"));
-
-		if (m_info.enablePendingBreakpoints) {
-			//a workaround for the MI pending breakpoint
-			ExecuteCmd(wxT("set breakpoint pending on"));
-		}
-
-		for (size_t i=0; i<cmds.GetCount(); i++) {
-			ExecuteCmd(cmds.Item(i));
-		}
-
-		//keep the list of breakpoints to be added
-		m_bpList = bpList;
-		SetBreakpoints();
-
-		if (m_info.breakAtWinMain) {
-			//try also to set breakpoint at WinMain
-			WriteCommand(wxT("-break-insert main"), NULL);
-		}
-
+		DoInitializeGdb(bpList, cmds);
 		m_observer->UpdateGotControl(DBG_END_STEPPING);
 		return true;
 	}
@@ -309,27 +260,13 @@ bool DbgGdb::Start(const wxString &debuggerPath, const wxString & exeName, int p
 
 bool DbgGdb::Start(const wxString &debuggerPath, const wxString &exeName, const wxString &cwd, const std::vector<BreakpointInfo> &bpList, const wxArrayString &cmds)
 {
-	if (IsBusy()) {
-		//dont allow second instance of the debugger
+
+	wxString dbgExeName;
+	if ( ! DoLocateGdbExecutable(debuggerPath, dbgExeName) ) {
 		return false;
 	}
 
-	SetBusy(true);
 	wxString cmd;
-
-	wxString dbgExeName(debuggerPath);
-	if (dbgExeName.IsEmpty()) {
-		dbgExeName = wxT("gdb");
-	}
-
-	wxString actualPath;
-	if (ExeLocator::Locate(dbgExeName, actualPath) == false) {
-		wxMessageBox(wxString::Format(wxT("Failed to locate gdb! at '%s'"), dbgExeName.c_str()),
-		             wxT("CodeLite"));
-		SetBusy(false);
-		return false;
-	}
-
 #if defined (__WXGTK__) || defined (__WXMAC__)
 	//On GTK and other platforms, open a new terminal and direct all
 	//debugee process into it
@@ -367,38 +304,7 @@ bool DbgGdb::Start(const wxString &debuggerPath, const wxString &exeName, const 
 			return false;
 		}
 
-		Connect(wxEVT_TIMER, wxTimerEventHandler(DbgGdb::OnTimer), NULL, this);
-		m_proc->Connect(wxEVT_END_PROCESS, wxProcessEventHandler(DbgGdb::OnProcessEndEx), NULL, this);
-		m_canUse = true;
-		m_timer->Start(10);
-		wxWakeUpIdle();
-		//place breakpoint at first line
-#ifdef __WXMSW__
-		ExecuteCmd(wxT("set  new-console on"));
-#endif
-		ExecuteCmd(wxT("set unwindonsignal on"));
-
-		if (m_info.enablePendingBreakpoints) {
-			ExecuteCmd(wxT("set breakpoint pending on"));
-		}
-
-		//dont wrap lines
-		ExecuteCmd(wxT("set width 0"));
-		// no pagination
-		ExecuteCmd(wxT("set height 0"));
-
-		for (size_t i=0; i<cmds.GetCount(); i++) {
-			ExecuteCmd(cmds.Item(i));
-		}
-
-		//keep the list of breakpoints
-		m_bpList = bpList;
-		SetBreakpoints();
-
-		if (m_info.breakAtWinMain) {
-			//try also to set breakpoint at WinMain
-			WriteCommand(wxT("-break-insert main"), NULL);
-		}
+		DoInitializeGdb(bpList, cmds);
 		return true;
 	}
 	return false;
@@ -480,7 +386,7 @@ bool DbgGdb::Break(const BreakpointInfo& bp)
 
 	// by default, use full paths for the file name when setting breakpoints
 	wxString tmpfileName(fn.GetFullPath());;
-	if(m_info.useRelativeFilePaths){
+	if (m_info.useRelativeFilePaths) {
 		// user set the option to use relative paths (file name w/o the full path)
 		tmpfileName = fn.GetFullName();
 	}
@@ -490,9 +396,9 @@ bool DbgGdb::Break(const BreakpointInfo& bp)
 	wxString command;
 	switch (bp.bp_type) {
 	case BP_type_watchpt:
-	//----------------------------------
-	// Watchpoints
-	//----------------------------------
+		//----------------------------------
+		// Watchpoints
+		//----------------------------------
 		command = wxT("-break-watch ");
 		switch (bp.watchpoint_type) {
 		case WP_watch:
@@ -511,17 +417,17 @@ bool DbgGdb::Break(const BreakpointInfo& bp)
 		break;
 
 	case BP_type_tempbreak:
-	//----------------------------------
-	// Temporary breakpoints
-	//----------------------------------
+		//----------------------------------
+		// Temporary breakpoints
+		//----------------------------------
 		command = wxT("-break-insert -t ");
 		break;
 
 	case BP_type_condbreak:
 	case BP_type_break:
 	default:
-	// Should be standard breakpts. But if someone tries to make an ignored temp bp
-	// it won't have the BP_type_tempbreak type, so check again here
+		// Should be standard breakpts. But if someone tries to make an ignored temp bp
+		// it won't have the BP_type_tempbreak type, so check again here
 		command =  (bp.is_temp ? wxT("-break-insert -t ") : wxT("-break-insert "));
 		break;
 	}
@@ -551,25 +457,111 @@ bool DbgGdb::Break(const BreakpointInfo& bp)
 	//------------------------------------------------------------------------
 	// prepare the conditions
 	//------------------------------------------------------------------------
-	if(bp.conditions.IsEmpty() == false){
+	if (bp.conditions.IsEmpty() == false) {
 		condition << wxT("-c ") << wxT("\"") << bp.conditions << wxT("\" ");
 	}
 
 	//------------------------------------------------------------------------
 	// prepare the ignore count
 	//------------------------------------------------------------------------
-	if(bp.ignore_number > 0 ){
+	if (bp.ignore_number > 0 ) {
 		ignoreCounnt << wxT("-i ") << bp.ignore_number << wxT(" ");
 	}
 
 	// concatenate all the string into one command to pass to gdb
 	gdbCommand << command << condition << ignoreCounnt << breakWhere;
-	if (m_info.enableDebugLog) {
-		m_observer->UpdateAddLine(gdbCommand);
-	}
 
 	// execute it
-	return WriteCommand(gdbCommand, new DbgCmdHandlerBp(m_observer, bp, &m_bpList, bp.bp_type));
+	return WriteCommand(gdbCommand, new DbgCmdHandlerBp(m_observer, this, bp, &m_bpList, bp.bp_type));
+}
+
+bool DbgGdb::SetIgnoreLevel(const int bid, const int ignorecount)
+{
+	if (bid == -1) {	// Sanity check
+		return false;
+	}
+
+	wxString command(wxT("-break-after "));
+	command << bid << wxT(" ") << ignorecount;
+
+	wxString dbg_output;
+	if (ExecSyncCmd(command, dbg_output)) {
+		// If successful, the only output is ^done, so assume that means it worked
+		if (dbg_output.Find(wxT("^done")) != wxNOT_FOUND) {
+			m_observer->UpdateAddLine(wxString::Format(wxT("Set ignore-count %d for breakpoint %d"), ignorecount, bid));
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool DbgGdb::SetEnabledState(const int bid, const bool enable)
+{
+	if (bid == -1) {	// Sanity check
+		return false;
+	}
+
+	wxString command(wxT("-break-disable "));
+	if (enable) {
+		command = wxT("-break-enable ");
+	}
+	command << bid;
+
+	wxString dbg_output;
+	if (ExecSyncCmd(command, dbg_output)) {
+		// If successful, the only output is ^done, so assume that means it worked
+		if (dbg_output.Find(wxT("^done")) != wxNOT_FOUND) {
+			m_observer->UpdateAddLine(wxString::Format(wxT("Breakpoint %d %s"), bid, enable ? wxT("enabled"):wxT("disabled")));
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool DbgGdb::SetCondition(const BreakpointInfo& bp)
+{
+	if (bp.debugger_id == -1) {	// Sanity check
+		return false;
+	}
+
+	wxString command(wxT("-break-condition "));
+	command << bp.debugger_id << wxT(" ") << bp.conditions;
+
+	wxString dbg_output;
+	if (ExecSyncCmd(command, dbg_output)) {
+		// If successful, the only output is ^done, so assume that means it worked
+		if (dbg_output.Find(wxT("^done")) != wxNOT_FOUND) {
+			if (bp.conditions.IsEmpty()) {
+				m_observer->UpdateAddLine(wxString::Format(wxT("Breakpoint %d condition cleared"), bp.debugger_id));
+			} else {
+				m_observer->UpdateAddLine(wxString::Format(wxT("Condition %s set for breakpoint %d"), bp.conditions.c_str(), bp.debugger_id));
+			}
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool DbgGdb::SetCommands(const BreakpointInfo& bp)
+{
+	if (bp.debugger_id == -1) {	// Sanity check
+		return false;
+	}
+	// There isn't (currentl) a MI command-list command, so use the CLI one
+	// This doesn't actually work either, but at least the commands are visible in -break-list
+	wxString command(wxT("commands "));
+	command << bp.debugger_id << wxT('\n') << bp.commandlist << wxT("\nend");
+
+	if (m_info.enableDebugLog) {
+		m_observer->UpdateAddLine(command);
+	}
+
+	// If we really wanted, we could get the output (for bp 3) of "commands 3"
+	// but as that's not very informative, and we're only faking the command-list anyway, don't bother
+	return WriteCommand(command, NULL);
 }
 
 bool DbgGdb::Continue()
@@ -674,7 +666,7 @@ bool DbgGdb::ExecSyncCmd(const wxString &command, wxString &output)
 		//try to read a line from the debugger
 		line.Empty();
 		ReadLine(line, 1);
-		line = line.Trim().Trim(false);
+		line = line.Trim();
 
 		if (line.IsEmpty()) {
 			if (counter < maxPeeks) {
@@ -723,11 +715,12 @@ bool DbgGdb::ExecSyncCmd(const wxString &command, wxString &output)
 				}
 			}
 
-			output = output.Trim().Trim(false);
+			output = output.Trim();
 			return true;
 
 		} else {
 			StripString(line);
+
 			if (!line.Contains(command)) {
 				output << line << wxT("\n");
 			}
@@ -748,30 +741,30 @@ bool DbgGdb::RemoveBreak(int bid)
 	return WriteCommand(command, NULL);
 }
 
-bool DbgGdb::RemoveBreak(const wxString &fileName, long lineno)
-{
-	wxString command;
-	wxString fileName_(fileName);
-	fileName_.Replace(wxT("\\"), wxT("/"));
-	command << wxT("clear \"") << fileName_ << wxT("\":") << lineno;
-	return WriteCommand(command, NULL);
-}
-
 bool DbgGdb::FilterMessage(const wxString &msg)
 {
-	if (msg.Contains(wxT("Variable object not found"))) {
+	wxString tmpmsg ( msg );
+	StripString( tmpmsg );
+	tmpmsg.Trim().Trim(false);
+
+	if (tmpmsg.Contains(wxT("Variable object not found"))) {
 		return true;
 	}
 
-	if (msg.Contains(wxT("mi_cmd_var_create: unable to create variable object"))) {
+	if (tmpmsg.Contains(wxT("mi_cmd_var_create: unable to create variable object"))) {
 		return true;
 	}
 
-	if (msg.Contains(wxT("Variable object not found"))) {
+	if (tmpmsg.Contains(wxT("Variable object not found"))) {
 		return true;
 	}
 
-	if (msg.Contains(wxT("No symbol \"this\" in current context"))) {
+	if (tmpmsg.Contains(wxT("No symbol \"this\" in current context"))) {
+		return true;
+	}
+
+	if (tmpmsg.StartsWith(wxT(">"))) {
+		// shell line
 		return true;
 	}
 	return false;
@@ -822,9 +815,15 @@ void DbgGdb::Poke()
 		line = line.Trim();
 		line = line.Trim(false);
 
+		// For string manipulations without damaging the original line read
+		wxString tmpline ( line );
+		StripString( tmpline );
+		tmpline.Trim().Trim(false);
+
 		if (m_info.enableDebugLog) {
 			//Is logging enabled?
-			if (line.IsEmpty() == false) {
+
+			if (line.IsEmpty() == false && !tmpline.StartsWith(wxT(">")) ) {
 				wxString strdebug(wxT("DEBUG>>"));
 				strdebug << line;
 				m_observer->UpdateAddLine(strdebug);
@@ -839,6 +838,11 @@ void DbgGdb::Poke()
 			m_observer->UpdateAddLine(line);
 			m_observer->UpdateGotControl(DBG_EXITED_NORMALLY);
 			return;
+		}
+
+		if( tmpline.StartsWith(wxT(">")) ) {
+			// Shell line, probably user command line
+			break;
 		}
 
 		line.Replace(wxT("(gdb)"), wxEmptyString);
@@ -886,7 +890,7 @@ void DbgGdb::DoProcessAsyncCommand(wxString &line, wxString &id)
 		// print the error message and remove the command from the queue
 		DbgCmdHandler *handler = PopHandler(id);
 
-		if(handler && handler->WantsErrors()){
+		if (handler && handler->WantsErrors()) {
 			handler->ProcessOutput(line);
 		}
 
@@ -1062,16 +1066,21 @@ void DbgGdb::OnProcessEndEx(wxProcessEvent &e)
 	m_env->UnApplyEnv();
 }
 
-bool DbgGdb::GetTip(const wxString& expression, wxString& evaluated)
+bool DbgGdb::GetTip(const wxString &dbgCommand, const wxString& expression, wxString& evaluated)
 {
 	wxString cmd;
-	cmd << wxT("print ") << expression;
+	cmd << dbgCommand << wxT(" ") << expression;
 	if (ExecSyncCmd(cmd, evaluated)) {
 		evaluated = evaluated.Trim().Trim(false);
 		//gdb displays the variable name as $<NUMBER>,
 		//we simply replace it with the actual string
 		static wxRegEx reGdbVar(wxT("^\\$[0-9]+"));
+		static wxRegEx reGdbVar2(wxT("\\$[0-9]+ = "));
+
 		reGdbVar.ReplaceFirst(&evaluated, expression);
+		reGdbVar2.ReplaceAll(&evaluated, wxEmptyString);
+
+		evaluated.Replace(wxT("\\t"), wxT("\t"));
 		return true;
 	}
 	return false;
@@ -1085,7 +1094,7 @@ bool DbgGdb::ResolveType(const wxString& expression, wxString& type_name)
 	if (ExecSyncCmd(cmd, output)) {
 		// delete the temporary variable object
 		cmd.clear();
-		//	wxLogMessage(wxT("ResolveType: gdb returned '") + output + wxT("'"));
+		//wxLogMessage(wxT("ResolveType: gdb returned '") + output + wxT("'"));
 
 		// parse the output
 		// ^done,name="var2",numchild="1",value="{...}",type="orxAABOX"
@@ -1290,4 +1299,186 @@ void DbgGdb::SetDebuggerInformation(const DebuggerInformation& info)
 {
 	IDebugger::SetDebuggerInformation(info);
 	m_consoleFinder.SetConsoleCommand(info.consoleCommand);
+}
+
+void DbgGdb::BreakList()
+{
+	wxString dbg_output;
+	if (!ExecSyncCmd(wxT("-break-list"), dbg_output)) {
+		return;
+	}
+
+	std::vector<BreakpointInfo> li;
+	if (dbg_output.Find(wxT("body=[]")) != wxNOT_FOUND) {
+		// No breakpoints. This will happen when the only bp had been a temporary one, now deleted
+		// So reconcile with the empty vector, to remove that bp from the manager/editor
+		m_observer->ReconcileBreakpoints(li);
+		return;
+	}
+
+	dbg_output.Replace(wxT("\""), wxT(""));
+	dbg_output.Replace(wxT("\\"), wxT(""));
+
+	// We've got a string containing the -break-list output. Extract the data for each bp
+	// We only need to know the following:
+	// Does the breakpoint still exist? (or was it temporary, now deleted; or a watchpoint now out of scope)
+	// Is it (still) ignored? It might have been, but now the ignore-count has dec.ed to 0
+	// So, having stripped the quotes and escapes, we're looking for bkpt={number=14 ..... ,ignore=1...
+	static wxRegEx reNumber(wxT("number=([0-9]+)"));
+	static wxRegEx reIgnore(wxT("ignore=([0-9]+)"));
+
+	wxArrayString breakarray; int offset;
+	// Split the list into individual breakpoints, then parse each one
+	if ((offset = dbg_output.Find(wxT("number="))) == wxNOT_FOUND) {
+		return;
+	}
+	dbg_output = dbg_output.Mid(offset);
+	do {
+		size_t next = dbg_output.find(wxT("number="), 7);
+		wxString breakpt(dbg_output);
+		if (next != wxString::npos) {
+			breakpt = dbg_output.Left(next);
+		}
+		breakarray.Add(breakpt);
+		dbg_output = dbg_output.Mid(breakpt.Len());
+	}
+	while (dbg_output.Find(wxT("number=")) != wxNOT_FOUND);
+
+	for (size_t n=0; n < breakarray.GetCount(); ++n) {
+		wxString breakpt = breakarray[n];
+		if (! reNumber.Matches(breakpt)) {
+			continue;
+		}
+		BreakpointInfo bp;
+		wxString id = reNumber.GetMatch(breakpt, 1);
+		long l; if (! id.ToLong(&l)) {
+			continue;	// Syntax error :/
+		}
+		bp.debugger_id = (int)l;
+
+		// That section should always have worked. This one will only match for ignored breakpoints
+		if (reIgnore.Matches(breakpt)) {
+			wxString id = reIgnore.GetMatch(breakpt, 1);
+			long l; if (id.ToLong(&l)) {
+				bp.ignore_number = (int)l;
+			}
+		}
+
+		li.push_back(bp);
+	}
+
+	// We now have a vector of bps, each containing its debugger_id and ignore-count.
+	// Pass the vector to the breakpoints manager to be reconciled
+	m_observer->ReconcileBreakpoints(li);
+}
+
+bool DbgGdb::DoLocateGdbExecutable(const wxString& debuggerPath, wxString& dbgExeName)
+{
+	if (IsBusy()) {
+		//dont allow second instance of the debugger
+		return false;
+	}
+	SetBusy(true);
+	wxString cmd;
+
+	dbgExeName = debuggerPath;
+	if (dbgExeName.IsEmpty()) {
+		dbgExeName = wxT("gdb");
+	}
+
+	wxString actualPath;
+	if (ExeLocator::Locate(dbgExeName, actualPath) == false) {
+		wxMessageBox(wxString::Format(wxT("Failed to locate gdb! at '%s'"), dbgExeName.c_str()),
+		             wxT("CodeLite"));
+		SetBusy(false);
+		return false;
+	}
+
+	// set the debugger specific startup commands
+	wxString startupInfo ( m_info.startupCommands );
+
+	// We must replace TABS with spaces or else gdb will hang...
+	startupInfo.Replace(wxT("\t"), wxT(" "));
+
+	// Write the content into a file
+	wxString codelite_gdbinit_file;
+#ifdef __WXMSW__
+	codelite_gdbinit_file << wxFileName::GetTempDir() << wxFileName::GetPathSeparator() << wxT("codelite_gdbinit.txt");
+#else
+	wxString home_env;
+	if( !wxGetEnv(wxT("HOME"), &home_env) ) {
+		m_observer->UpdateAddLine(wxString::Format(wxT("Failed to read HOME environment variable")));
+	} else {
+		codelite_gdbinit_file  << home_env << wxT("/") << wxT(".gdbinit");
+		if( wxFileName::FileExists(codelite_gdbinit_file) && !wxFileName::FileExists(codelite_gdbinit_file + wxT(".backup"))) {
+			wxCopyFile(codelite_gdbinit_file, codelite_gdbinit_file + wxT(".backup") );
+			m_observer->UpdateAddLine(wxString::Format(wxT(".gdbinit file was backup to %s"), wxString(codelite_gdbinit_file + wxT(".backup")).c_str()));
+		}
+	}
+#endif
+	wxFFile file;
+	if (!file.Open(codelite_gdbinit_file, wxT("w+b"))) {
+		m_observer->UpdateAddLine(wxString::Format(wxT("Failed to generate gdbinit file at %s"), codelite_gdbinit_file.c_str()));
+
+	} else {
+		m_observer->UpdateAddLine(wxString::Format(wxT("Using gdbinit file: %s"), codelite_gdbinit_file.c_str()));
+		file.Write(startupInfo);
+		file.Close();
+
+		dbgExeName << wxT(" --command=\"") << codelite_gdbinit_file << wxT("\"");
+
+	}
+
+	return true;
+}
+
+
+bool DbgGdb::DoInitializeGdb(const std::vector<BreakpointInfo> &bpList, const wxArrayString &cmds)
+{
+	Connect(wxEVT_TIMER, wxTimerEventHandler(DbgGdb::OnTimer), NULL, this);
+	m_proc->Connect(wxEVT_END_PROCESS, wxProcessEventHandler(DbgGdb::OnProcessEndEx), NULL, this);
+	m_canUse = true;
+	m_timer->Start(10);
+	wxWakeUpIdle();
+
+	//place breakpoint at first line
+#ifdef __WXMSW__
+	ExecuteCmd(wxT("set  new-console on"));
+#endif
+	ExecuteCmd(wxT("set unwindonsignal on"));
+
+	if (m_info.enablePendingBreakpoints) {
+		ExecuteCmd(wxT("set breakpoint pending on"));
+	}
+
+	if (m_info.catchThrow) {
+		ExecuteCmd(wxT("catch throw"));
+	}
+
+#ifdef __WXMSW__
+	if (m_info.debugAsserts) {
+		ExecuteCmd(wxT("break assert"));
+	}
+#endif
+
+	ExecuteCmd(wxT("set width 0"));
+	ExecuteCmd(wxT("set height 0"));
+	ExecuteCmd(wxT("set print elements 0")); // Allow large strings
+	ExecuteCmd(wxT("set print pretty on"));  // pretty printing
+
+	// set the project startup commands
+	for (size_t i=0; i<cmds.GetCount(); i++) {
+		ExecuteCmd(cmds.Item(i));
+	}
+
+	// keep the list of breakpoints
+	m_bpList = bpList;
+	SetBreakpoints();
+
+	if (m_info.breakAtWinMain) {
+		//try also to set breakpoint at WinMain
+		WriteCommand(wxT("-break-insert main"), NULL);
+	}
+	
+	return true; // to stop the compiler complaining
 }

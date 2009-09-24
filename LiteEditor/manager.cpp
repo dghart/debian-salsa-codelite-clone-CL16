@@ -23,6 +23,7 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 #include "precompiled_header.h"
+#include "debuggerasciiviewer.h"
 
 #include <vector>
 #include <algorithm>
@@ -70,6 +71,8 @@
 
 #include "manager.h"
 
+const wxEventType wxEVT_CMD_RESTART_CODELITE = wxNewEventType();
+
 //---------------------------------------------------------------
 // Menu accelerators helper methods
 //---------------------------------------------------------------
@@ -107,6 +110,8 @@ Manager::Manager ( void )
 		, m_tipWinPos ( wxNOT_FOUND )
 		, m_frameLineno ( wxNOT_FOUND )
 {
+	m_codeliteLauncher = wxFileName(wxT("codelite_launcher"));
+	Connect(wxEVT_CMD_RESTART_CODELITE, wxCommandEventHandler(Manager::OnRestart), NULL, this);
 }
 
 Manager::~Manager ( void )
@@ -228,6 +233,9 @@ void Manager::CloseWorkspace()
 	Frame::Get()->GetMainBook()->SaveSession(session);
 	GetBreakpointsMgr()->SaveSession(session);
 	SessionManager::Get().Save ( WorkspaceST::Get()->GetWorkspaceFileName().GetFullPath(), session );
+
+	// Delete any breakpoints belong to the current workspace
+	GetBreakpointsMgr()->DelAllBreakpoints();
 
 	// since we closed the workspace, we also need to set the 'LastActiveWorkspaceName' to be
 	// default
@@ -530,7 +538,7 @@ wxFileName Manager::FindFile ( const wxArrayString& files, const wxFileName &fn 
 
 	for ( size_t i=0; i< files.GetCount(); i++ ) {
 		wxFileName tmpFileName ( files.Item ( i ) );
-		if ( tmpFileName.GetFullPath() == fn.GetFullPath() ) {
+		if ( tmpFileName.GetFullPath().CmpNoCase(fn.GetFullPath()) == 0 ) {
 			wxFileName tt ( tmpFileName );
 			if ( tt.MakeAbsolute() ) {
 				return tt;
@@ -895,7 +903,8 @@ wxString Manager::GetProjectNameByFile ( const wxString &fullPathFileName )
 		proj->GetFiles ( files, true );
 
 		for ( size_t xx=0; xx<files.size(); xx++ ) {
-			if ( files.at ( xx ).GetFullPath() == fullPathFileName ) {
+			wxString f (files.at ( xx ).GetFullPath());
+			if ( f.CmpNoCase(fullPathFileName) == 0 ) {
 				return proj->GetName();
 			}
 		}
@@ -1096,6 +1105,7 @@ void Manager::ShowDebuggerPane ( bool show )
 	dbgPanes.Add ( DebuggerPane::BREAKPOINTS );
 	dbgPanes.Add ( DebuggerPane::THREADS );
 	dbgPanes.Add ( DebuggerPane::MEMORY );
+	dbgPanes.Add ( DebuggerPane::ASCII_VIEWER );
 
 	if ( show ) {
 
@@ -1603,6 +1613,15 @@ void Manager::UpdateDebuggerPane()
 			pane->GetThreadsView()->PopulateList ( threads );
 
 		}
+
+		if ( ( IsPaneVisible ( wxT ( "Debugger" ) ) && pane->GetNotebook()->GetCurrentPage() == ( wxWindow* ) pane->GetAsciiViewer() ) || IsPaneVisible ( DebuggerPane::ASCII_VIEWER ) ) {
+
+			// re-evaluate the expression
+			pane->GetAsciiViewer()->SetDebugger( dbgr );
+			pane->GetAsciiViewer()->UpdateView();
+
+		}
+
 		if ( ( IsPaneVisible ( wxT ( "Debugger" ) ) && pane->GetNotebook()->GetCurrentPage() == ( wxWindow* ) pane->GetMemoryView() ) || IsPaneVisible ( DebuggerPane::MEMORY ) ) {
 
 			// Update the memory view tab
@@ -1644,6 +1663,7 @@ void Manager::DbgStart ( long pid )
 	BuildConfigPtr bldConf;
 	ProjectPtr proj;
 	long PID ( -1 );
+	DebuggerStartupInfo startup_info;
 
 #if defined(__WXGTK__)
 	wxString where;
@@ -1669,6 +1689,8 @@ void Manager::DbgStart ( long pid )
 
 			}
 			dlg->Destroy();
+
+			startup_info.pid = PID;
 		} else {
 			dlg->Destroy();
 			return;
@@ -1686,10 +1708,12 @@ void Manager::DbgStart ( long pid )
 				DebuggerMgr::Get().SetActiveDebugger ( debuggerName );
 			}
 		}
+
+		startup_info.project = GetActiveProjectName();
 	}
 
 	//make sure we have an active debugger
-	IDebugger *dbgr =  DebuggerMgr::Get().GetActiveDebugger();
+	IDebugger *dbgr = DebuggerMgr::Get().GetActiveDebugger();
 	if ( !dbgr ) {
 		//No debugger available,
 		wxString message;
@@ -1698,6 +1722,7 @@ void Manager::DbgStart ( long pid )
 		wxMessageBox ( message, wxT ( "CodeLite" ), wxOK|wxICON_WARNING );
 		return;
 	}
+	startup_info.debugger = dbgr;
 
 	if ( dbgr->IsRunning() ) {
 		//debugger is already running, so issue a 'cont' command
@@ -1771,6 +1796,11 @@ void Manager::DbgStart ( long pid )
 	// delete all the information
 	GetBreakpointsMgr()->GetBreakpoints ( bps );
 
+	// notify plugins that we're about to start debugging
+	if (SendCmdEvent(wxEVT_DEBUG_STARTING, &startup_info))
+		// plugin stopped debugging
+		return;
+
 	// read
 	wxArrayString dbg_cmds;
 	if ( pid == wxNOT_FOUND ) {
@@ -1791,6 +1821,9 @@ void Manager::DbgStart ( long pid )
 			return;
 		}
 	}
+
+	// notify plugins that the debugger just started
+	SendCmdEvent(wxEVT_DEBUG_STARTED, &startup_info);
 
 	// Now the debugger has been fed the breakpoints, re-Initialise the breakpt view,
 	// so that it uses debugger_ids instead of internal_ids
@@ -1867,6 +1900,10 @@ void Manager::DbgStop()
 	GetBreakpointsMgr()->ClearBP_debugger_ids();
 	Frame::Get()->GetDebuggerPane()->GetBreakpointView()->Initialize();
 
+	// Clear the ascii viewer
+	Frame::Get()->GetDebuggerPane()->GetAsciiViewer()->SetExpression(wxT(""));
+	Frame::Get()->GetDebuggerPane()->GetAsciiViewer()->SetDbgCommand(wxT(""));
+
 	// update toolbar state
 	UpdateStopped();
 
@@ -1885,9 +1922,15 @@ void Manager::DbgStop()
 		return;
 	}
 
+	// notify plugins that the debugger is about to be stopped
+	SendCmdEvent(wxEVT_DEBUG_ENDING);
+
 	dbgr->Stop();
 	DebuggerMgr::Get().SetActiveDebugger ( wxEmptyString );
 	DebugMessage ( _ ( "Debug session ended\n" ) );
+
+	// notify plugins that the debugger stopped
+	SendCmdEvent(wxEVT_DEBUG_ENDED);
 }
 
 void Manager::DbgMarkDebuggerLine ( const wxString &fileName, int lineno )
@@ -1902,7 +1945,7 @@ void Manager::DbgMarkDebuggerLine ( const wxString &fileName, int lineno )
 	//try to open the file
 	wxFileName fn ( fileName );
 	LEditor *editor = Frame::Get()->GetMainBook()->GetActiveEditor();
-	if ( editor && editor->GetFileName().GetFullPath() == fn.GetFullPath() ) {
+	if ( editor && editor->GetFileName().GetFullPath().CmpNoCase(fn.GetFullPath()) == 0 ) {
 		editor->HighlightLine ( lineno );
 		editor->GotoLine ( lineno-1 );
 		editor->EnsureVisible ( lineno-1 );
@@ -2052,14 +2095,32 @@ void Manager::UpdateGotControl ( DebuggerReasons reason )
 
 	switch ( reason ) {
 	case DBG_RECV_SIGNAL_EXC_BAD_ACCESS:
+	case DBG_RECV_SIGNAL_SIGABRT:
 	case DBG_RECV_SIGNAL_SIGSEGV: { //program received signal sigsegv
 		wxString signame = wxT ( "SIGSEGV" );
 		if ( reason == DBG_RECV_SIGNAL_EXC_BAD_ACCESS ) {
 			signame = wxT ( "EXC_BAD_ACCESS" );
+		} else if ( reason == DBG_RECV_SIGNAL_SIGABRT ) {
+			signame = wxT ( "SIGABRT" );
 		}
+
 		DebugMessage ( _("Program Received signal ") + signame + _("\n") );
 		wxMessageDialog dlg( Frame::Get(), _("Program Received signal ") + signame + wxT("\n") +
-		               _("Stack trace is available in the 'Stack' tab\n"),
+		               _("Stack trace is available in the 'Call Stack' tab\n"),
+		               wxT("CodeLite"), wxICON_ERROR|wxOK );
+		dlg.ShowModal();
+
+		//Print the stack trace
+		wxAuiPaneInfo &info = Frame::Get()->GetDockingManager().GetPane ( wxT("Debugger") );
+		if ( info.IsShown() ) {
+			Frame::Get()->GetDebuggerPane()->SelectTab ( DebuggerPane::FRAMES );
+			UpdateDebuggerPane();
+		}
+	}
+	break;
+	case DBG_BP_ASSERTION_HIT: {
+
+		wxMessageDialog dlg( Frame::Get(), _("Assertion failed!\nStack trace is available in the 'Call Stack' tab\n"),
 		               wxT("CodeLite"), wxICON_ERROR|wxOK );
 		dlg.ShowModal();
 
@@ -2079,6 +2140,10 @@ void Manager::UpdateGotControl ( DebuggerReasons reason )
 		IDebugger *dbgr = DebuggerMgr::Get().GetActiveDebugger();
 		if ( dbgr && dbgr->IsRunning() ) {
 			dbgr->QueryFileLine();
+			// If a bp hit, do -break-list so that we can update breakpoint info e.g. ignore-count
+			if ((reason==DBG_BP_HIT) || (reason==DBG_UNKNOWN)) {
+				dbgr->BreakList();
+			}
 		}
 	}
 	break;
@@ -2105,6 +2170,16 @@ void Manager::UpdateLostControl()
 	// Reset the debugger call-stack pane
   Frame::Get()->GetDebuggerPane()->GetFrameListView()->Clear();
   Frame::Get()->GetDebuggerPane()->GetFrameListView()->SetCurrentLevel(0);
+}
+
+void Manager::UpdateBpHit(int id)
+{
+	GetBreakpointsMgr()->BreakpointHit(id);
+}
+
+void Manager::ReconcileBreakpoints(std::vector<BreakpointInfo>& li)
+{
+	GetBreakpointsMgr()->ReconcileBreakpoints(li);
 }
 
 void Manager::UpdateBpAdded(const int internal_id, const int debugger_id)
@@ -2491,4 +2566,42 @@ void Manager::DbgRestoreWatches()
 			Frame::Get()->GetDebuggerPane()->GetWatchesTable()->AddPendingEvent( e );
 		}
 	}
+}
+
+void Manager::DoRestartCodeLite()
+{
+	wxString command;
+#ifdef __WXMSW__
+	// the codelite_launcher application is located where the codelite executable is
+	// to properly shoutdown codelite. We first need to close the codelite_indexer process
+	command << wxT("\"") << m_codeliteLauncher.GetFullPath() << wxT("\" ")
+			<< wxT(" --name=\"")
+			<< wxStandardPaths::Get().GetExecutablePath()
+			<< wxT("\"");
+	
+	wxCommandEvent event(wxEVT_COMMAND_MENU_SELECTED, XRCID("exit_app"));
+	Frame::Get()->ProcessEvent(event);
+	
+	wxExecute(command, wxEXEC_ASYNC|wxEXEC_NOHIDE);
+	
+#elif defined (__WXGTK__)
+	// The Shell is our friend
+	command << wxStandardPaths::Get().GetExecutablePath();
+	
+	wxCommandEvent event(wxEVT_COMMAND_MENU_SELECTED, XRCID("exit_app"));
+	Frame::Get()->AddPendingEvent(event);
+	
+	wxExecute(command, wxEXEC_ASYNC|wxEXEC_NOHIDE);
+#endif
+}
+
+void Manager::SetCodeLiteLauncherPath(const wxString& path)
+{
+	m_codeliteLauncher = wxFileName(path, wxT("codelite_launcher"));
+}
+
+void Manager::OnRestart(wxCommandEvent& event)
+{
+	wxUnusedVar(event);
+	DoRestartCodeLite();
 }

@@ -265,24 +265,29 @@ BEGIN_EVENT_TABLE(Frame, wxFrame)
 	EVT_MENU(XRCID("next_bookmark"),            Frame::DispatchCommandEvent)
 	EVT_MENU(XRCID("previous_bookmark"),        Frame::DispatchCommandEvent)
 	EVT_MENU(XRCID("removeall_bookmarks"),      Frame::DispatchCommandEvent)
+	EVT_MENU(XRCID("next_fif_match"),           Frame::OnNextFiFMatch      )
+	EVT_MENU(XRCID("previous_fif_match"),       Frame::OnPreviousFiFMatch  )
 
-	EVT_UPDATE_UI(wxID_FIND,                    Frame::OnFileExistUpdateUI)
-	EVT_UPDATE_UI(wxID_REPLACE,                 Frame::OnFileExistUpdateUI)
-	EVT_UPDATE_UI(XRCID("find_next"),           Frame::OnFileExistUpdateUI)
-	EVT_UPDATE_UI(XRCID("find_previous"),       Frame::OnFileExistUpdateUI)
-	EVT_UPDATE_UI(XRCID("find_next_at_caret"),  Frame::OnFileExistUpdateUI)
-	EVT_UPDATE_UI(XRCID("find_previous_at_caret"),  Frame::OnFileExistUpdateUI)
-	EVT_UPDATE_UI(XRCID("incremental_search"),  Frame::OnFileExistUpdateUI)
-	EVT_UPDATE_UI(XRCID("find_resource"),       Frame::OnWorkspaceOpen)
-	EVT_UPDATE_UI(XRCID("find_type"),           Frame::OnWorkspaceOpen)
-	EVT_UPDATE_UI(XRCID("find_symbol"),         Frame::OnCompleteWordUpdateUI)
-	EVT_UPDATE_UI(XRCID("goto_definition"),     Frame::DispatchUpdateUIEvent)
-	EVT_UPDATE_UI(XRCID("goto_previous_definition"),    Frame::DispatchUpdateUIEvent)
-	EVT_UPDATE_UI(XRCID("goto_linenumber"),     Frame::OnFileExistUpdateUI)
-	EVT_UPDATE_UI(XRCID("toggle_bookmark"),     Frame::OnFileExistUpdateUI)
-	EVT_UPDATE_UI(XRCID("next_bookmark"),       Frame::OnFileExistUpdateUI)
-	EVT_UPDATE_UI(XRCID("previous_bookmark"),   Frame::OnFileExistUpdateUI)
-	EVT_UPDATE_UI(XRCID("removeall_bookmarks"), Frame::OnFileExistUpdateUI)
+	EVT_UPDATE_UI(wxID_FIND,                        Frame::OnFileExistUpdateUI   )
+	EVT_UPDATE_UI(wxID_REPLACE,                     Frame::OnFileExistUpdateUI   )
+	EVT_UPDATE_UI(XRCID("find_next"),               Frame::OnFileExistUpdateUI   )
+	EVT_UPDATE_UI(XRCID("find_previous"),           Frame::OnFileExistUpdateUI   )
+	EVT_UPDATE_UI(XRCID("find_next_at_caret"),      Frame::OnFileExistUpdateUI   )
+	EVT_UPDATE_UI(XRCID("find_previous_at_caret"),  Frame::OnFileExistUpdateUI   )
+	EVT_UPDATE_UI(XRCID("incremental_search"),      Frame::OnFileExistUpdateUI   )
+	EVT_UPDATE_UI(XRCID("find_resource"),           Frame::OnWorkspaceOpen       )
+	EVT_UPDATE_UI(XRCID("find_type"),               Frame::OnWorkspaceOpen       )
+	EVT_UPDATE_UI(XRCID("find_symbol"),             Frame::OnCompleteWordUpdateUI)
+	EVT_UPDATE_UI(XRCID("goto_definition"),         Frame::DispatchUpdateUIEvent )
+	EVT_UPDATE_UI(XRCID("goto_previous_definition"),Frame::DispatchUpdateUIEvent )
+	EVT_UPDATE_UI(XRCID("goto_linenumber"),         Frame::OnFileExistUpdateUI   )
+	EVT_UPDATE_UI(XRCID("toggle_bookmark"),         Frame::OnFileExistUpdateUI   )
+	EVT_UPDATE_UI(XRCID("next_bookmark"),           Frame::OnFileExistUpdateUI   )
+	EVT_UPDATE_UI(XRCID("previous_bookmark"),       Frame::OnFileExistUpdateUI   )
+	EVT_UPDATE_UI(XRCID("removeall_bookmarks"),     Frame::OnFileExistUpdateUI   )
+	EVT_UPDATE_UI(XRCID("next_fif_match"),          Frame::OnNextFiFMatchUI      )
+	EVT_UPDATE_UI(XRCID("previous_fif_match"),      Frame::OnPreviousFiFMatchUI  )
+
 
 	//-------------------------------------------------------
 	// Project menu
@@ -349,6 +354,8 @@ BEGIN_EVENT_TABLE(Frame, wxFrame)
 	EVT_MENU(XRCID("edit_breakpoint"),          Frame::DispatchCommandEvent)
 	EVT_MENU(XRCID("show_breakpoint_dlg"),      Frame::DispatchCommandEvent)
 	EVT_MENU(XRCID("insert_watchpoint"),        Frame::DispatchCommandEvent)
+	EVT_MENU(XRCID("toggle_breakpoint_enabled_status"),  Frame::DispatchCommandEvent)
+	EVT_MENU(XRCID("ignore_breakpoint"),        Frame::DispatchCommandEvent)
 	EVT_MENU(XRCID("delete_breakpoint"),        Frame::DispatchCommandEvent)
 	EVT_MENU(XRCID("quick_debug"),              Frame::OnQuickDebug)
 
@@ -621,7 +628,7 @@ void Frame::CreateGUIControls(void)
 	m_mgr.SetManagedWindow(this);
 	m_mgr.SetArtProvider(new CLAuiDockArt());
 
-	m_mgr.SetFlags(m_mgr.GetFlags() | wxAUI_MGR_TRANSPARENT_DRAG);
+//	m_mgr.SetFlags(m_mgr.GetFlags() | wxAUI_MGR_TRANSPARENT_DRAG);
 
 #if defined (__WXGTK__) || defined (__WXMAC__)
 	m_mgr.SetFlags(m_mgr.GetFlags() | wxAUI_MGR_ALLOW_ACTIVE_PANE);
@@ -638,7 +645,8 @@ void Frame::CreateGUIControls(void)
 	DebuggerConfigTool::Get()->Load(wxT("config/debuggers.xml"));
 	WorkspaceST::Get()->SetStartupDir(ManagerST::Get()->GetStarupDirectory());
 
-	m_mgr.SetFlags(m_mgr.GetFlags() | wxAUI_MGR_TRANSPARENT_DRAG);
+	// FIXME:: Dragging toolar with transparent ON seems to crash (WX > 2.8.8)
+//	m_mgr.SetFlags(m_mgr.GetFlags() | wxAUI_MGR_TRANSPARENT_DRAG);
 
 // On wx2.8.7, AUI dragging is broken but this happens only in debug build & on GTK
 #if defined (__WXGTK__) && defined (__WXDEBUG__)
@@ -709,6 +717,7 @@ void Frame::CreateGUIControls(void)
 	// set the path to codelite_indexer
 	wxFileName exePath( wxStandardPaths::Get().GetExecutablePath() );
 	tagsManager->SetCodeLiteIndexerPath(exePath.GetPath());
+	ManagerST::Get()->SetCodeLiteLauncherPath(exePath.GetPath());
 #endif
 	tagsManager->StartCtagsProcess();
 
@@ -879,6 +888,7 @@ void Frame::CreateToolbars24()
 	tb->AddSeparator();
 	tb->AddTool(XRCID("highlight_word"), wxT("Highlight Word"), wxXmlResource::Get()->LoadBitmap(wxT("highlight24")), wxT("Highlight Word"), wxITEM_CHECK);
 	tb->ToggleTool(XRCID("highlight_word"), m_highlightWord);
+	tb->AddSeparator();
 
 	if (PluginManager::Get()->AllowToolbar()) {
 		tb->Realize();
@@ -993,7 +1003,7 @@ void Frame::CreateToolbars16()
 	tb->AddSeparator();
 	tb->AddTool(XRCID("highlight_word"), wxT("Highlight Word"), wxXmlResource::Get()->LoadBitmap(wxT("highlight16")), wxT("Highlight Word"), wxITEM_CHECK);
 	tb->ToggleTool(XRCID("highlight_word"), m_highlightWord);
-
+	tb->AddSeparator();
 
 	if (PluginManager::Get()->AllowToolbar()) {
 		tb->Realize();
@@ -1179,53 +1189,7 @@ void Frame::OnClose(wxCloseEvent& event)
 	ManagerST::Get()->DbgStop();
 	SearchThreadST::Get()->StopSearch();
 
-	//save the perspective
-	WriteFileUTF8(ManagerST::Get()->GetStarupDirectory() + wxT("/config/codelite.layout"), m_mgr.SavePerspective());
-	EditorConfigST::Get()->SaveLexers();
-
-	//save general information
-	if (IsMaximized()) {
-		m_frameGeneralInfo.SetFrameSize(wxSize(800, 600));
-	} else {
-		m_frameGeneralInfo.SetFrameSize(this->GetSize());
-	}
-	m_frameGeneralInfo.SetFramePosition(this->GetScreenPosition());
-
-	SetFrameFlag(IsMaximized(), CL_MAXIMIZE_FRAME);
-	EditorConfigST::Get()->WriteObject(wxT("GeneralInfo"), &m_frameGeneralInfo);
-	EditorConfigST::Get()->SaveLongValue(wxT("ShowNavBar"), m_mainBook->IsNavBarShown() ? 1 : 0);
-
-	//save the 'find and replace' information
-	GetOutputPane()->GetFindResultsTab()->SaveFindInFilesData();
-	if (LEditor::GetFindReplaceDialog()) {
-		EditorConfigST::Get()->WriteObject(wxT("FindAndReplaceData"), &(LEditor::GetFindReplaceDialog()->GetData()));
-	}
-
-	//save the current session before closing
-	wxString sessionName = ManagerST::Get()->IsWorkspaceOpen() ? WorkspaceST::Get()->GetWorkspaceFileName().GetFullPath()
-	                       : wxString(wxT("Default"));
-	SessionEntry session;
-	session.SetWorkspaceName(sessionName);
-	GetMainBook()->SaveSession(session);
-	ManagerST::Get()->GetBreakpointsMgr()->SaveSession(session);
-	SessionManager::Get().Save(sessionName, session);
-	SessionManager::Get().SetLastWorkspaceName(sessionName);
-
-	// make sure there are no 'unsaved documents'
-	GetMainBook()->CloseAll(false);
-
-	// keep list of all detached panes
-	wxArrayString panes = m_DPmenuMgr->GetDeatchedPanesList();
-	DetachedPanesInfo dpi(panes);
-	EditorConfigST::Get()->WriteObject(wxT("DetachedPanesList"), &dpi);
-
-	// save the notebooks styles
-	EditorConfigST::Get()->SaveLongValue(wxT("MainBook"),      GetMainBook()->GetBookStyle());
-	EditorConfigST::Get()->SaveLongValue(wxT("DebuggerBook"),  GetDebuggerPane()->GetNotebook()->GetBookStyle());
-	EditorConfigST::Get()->SaveLongValue(wxT("OutputPane"),    GetOutputPane()->GetNotebook()->GetBookStyle());
-	EditorConfigST::Get()->SaveLongValue(wxT("WorkspaceView"), GetWorkspacePane()->GetNotebook()->GetBookStyle());
-	EditorConfigST::Get()->SaveLongValue(wxT("FindResults"),   GetOutputPane()->GetFindResultsTab()->GetBookStyle());
-
+	SaveLayoutAndSession();
 	event.Skip();
 }
 
@@ -1580,9 +1544,21 @@ void Frame::ViewPaneUI(const wxString &paneName, wxUpdateUIEvent &event)
 
 void Frame::OnViewOptions(wxCommandEvent & WXUNUSED( event))
 {
-	OptionsDlg2 *dlg = new OptionsDlg2(this);
-	dlg->ShowModal();
-	dlg->Destroy();
+	OptionsDlg2 dlg(this);
+	dlg.ShowModal();
+	
+	if ( dlg.restartRquired ) {
+#ifdef __WXMAC__
+		wxMessageBox(_("Some of the changes made requires restart of CodeLite"), wxT("CodeLite"), wxICON_INFORMATION|wxOK);
+#else
+		// On Winodws & GTK we offer auto-restart
+		int answer = wxMessageBox(_("Some of the changes made requires restart of CodeLite\nWould you like to restart now?"), wxT("CodeLite"), wxICON_INFORMATION|wxYES_NO|wxCANCEL);
+		if ( answer == wxYES ) {
+			wxCommandEvent e(wxEVT_CMD_RESTART_CODELITE);
+			ManagerST::Get()->AddPendingEvent(e);
+		}
+#endif
+	}
 }
 
 void Frame::OnTogglePanes(wxCommandEvent &event)
@@ -2709,11 +2685,19 @@ void Frame::OnWorkspaceMenuUI(wxUpdateUIEvent &e)
 
 void Frame::OnManagePlugins(wxCommandEvent &e)
 {
-	PluginMgrDlg *dlg = new PluginMgrDlg(this);
-	if (dlg->ShowModal() == wxID_OK) {
+	PluginMgrDlg dlg(this);
+	if (dlg.ShowModal() == wxID_OK) {
+#ifdef __WXMAC__
 		wxMessageBox(_("Changes will take place after restart of CodeLite"), wxT("CodeLite"), wxICON_INFORMATION|wxOK);
+#else
+		// On Winodws & GTK we offer auto-restart
+		int answer = wxMessageBox(_("Changes made requires restart of CodeLite\nWould you like to restart now?"), wxT("CodeLite"), wxICON_INFORMATION|wxYES_NO|wxCANCEL);
+		if ( answer == wxYES ) {
+			wxCommandEvent e(wxEVT_CMD_RESTART_CODELITE);
+			ManagerST::Get()->AddPendingEvent(e);
+		}
+#endif
 	}
-	dlg->Destroy();
 }
 
 void Frame::OnCppContextMenu(wxCommandEvent &e)
@@ -3133,7 +3117,19 @@ void Frame::OnQuickDebug(wxCommandEvent& e)
 			// get an updated list of breakpoints
 			ManagerST::Get()->GetBreakpointsMgr()->GetBreakpoints(bpList);
 
+			DebuggerStartupInfo startup_info;
+			startup_info.debugger = dbgr;
+
+			// notify plugins that we're about to start debugging
+			if (SendCmdEvent(wxEVT_DEBUG_STARTING, &startup_info))
+				// plugin stopped debugging
+				return;
+
 			dbgr->Start(dbgname, exepath, wd, bpList, cmds);
+
+			// notify plugins that the debugger just started
+			SendCmdEvent(wxEVT_DEBUG_STARTED, &startup_info);
+
 			dbgr->Run(dlg->GetArguments(), wxEmptyString);
 
 			// Now the debugger has been fed the breakpoints, re-Initialise the breakpt view,
@@ -3300,4 +3296,76 @@ void Frame::ReloadExternallyModifiedProjectFiles()
 		ManagerST::Get()->ReloadWorkspace();
 		return;
 	}
+}
+
+void Frame::SaveLayoutAndSession()
+{
+	//save the perspective
+	WriteFileUTF8(ManagerST::Get()->GetStarupDirectory() + wxT("/config/codelite.layout"), m_mgr.SavePerspective());
+	EditorConfigST::Get()->SaveLexers();
+
+	//save general information
+	if (IsMaximized()) {
+		m_frameGeneralInfo.SetFrameSize(wxSize(800, 600));
+	} else {
+		m_frameGeneralInfo.SetFrameSize(this->GetSize());
+	}
+	m_frameGeneralInfo.SetFramePosition(this->GetScreenPosition());
+
+	SetFrameFlag(IsMaximized(), CL_MAXIMIZE_FRAME);
+	EditorConfigST::Get()->WriteObject(wxT("GeneralInfo"), &m_frameGeneralInfo);
+	EditorConfigST::Get()->SaveLongValue(wxT("ShowNavBar"), m_mainBook->IsNavBarShown() ? 1 : 0);
+
+	//save the 'find and replace' information
+	GetOutputPane()->GetFindResultsTab()->SaveFindInFilesData();
+	if (LEditor::GetFindReplaceDialog()) {
+		EditorConfigST::Get()->WriteObject(wxT("FindAndReplaceData"), &(LEditor::GetFindReplaceDialog()->GetData()));
+	}
+
+	//save the current session before closing
+	wxString sessionName = ManagerST::Get()->IsWorkspaceOpen() ? WorkspaceST::Get()->GetWorkspaceFileName().GetFullPath()
+	                       : wxString(wxT("Default"));
+	SessionEntry session;
+	session.SetWorkspaceName(sessionName);
+	GetMainBook()->SaveSession(session);
+	ManagerST::Get()->GetBreakpointsMgr()->SaveSession(session);
+	SessionManager::Get().Save(sessionName, session);
+	SessionManager::Get().SetLastWorkspaceName(sessionName);
+
+	// make sure there are no 'unsaved documents'
+	GetMainBook()->CloseAll(false);
+
+	// keep list of all detached panes
+	wxArrayString panes = m_DPmenuMgr->GetDeatchedPanesList();
+	DetachedPanesInfo dpi(panes);
+	EditorConfigST::Get()->WriteObject(wxT("DetachedPanesList"), &dpi);
+
+	// save the notebooks styles
+	EditorConfigST::Get()->SaveLongValue(wxT("MainBook"),      GetMainBook()->GetBookStyle());
+	EditorConfigST::Get()->SaveLongValue(wxT("DebuggerBook"),  GetDebuggerPane()->GetNotebook()->GetBookStyle());
+	EditorConfigST::Get()->SaveLongValue(wxT("OutputPane"),    GetOutputPane()->GetNotebook()->GetBookStyle());
+	EditorConfigST::Get()->SaveLongValue(wxT("WorkspaceView"), GetWorkspacePane()->GetNotebook()->GetBookStyle());
+	EditorConfigST::Get()->SaveLongValue(wxT("FindResults"),   GetOutputPane()->GetFindResultsTab()->GetBookStyle());
+}
+
+void Frame::OnNextFiFMatch(wxCommandEvent& e)
+{
+	wxUnusedVar(e);
+	GetOutputPane()->GetFindResultsTab()->NextMatch();
+}
+
+void Frame::OnPreviousFiFMatch(wxCommandEvent& e)
+{
+	wxUnusedVar(e);
+	GetOutputPane()->GetFindResultsTab()->PrevMatch();
+}
+
+void Frame::OnNextFiFMatchUI(wxUpdateUIEvent& e)
+{
+	e.Enable(GetOutputPane()->GetFindResultsTab()->GetPageCount() > 0);
+}
+
+void Frame::OnPreviousFiFMatchUI(wxUpdateUIEvent& e)
+{
+	e.Enable(GetOutputPane()->GetFindResultsTab()->GetPageCount() > 0);
 }

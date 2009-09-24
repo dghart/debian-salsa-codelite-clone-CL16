@@ -52,6 +52,7 @@
 #include "dirsaver.h"
 #include <vector>
 #include "custom_tabcontainer.h"
+#include "overlaytool.h"
 
 int ProjectConflictIconId 	= wxNOT_FOUND;
 int ProjectModifiedIconId 	= wxNOT_FOUND;
@@ -174,6 +175,7 @@ SubversionPlugin::SubversionPlugin(IManager *manager)
 		topWin->Connect(XRCID("svn_svr_refresh_wsp"), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(SubversionPlugin::OnShowServerReportWsp), NULL, (wxEvtHandler*)this);
 		topWin->Connect(XRCID("svn_update_wsp"), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(SubversionPlugin::OnUpdateWsp), NULL, (wxEvtHandler*)this);
 		topWin->Connect(XRCID("svn_commit_wsp"), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(SubversionPlugin::OnCommitWsp), NULL, (wxEvtHandler*)this);
+		topWin->Connect(XRCID("svn_copy"), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(SubversionPlugin::OnCopy), NULL, (wxEvtHandler*)this);
 
 		topWin->Connect(XRCID("svn_refresh_prj"), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(SubversionPlugin::OnShowReportPrj), NULL, (wxEvtHandler*)this);
 		topWin->Connect(XRCID("svn_svr_refresh_prj"), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(SubversionPlugin::OnShowServerReportPrj), NULL, (wxEvtHandler*)this);
@@ -192,32 +194,41 @@ SubversionPlugin::SubversionPlugin(IManager *manager)
 		//IMPORTANT!
 		//note that the order the images are added is important !!
 		//do not change it
-		ProjectOkIconId			= tree->GetImageList()->Add(wxXmlResource::Get()->LoadBitmap(wxT("project_ok")));
-		ProjectModifiedIconId 	= tree->GetImageList()->Add(wxXmlResource::Get()->LoadBitmap(wxT("project_modified")));
-		ProjectConflictIconId 	= tree->GetImageList()->Add(wxXmlResource::Get()->LoadBitmap(wxT("project_conflict")));
 
-		WorkspaceOkIconId		= tree->GetImageList()->Add(wxXmlResource::Get()->LoadBitmap(wxT("workspace_ok")));
-		WorkspaceModifiedIconId = tree->GetImageList()->Add(wxXmlResource::Get()->LoadBitmap(wxT("workspace_modified")));
-		WorkspaceConflictIconId = tree->GetImageList()->Add(wxXmlResource::Get()->LoadBitmap(wxT("workspace_conflict")));
 
-		FileOkIconId			= tree->GetImageList()->Add(wxXmlResource::Get()->LoadBitmap(wxT("page_ok")));
-		FileModifiedIconId 		= tree->GetImageList()->Add(wxXmlResource::Get()->LoadBitmap(wxT("page_modified")));
-		FileConflictIconId 		= tree->GetImageList()->Add(wxXmlResource::Get()->LoadBitmap(wxT("page_conflict")));
+		// User the OverlayTool to add overlay icons on top of the base images
+		wxBitmap base_icon;
+		base_icon = wxXmlResource::Get()->LoadBitmap(wxT("project"));
 
-		FolderOkIconId			= tree->GetImageList()->Add(wxXmlResource::Get()->LoadBitmap(wxT("folder_ok")));
-		FolderModifiedIconId 		= tree->GetImageList()->Add(wxXmlResource::Get()->LoadBitmap(wxT("folder_modified")));
-		FolderConflictIconId 		= tree->GetImageList()->Add(wxXmlResource::Get()->LoadBitmap(wxT("folder_conflict")));
+		ProjectOkIconId         = tree->GetImageList()->Add( OverlayTool::Get().AddOKIcon( base_icon )       );
+		ProjectModifiedIconId   = tree->GetImageList()->Add( OverlayTool::Get().AddModifiedIcon( base_icon ) );
+		ProjectConflictIconId   = tree->GetImageList()->Add( OverlayTool::Get().AddConflictIcon( base_icon ) );
+
+		base_icon = wxXmlResource::Get()->LoadBitmap(wxT("workspace"));
+
+		WorkspaceOkIconId       = tree->GetImageList()->Add( OverlayTool::Get().AddOKIcon( base_icon )       );
+		WorkspaceModifiedIconId = tree->GetImageList()->Add( OverlayTool::Get().AddModifiedIcon( base_icon ) );
+		WorkspaceConflictIconId = tree->GetImageList()->Add( OverlayTool::Get().AddConflictIcon( base_icon ) );
+
+		base_icon = wxXmlResource::Get()->LoadBitmap(wxT("page_white_text"));
+
+		FileOkIconId            = tree->GetImageList()->Add( OverlayTool::Get().AddOKIcon( base_icon )       );
+		FileModifiedIconId      = tree->GetImageList()->Add( OverlayTool::Get().AddModifiedIcon( base_icon ) );
+		FileConflictIconId      = tree->GetImageList()->Add( OverlayTool::Get().AddConflictIcon( base_icon ) );
+
+		base_icon = wxXmlResource::Get()->LoadBitmap(wxT("folder"));
+
+		FolderOkIconId          = tree->GetImageList()->Add( OverlayTool::Get().AddOKIcon( base_icon )       );
+		FolderModifiedIconId    = tree->GetImageList()->Add( OverlayTool::Get().AddModifiedIcon( base_icon ) );
+		FolderConflictIconId    = tree->GetImageList()->Add( OverlayTool::Get().AddConflictIcon( base_icon ) );
 
 		// wxFormBuilder support
-		wxBitmap wxfb_ok, wxfb_modified, wxfb_conflict;
+		base_icon = wxXmlResource::Get()->LoadBitmap(wxT("formbuilder"));
 
-		wxfb_ok       = LoadBitmapFile(wxT("wxfb_ok.png"));
-		wxfb_modified = LoadBitmapFile(wxT("wxfb_modified.png"));
-		wxfb_conflict = LoadBitmapFile(wxT("wxfb_conflict.png"));
+		wxFBOkIconId          = tree->GetImageList()->Add( OverlayTool::Get().AddOKIcon( base_icon )       );
+		wxFBModifiedIconId    = tree->GetImageList()->Add( OverlayTool::Get().AddModifiedIcon( base_icon ) );
+		wxFBConflictIconId    = tree->GetImageList()->Add( OverlayTool::Get().AddConflictIcon( base_icon ) );
 
-		wxFBConflictIconId = tree->GetImageList()->Add(wxfb_conflict);
-		wxFBOkIconId = tree->GetImageList()->Add(wxfb_ok);
-		wxFBModifiedIconId = tree->GetImageList()->Add(wxfb_modified);
 	}
 }
 
@@ -269,6 +280,10 @@ wxMenu *SubversionPlugin::CreatePopMenu()
 	menu->Append(item);
 
 	item = new wxMenuItem(menu, XRCID("svn_add"), wxT("&Add"), wxEmptyString, wxITEM_NORMAL);
+	menu->Append(item);
+
+	menu->AppendSeparator();
+	item = new wxMenuItem(menu, XRCID("svn_copy"), wxT("&Copy"), wxEmptyString, wxITEM_NORMAL);
 	menu->Append(item);
 
 	menu->AppendSeparator();
@@ -438,6 +453,7 @@ void SubversionPlugin::OnRevertFile(wxCommandEvent &e)
 	IEditor *editor = m_mgr->GetActiveEditor();
 	if (editor) {
 		m_svn->RevertFile(editor->GetFileName(), new RevertPostCmdAction(m_mgr));
+		DoRefreshIcons();
 	}
 }
 
@@ -453,6 +469,7 @@ void SubversionPlugin::OnRevert(wxCommandEvent &e)
 	VALIDATE_SVNPATH();
 	wxUnusedVar(e);
 	m_svn->Revert();
+	DoRefreshIcons();
 }
 
 void SubversionPlugin::OnShowSvnStatus_FileExplorer(wxCommandEvent &event)
@@ -642,6 +659,7 @@ void SubversionPlugin::UnPlug()
 	topWin->Disconnect(XRCID("svn_commit_prj"), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(SubversionPlugin::OnCommitPrj), NULL, (wxEvtHandler*)this);
 	topWin->Disconnect(XRCID("editor_resolve_conflicted_file"), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(SubversionPlugin::OnResolveConflictFile), NULL, (wxEvtHandler*)this);
 	topWin->Disconnect(XRCID("svn_resolve_conflicted_file"), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(SubversionPlugin::OnResolveConflict), NULL, (wxEvtHandler*)this);
+	topWin->Disconnect(XRCID("svn_copy"), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(SubversionPlugin::OnCopy), NULL, (wxEvtHandler*)this);
 
 	// before this plugin is un-plugged we must remove the tab we added
 	for (size_t i=0; i<m_mgr->GetOutputPaneNotebook()->GetPageCount(); i++) {
@@ -1281,4 +1299,10 @@ void SubversionPlugin::DoSetSshEnv()
 		wxSetEnv(wxT("SVN_SSH"), env_value.c_str());
 		wxLogMessage(wxString::Format(wxT("Environment variable SVN_SSH is set to %s"), env_value.c_str()));
 	}
+}
+
+void SubversionPlugin::OnCopy(wxCommandEvent& e)
+{
+	wxUnusedVar(e);
+	m_svn->Copy();
 }

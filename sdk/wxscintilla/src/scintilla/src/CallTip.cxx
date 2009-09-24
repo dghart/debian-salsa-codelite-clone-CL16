@@ -159,7 +159,7 @@ void CallTip::DrawChunk(Surface *surface, int &x, const char *s,
 					PRectangle rr = rcClient;
 					rr.top += 1;
 					surface->DrawTextNoClip(rr, font, ytext,
-											s+startSeg, endSeg - startSeg,
+										s+startSeg, endSeg - startSeg,
 					                        highlight ? colourSel.allocated : colourUnSel.allocated,
 											highlight ? hltBgCol.AsLong() : colourBG.allocated);
 				}
@@ -259,9 +259,8 @@ PRectangle CallTip::CallTipStart(int pos, Point pt, const char *defn,
 	clickPlace = 0;
 	if (val)
 		delete []val;
+	val = 0;
 	val = new char[strlen(defn) + 1];
-	if (!val)
-		return PRectangle();
 	strcpy(val, defn);
 	codePage = codePage_;
 	Surface *surfaceMeasure = Surface::Allocate();

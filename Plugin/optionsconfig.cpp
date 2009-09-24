@@ -57,14 +57,9 @@ OptionsConfig::OptionsConfig(wxXmlNode *node)
 		, m_autoAdjustHScrollBarWidth(true)
 		, m_caretWidth(1)
 		, m_caretBlinkPeriod(500)
-#if defined(__WXGTK__)
-		, m_programConsoleCommand(wxT("xterm -title '$(TITLE)' -e '$(CMD)'"))
-#elif defined(__WXMAC__)
-		, m_programConsoleCommand(wxT("osascript -e 'tell application \"Terminal\"' -e 'activate' -e 'do script with command \"$(CMD)\"' -e 'end tell'"))
-#else
-		, m_programConsoleCommand(wxT(""))
-#endif
+		, m_programConsoleCommand(TERMINAL_CMD)
 		, m_eolMode(wxT("Default"))
+		, m_hideChangeMarkerMargin(false)
 {
 	//set the default font name to be UTF8
 	SetFileFontEncoding(wxFontMapper::GetEncodingName(wxFONTENCODING_UTF8));
@@ -101,6 +96,7 @@ OptionsConfig::OptionsConfig(wxXmlNode *node)
 		m_caretWidth = XmlUtils::ReadLong(node, wxT("CaretWidth"), m_caretWidth);
 		m_programConsoleCommand = XmlUtils::ReadString(node, wxT("ConsoleCommand"), m_programConsoleCommand);
 		m_eolMode = XmlUtils::ReadString(node, wxT("EOLMode"), m_eolMode);
+		m_hideChangeMarkerMargin = XmlUtils::ReadBool(node, wxT("HideChangeMarkerMargin"));
 	}
 }
 
@@ -130,6 +126,7 @@ wxXmlNode *OptionsConfig::ToXml() const
 	n->AddProperty(wxT("AutoAddMatchedBraces"), BoolToString(m_autoAddMatchedBraces));
 	n->AddProperty(wxT("FoldBgColour"), m_foldBgColour.GetAsString(wxC2S_HTML_SYNTAX));
 	n->AddProperty(wxT("AutoAdjustHScrollBarWidth"), BoolToString(m_autoAdjustHScrollBarWidth));
+	n->AddProperty(wxT("HideChangeMarkerMargin"), BoolToString(m_hideChangeMarkerMargin));
 	n->AddProperty(wxT("ConsoleCommand"), m_programConsoleCommand);
 	n->AddProperty(wxT("EOLMode"), m_eolMode);
 

@@ -1,25 +1,25 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //
-// copyright            : (C) 2008 by Eran Ifrah                            
-// file name            : editorsettingsmiscpanel.cpp              
-//                                                                          
+// copyright            : (C) 2008 by Eran Ifrah
+// file name            : editorsettingsmiscpanel.cpp
+//
 // -------------------------------------------------------------------------
-// A                                                                        
-//              _____           _      _     _ _                            
-//             /  __ \         | |    | |   (_) |                           
-//             | /  \/ ___   __| | ___| |    _| |_ ___                      
-//             | |    / _ \ / _  |/ _ \ |   | | __/ _ )                     
-//             | \__/\ (_) | (_| |  __/ |___| | ||  __/                     
-//              \____/\___/ \__,_|\___\_____/_|\__\___|                     
-//                                                                          
-//                                                  F i l e                 
-//                                                                          
-//    This program is free software; you can redistribute it and/or modify  
-//    it under the terms of the GNU General Public License as published by  
-//    the Free Software Foundation; either version 2 of the License, or     
-//    (at your option) any later version.                                   
-//                                                                          
+// A
+//              _____           _      _     _ _
+//             /  __ \         | |    | |   (_) |
+//             | /  \/ ___   __| | ___| |    _| |_ ___
+//             | |    / _ \ / _  |/ _ \ |   | | __/ _ )
+//             | \__/\ (_) | (_| |  __/ |___| | ||  __/
+//              \____/\___/ \__,_|\___\_____/_|\__\___|
+//
+//                                                  F i l e
+//
+//    This program is free software; you can redistribute it and/or modify
+//    it under the terms of the GNU General Public License as published by
+//    the Free Software Foundation; either version 2 of the License, or
+//    (at your option) any later version.
+//
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 
@@ -32,8 +32,9 @@
 #include <wx/fontmap.h>
 
 EditorSettingsMiscPanel::EditorSettingsMiscPanel( wxWindow* parent )
-: EditorSettingsMiscBasePanel( parent )
-, TreeBookNode<EditorSettingsMiscPanel>()
+		: EditorSettingsMiscBasePanel( parent )
+		, TreeBookNode<EditorSettingsMiscPanel>()
+		, m_restartRequired (false)
 {
 	GeneralInfo info = Frame::Get()->GetFrameGeneralInfo();
 	OptionsConfigPtr options = EditorConfigST::Get()->GetOptions();
@@ -86,7 +87,7 @@ EditorSettingsMiscPanel::EditorSettingsMiscPanel( wxWindow* parent )
 
 void EditorSettingsMiscPanel::OnClearButtonClick( wxCommandEvent& )
 {
-    ManagerST::Get()->ClearWorkspaceHistory();
+	ManagerST::Get()->ClearWorkspaceHistory();
 	Frame::Get()->GetMainBook()->ClearFileHistory();
 }
 
@@ -107,7 +108,7 @@ void EditorSettingsMiscPanel::Save(OptionsConfigPtr options)
 	EditorConfigST::Get()->SaveLongValue(wxT("UseSingleToolbar"), m_useSingleToolbar->IsChecked() ? 1 : 0);
 
 	int value = m_maxItemsFindReplace->GetValue();
-	if(value < 1 || value > 50) {
+	if (value < 1 || value > 50) {
 		value = 10;
 	}
 
@@ -134,7 +135,7 @@ void EditorSettingsMiscPanel::Save(OptionsConfigPtr options)
 	if (oldIconSize != iconSize || oldUseSingleToolbar != m_useSingleToolbar->IsChecked()) {
 		EditorConfigST::Get()->SaveLongValue(wxT("LoadSavedPrespective"), 0);
 		//notify the user
-		wxMessageBox(_("Some of the changes made requires restart of CodeLite"), wxT("CodeLite"), wxICON_INFORMATION|wxOK);
+		m_restartRequired = true;
 	} else {
 		EditorConfigST::Get()->SaveLongValue(wxT("LoadSavedPrespective"), 1);
 	}
