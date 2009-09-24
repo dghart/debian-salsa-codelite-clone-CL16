@@ -32,6 +32,7 @@
 #include "wx/arrstr.h"
 #include "wx/event.h"
 #include "vector"
+#include "macros.h"
 
 enum DebuggerCommands {
 	DBG_PAUSE = 0,
@@ -80,31 +81,47 @@ class BreakpointInfo: public SerializedObject
 {
 public:
 	// Where the bp is: file/lineno, function name (e.g. main()) or the memory location
-	wxString file;
-	int lineno;
-	wxString watchpt_data;
-	wxString function_name;
-	bool regex;							// Is the function_name a regex?
-	int memory_address;
-
+	wxString               file;
+	int                    lineno;
+	wxString               watchpt_data;
+	wxString               function_name;
+	bool                   regex;            // Is the function_name a regex?
+	int                    memory_address;
 	// How to identify the bp. Because the debugger won't always be running, we need an internal id as well as the debugger's one
-	int internal_id;
-	int debugger_id;	// -1 signifies not set
+	int                    internal_id;
+	int                    debugger_id;	// -1 signifies not set
+	enum BP_type           bp_type;  // Is it a plain vanilla breakpoint, or a temporary one, or a watchpoint, or...
+	unsigned int           ignore_number; // 0 means 'not ignored'. >0 is the number of times the bp must be hit before it becomes enabled
+	bool                   is_enabled;
+	bool                   is_temp;
+	enum WP_type           watchpoint_type;	// If this is a watchpoint, holds which sort it is
+	wxString               commandlist;
+	wxString               conditions;
 
-
-	enum BP_type bp_type;  // Is it a plain vanilla breakpoint, or a temporary one, or a watchpoint, or...
-	unsigned int ignore_number; // 0 means 'not ignored'. >0 is the number of times the bp must be hit before it becomes enabled
-	bool is_enabled;
-	bool is_temp;
-	enum WP_type watchpoint_type;	// If this is a watchpoint, holds which sort it is
-	wxString commandlist;
-	wxString conditions;
+	BreakpointInfo(const BreakpointInfo& BI ):
+			file(BI.file),
+			lineno(BI.lineno),
+			watchpt_data(BI.watchpt_data),
+			function_name(BI.function_name),
+			regex(BI.regex),
+			memory_address(BI.memory_address),
+			internal_id(BI.internal_id),
+			debugger_id(BI.debugger_id),
+			bp_type(BI.bp_type),
+			ignore_number(BI.ignore_number),
+			is_enabled(BI.is_enabled),
+			is_temp (BI.is_temp),
+			watchpoint_type(BI.watchpoint_type),
+			commandlist(BI.commandlist),
+			conditions(BI.conditions) {
+	}
 
 	BreakpointInfo() : lineno(-1), regex(false), memory_address(-1), debugger_id(-1), bp_type(BP_type_break),
 			ignore_number(0), is_enabled(true), is_temp(false), watchpoint_type(WP_watch)	{}
-	BreakpointInfo(const BreakpointInfo& BI ) {
-		*this = BI;
-	}
+
+//	BreakpointInfo(const BreakpointInfo& BI ) {
+//		*this = BI;
+//	}
 
 	bool IsConditional() {
 		return ! conditions.IsEmpty();
@@ -118,22 +135,40 @@ public:
 		debugger_id = ext_id;
 	}
 
+//	BreakpointInfo& operator=(const BreakpointInfo& BI) {
+//		file = BI.file;
+//		lineno = BI.lineno;
+//		function_name = BI.function_name;
+//		memory_address = BI.memory_address;
+//		bp_type = BI.bp_type;
+//		watchpoint_type = BI.watchpoint_type;
+//		watchpt_data = BI.watchpt_data;
+//		commandlist = BI.commandlist;
+//		regex = BI.regex;
+//		is_temp = BI.is_temp;
+//		internal_id = BI.internal_id;
+//		debugger_id = BI.debugger_id;
+//		is_enabled = BI.is_enabled;
+//		ignore_number = BI.ignore_number;
+//		conditions = BI.conditions;
+//		return *this;
+//	}
 	BreakpointInfo& operator=(const BreakpointInfo& BI) {
-		file = BI.file;
-		lineno = BI.lineno;
-		function_name = BI.function_name;
-		memory_address = BI.memory_address;
-		bp_type = BI.bp_type;
-		watchpoint_type = BI.watchpoint_type;
-		watchpt_data = BI.watchpt_data;
-		commandlist = BI.commandlist;
-		regex = BI.regex;
-		is_temp = BI.is_temp;
-		internal_id = BI.internal_id;
-		debugger_id = BI.debugger_id;
-		is_enabled = BI.is_enabled;
-		ignore_number = BI.ignore_number;
-		conditions = BI.conditions;
+		file             = BI.file;
+		lineno           = BI.lineno;
+		watchpt_data     = BI.watchpt_data;
+		function_name    = BI.function_name;
+		regex            = BI.regex;
+		memory_address   = BI.memory_address;
+		internal_id      = BI.internal_id;
+		debugger_id      = BI.debugger_id;
+		bp_type          = BI.bp_type;
+		ignore_number    = BI.ignore_number;
+		is_enabled       = BI.is_enabled;
+		is_temp          = BI.is_temp;
+		watchpoint_type  = BI.watchpoint_type;
+		commandlist      = BI.commandlist;
+		conditions       = BI.conditions;
 		return *this;
 	}
 
@@ -157,8 +192,6 @@ protected:
 		arch.Write(wxT("commandlist"), commandlist);
 		arch.Write(wxT("regex"), regex);
 		arch.Write(wxT("is_temp"), is_temp);
-		arch.Write(wxT("internal_id"), internal_id);
-		arch.Write(wxT("debugger_id"), debugger_id);
 		arch.Write(wxT("is_enabled"), is_enabled);
 		arch.Write(wxT("ignore_number"), (int)ignore_number);
 		arch.Write(wxT("conditions"), conditions);
@@ -175,9 +208,7 @@ protected:
 		arch.Read(wxT("commandlist"), commandlist);
 		arch.Read(wxT("regex"), regex);
 		arch.Read(wxT("is_temp"), is_temp);
-		arch.Read(wxT("internal_id"), internal_id);
-		arch.Read(wxT("debugger_id"), debugger_id);
-		arch.Read(wxT("is_enabled"), is_enabled);
+		// arch.Read(wxT("is_enabled"), is_enabled); // It's currently not possible to create a disabled bp
 		arch.Read(wxT("ignore_number"), (int&)ignore_number);
 		arch.Read(wxT("conditions"), conditions);
 	}
@@ -252,6 +283,10 @@ public:
 	bool      showTerminal;
 	wxString  consoleCommand;
 	bool      useRelativeFilePaths;
+	bool      catchThrow;
+	bool      showTooltips;
+	bool      debugAsserts;
+	wxString  startupCommands;
 
 public:
 	DebuggerInformation()
@@ -262,15 +297,45 @@ public:
 			, breakAtWinMain(false)
 			, resolveThis(false)
 			, showTerminal(false)
-#if defined(__WXGTK__)
-			, consoleCommand(wxT("xterm -title '$(TITLE)' -e '$(CMD)'"))
-#elif defined(__WXMAC__)
-			, consoleCommand(wxT("osascript -e 'tell application \"Terminal\"' -e 'activate' -e 'do script with command \"$(CMD)\"' -e 'end tell'"))
-#else
-			, consoleCommand(wxT(""))
-#endif
-			, useRelativeFilePaths(false) {}
+			, consoleCommand(TERMINAL_CMD)
+			, useRelativeFilePaths(false)
+			, catchThrow(false)
+			, showTooltips(false)
+			, debugAsserts(false)
+			, startupCommands(wxEmptyString) {}
 	~DebuggerInformation() {}
+};
+
+class IDebugger;
+
+// sent by debugger start events
+class DebuggerStartupInfo
+{
+public:
+	enum DebugType {
+		DebugProject  = 1,
+		AttachProcess = 2,
+		QuickDebug    = 3
+	};
+
+	long pid;
+	wxString project;
+	IDebugger *debugger;
+
+	DebuggerStartupInfo()
+			: pid(wxNOT_FOUND), project(wxEmptyString), debugger(NULL) {}
+
+	DebuggerStartupInfo(long pid)
+			: pid(pid), project(wxEmptyString), debugger(NULL) {}
+
+	DebuggerStartupInfo(const wxString &project)
+			: pid(wxNOT_FOUND), project(project), debugger(NULL) {}
+
+	DebugType GetDebugType() const {
+		return pid != wxNOT_FOUND ? AttachProcess :
+		       project.IsEmpty()  ? QuickDebug :
+		       DebugProject;
+	}
 };
 
 class IDebuggerObserver;
@@ -294,26 +359,33 @@ class EnvironmentConfig;
 class IDebugger
 {
 protected:
-	IDebuggerObserver *m_observer;
+	IDebuggerObserver * m_observer;
 	DebuggerInformation m_info;
-	EnvironmentConfig *m_env;
+	EnvironmentConfig * m_env;
 
 public:
 	IDebugger() : m_env(NULL) {};
 	virtual ~IDebugger() {};
-	virtual void SetObserver(IDebuggerObserver *observer) {
+
+	void SetObserver(IDebuggerObserver *observer) {
 		m_observer = observer;
 	}
-	virtual IDebuggerObserver *GetObserver() {
+
+	IDebuggerObserver *GetObserver() {
 		return m_observer;
 	}
-	virtual void SetEnvironment(EnvironmentConfig *env) {
+
+	void SetEnvironment(EnvironmentConfig *env) {
 		m_env = env;
 	}
-	virtual void SetDebuggerInformation(const DebuggerInformation& info) {
+
+	void SetDebuggerInformation(const DebuggerInformation& info) {
 		m_info = info;
 	}
 
+	DebuggerInformation GetDebuggerInformation() {
+		return m_info;
+	}
 	//-------------------------------------------------------------
 	// Debugger operations
 	//-------------------------------------------------------------
@@ -400,17 +472,29 @@ public:
 	 */
 	virtual bool Break(const BreakpointInfo& bp) = 0;
 	/**
-	 * \brief remove breakpoint from given file and line
-	 */
-	virtual bool RemoveBreak(const wxString &file, long lineno) = 0;
-	/**
-	 * \brief remove breakpoint by its internal ID
+	 * \brief remove breakpoint by its ID
 	 */
 	virtual bool RemoveBreak(int bid) = 0;
 	/**
 	 * \brief clear all breakpoints set (gdb's 'clear' command)
 	 */
 	virtual bool RemoveAllBreaks() = 0;
+	/**
+	 * \brief Enable or Disable a breakpoint
+	 */
+	virtual bool SetEnabledState(const int bid, const bool enable) = 0;
+	/**
+	 * \brief Set this breakpoint's Ignore count
+	 */
+	virtual bool SetIgnoreLevel(const int bid, const int ignorecount) = 0;
+	/**
+	 * \brief Set this breakpoint's condition
+	 */
+	virtual bool SetCondition(const BreakpointInfo& bp) = 0;
+	/**
+	 * \brief Set a command-list for this breakpoint
+	 */
+	virtual bool SetCommands(const BreakpointInfo& bp) = 0;
 	/**
 	 * \brief ask the debugger to query about its file & line. Once the result arrives, the observer's UpdateFileLine() will be invoked
 	 */
@@ -458,13 +542,15 @@ public:
 	 * \brief the Poke() method is called at Idle() time by the application so the debugger can read the actual debugger process output and process it
 	 */
 	virtual void Poke() = 0;
+
 	/**
-	 * \brief return tip for a give expression
-	 * \param expression expression to evaluate
-	 * \param evaluated evaluated value from the debugger
-	 * \return
+	 * @brief return string to show the user as tip for expression
+	 * @param dbgCommand debugger command to evaluate the tip (e.g. "print")
+	 * @param expression expression to evaluate
+	 * @param evaluated [output]
+	 * @return true if evaluation succeeded, false otherwise
 	 */
-	virtual bool GetTip(const wxString &expression, wxString &evaluated) = 0;
+	virtual bool GetTip(const wxString &dbgCommand, const wxString &expression, wxString &evaluated) = 0;
 
 	/**
 	 * \brief resolve expression and return its actual type
@@ -494,6 +580,11 @@ public:
 	 * hex values (e.g. '0x01 0x02 0x03')
 	 */
 	virtual bool SetMemory(const wxString &address, size_t count, const wxString &hex_value) = 0;
+
+	/**
+	 * \brief have the debugger list all breakpoints
+	 */
+	virtual void BreakList() = 0;
 };
 
 

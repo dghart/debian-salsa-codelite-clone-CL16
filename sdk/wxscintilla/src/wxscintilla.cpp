@@ -13,7 +13,7 @@
 // RCS-ID:      $Id: wxscintilla.cpp,v 1.37 2006/09/22 19:42:14 wyo Exp $
 // Copyright:   (c) 2004 wxCode
 // Licence:     wxWindows
-///////////////////////////////////////////////////////////////////////////// 
+/////////////////////////////////////////////////////////////////////////////
 
 #include <ctype.h>
 
@@ -1200,11 +1200,12 @@ void wxScintilla::SetSelection (int startPos, int endPos) {
 
 // Retrieve the selected text.
 wxString wxScintilla::GetSelectedText() {
-    int start;
-    int end;
-    GetSelection(&start, &end);
-    int len = end - start;
-    if (!len) return wxEmptyString;
+ 	int len (0);
+
+	// determine the selected text range
+	len = SendMsg (SCI_GETSELTEXT, 0, 0);
+	if (!len) return wxEmptyString;
+
     wxMemoryBuffer mbuf(len+2);
     char* buf = (char*)mbuf.GetWriteBuf(len+1);
     SendMsg (SCI_GETSELTEXT, 0, (long)buf);
@@ -2641,12 +2642,104 @@ void wxScintilla::IndicatorSetUnder(int indicator, bool under)
 	SendMsg(SCI_INDICSETUNDER, indicator, under);
 }
 
+int wxScintilla::IndicatorGetAlpha(int indicator) {
+	return SendMsg(SCI_INDICGETALPHA, indicator);
+}
+
+void wxScintilla::IndicatorSetAlpha(int indicator, int alpha){
+	SendMsg(SCI_INDICSETALPHA, indicator, alpha);
+}
+
+void wxScintilla::MarginSetText(int line, const wxString &text){
+	SendMsg(SCI_MARGINSETTEXT, line, (long)(const char*)wx2sci(text));
+}
+
+void wxScintilla::MarginSetStyle(int line, int style) {
+	SendMsg(SCI_MARGINSETSTYLE, line, style);
+}
+
+int wxScintilla::MarginGetStyle(int line) {
+	return SendMsg(SCI_MARGINGETSTYLE, line);
+}
+
+void wxScintilla::MarginTextClearAll(){
+	SendMsg(SCI_MARGINTEXTCLEARALL);
+}
+
+void wxScintilla::AnnotationSetText(int line, const wxString &text) {
+	SendMsg(SCI_ANNOTATIONSETTEXT, line, (long)(const char*)wx2sci(text));
+}
+
+wxString wxScintilla::AnnotationGetText(int line) {
+	// calling SCI_ANNOTATIONGETTEXT with NULL as buffer will return the length only
+	int len = SendMsg(SCI_ANNOTATIONGETTEXT, line, 0);
+
+	wxMemoryBuffer mbuf(len+1);   // leave room for the null...
+
+    char* buf = (char*)mbuf.GetWriteBuf(len+1);
+    SendMsg (SCI_ANNOTATIONGETTEXT, line, (long)buf);
+    mbuf.UngetWriteBuf(len);
+    mbuf.AppendByte(0);
+    return sci2wx(buf);
+}
+
+void wxScintilla::AnnotationSetStyle(int line, int style) {
+	SendMsg(SCI_ANNOTATIONSETSTYLE, line, style);
+}
+
+void wxScintilla::AnnotationSetStyles(int line, const wxMemoryBuffer &styles) {
+	SendMsg(SCI_ANNOTATIONSETSTYLES, line, (long)(char*)styles.GetData());
+}
+
+int  wxScintilla::AnnotationGetStyle(int line) {
+	return SendMsg(SCI_ANNOTATIONGETSTYLE, line);
+}
+
+void wxScintilla::AnnotationClearAll() {
+	SendMsg(SCI_ANNOTATIONCLEARALL);
+}
+
+void wxScintilla::AnnotationSetVisible(int visible) {
+	SendMsg(SCI_ANNOTATIONSETVISIBLE, (long)visible);
+}
+
+bool wxScintilla::AnnotationGetVisible() {
+	return (bool) SendMsg(SCI_ANNOTATIONGETVISIBLE);
+}
+
+void wxScintilla::SetMultipleSelection(bool multipleSelection){
+	SendMsg(SCI_SETMULTIPLESELECTION, multipleSelection);
+}
+
+bool wxScintilla::GetMultipleSelection(){
+	return (bool)SendMsg(SCI_GETMULTIPLESELECTION);
+}
+
+bool wxScintilla::GetAdditionalSelectionTyping(){
+	return (bool) SendMsg(SCI_GETADDITIONALSELECTIONTYPING);
+}
+
+void wxScintilla::SetAdditionalSelectionTyping(bool additionalSelectionTyping){
+	SendMsg(SCI_SETADDITIONALSELECTIONTYPING, (long)additionalSelectionTyping);
+}
+
+void wxScintilla::SetRectangularSelectionModifier(int mod){
+	SendMsg(SCI_SETRECTANGULARSELECTIONMODIFIER, (long)mod);
+}
+
+int wxScintilla::GetRectangularSelectionModifier(){
+	return (int)SendMsg(SCI_GETRECTANGULARSELECTIONMODIFIER);
+}
+
 // Returns the line number of the line with the caret.
 int wxScintilla::GetCurrentLine () {
     int line = LineFromPosition (GetCurrentPos());
     return line;
 }
 
+void wxScintilla::AnnotationSetStyleOffset(int style) {
+	SendMsg(SCI_ANNOTATIONSETSTYLEOFFSET, (long)style);
+}
 
 // Extract style settings from a spec-string which is composed of one or
 // more of the following comma separated elements:
@@ -3043,7 +3136,10 @@ void wxScintilla::OnMouseLeftDown (wxMouseEvent& evt) {
     SetFocus();
     wxPoint pt = evt.GetPosition();
     m_swx->DoLeftButtonDown (Point(pt.x, pt.y), m_stopWatch.Time(),
-                             evt.ShiftDown(), evt.ControlDown(), evt.AltDown());
+                             evt.ShiftDown(), evt.ControlDown(),
+
+							 // FIXME:: Scintilla 2.0 seems to cause a crash when using rectuangaler selection, we are disabling it for now
+							 evt.AltDown());
 }
 
 void wxScintilla::OnMouseMove (wxMouseEvent& evt) {

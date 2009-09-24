@@ -5,9 +5,8 @@
 	<object class="wxBitmap" name="close_panel">res/close_panel.png</object>
 	<object class="wxBitmap" name="tags_selected">res/tags_selected.png</object>
 	<object class="wxBitmap" name="close_panel_push">res/close_panel_push.png</object>
-	<object class="wxBitmap" name="project_settings">res/cubes_yellow_preferences.png</object>
-	<object class="wxBitmap" name="set_active">res/cubes_yellow_popup.png</object>
-	<object class="wxBitmap" name="wxfb">res/wxfb.png</object>
+	<object class="wxBitmap" name="project_settings">res/folder_development_preferences.png</object>
+	<object class="wxBitmap" name="set_active">res/folder_development_popup.png</object>
 	<object class="wxBitmap" name="tab">res/tab.png</object>
 	<object class="wxBitmap" name="todo">res/todo.png</object>
 	<object class="wxBitmap" name="memory_view">res/memory_view.png</object>
@@ -25,18 +24,14 @@
     <object class="wxBitmap" name="enumerator">res/enumee.xpm</object>
     <object class="wxBitmap" name="class">res/class.png</object>
     <object class="wxBitmap" name="typedef">res/typedef.xpm</object>
-    <object class="wxBitmap" name="project">res/cubes_yellow.png</object>
+    <object class="wxBitmap" name="project">res/folder_development.png</object>
 	<object class="wxBitmap" name="globals">res/cube_green.png</object>
     <object class="wxBitmap" name="namespace">res/namespace.png</object>
     <object class="wxBitmap" name="struct">res/but_green_s.png</object>
     <object class="wxBitmap" name="bookmark_blue">res/media_stop.png</object>
-    <object class="wxBitmap" name="workspace">res/cubes.png</object>
+    <object class="wxBitmap" name="workspace">res/folder_home.png</object>
 	<object class="wxBitmap" name="folder">res/folder.png</object>
-	<object class="wxBitmap" name="page_white_c">res/page_white_c.png</object>
-	<object class="wxBitmap" name="page_white_cplusplus">res/page_white_cplusplus.png</object>
-	<object class="wxBitmap" name="page_white_h">res/page_white_h.png</object>
-	<object class="wxBitmap" name="page_white_text">res/page_white_text.png</object>
-    <object class="wxBitmap" name="cross">res/cross.png</object>
+	<object class="wxBitmap" name="cross">res/cross.png</object>
     <object class="wxBitmap" name="document_delete">res/clean.png</object>
     <object class="wxBitmap" name="build">res/cog.png</object>
     <object class="wxBitmap" name="find_results">res/page_find.png</object>
@@ -66,6 +61,23 @@
 	<object class="wxBitmap" name="colourise">res/colorize.png</object>
 	<object class="wxBitmap" name="collapse">res/collapse.png</object>
 	<object class="wxBitmap" name="gohome">res/gohome.png</object>
+	<object class="wxBitmap" name="project_conflict">res/error.png</object>
+
+	<!-- Mimetype -->
+	<object class="wxBitmap" name="page_white_c">res/mimetype/page_white_c.png</object>
+	<object class="wxBitmap" name="page_white_cplusplus">res/mimetype/page_white_cplusplus.png</object>
+	<object class="wxBitmap" name="page_white_h">res/mimetype/page_white_h.png</object>
+	<object class="wxBitmap" name="page_white_text">res/mimetype/page_white_text.png</object>
+	<object class="wxBitmap" name="compressed_file">res/mimetype/application_x_compressed_tar.png</object>
+	<object class="wxBitmap" name="executable">res/mimetype/application_x_ms_dos_executable.png</object>
+	<object class="wxBitmap" name="file_php">res/mimetype/application_x_php.png</object>
+	<object class="wxBitmap" name="shared_library">res/mimetype/application_x_sharedlib.png</object>
+	<object class="wxBitmap" name="pixmap">res/mimetype/image_x_xpixmap.png</object>
+	<object class="wxBitmap" name="shellscript">res/mimetype/shellscript.png</object>
+	<object class="wxBitmap" name="file_xml">res/mimetype/xml.png</object>
+	<object class="wxBitmap" name="file_html">res/mimetype/application_x_mswinurl.png</object>
+	<object class="wxBitmap" name="makefile">res/mimetype/make.png</object>
+	<object class="wxBitmap" name="formbuilder">res/mimetype/formbuilder.png</object>
 
 	<!--
 		Toolbar bitmaps (24x24)
@@ -73,7 +85,7 @@
 	<object class="wxBitmap" name="outline24">res/24/text_tree.png</object>
 	<object class="wxBitmap" name="configure_ext_tools24">res/24/external_tools24.png</object>
 	<object class="wxBitmap" name="ext_tool_default24">res/24/gear24.png</object>
-	<object class="wxBitmap" name="stop_external_tool24">res/24/stop_external_tool.png</object>
+	<object class="wxBitmap" name="stop_external_tool24">res/24/process_stop.png</object>
 	<object class="wxBitmap" name="folder24">res/24/folder24.png</object>
 	<object class="wxBitmap" name="refresh24">res/24/refresh.png</object>
 	<object class="wxBitmap" name="reload24">res/24/revert.png</object>
@@ -91,13 +103,13 @@
 	<object class="wxBitmap" name="page_save24">res/24/page_save.png</object>
 	<object class="wxBitmap" name="new_wx_project24">res/24/wx24.png</object>
 	<object class="wxBitmap" name="plugin24">res/24/plugin24.png</object>
-	<object class="wxBitmap" name="code_format_options24">res/24/signature.png</object>
-	<object class="wxBitmap" name="code_format24">res/24/magic-wand2.png</object>
-	<object class="wxBitmap" name="build_active_project24">res/24/hammer.png</object>
-	<object class="wxBitmap" name="stop_build24">res/24/stop.png</object>
+	<object class="wxBitmap" name="code_format_options24">res/24/formatter_settings.png</object>
+	<object class="wxBitmap" name="code_format24">res/24/formatter.png</object>
+	<object class="wxBitmap" name="build_active_project24">res/24/compfile.png</object>
+	<object class="wxBitmap" name="stop_build24">res/24/process_stop.png</object>
 	<object class="wxBitmap" name="execute24">res/24/gear_run.png</object>
 	<object class="wxBitmap" name="stop_executed_program24">res/24/gear_stop.png</object>
-	<object class="wxBitmap" name="clean24">res/24/garbage.png</object>
+	<object class="wxBitmap" name="clean24">res/24/emptytrash.png</object>
 	<object class="wxBitmap" name="find_in_files24">res/24/find.png</object>
 	<object class="wxBitmap" name="find_and_replace24">res/24/search.png</object>
 	<object class="wxBitmap" name="open_resource24">res/24/open_resource.png</object>
@@ -126,7 +138,7 @@
 	<object class="wxBitmap" name="outline16">res/16/text_tree.png</object>
 	<object class="wxBitmap" name="configure_ext_tools16">res/16/external_tools16.png</object>
 	<object class="wxBitmap" name="ext_tool_default16">res/16/gear16.png</object>
-	<object class="wxBitmap" name="stop_external_tool16">res/16/stop_external_tool.png</object>
+	<object class="wxBitmap" name="stop_external_tool16">res/16/process_stop.png</object>
 	<object class="wxBitmap" name="folder16">res/16/folder24.png</object>
 	<object class="wxBitmap" name="refresh16">res/16/refresh.png</object>
 	<object class="wxBitmap" name="reload16">res/16/revert.png</object>
@@ -144,13 +156,13 @@
 	<object class="wxBitmap" name="page_save16">res/16/page_save.png</object>
 	<object class="wxBitmap" name="new_wx_project16">res/16/wx24.png</object>
 	<object class="wxBitmap" name="plugin16">res/16/plugin24.png</object>
-	<object class="wxBitmap" name="code_format_options16">res/16/signature.png</object>
-	<object class="wxBitmap" name="code_format16">res/16/magic-wand2.png</object>
-	<object class="wxBitmap" name="build_active_project16">res/16/hammer.png</object>
-	<object class="wxBitmap" name="stop_build16">res/16/stop.png</object>
+	<object class="wxBitmap" name="code_format_options16">res/16/formatter_settings.png</object>
+	<object class="wxBitmap" name="code_format16">res/16/formatter.png</object>
+	<object class="wxBitmap" name="build_active_project16">res/16/compfile.png</object>
+	<object class="wxBitmap" name="stop_build16">res/16/process_stop.png</object>
 	<object class="wxBitmap" name="execute16">res/16/gear_run.png</object>
 	<object class="wxBitmap" name="stop_executed_program16">res/16/gear_stop.png</object>
-	<object class="wxBitmap" name="clean16">res/16/garbage.png</object>
+	<object class="wxBitmap" name="clean16">res/16/emptytrash.png</object>
 	<object class="wxBitmap" name="find_in_files16">res/16/find.png</object>
 	<object class="wxBitmap" name="find_and_replace16">res/16/search.png</object>
 	<object class="wxBitmap" name="open_resource16">res/16/open_resource.png</object>
@@ -173,20 +185,8 @@
 	<object class="wxBitmap" name="highlight16">res/16/highlight.png</object>
 	<object class="wxBitmap" name="run_unit_test16">res/16/run_unit_test.png</object>
 
-	<!-- Svn icons -->
-	<object class="wxBitmap" name="project_modified">res/cubes_yellow_modified.png</object>
-	<object class="wxBitmap" name="project_ok">res/cubes_yellow_ok.png</object>
-	<object class="wxBitmap" name="project_conflict">res/error.png</object>
-
-	<object class="wxBitmap" name="workspace_modified">res/cubes_modified.png</object>
-	<object class="wxBitmap" name="workspace_ok">res/cubes_ok.png</object>
-	<object class="wxBitmap" name="workspace_conflict">res/error.png</object>
-
-	<object class="wxBitmap" name="page_modified">res/page_white_text_modified.png</object>
-	<object class="wxBitmap" name="page_ok">res/page_white_text_ok.png</object>
-	<object class="wxBitmap" name="page_conflict">res/error.png</object>
-
-	<object class="wxBitmap" name="folder_modified">res/folder_modified.png</object>
-	<object class="wxBitmap" name="folder_ok">res/folder_ok.png</object>
-	<object class="wxBitmap" name="folder_conflict">res/error.png</object>
+	<!-- Overlay icons -->
+	<object class="wxBitmap" name="overlay_ok">res/ok.png</object>
+	<object class="wxBitmap" name="overlay_modified">res/modified.png</object>
+	<object class="wxBitmap" name="overlay_conflict">res/conflict.png</object>
 </resource>

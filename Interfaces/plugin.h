@@ -101,6 +101,10 @@ enum {
 	wxEVT_FILE_EXP_INIT_DONE,
 	//clientData is NULL
 	wxEVT_FILE_EXP_REFRESHED,
+	// an attempt to open a file using double click / ENTER was made
+	// on an item in the 'File Explorer' OR from the 'Workspace' tree
+	// clientData is the full path of the file (wxString*)
+	wxEVT_TREE_ITEM_FILE_ACTIVATED,
 
 	//clientData is list of files added to project (wxArrayString*)
 	wxEVT_PROJ_FILE_ADDED,
@@ -184,8 +188,27 @@ enum {
 	// event.GetString() returns the selected configuration
 	// the return answer is done by simply avoid calling event.Skip() (which will result in ProcessEvent() == true)
 	wxEVT_GET_IS_PLUGIN_MAKEFILE,
-	wxEVT_GET_IS_PLUGIN_BUILD
+	wxEVT_GET_IS_PLUGIN_BUILD,
 
+	/**
+	 * Debug related events
+	 */
+
+	// sent when the debugger is about to start
+	// clientData is a pointer to a DebuggerStartupInfo structure
+	wxEVT_DEBUG_STARTING,
+
+	// sent right after the debugger started; program is not running yet
+	// clientData is a pointer to a DebuggerStartupInfo structure
+	wxEVT_DEBUG_STARTED,
+
+	// sent just before the debugger stops
+	// clientData is NULL
+	wxEVT_DEBUG_ENDING,
+
+	// sent after the debugger stopped
+	// clientData is NULL
+	wxEVT_DEBUG_ENDED
 };
 
 //------------------------------------------------------------------

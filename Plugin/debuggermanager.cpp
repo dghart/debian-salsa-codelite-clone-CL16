@@ -53,6 +53,10 @@ void DebuggersData::Serialize(Archive &arch)
 		arch.Write(wxT("resolveThis"), info.resolveThis);
 		arch.Write(wxT("showTerminal"), info.showTerminal);
 		arch.Write(wxT("useRelativePaths"), info.useRelativeFilePaths);
+		arch.Write(wxT("catchThrow"), info.catchThrow);
+		arch.Write(wxT("showTooltips"), info.showTooltips);
+		arch.Write(wxT("debugAsserts"), info.debugAsserts);
+		arch.WriteCData(wxT("startup_commands"), info.startupCommands);
 	}
 }
 
@@ -70,7 +74,10 @@ void DebuggersData::DeSerialize(Archive &arch)
 		arch.Read(wxT("resolveThis"), info.resolveThis);
 		arch.Read(wxT("showTerminal"), info.showTerminal);
 		arch.Read(wxT("useRelativePaths"), info.useRelativeFilePaths);
-
+		arch.Read(wxT("catchThrow"), info.catchThrow);
+		arch.Read(wxT("showTooltips"), info.showTooltips);
+		arch.Read(wxT("debugAsserts"), info.debugAsserts);
+		arch.ReadCData(wxT("startup_commands"), info.startupCommands);
 		m_debuggers.push_back(info);
 	}
 }

@@ -44,6 +44,8 @@
 // The Manager class
 // ====================================================================
 
+extern const wxEventType wxEVT_CMD_RESTART_CODELITE;
+
 class Manager : public wxEvtHandler, public IDebuggerObserver
 {
   	friend class Singleton<Manager>;
@@ -63,6 +65,7 @@ class Manager : public wxEvtHandler, public IDebuggerObserver
  	int                     m_frameLineno;
 	std::list<QueueCommand> m_buildQueue;
 	wxArrayString           m_dbgWatchExpressions;
+	wxFileName              m_codeliteLauncher;
 
 protected:
 	Manager(void);
@@ -81,7 +84,12 @@ public:
  	void SetShutdownInProgress(bool b) { m_isShutdown = b; }
 
 
-     //--------------------------- Workspace Loading -----------------------------
+	void SetCodeLiteLauncherPath(const wxString &path);
+	void OnRestart(wxCommandEvent &event);
+protected:
+	void DoRestartCodeLite();
+
+	 //--------------------------- Workspace Loading -----------------------------
 public:
  	/*!
  	 * \brief
@@ -500,6 +508,8 @@ public:
 	void UpdateQuickWatch(const wxString &expression, TreeNode<wxString, NodeData> *tree);
 	void UpdateStackList(const StackEntryArray &stackArray);
 	void UpdateRemoteTargetConnected(const wxString &line);
+	void ReconcileBreakpoints(std::vector<BreakpointInfo>& li);
+	void UpdateBpHit(int id);
 
 
     //--------------------------- Build Management -----------------------------

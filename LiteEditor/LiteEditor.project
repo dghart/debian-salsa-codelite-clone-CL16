@@ -1,5 +1,58 @@
 <?xml version="1.0" encoding="utf-8"?>
 <CodeLite_Project Name="LiteEditor">
+  <Plugins>
+    <Plugin Name="qmake">
+      <![CDATA[00030001N0004Unix0000000000000001N0015WinDebugUnicode0000000000000001N0017WinReleaseUnicode000000000000
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    ]]>
+    </Plugin>
+  </Plugins>
   <VirtualDirectory Name="Source Files">
     <File Name="cpp_symbol_tree.cpp"/>
     <File Name="filedroptarget.cpp"/>
@@ -367,6 +420,8 @@
     <File Name="filechecklistbase.h"/>
     <File Name="clauidockart.cpp"/>
     <File Name="clauidockart.h"/>
+    <File Name="settersgetterstreectrl.cpp"/>
+    <File Name="settersgetterstreectrl.h"/>
   </VirtualDirectory>
   <VirtualDirectory Name="Editor">
     <File Name="context_base.h"/>
@@ -456,6 +511,10 @@
     <File Name="taskpanel.cpp"/>
     <File Name="errorstab.h"/>
     <File Name="errorstab.cpp"/>
+    <File Name="debuggerasciiviewerbase.cpp"/>
+    <File Name="debuggerasciiviewerbase.h"/>
+    <File Name="debuggerasciiviewer.h"/>
+    <File Name="debuggerasciiviewer.cpp"/>
   </VirtualDirectory>
   <VirtualDirectory Name="Plugins">
     <File Name="pluginmanager.h"/>
@@ -504,6 +563,7 @@
     <File Name="editorsettingsmiscbasepanel.fbp"/>
     <File Name="editorsettingscaretbase.fbp"/>
     <File Name="editorsettingsterminal.fbp"/>
+    <File Name="debuggerasciiviewerbase.fbp"/>
   </VirtualDirectory>
   <Dependencies Name="UnixCodeLite">
     <Project Name="wxscintilla"/>
@@ -530,27 +590,14 @@
     <File Name="breakpointpropertiesdlg.h"/>
     <File Name="breakpointsmgr.cpp"/>
   </VirtualDirectory>
-  <Dependencies Name="WinDebugUnicode">
+  <Dependencies Name="WinReleaseUnicode_NoPlugins">
     <Project Name="wxscintilla"/>
     <Project Name="sqlite3"/>
     <Project Name="wxsqlite3"/>
-    <Project Name="wxpropgrid"/>
     <Project Name="CodeLite"/>
     <Project Name="plugin_sdk"/>
-    <Project Name="CodeFormatter"/>
     <Project Name="DebuggerGDB"/>
-    <Project Name="Subversion"/>
-    <Project Name="Gizmos"/>
-    <Project Name="Cscope"/>
-    <Project Name="Copyright"/>
-    <Project Name="UnitTestPP"/>
-    <Project Name="ExternalTools"/>
-    <Project Name="snipwiz"/>
-    <Project Name="wxFormBuilder"/>
-    <Project Name="abbreviation"/>
-    <Project Name="SymbolView"/>
-    <Project Name="ContinuousBuild"/>
-    <Project Name="QMakePlugin"/>
+    <Project Name="wxpropgrid"/>
   </Dependencies>
   <Settings Type="Executable">
     <Configuration Name="Unix" CompilerType="gnu g++" DebuggerType="GNU gdb debugger" Type="Executable" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
@@ -573,7 +620,7 @@
         <Library Value="libsqlite3.a"/>
       </Linker>
       <ResourceCompiler Options="$(shell wx-config --rcflags)" Required="no"/>
-      <General OutputFile="../Runtime/codelite" IntermediateDirectory="./ReleaseUnicode" Command="./codelite" CommandArguments="-b ." WorkingDirectory="../Runtime" PauseExecWhenProcTerminates="no"/>
+      <General OutputFile="../Runtime/codelite" IntermediateDirectory="./ReleaseUnicode" Command="./codelite" CommandArguments="-b ." WorkingDirectory="../Runtime" PauseExecWhenProcTerminates="yes"/>
       <Debugger IsRemote="no" RemoteHostName="" RemoteHostPort="" DebuggerPath="">
         <PostConnectCommands/>
         <StartupCommands/>
@@ -804,14 +851,51 @@ resources.cpp: resources.xrc
       <ResourceCompiler Options=""/>
     </GlobalSettings>
   </Settings>
-  <Dependencies Name="WinReleaseUnicode_NoPlugins">
+  <Dependencies Name="WinDebugUnicode">
     <Project Name="wxscintilla"/>
     <Project Name="sqlite3"/>
     <Project Name="wxsqlite3"/>
+    <Project Name="wxpropgrid"/>
     <Project Name="CodeLite"/>
     <Project Name="plugin_sdk"/>
+    <Project Name="CodeFormatter"/>
     <Project Name="DebuggerGDB"/>
+    <Project Name="Subversion"/>
+    <Project Name="Gizmos"/>
+    <Project Name="Cscope"/>
+    <Project Name="Copyright"/>
+    <Project Name="UnitTestPP"/>
+    <Project Name="ExternalTools"/>
+    <Project Name="snipwiz"/>
+    <Project Name="wxFormBuilder"/>
+    <Project Name="abbreviation"/>
+    <Project Name="SymbolView"/>
+    <Project Name="ContinuousBuild"/>
+    <Project Name="QMakePlugin"/>
+    <Project Name="CppChecker"/>
+  </Dependencies>
+  <Dependencies Name="WinDebugUnicode">
+    <Project Name="wxscintilla"/>
+    <Project Name="sqlite3"/>
+    <Project Name="wxsqlite3"/>
     <Project Name="wxpropgrid"/>
+    <Project Name="CodeLite"/>
+    <Project Name="plugin_sdk"/>
+    <Project Name="CodeFormatter"/>
+    <Project Name="DebuggerGDB"/>
+    <Project Name="Subversion"/>
+    <Project Name="Gizmos"/>
+    <Project Name="Cscope"/>
+    <Project Name="Copyright"/>
+    <Project Name="UnitTestPP"/>
+    <Project Name="ExternalTools"/>
+    <Project Name="snipwiz"/>
+    <Project Name="wxFormBuilder"/>
+    <Project Name="abbreviation"/>
+    <Project Name="SymbolView"/>
+    <Project Name="ContinuousBuild"/>
+    <Project Name="QMakePlugin"/>
+    <Project Name="CppChecker"/>
   </Dependencies>
   <Dependencies Name="WinReleaseUnicode">
     <Project Name="sqlite3"/>
@@ -834,5 +918,6 @@ resources.cpp: resources.xrc
     <Project Name="SymbolView"/>
     <Project Name="ContinuousBuild"/>
     <Project Name="QMakePlugin"/>
+    <Project Name="CppChecker"/>
   </Dependencies>
 </CodeLite_Project>

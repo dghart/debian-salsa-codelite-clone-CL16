@@ -24,6 +24,7 @@
 //////////////////////////////////////////////////////////////////////////////
 
 #include "cl_editor.h"
+#include "buildtabsettingsdata.h"
 #include "jobqueue.h"
 #include "stringhighlighterjob.h"
 #include "job.h"
@@ -69,15 +70,18 @@
 #define EVT_SCI_CALLTIP_CLICK(id, fn)          DECLARE_EVENT_TABLE_ENTRY (wxEVT_SCI_CALLTIP_CLICK,          id, wxID_ANY, (wxObjectEventFunction) (wxEventFunction)  wxStaticCastEvent( wxScintillaEventFunction, & fn ), (wxObject *) NULL),
 #endif
 
-#define NUMBER_MARGIN_ID 		0
-#define NUMBER_MARGIN_SEP_ID 	1
+#define NUMBER_MARGIN_ID        0
+#define EDIT_TRACKER_MARGIN_ID  1
 #define SYMBOLS_MARGIN_ID 		2
-#define SYMBOLS_MARGIN_SEP_ID 	3
-#define FOLD_MARGIN_ID 			4
+#define SYMBOLS_MARGIN_SEP_ID   3
+#define FOLD_MARGIN_ID          4
 
 #define USER_INDICATOR 				3
 #define HYPERLINK_INDICATOR 		4
 #define MATCH_INDICATOR             5
+
+#define CL_LINE_MODIFIED_STYLE      200
+#define CL_LINE_SAVED_STYLE         201
 
 #ifndef wxScintillaEventHandler
 #define wxScintillaEventHandler(func) \
@@ -105,6 +109,7 @@ BEGIN_EVENT_TABLE(LEditor, wxScintilla)
 	EVT_SCI_UPDATEUI(wxID_ANY, LEditor::OnSciUpdateUI)
 	EVT_SCI_SAVEPOINTREACHED(wxID_ANY, LEditor::OnSavePoint)
 	EVT_SCI_SAVEPOINTLEFT(wxID_ANY, LEditor::OnSavePoint)
+	EVT_SCI_MODIFIED(wxID_ANY, LEditor::OnChange)
 	EVT_CONTEXT_MENU(LEditor::OnContextMenu)
 	EVT_KEY_DOWN(LEditor::OnKeyDown)
 	EVT_LEFT_DOWN(LEditor::OnLeftDown)
@@ -142,6 +147,7 @@ LEditor::LEditor(wxWindow* parent)
 		, m_autoAddMatchedBrace      (false)
 		, m_autoAdjustHScrollbarWidth(true)
 		, m_calltipType              (ct_none)
+		, m_reloadingFile            (false)
 {
 	ms_bookmarkShapes[wxT("Small Rectangle")]   = wxSCI_MARK_SMALLRECT;
 	ms_bookmarkShapes[wxT("Rounded Rectangle")] = wxSCI_MARK_ROUNDRECT;
@@ -245,6 +251,11 @@ void LEditor::SetCaretAt(long pos)
 /// Setup some scintilla properties
 void LEditor::SetProperties()
 {
+
+	SetMultipleSelection(true);
+	SetRectangularSelectionModifier(wxSCI_SCMOD_CTRL);
+	SetAdditionalSelectionTyping(true);
+
 	OptionsConfigPtr options = EditorConfigST::Get()->GetOptions();
 	CallTipUseStyle(1);
 
@@ -289,9 +300,8 @@ void LEditor::SetProperties()
 
 	SetCaretWidth(options->GetCaretWidth());
 	SetCaretPeriod(options->GetCaretBlinkPeriod());
-
 	SetMarginLeft(1);
-	SetMarginRight(0);
+
 
 	// Mark current line
 	SetCaretLineVisible(options->GetHighlightCaretLine());
@@ -306,6 +316,7 @@ void LEditor::SetProperties()
 	//------------------------------------------
 	// Margin settings
 	//------------------------------------------
+
 	// symbol margin
 	SetMarginType(SYMBOLS_MARGIN_ID, wxSCI_MARGIN_SYMBOL);
 	// Line numbes
@@ -314,18 +325,24 @@ void LEditor::SetProperties()
 	// line number margin displays every thing but folding, bookmarks and breakpoint
 	SetMarginMask(NUMBER_MARGIN_ID, ~(mmt_folds | mmt_bookmarks | mmt_indicator | mmt_compiler | mmt_all_breakpoints));
 
-	// Separators
-	SetMarginType(SYMBOLS_MARGIN_SEP_ID, wxSCI_MARGIN_FORE);
-	SetMarginMask(SYMBOLS_MARGIN_SEP_ID, 0);
+	// Define the styles for the editing margin
+	StyleSetBackground(CL_LINE_SAVED_STYLE, wxColour(wxT("GREEN")));
+	StyleSetBackground(CL_LINE_MODIFIED_STYLE, wxColour(wxT("ORANGE")));
 
-	SetMarginType(NUMBER_MARGIN_SEP_ID, wxSCI_MARGIN_FORE);
-	SetMarginMask(NUMBER_MARGIN_SEP_ID, 0);
+	SetMarginType     (EDIT_TRACKER_MARGIN_ID, 4); // Styled Text margin
+	SetMarginWidth    (EDIT_TRACKER_MARGIN_ID, options->GetHideChangeMarkerMargin() ? 0 : 3);
+	SetMarginMask     (EDIT_TRACKER_MARGIN_ID, 0);
+
+	// Separators
+	SetMarginType     (SYMBOLS_MARGIN_SEP_ID, wxSCI_MARGIN_FORE);
+	SetMarginMask     (SYMBOLS_MARGIN_SEP_ID, 0);
 
 	// Fold margin - allow only folder symbols to display
-	SetMarginMask(FOLD_MARGIN_ID, wxSCI_MASK_FOLDERS);
+	SetMarginMask     (FOLD_MARGIN_ID, wxSCI_MASK_FOLDERS);
 
 	// Set margins' width
-	SetMarginWidth(SYMBOLS_MARGIN_ID, options->GetDisplayBookmarkMargin() ? 16 : 0);	// Symbol margin
+	SetMarginWidth    (SYMBOLS_MARGIN_ID, options->GetDisplayBookmarkMargin() ? 16 : 0);	// Symbol margin
+
 	// If the symbols margin is hidden, hide its related separator margin
 	// as well
 	SetMarginWidth(SYMBOLS_MARGIN_SEP_ID, options->GetDisplayBookmarkMargin() ? 1 : 0);	// Symbol margin which acts as separator
@@ -338,10 +355,6 @@ void LEditor::SetProperties()
 
 	// Show number margin according to settings.
 	SetMarginWidth(NUMBER_MARGIN_ID, options->GetDisplayLineNumbers() ? pixelWidth : 0);
-
-	// If number margin is hidden, hide its related separator margin
-	// as well
-	SetMarginWidth(NUMBER_MARGIN_SEP_ID, options->GetDisplayLineNumbers() ? 1 : 0);	// Symbol margin which acts as separator
 
 	// Show the fold margin
 	SetMarginWidth(FOLD_MARGIN_ID, options->GetDisplayFoldMargin() ? 16 : 0);	// Fold margin
@@ -511,6 +524,20 @@ void LEditor::SetProperties()
 	IndicatorSetStyle(MATCH_INDICATOR, wxSCI_INDIC_BOX);
 	IndicatorSetForeground(MATCH_INDICATOR, wxT("GREY"));
 
+	// Error
+	wxFont guiFont = wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT);
+	BuildTabSettingsData cmpColoursOptions;
+	EditorConfigST::Get()->ReadObject ( wxT ( "build_tab_settings" ), &cmpColoursOptions);
+
+	StyleSetBackground(eAnnotationStyleError, DrawingUtils::LightColour(cmpColoursOptions.GetErrorColour(), 9.0));
+	StyleSetForeground(eAnnotationStyleError, cmpColoursOptions.GetErrorColour());
+	StyleSetFont(eAnnotationStyleError, guiFont);
+
+	// Warning
+	StyleSetBackground(eAnnotationStyleWarning, DrawingUtils::LightColour(cmpColoursOptions.GetErrorColour(), 9.0));
+	StyleSetForeground(eAnnotationStyleWarning, cmpColoursOptions.GetWarnColour());
+	StyleSetFont(eAnnotationStyleWarning, guiFont);
+
 	CmdKeyClear(wxT('L'), wxSCI_SCMOD_CTRL); // clear Ctrl+D because we use it for something else
 }
 
@@ -518,10 +545,30 @@ void LEditor::OnSavePoint(wxScintillaEvent &event)
 {
 	if (!GetIsVisible())
 		return;
+
 	wxString title;
 	if (GetModify()) {
 		title << wxT("*");
+
+	} else {
+
+		if( GetMarginWidth(EDIT_TRACKER_MARGIN_ID) ) {
+
+			Freeze();
+
+			int numlines = GetLineCount();
+			for (int i=0; i<numlines; i++) {
+				int style = MarginGetStyle(i);
+				if ( style == CL_LINE_MODIFIED_STYLE) {
+					MarginSetText (i, wxT(" "));
+					MarginSetStyle(i, CL_LINE_SAVED_STYLE);
+				}
+			}
+			Refresh();
+			Thaw();
+		}
 	}
+
 	title << GetFileName().GetFullName();
 	Frame::Get()->GetMainBook()->SetPageTitle(this, title);
 	if (Frame::Get()->GetMainBook()->GetActiveEditor() == this) {
@@ -531,6 +578,8 @@ void LEditor::OnSavePoint(wxScintillaEvent &event)
 
 void LEditor::OnCharAdded(wxScintillaEvent& event)
 {
+	static wxChar s_lastCharEntered = 0;
+
 	int pos = GetCurrentPos();
 
 	// get the word and select it in the completion box
@@ -592,32 +641,42 @@ void LEditor::OnCharAdded(wxScintillaEvent& event)
 	case '}':
 		m_context->AutoIndent(event.GetKey());
 		// fall through...
-	case '\n':
-		m_context->AutoIndent(event.GetKey());
-		// incase we are typing in a folded line, make sure it is visible
-		EnsureVisible(curLine+1);
+	case '\n': {
+			// incase ENTER was hit immediatly after we inserted '{' into the code...
+			if ( s_lastCharEntered == wxT('{') && m_autoAddMatchedBrace ) {
+				matchChar = '}';
+				InsertText(pos, matchChar);
+				BeginUndoAction();
+				//InsertText(pos, GetEolString());
+				CharRight();
+				m_context->AutoIndent(wxT('}'));
+				InsertText(pos, GetEolString());
+				CharRight();
+				SetCaretAt(pos);
+				m_context->AutoIndent(wxT('\n'));
+				EndUndoAction();
+			} else {
+				m_context->AutoIndent(event.GetKey());
+				// incase we are typing in a folded line, make sure it is visible
+				EnsureVisible(curLine+1);
+			}
+
+		}
+
 		break;
 	default:
 		break;
 	}
 
 	if (matchChar && m_autoAddMatchedBrace && !m_context->IsCommentOrString(pos)) {
-		InsertText(pos, matchChar);
+
 		if (matchChar != '}') {
+			InsertText(pos, matchChar);
 			SetIndicatorCurrent(MATCH_INDICATOR);
 			// use grey colour rather than black, otherwise this indicator is invisible when using the
 			// black theme
 			IndicatorFillRange(pos, 1);
-		} else {
-			BeginUndoAction();
-			InsertText(pos, GetEolString());
-			CharRight();
-			m_context->AutoIndent(wxT('}'));
-			SetCurrentPos(pos);
-			InsertText(pos, GetEolString());
-			CharRight();
-			m_context->AutoIndent(wxT('\n'));
-			EndUndoAction();
+
 		}
 	}
 
@@ -628,6 +687,11 @@ void LEditor::OnCharAdded(wxScintillaEvent& event)
 		if (GetWordAtCaret().Len() >= 2 && pos - startPos >= 2 ) {
 			m_context->OnUserTypedXChars(GetWordAtCaret());
 		}
+	}
+
+	if( event.GetKey() !=  13 ) {
+		// Dont store last character if it was \r
+		s_lastCharEntered = event.GetKey();
 	}
 	event.Skip();
 }
@@ -725,7 +789,48 @@ void LEditor::OnMarginClick(wxScintillaEvent& event)
 	case SYMBOLS_MARGIN_ID:
 		//symbols / breakpoints margin
 		{
+			// If Shift-LeftDown, let the user drag any breakpoint marker
+			if (event.GetShift()) {
+				int markers = (MarkerGet(nLine) & mmt_all_breakpoints);
+				if (! markers) {
+					break;
+				}
+				// There doesn't seem to be an elegant way to get the defined bitmap for a marker
+				wxBitmap bm;
+				if (markers & mmt_bp_disabled) {
+					bm = wxBitmap(wxImage(BreakptDisabled));
+				} else
+				if (markers & mmt_bp_cmdlist) {
+					bm = wxBitmap(wxImage(BreakptCommandList));
+				} else
+				if (markers & mmt_bp_cmdlist_disabled) {
+					bm = wxBitmap(wxImage(BreakptCommandListDisabled));
+				} else
+				if (markers & mmt_bp_ignored) {
+					bm = wxBitmap(wxImage(BreakptIgnore));
+				} else
+				if (markers & mmt_cond_bp) {
+					bm = wxBitmap(wxImage(ConditionalBreakpt));
+				} else
+				if (markers & mmt_cond_bp_disabled) {
+					bm = wxBitmap(wxImage(ConditionalBreakptDisabled));
+				} else {
+				// Make the standard bp bitmap the default
+					bm = wxBitmap(wxImage(stop_xpm));
+				}
+
+				// There'll probably be a tooltip from the marker. Kill it
+				DoCancelCalltip();
+				// The breakpoint manager organises the actual drag/drop
+				BreakptMgr* bpm = ManagerST::Get()->GetBreakpointsMgr();
+				bpm->DragBreakpoint(this, nLine, bm);
+
+				Connect(wxEVT_MOTION, wxMouseEventHandler(myDragImage::OnMotion), NULL, bpm->GetDragImage());
+				Connect(wxEVT_LEFT_UP, wxMouseEventHandler(myDragImage::OnEndDrag), NULL, bpm->GetDragImage());
+
+			} else {
 			ToggleBreakpoint(nLine+1);
+		}
 		}
 		break;
 	case FOLD_MARGIN_ID:
@@ -1006,7 +1111,8 @@ void LEditor::OnDwellStart(wxScintillaEvent & event)
 			type = ct_breakpoint;
 
 		} else if (MarkerGet(line) & mmt_compiler) {
-			tooltip = Frame::Get()->GetOutputPane()->GetBuildTab()->GetBuildToolTip(fname, line);
+			wxMemoryBuffer style_bytes;
+			tooltip = Frame::Get()->GetOutputPane()->GetBuildTab()->GetBuildToolTip(fname, line, style_bytes);
 			type = ct_compiler_msg;
 		}
 
@@ -1445,7 +1551,7 @@ void LEditor::FindNext(const FindReplaceData &data)
 		} else {
 			// The user doesn't want to be asked if it's OK to continue, but at least let him know he has
 			wxString msg = dirDown ? _("Reached end of document, continued from start")
-										: _("Reached top of document, continued from bottom");
+			               : _("Reached top of document, continued from bottom");
 			Frame::Get()->SetStatusMessage(msg, 0, XRCID("findnext"));
 		}
 
@@ -1909,11 +2015,14 @@ bool LEditor::MarkAll()
 
 void LEditor::ReloadFile()
 {
+	SetReloadingFile( true );
+
 	HideCompletionBox();
 	DoCancelCalltip();
 
 	if (m_fileName.GetFullPath().IsEmpty() == true || m_fileName.GetFullPath().StartsWith(wxT("Untitled"))) {
 		SetEOLMode(GetEOLByOS());
+		SetReloadingFile( false );
 		return;
 	}
 
@@ -1948,6 +2057,8 @@ void LEditor::ReloadFile()
 
 	// try to locate the pattern on which the caret was prior to reloading the file
 	Frame::Get()->SetStatusMessage(wxEmptyString, 0, XRCID("editor"));
+
+	SetReloadingFile( false );
 }
 
 void LEditor::SetEditorText(const wxString &text)
@@ -2137,12 +2248,14 @@ void LEditor::OnKeyDown(wxKeyEvent &event)
 
 void LEditor::OnLeftUp(wxMouseEvent& event)
 {
+#ifdef __WXMSW__
 	long value(0);
 	EditorConfigST::Get()->GetLongValue(wxT("QuickCodeNavigationUsesMouseMiddleButton"), value);
 
 	if (!value) {
 		DoQuickJump(event, false);
 	}
+#endif
 	event.Skip();
 }
 
@@ -2168,6 +2281,7 @@ void LEditor::OnFocusLost(wxFocusEvent &event)
 
 void LEditor::OnMiddleUp(wxMouseEvent& event)
 {
+#ifdef __WXMSW__
 	long value(0);
 	EditorConfigST::Get()->GetLongValue(wxT("QuickCodeNavigationUsesMouseMiddleButton"), value);
 
@@ -2178,30 +2292,35 @@ void LEditor::OnMiddleUp(wxMouseEvent& event)
 		}
 		DoQuickJump(event, true);
 	}
+#endif
 	event.Skip();
 }
 
 void LEditor::OnMiddleDown(wxMouseEvent& event)
 {
+#ifdef __WXMSW__
 	long value(0);
 	EditorConfigST::Get()->GetLongValue(wxT("QuickCodeNavigationUsesMouseMiddleButton"), value);
 	if (value) {
 		DoMarkHyperlink(event, true);
 		return;
 	}
+#endif
+	event.Skip();
 }
 
 void LEditor::OnLeftDown(wxMouseEvent &event)
 {
 	// hide completion box
 	HideCompletionBox();
-
+#ifdef __WXMSW__
 	long value(0);
 	EditorConfigST::Get()->GetLongValue(wxT("QuickCodeNavigationUsesMouseMiddleButton"), value);
 
 	if (!value) {
 		DoMarkHyperlink(event, false);
 	}
+#endif
 	event.Skip();
 }
 
@@ -2250,8 +2369,26 @@ void LEditor::DoBreakptContextMenu(wxPoint pt)
 	// What we show depends on whether there's already a bp here (or several)
 	if (count > 0) {
 		menu.AppendSeparator();
+		if (count == 1) {
 		menu.Append(XRCID("delete_breakpoint"), wxString(_("Remove Breakpoint")));
+			menu.Append(XRCID("ignore_breakpoint"), wxString(_("Ignore Breakpoint")));
+			IDebugger *dbgr = DebuggerMgr::Get().GetActiveDebugger();
+			if (dbgr && dbgr->IsRunning()) {
+				// On MSWin it often crashes the debugger to try to load-then-disable a bp
+				// so don't show the menu item unless the debugger is running
+				menu.Append(XRCID("toggle_breakpoint_enabled_status"),
+			            lineBPs[0].is_enabled ? wxString(_("Disable Breakpoint")) : wxString(_("Enable Breakpoint")));
+			}
 		menu.Append(XRCID("edit_breakpoint"), wxString(_("Edit Breakpoint")));
+		} else if (count > 1) {
+			menu.Append(XRCID("delete_breakpoint"), wxString(_("Remove a Breakpoint")));
+			menu.Append(XRCID("ignore_breakpoint"), wxString(_("Ignore a Breakpoint")));
+			IDebugger *dbgr = DebuggerMgr::Get().GetActiveDebugger();
+			if (dbgr && dbgr->IsRunning()) {
+				menu.Append(XRCID("toggle_breakpoint_enabled_status"), wxString(_("Toggle a breakpoint's enabled state")));
+			}
+			menu.Append(XRCID("edit_breakpoint"), wxString(_("Edit a Breakpoint")));
+		}
 	}
 
 	if (ManagerST::Get()->DbgCanInteract()) {
@@ -2275,15 +2412,32 @@ void LEditor::AddOtherBreakpointType(wxCommandEvent &event)
 	wxString conditions;
 	if (event.GetId() == XRCID("insert_cond_breakpoint")) {
 		conditions = wxGetTextFromUser(wxT("Enter the condition statement"), wxT("Create Conditional Breakpoint"));
+		if (conditions.IsEmpty()) {
+			return;
+		}
 	}
 
 	AddBreakpoint(-1, conditions, is_temp);
+}
+
+void LEditor::OnIgnoreBreakpoint()
+{
+	if (ManagerST::Get()->GetBreakpointsMgr()->IgnoreByLineno(GetFileName().GetFullPath(), GetCurrentLine()+1)) {
+		Frame::Get()->GetDebuggerPane()->GetBreakpointView()->Initialize();
+	}
 }
 
 void LEditor::OnEditBreakpoint()
 {
 	ManagerST::Get()->GetBreakpointsMgr()->EditBreakpointByLineno(GetFileName().GetFullPath(), GetCurrentLine()+1);
 	Frame::Get()->GetDebuggerPane()->GetBreakpointView()->Initialize();
+}
+
+void LEditor::ToggleBreakpointEnablement()
+{
+	if (ManagerST::Get()->GetBreakpointsMgr()->ToggleEnabledStateByLineno(GetFileName().GetFullPath(), GetCurrentLine()+1)) {
+		Frame::Get()->GetDebuggerPane()->GetBreakpointView()->Initialize();
+	}
 }
 
 void LEditor::AddBreakpoint(int lineno /*= -1*/,const wxString& conditions/*=wxT("")*/, const bool is_temp/*=false*/)
@@ -3093,4 +3247,34 @@ void LEditor::SetEOL()
 	}
 	SetEOLMode(eol);
 
+}
+
+void LEditor::OnChange(wxScintillaEvent& event)
+{
+	if (event.GetModificationType() & wxSCI_MOD_INSERTTEXT || event.GetModificationType() & wxSCI_MOD_DELETETEXT) {
+		int numlines(event.GetLinesAdded());
+		if ( numlines ) {
+			// a line was added / removed from the document, synchronized between the breakpoints on this editor
+			// and the breakpoint manager
+			UpdateBreakpoints();
+		}
+
+		// ignore this event incase we are in the middle of file reloading
+		if ( GetReloadingFile() == false && GetMarginWidth(EDIT_TRACKER_MARGIN_ID) /* margin is visible */ ) {
+			int curline (LineFromPosition(event.GetPosition()));
+
+			if ( numlines == 0 ) {
+				// probably only the current line was modified
+				MarginSetText (curline, wxT(" "));
+				MarginSetStyle(curline, CL_LINE_MODIFIED_STYLE);
+
+			} else {
+
+				for (int i=0; i<=numlines; i++) {
+					MarginSetText (curline+i, wxT(" "));
+					MarginSetStyle(curline+i, CL_LINE_MODIFIED_STYLE);
+				}
+			}
+		}
+	}
 }
