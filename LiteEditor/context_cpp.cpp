@@ -25,6 +25,7 @@
 
 
 #include "pluginmanager.h"
+#include "debuggerasciiviewer.h"
 #include <wx/file.h>
 #include "threebuttondlg.h"
 #include "precompiled_header.h"
@@ -1141,7 +1142,8 @@ void ContextCpp::OnGenerateSettersGetters(wxCommandEvent &event)
 		return;
 
 	TagEntryPtr tag = classtags.at(0);
-	if (tag->GetFile() != editor.GetFileName().GetFullPath()) {
+	if (tag->GetFile().CmpNoCase(editor.GetFileName().GetFullPath()) != 0) {
+
 		wxString msg;
 		msg << wxT("This file does not seem to contain the declaration for '") << tag->GetName() << wxT("'\n");
 		msg << wxT("The declaration of '") << tag->GetName() << wxT("' is located at '") << tag->GetFile() << wxT("'\n");
@@ -1168,11 +1170,14 @@ void ContextCpp::OnGenerateSettersGetters(wxCommandEvent &event)
 		if (code.IsEmpty() == false) {
 			editor.InsertTextWithIndentation(code, lineno);
 		}
-		IPlugin *formatter = PluginManager::Get()->GetPlugin(wxT("CodeFormatter"));
-		if (formatter) {
-			// code formatter is available, format the current source file
-			wxCommandEvent e(wxEVT_COMMAND_MENU_SELECTED, XRCID("format_source"));
-			Frame::Get()->GetEventHandler()->AddPendingEvent(e);
+
+		if ( s_dlg->GetFormatText() ) {
+			IPlugin *formatter = PluginManager::Get()->GetPlugin(wxT("CodeFormatter"));
+			if (formatter) {
+				// code formatter is available, format the current source file
+				wxCommandEvent e(wxEVT_COMMAND_MENU_SELECTED, XRCID("format_source"));
+				Frame::Get()->GetEventHandler()->AddPendingEvent(e);
+			}
 		}
 	}
 }
@@ -1351,6 +1356,7 @@ void ContextCpp::OnDbgDwellStart(wxScintillaEvent & event)
 		// evaluated string
 		wxString type;
 		wxString command(word);
+		wxString dbg_command(wxT("print"));
 
 		if (dbgr->ResolveType(word, type)) {
 
@@ -1358,7 +1364,7 @@ void ContextCpp::OnDbgDwellStart(wxScintillaEvent & event)
 			// const string &, so in order to get the actual type
 			// we construct a valid expression by appending a valid identifier followed by a semi colon.
 			wxString expression;
-			//	wxLogMessage(word + wxT(" resolved into: ") + type);
+			//wxLogMessage(word + wxT(" resolved into: ") + type);
 
 			expression << wxT("/^");
 			expression << type;
@@ -1374,16 +1380,42 @@ void ContextCpp::OnDbgDwellStart(wxScintillaEvent & event)
 						// prepare the string to be evaluated
 						command = cmd.GetCommand();
 						command.Replace(wxT("$(Variable)"), word);
+
+						dbg_command = cmd.GetDbgCommand();
+
+						//---------------------------------------------------
+						// Special handling for the templates
+						//---------------------------------------------------
+
+						wxArrayString types = DoGetTemplateTypes(_U(variable.m_templateDecl.c_str()));
+						// Case 1: list
+						// The user defined scripts requires that we pass info like this:
+						// plist <list name> <T>
+						if ( type == wxT("list") && types.GetCount() > 0 ) {
+							command << wxT(" ") << types.Item(0);
+						}
+						// Case 2: map & multimap
+						// The user defined script requires that we pass the TLeft & TRight
+						// pmap <list name> TLeft TRight
+						if ( (type == wxT("map") || type == wxT("multimap")) && types.GetCount() > 1 ) {
+							command << wxT(" ") << types.Item(0) << wxT(" ") << types.Item(1);
+						}
+
 						break;
 					}
 				}
 			}
 		} else {
-			//	wxLogMessage(wxT("ResolveType failed for ") + word);
+			//wxLogMessage(wxT("ResolveType failed for ") + word);
 		}
 
 		wxString output;
-		if (dbgr->GetTip(command, output)) {
+		Frame::Get()->GetDebuggerPane()->GetAsciiViewer()->SetDebugger  (dbgr   );
+		Frame::Get()->GetDebuggerPane()->GetAsciiViewer()->SetDbgCommand(dbg_command);
+		Frame::Get()->GetDebuggerPane()->GetAsciiViewer()->SetExpression(command);
+
+		// Display tooltip if needed only
+		if (dbgr->GetDebuggerInformation().showTooltips && command.IsEmpty() == false && dbgr->GetTip(dbg_command, command, output)) {
 			// cancel any old calltip and display the new one
 			ctrl.DoCancelCalltip();
 
@@ -2143,7 +2175,7 @@ void ContextCpp::ReplaceInFiles ( const wxString &word, std::list<CppToken> &li 
 			file_name = token.getFilename();
 		}
 		LEditor *editor = Frame::Get()->GetMainBook()->OpenFile(token.getFilename(), wxEmptyString, 0);
-		if (editor != NULL && editor->GetFileName().GetFullPath() == wxFileName(token.getFilename()).GetFullPath()) {
+		if (editor != NULL && (editor->GetFileName().GetFullPath().CmpNoCase(token.getFilename()) == 0) ) {
 			editor->SetSelection ( token.getOffset(), token.getOffset()+token.getName().Len() );
 			if ( editor->GetSelectionStart() != editor->GetSelectionEnd() ) {
 				editor->ReplaceSelection ( word );
@@ -2626,7 +2658,9 @@ int ContextCpp::DoGetCalltipParamterIndex()
 		bool exit_loop(false);
 
 		while ( pos < ctrl.GetCurrentPos() && !exit_loop ) {
-			wxChar ch = ctrl.SafeGetChar(pos);
+			wxChar ch        = ctrl.SafeGetChar(pos);
+			wxChar ch_before = ctrl.SafeGetChar(ctrl.PositionBefore(pos));
+
 			if (IsCommentOrString(pos)) {
 				pos = ctrl.PositionAfter(pos);
 				continue;
@@ -2647,10 +2681,15 @@ int ContextCpp::DoGetCalltipParamterIndex()
 							case wxT('['):
 									depth++;
 				break;
+			case wxT('>'):
+				if ( ch_before == wxT('-') ) {
+					// operator noting to do
+					break;
+				}
+				// fall through
 			case wxT(')'):
-						case wxT('>'):
-							case wxT(']'):
-									depth--;
+				case wxT(']'):
+					depth--;
 				break;
 			default:
 				break;
@@ -2673,4 +2712,65 @@ void ContextCpp::DoUpdateCalltipHighlight()
 			ctrl.CallTipSetHighlight(start, start + len);
 		}
 	}
+}
+
+wxArrayString ContextCpp::DoGetTemplateTypes(const wxString& tmplDecl)
+{
+	wxArrayString types;
+	int           depth (0);
+	wxString      type;
+
+	wxString tmpstr ( tmplDecl );
+	tmpstr.Trim().Trim(false);
+
+	if ( tmpstr.StartsWith(wxT("<")) ) {
+		tmpstr.Remove(0, 1);
+	}
+
+	if ( tmpstr.EndsWith(wxT(">")) ) {
+		tmpstr.RemoveLast();
+	}
+	tmpstr.Trim().Trim(false);
+
+	for (size_t i=0; i<tmpstr.Length(); i++) {
+		switch (tmpstr.GetChar(i)) {
+		case wxT(','):
+						if ( depth > 0 ) {
+					type << wxT(",");
+				} else {
+					type.Trim().Trim(false);
+					if ( type.Contains(wxT("std::basic_string<char")) ) {
+						type = wxT("string");
+					} else if ( type.Contains(wxT("std::basic_string<wchar_t")) ) {
+						type = wxT("wstring");
+					}
+					types.Add( type );
+					type.Empty();
+				}
+			break;
+		case wxT('<'):
+						depth ++;
+			type << wxT("<");
+			break;
+		case wxT('>'):
+						depth--;
+			type << wxT(">");
+			break;
+		default:
+			type << tmpstr.GetChar(i);
+			break;
+		}
+	}
+
+	if ( depth == 0 && type.IsEmpty() == false ) {
+		type.Trim().Trim(false);
+		if ( type.Contains(wxT("std::basic_string<char")) ) {
+			type = wxT("string");
+		} else if ( type.Contains(wxT("std::basic_string<wchar_t")) ) {
+			type = wxT("wstring");
+		}
+		types.Add( type );
+	}
+
+	return types;
 }

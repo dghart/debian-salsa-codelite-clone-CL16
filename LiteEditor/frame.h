@@ -68,26 +68,25 @@ struct StartPageData {
 
 class Frame : public wxFrame
 {
-	MainBook *m_mainBook;
-	static Frame* m_theFrame;
-	wxAuiManager m_mgr;
-	OutputPane *m_outputPane;
-	WorkspacePane *m_workspacePane;
-	wxArrayString m_files;
-	wxTimer *m_timer;
-	std::map<int, wxString> m_viewAsMap;
-	TagsOptionsData m_tagsOptionsData;
-	DebuggerPane *m_debuggerPane;
-	wxToolBar *m_debuggerTb;
-	bool m_buildAndRun;
-
-	GeneralInfo m_frameGeneralInfo;
-	std::map<int, wxString> m_toolbars;
-	std::map<int, wxString> m_panes;
+	MainBook *                            m_mainBook;
+	static Frame*                         m_theFrame;
+	wxAuiManager                          m_mgr;
+	OutputPane *                          m_outputPane;
+	WorkspacePane *                       m_workspacePane;
+	wxArrayString                         m_files;
+	wxTimer *                             m_timer;
+	std::map<int, wxString>               m_viewAsMap;
+	TagsOptionsData                       m_tagsOptionsData;
+	DebuggerPane *                        m_debuggerPane;
+	wxToolBar *                           m_debuggerTb;
+	bool                                  m_buildAndRun;
+	GeneralInfo                           m_frameGeneralInfo;
+	std::map<int, wxString>               m_toolbars;
+	std::map<int, wxString>               m_panes;
     std::vector<std::map<int, wxString> > m_status;
-	wxMenu *m_cppMenu;
-	bool m_highlightWord;
-	DockablePaneMenuManager *m_DPmenuMgr;
+	wxMenu *                              m_cppMenu;
+	bool                                  m_highlightWord;
+	DockablePaneMenuManager *             m_DPmenuMgr;
 
 public:
 	static Frame* Get();
@@ -222,6 +221,11 @@ public:
      */
     void SetStatusMessage(const wxString &msg, int col, int id = wxID_ANY);
 
+	/**
+	 * @brief save the current IDE layout and session
+	 */
+	void SaveLayoutAndSession();
+
 private:
 	// make our frame's constructor private
 	Frame(wxWindow *pParent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style = wxMINIMIZE_BOX | wxMAXIMIZE_BOX | wxCLOSE_BOX | wxCAPTION | wxSYSTEM_MENU | wxRESIZE_BORDER | wxCLIP_CHILDREN);
@@ -337,6 +341,10 @@ protected:
 	void OnOpenShellFromFilePath(wxCommandEvent &e);
 	void OnQuickDebug(wxCommandEvent &e);
 	void OnQuickDebugUI(wxUpdateUIEvent &e);
+	void OnNextFiFMatch      (wxCommandEvent &e);
+	void OnPreviousFiFMatch  (wxCommandEvent &e);
+	void OnNextFiFMatchUI    (wxUpdateUIEvent &e);
+	void OnPreviousFiFMatchUI(wxUpdateUIEvent &e);
 
 	// this event is sent from the notebook container to the frame
 	void OnFileClosing(NotebookEvent &event);

@@ -97,10 +97,11 @@ EXE_NAME=codelite
 mkdir -p fakeroot/${PREFIX}/bin/
 
 cp ./Runtime/${EXE_NAME} fakeroot/${PREFIX}/bin/codelite
-cp sdk/codelite_indexer/codelite_indexer fakeroot/${PREFIX}/bin/
-cp Runtime/codelite_exec                 fakeroot/${PREFIX}/bin/
-cp Runtime/codelite_kill_children        fakeroot/${PREFIX}/bin/
-cp Runtime/codelite_fix_files            fakeroot/${PREFIX}/bin/
+cp sdk/codelite_indexer/codelite_indexer   fakeroot/${PREFIX}/bin/
+cp sdk/codelite_cppcheck/codelite_cppcheck fakeroot/${PREFIX}/bin/
+cp Runtime/codelite_exec                   fakeroot/${PREFIX}/bin/
+cp Runtime/codelite_kill_children          fakeroot/${PREFIX}/bin/
+cp Runtime/codelite_fix_files              fakeroot/${PREFIX}/bin/
 
 chmod +x fakeroot/${PREFIX}/bin/codelite_fix_files
 chmod +x fakeroot/${PREFIX}/bin/codelite_kill_children
@@ -142,6 +143,7 @@ mkdir -p fakeroot/usr/share/menu/
 \cp -pr lib/wxformbuilder.so fakeroot/${PREFIX}/lib/codelite/
 \cp -pr lib/abbreviation.so fakeroot/${PREFIX}/lib/codelite/
 \cp -pr lib/QmakePlugin.so fakeroot/${PREFIX}/lib/codelite/
+\cp -pr lib/CppCheck.so fakeroot/${PREFIX}/lib/codelite/
 \cp -pr lib/libwxscintillau.so fakeroot/${PREFIX}/lib/codelite/
 \cp -pr lib/libpluginu.so fakeroot/${PREFIX}/lib/codelite/
 \cp -pr lib/libcodeliteu.so fakeroot/${PREFIX}/lib/codelite/
@@ -176,5 +178,6 @@ generateMenuFile
 
 chmod +x fakeroot/${PREFIX}/bin/codelite
 chmod +x fakeroot/${PREFIX}/bin/codelite_indexer
+chmod +x fakeroot/${PREFIX}/bin/codelite_cppcheck
 
 fakeroot dpkg -b fakeroot/ ./

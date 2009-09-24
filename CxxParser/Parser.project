@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <CodeLite_Project Name="Parser">
+  <Plugins>
+    <Plugin Name="qmake">
+      <![CDATA[00010001N0007Release000000000000
+    ]]>
+    </Plugin>
+  </Plugins>
   <VirtualDirectory Name="src">
     <File Name="scope_parser.cpp"/>
     <File Name="cpp_lexer.cpp"/>

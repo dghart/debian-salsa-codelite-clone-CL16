@@ -70,6 +70,8 @@ protected:
 	void SetBreakpoints();
 	void OnProcessEndEx(wxProcessEvent &e);
 
+	bool DoLocateGdbExecutable(const wxString &debuggerPath, wxString &dbgExeName);
+	bool DoInitializeGdb      (const std::vector<BreakpointInfo> &bpList, const wxArrayString &cmds);
 public:
 	DbgGdb();
 	virtual ~DbgGdb();
@@ -81,8 +83,11 @@ public:
 	virtual bool Run(const wxString &args, const wxString &comm);
 	virtual bool Stop();
 	virtual bool Break(const BreakpointInfo& bp);
+	virtual bool SetEnabledState(const int bid, const bool enable);
+	virtual bool SetIgnoreLevel(const int bid, const int ignorecount);
+	virtual bool SetCondition(const BreakpointInfo& bp);
+	virtual bool SetCommands(const BreakpointInfo& bp);
 	virtual bool RemoveBreak(int bid);
-	virtual bool RemoveBreak(const wxString &fileName, long lineno);
 	virtual bool RemoveAllBreaks();
 	virtual bool StepIn();
 	virtual bool StepOut();
@@ -100,11 +105,12 @@ public:
 	virtual bool SelectThread(long threadId);
 	virtual bool SetFrame(int frame);
 	virtual void Poke();
-	virtual bool GetTip(const wxString &expression, wxString &evaluated);
+	virtual bool GetTip(const wxString &dbgCommand, const wxString &expression, wxString &evaluated);
 	virtual bool ResolveType(const wxString &expression, wxString &type);
 	virtual bool WatchMemory(const wxString &address, size_t count, wxString &output);
 	virtual bool SetMemory(const wxString &address, size_t count, const wxString &hex_value);
 	virtual void SetDebuggerInformation(const DebuggerInformation &info);
+	virtual void BreakList();
 };
 #endif //DBGINTERFACE_H
 
