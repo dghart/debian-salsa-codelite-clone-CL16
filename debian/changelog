@@ -1,8 +1,8 @@
-codelite (1.0.2893+dfsg-1) unstable; urgency=low
+codelite (1.0.3035+dfsg-1) unstable; urgency=low
 
   * Initial release (Closes: #516896)
   * Original .tar.gz has been repackaged, removing all .exe and .dll
     files, as well as sdk/curl, sdk/astyle, sdk/src, and sdk/wxconfig,
     sdk/wxsqlite3/sqlite3 which are Windows-specific and/or unneeded.
 
- -- Chow Loong Jin <hyperair@ubuntu.com>  Sat, 15 Aug 2009 16:32:59 +0800
+ -- Chow Loong Jin <hyperair@ubuntu.com>  Fri, 25 Sep 2009 00:09:52 +0800
