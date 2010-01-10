@@ -13,7 +13,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #ifndef checkH
@@ -52,7 +52,9 @@ public:
 
     virtual ~Check()
     {
+#ifndef DJGPP
         instances().remove(this);
+#endif
     }
 
     /** List of registered check classes. This is used by Cppcheck to run checks and generate documentation */
@@ -77,6 +79,16 @@ public:
 
     /** get information about this class, used to generate documentation */
     virtual std::string classInfo() const = 0;
+
+    /**
+     * Write given error to errorlogger or to out stream in xml format.
+     * This is for for printout out the error list with --errorlist
+     * @param errmsg Error message to write
+     */
+    static void reportError(const ErrorLogger::ErrorMessage &errmsg)
+    {
+        std::cout << errmsg.toXML() << std::endl;
+    }
 
 protected:
     const Tokenizer * const _tokenizer;
@@ -113,12 +125,13 @@ protected:
         }
 
         const ErrorLogger::ErrorMessage errmsg(locationList, Severity::stringify(severity), msg, id);
-
         if (_errorLogger)
             _errorLogger->reportErr(errmsg);
         else
-            std::cout << errmsg.toXML() << std::endl;
+            reportError(errmsg);
     }
+
+
 
 private:
     /** compare the names of Check classes, used when sorting the Check descendants */

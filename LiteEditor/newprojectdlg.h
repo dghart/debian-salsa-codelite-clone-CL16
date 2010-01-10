@@ -45,24 +45,37 @@ class NewProjectDlg : public NewProjectBaseDlg
 protected:
 	// Handlers for NewProjectBaseDlg events.
 	void OnProjectNameChanged( wxCommandEvent& event );
-	void OnProjectPathChanged( wxFileDirPickerEvent& event );
 	void OnCreate(wxCommandEvent &event);
 	void OnTemplateSelected( wxListEvent& event );
 	void OnCategorySelected( wxCommandEvent& event );
 
 	ProjectPtr FindProject(const wxString &name);
-	void GetProjectTemplateList(std::list<ProjectPtr> &list);
 	void FillProjectTemplateListCtrl(const wxString& category);
 
 	void UpdateFullFileName();
 	void UpdateProjectPage();
 
+	/**
+	 * @brief
+	 * @param event
+	 */
+	virtual void OnBrowseProjectPath( wxCommandEvent& event );
+
+	/**
+	 * @brief
+	 * @param event
+	 */
+	virtual void OnProjectPathUpdated( wxCommandEvent& event );
+
 public:
+
 	/** Constructor */
 	NewProjectDlg( wxWindow* parent );
 	virtual ~NewProjectDlg();
 
-	const ProjectData& GetProjectData() const { return m_projectData; }
+	const ProjectData& GetProjectData() const {
+		return m_projectData;
+	}
 };
 
 #endif // __newprojectdlg__

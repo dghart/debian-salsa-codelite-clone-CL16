@@ -143,6 +143,9 @@ wxTabContainer::wxTabContainer(wxWindow *win, wxWindowID id, int orientation, lo
 		, m_bmpHeight     (14)
 		, m_fixedTabWidth (120)
 {
+	if ( style & wxVB_NO_TABS ) {
+		Hide();
+	}
 	Initialize();
 }
 
@@ -280,7 +283,7 @@ void wxTabContainer::SetSelection(CustomTab *tab, bool notify)
 
 	tab->SetSelected(true);
 	EnsureVisible(tab);
-
+	
 	tab->Refresh();
 	tab->GetWindow()->SetFocus();
 
@@ -581,6 +584,10 @@ bool wxTabContainer::DoRemoveTab(CustomTab *deleteTab, bool deleteIt, bool notif
 		//you can now safely destroy the visual tab button
 		deleteTab->Destroy();
 	}
+	if ( GetTabsCount() == 0 ) {
+		Hide();
+	}
+
 	m_tabsSizer->Layout();
 	GetParent()->GetSizer()->Layout();
 

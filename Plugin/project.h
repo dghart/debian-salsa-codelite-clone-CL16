@@ -34,6 +34,8 @@
 #include <list>
 #include "serialized_object.h"
 #include "project_settings.h"
+#include "optionsconfig.h"
+#include "localworkspace.h"
 
 //incase we are using DLL build of wxWdigets, we need to make this class to export its
 //classes
@@ -324,6 +326,16 @@ public:
 	void GetFiles(std::vector<wxFileName> &files, std::vector<wxFileName> &absFiles);
 
 	/**
+	 * Return a node pointing to any project-wide editor preferences
+	 */
+	wxXmlNode* GetProjectEditorOptions() const;
+
+	/**
+	 * Add or update local project options
+	 */
+	void SetProjectEditorOptions(LocalOptionsConfigPtr opts);
+
+	/**
 	 * Return the project build settings object by name
 	 */
 	ProjectSettingsPtr GetSettings() const;
@@ -442,7 +454,7 @@ public:
 	 * @brief set all plugins data as map of plugin=value pair
 	 * @param pluginsDataMap
 	 */
-	void SetAllPluginsData(const std::map<wxString, wxString> &pluginsDataMap);
+	void SetAllPluginsData(const std::map<wxString, wxString> &pluginsDataMap, bool saveToFile = true);
 
 	//----------------------------------
 	//File modifications

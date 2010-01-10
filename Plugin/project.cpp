@@ -23,6 +23,8 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 #include "project.h"
+#include <wx/app.h>
+#include <wx/log.h>
 #include "fileextmanager.h"
 #include "xmlutils.h"
 #include <wx/tokenzr.h>
@@ -90,6 +92,12 @@ bool Project::Load(const wxString &path)
 	if ( !m_doc.Load(path) ) {
 		return false;
 	}
+
+	// Workaround WX bug: load the plugins data (GetAllPluginsData will strip any trailing whitespaces)
+	// and then set them back
+	std::map<wxString, wxString> pluginsData;
+	GetAllPluginsData(pluginsData);
+	SetAllPluginsData(pluginsData, false);
 
 	m_vdCache.clear();
 
@@ -184,7 +192,7 @@ bool Project::IsFileExist(const wxString &fileName)
 	GetFiles(files);
 
 	for (size_t i=0; i<files.size(); i++) {
-		if (files.at(i).GetFullPath().CmpNoCase(tmp.GetFullPath()) == 0) {
+		if (files.at(i).GetFullPath().CmpNoCase(tmp.GetFullPath(wxPATH_UNIX)) == 0) {
 			return true;
 		}
 	}
@@ -212,7 +220,7 @@ bool Project::AddFile(const wxString &fileName, const wxString &virtualDirPath)
 	}
 
 	wxXmlNode *node = new wxXmlNode(NULL, wxXML_ELEMENT_NODE, wxT("File"));
-	node->AddProperty(wxT("Name"), tmp.GetFullPath());
+	node->AddProperty(wxT("Name"), tmp.GetFullPath(wxPATH_UNIX));
 	vd->AddChild(node);
 	if (!InTransaction()) {
 		SaveXmlFile();
@@ -263,10 +271,12 @@ bool Project::RemoveFile(const wxString &fileName, const wxString &virtualDir)
 	wxFileName tmp(fileName);
 	tmp.MakeRelativeTo(m_fileName.GetPath());
 
-	wxXmlNode *node = XmlUtils::FindNodeByName(vd, wxT("File"), tmp.GetFullPath());
+	wxXmlNode *node = XmlUtils::FindNodeByName(vd, wxT("File"), tmp.GetFullPath(wxPATH_UNIX));
 	if ( node ) {
 		node->GetParent()->RemoveChild( node );
 		delete node;
+	} else {
+		wxLogMessage(wxT("Failed to remove file %s from project"), tmp.GetFullPath(wxPATH_UNIX).c_str());
 	}
 	SetModified(true);
 	return SaveXmlFile();
@@ -404,6 +414,23 @@ void Project::GetFiles(wxXmlNode *parent, std::vector<wxFileName> &files, bool a
 		}
 		child = child->GetNext();
 	}
+}
+
+wxXmlNode* Project::GetProjectEditorOptions() const
+{
+	return XmlUtils::FindFirstByTagName(m_doc.GetRoot(), wxT("Options"));
+}
+
+void Project::SetProjectEditorOptions(LocalOptionsConfigPtr opts)
+{
+	wxXmlNode *parent = m_doc.GetRoot();
+	wxXmlNode *oldOptions = XmlUtils::FindFirstByTagName(parent, wxT("Options"));
+	if (oldOptions) {
+		oldOptions->GetParent()->RemoveChild(oldOptions);
+		delete oldOptions;
+	}
+	parent->AddChild(opts->ToXml());
+	SaveXmlFile();
 }
 
 ProjectSettingsPtr Project::GetSettings() const
@@ -547,7 +574,8 @@ void Project::CopyTo(const wxString& new_path, const wxString& new_name, const w
 		file_node->AddProperty(wxT("Name"), fn.GetFullName());
 
 		switch ( FileExtManager::GetType( fn.GetFullName() ) ) {
-		case FileExtManager::TypeSource:
+		case FileExtManager::TypeSourceC:
+		case FileExtManager::TypeSourceCpp:
 
 			// source file
 			if ( !srcNode ) {
@@ -622,11 +650,11 @@ bool Project::RenameFile(const wxString& oldName, const wxString& virtualDir, co
 	wxFileName tmp(oldName);
 	tmp.MakeRelativeTo(m_fileName.GetPath());
 
-	wxXmlNode *node = XmlUtils::FindNodeByName(vd, wxT("File"), tmp.GetFullPath());
+	wxXmlNode *node = XmlUtils::FindNodeByName(vd, wxT("File"), tmp.GetFullPath(wxPATH_UNIX));
 	if ( node ) {
 		// update the new name
 		tmp.SetFullName(newName);
-		XmlUtils::UpdateProperty(node, wxT("Name"), tmp.GetFullPath());
+		XmlUtils::UpdateProperty(node, wxT("Name"), tmp.GetFullPath(wxPATH_UNIX));
 	}
 
 	SetModified(true);
@@ -645,7 +673,7 @@ wxString Project::GetVDByFileName(const wxString& file)
 	tmp.MakeRelativeTo(m_fileName.GetPath());
 
 	wxString path(wxEmptyString);
-	wxXmlNode *fileNode = FindFile(m_doc.GetRoot(), tmp.GetFullPath());
+	wxXmlNode *fileNode = FindFile(m_doc.GetRoot(), tmp.GetFullPath(wxPATH_UNIX));
 
 	if (fileNode) {
 		wxXmlNode *parent = fileNode->GetParent();
@@ -800,7 +828,7 @@ bool Project::FastAddFile(const wxString& fileName, const wxString& virtualDir)
 	tmp.MakeRelativeTo(m_fileName.GetPath());
 
 	wxXmlNode *node = new wxXmlNode(NULL, wxXML_ELEMENT_NODE, wxT("File"));
-	node->AddProperty(wxT("Name"), tmp.GetFullPath());
+	node->AddProperty(wxT("Name"), tmp.GetFullPath(wxPATH_UNIX));
 	vd->AddChild(node);
 	if (!InTransaction()) {
 		SaveXmlFile();
@@ -920,7 +948,10 @@ void Project::GetAllPluginsData(std::map<wxString, wxString>& pluginsDataMap)
 	while( child ) {
 		if( child->GetName() == wxT("Plugin") ) {
 			// get the content
-			pluginsDataMap[child->GetPropVal(wxT("Name"), wxEmptyString)] = child->GetNodeContent();
+			wxString content = child->GetNodeContent();
+			// overcome bug in WX where CDATA content comes out with extra \n and 4xspaces
+			content.Trim().Trim(false);
+			pluginsDataMap[child->GetPropVal(wxT("Name"), wxEmptyString)] = content;
 		}
 		child = child->GetNext();
 	}
@@ -941,7 +972,7 @@ wxString Project::GetPluginData(const wxString& pluginName)
 	// find the node and return its content
 	wxXmlNode *dataNode = XmlUtils::FindNodeByName(plugins, wxT("Plugin"), pluginName);
 	if( dataNode ){
-		return dataNode->GetNodeContent();
+		return dataNode->GetNodeContent().Trim().Trim(false);
 	}
 	return wxEmptyString;
 }
@@ -964,12 +995,14 @@ void Project::SetPluginData(const wxString& pluginName, const wxString& data)
 		plugin->AddProperty(wxT("Name"), pluginName);
 	}
 
-	XmlUtils::SetCDATANodeContent(plugin, data);
+	wxString tmpData ( data );
+	tmpData.Trim().Trim(false);
+	XmlUtils::SetCDATANodeContent(plugin, tmpData);
 	SaveXmlFile();
 }
 
 
-void Project::SetAllPluginsData(const std::map<wxString, wxString>& pluginsDataMap)
+void Project::SetAllPluginsData(const std::map<wxString, wxString>& pluginsDataMap, bool saveToFile /* true */)
 {
 	if(!m_doc.IsOk()){
 		return;
@@ -986,7 +1019,10 @@ void Project::SetAllPluginsData(const std::map<wxString, wxString>& pluginsDataM
 	for(; iter != pluginsDataMap.end(); iter ++) {
 		SetPluginData( iter->first, iter->second );
 	}
-	SaveXmlFile();
+
+	if ( saveToFile ) {
+		SaveXmlFile();
+	}
 }
 
 time_t Project::GetFileLastModifiedTime() const

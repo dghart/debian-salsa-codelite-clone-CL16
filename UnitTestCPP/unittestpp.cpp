@@ -22,7 +22,7 @@
 //
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-
+#include <wx/app.h>
 #include "unittestspage.h"
 #include "macros.h"
 #include "unittestdata.h"
@@ -40,10 +40,14 @@
 #include <wx/ffile.h>
 #include <wx/msgdlg.h>
 #include "unittestpp.h"
-#include <wx/app.h>
 #include <wx/xrc/xmlres.h>
 #include <wx/menuitem.h>
 #include <wx/menu.h>
+
+#ifdef __WXMSW__
+#include <wx/msw/registry.h>
+#include "evnvarlist.h"
+#endif
 
 static UnitTestPP* thePlugin = NULL;
 
@@ -78,6 +82,28 @@ UnitTestPP::UnitTestPP(IManager *manager)
 	m_longName = wxT("A Unit test plugin based on the UnitTest++ framework");
 	m_shortName = wxT("UnitTestPP");
 	m_topWindow = m_mgr->GetTheApp();
+	
+#ifdef __WXMSW__
+	wxRegKey rk(wxT("HKEY_CURRENT_USER\\Software\\CodeLite"));
+	if(rk.Exists()) {
+		wxString strUnitTestPP;
+		if(rk.HasValue(wxT("unittestpp"))){
+			rk.QueryValue(wxT("unittestpp"), strUnitTestPP);
+		}
+		
+		if(strUnitTestPP.IsEmpty() == false) {
+			// Add the UnitTestPP environment variable to codelite's
+			// environment variables
+			EvnVarList vars;
+			m_mgr->GetEnv()->ReadObject(wxT("Variables"), &vars);
+
+			StringMap varMap = vars.GetVariables();
+			varMap[wxT("UNIT_TEST_PP_SRC_DIR")] = strUnitTestPP;
+			vars.SetVariables( varMap );
+			m_mgr->GetEnv()->WriteObject(wxT("Variables"), &vars);
+		}
+	}
+#endif
 }
 
 UnitTestPP::~UnitTestPP()

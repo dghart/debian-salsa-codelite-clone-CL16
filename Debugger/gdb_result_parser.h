@@ -1,28 +1,3 @@
-//////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////
-//
-// copyright            : (C) 2008 by Eran Ifrah                            
-// file name            : gdb_result_parser.h              
-//                                                                          
-// -------------------------------------------------------------------------
-// A                                                                        
-//              _____           _      _     _ _                            
-//             /  __ \         | |    | |   (_) |                           
-//             | /  \/ ___   __| | ___| |    _| |_ ___                      
-//             | |    / _ \ / _  |/ _ \ |   | | __/ _ )                     
-//             | \__/\ (_) | (_| |  __/ |___| | ||  __/                     
-//              \____/\___/ \__,_|\___\_____/_|\__\___|                     
-//                                                                          
-//                                                  F i l e                 
-//                                                                          
-//    This program is free software; you can redistribute it and/or modify  
-//    it under the terms of the GNU General Public License as published by  
-//    the Free Software Foundation; either version 2 of the License, or     
-//    (at your option) any later version.                                   
-//                                                                          
-//////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////
-
 #define GDB_DONE 257
 #define GDB_RUNNING 258
 #define GDB_CONNECTED 259
@@ -47,3 +22,13 @@
 #define GDB_DATA 278
 #define GDB_ADDR 279
 #define GDB_ASCII 280
+#define GDB_CHILDREN 281
+#define GDB_CHILD 282
+#define GDB_MORE 283
+#define GDB_VAROBJ 284
+#define GDB_BREAKPOINT_TABLE 285
+#define GDB_NR_ROWS 286
+#define GDB_NR_COLS 287
+#define GDB_HDR 288
+#define GDB_BODY 289
+#define GDB_BKPT 290

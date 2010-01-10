@@ -33,6 +33,7 @@
 
 class wxListCtrl;
 class IEditor;
+class IManager;
 
 /**
  * \brief send command event to the application (wxTheApp),
@@ -202,6 +203,25 @@ wxString NormalizePath(const wxString &path);
  */
 time_t GetFileModificationTime(const wxString &filename);
 time_t GetFileModificationTime(const wxFileName &filename);
+
+/**
+ * @brief wrap a given command in the shell command (e.g. cmd /c "command")
+ */
+void WrapInShell(wxString &cmd);
+
+/**
+ * @brief return the current user name without any special characters
+ * @return
+ */
+wxString clGetUserName();
+
+/**
+ * @brief return list of projects available based on the installed tempaltes
+ * @param list list of projects
+ * @param imageMap when provided, returns the image index (set in the lstImages) mapped to the project type
+ * @param lstImages wxImageList allocated on the heap for the projects
+ */
+void GetProjectTemplateList( IManager *manager, std::list<ProjectPtr> &list, std::map<wxString,int> *imageMap = NULL, wxImageList **lstImages = NULL);
 
 #endif //GLOBALS_H
 

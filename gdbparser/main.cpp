@@ -1,16 +1,20 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string>
+#include <errno.h>
+#include <string.h>
+#include <memory.h>
+#include <vector>
+#include <map>
+
 #include "gdb_result_parser.h"
-extern int gdb_result_lex();
-extern bool setGdbLexerInput(const std::string &in);
-extern void gdb_parse_result(const std::string &in);
-extern void gdb_result_push_buffer(const std::string &new_input);
-extern void gdb_result_pop_buffer();
+#include "gdb_parser_incl.h"
 
 char *loadFile(const char *fileName);
-extern void gdb_result_lex_clean();
-extern std::string gdb_result_string;
 void MakeSubTree(int depth);
+void MakeTree();
+void ReadTokens();
+
 
 static void printNode(const std::string& str, int depth = 0)
 {
@@ -54,23 +58,36 @@ static void GDB_STRIP_QUOATES(std::string &currentToken)
 	}
 
 bool testParseLocals();
+bool testTokens();
+bool testChildrenParser();
+
 int main(int argc, char **argv)
 {
-//	char *data = loadFile("test.txt");
-//	setGdbLexerInput(data);
-//
-//	int type = gdb_result_lex();
-//	while (type != 0) {
-//		printf("%d--> %s\n", type, gdb_result_string.c_str());
-//		type = gdb_result_lex();
-//	}
-//
-//	gdb_result_lex_clean();
-//	free(data);
-	testParseLocals();
+//	testTokens();
+	testChildrenParser();
 	return 0;
 }
 
+bool testChildrenParser()
+{
+	char *l = loadFile("test.txt");
+	if( !l ) {
+		return false;
+	}
+	std::vector<std::map<std::string, std::string> > children;
+	gdbParseListChildren( l, children );
+
+	for(size_t i=0; i<children.size(); i++) {
+		std::map<std::string, std::string> attr = children.at(i);
+		std::map<std::string, std::string>::iterator iter = attr.begin();
+		printf("--------------\n");
+		for( ; iter != attr.end(); iter++ ){
+			printf("%s=%s\n", iter->first.c_str(), iter->second.c_str());
+		}
+	}
+
+	free(l);
+}
 
 char *loadFile(const char *fileName)
 {
@@ -103,14 +120,25 @@ char *loadFile(const char *fileName)
 	fclose(fp);
 	return buf;
 }
-void MakeTree();
-bool testParseLocals()
+
+bool testTokens()
 {
-	char *l = loadFile("test_locals.txt");
+	char *l = loadFile("test.txt");
 	if (!l) {
 		return false;
 	}
+	setGdbLexerInput(l, true, true);
+	ReadTokens();
+	gdb_result_lex_clean();
+	free(l);
+}
 
+bool testParseLocals()
+{
+	char *l = loadFile("test.txt");
+	if (!l) {
+		return false;
+	}
 	std::string strline = l, tmpline;
 
 	size_t pos = strline.find("{");
@@ -121,7 +149,7 @@ bool testParseLocals()
 	if(pos != std::string::npos){
 		strline = strline.substr(0, pos);
 	}
-	
+
 #ifdef __WXMAC__
 	if(strline.find("^done,locals={") != std::string::npos)
 #else
@@ -135,12 +163,22 @@ bool testParseLocals()
 		strline = strline.erase(strline.length()-1);
 	}
 
-	setGdbLexerInput(strline);
+	setGdbLexerInput(strline, true);
 	MakeTree();
-
 	gdb_result_lex_clean();
 
 	return true;
+}
+
+void ReadTokens()
+{
+	std::string currentToken;
+	int type(0);
+	GDB_LEX();
+	while (type != 0) {
+		printf("Token=%s | %d\n", currentToken.c_str(), type);
+		GDB_LEX();
+	}
 }
 
 void MakeTree() {

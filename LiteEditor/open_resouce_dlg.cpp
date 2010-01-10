@@ -45,6 +45,7 @@
 #include "open_resouce_dlg.h"
 #include "macros.h"
 #include "manager.h"
+#include "string_client_data.h"
 
 ///////////////////////////////////////////////////////////////////////////
 BEGIN_EVENT_TABLE(OpenResourceDlg, wxDialog)
@@ -166,7 +167,7 @@ void OpenResourceDlg::OnTimer(wxTimerEvent &event)
 	// are stored as ClientObject
 	wxArrayString actValues;
 	for (unsigned int i=0; i<m_listShortNames->GetCount(); i++) {
-		wxStringClientData *data = (wxStringClientData *)m_listShortNames->GetClientObject(i);
+		MyStringClientData *data = (MyStringClientData *)m_listShortNames->GetClientObject(i);
 		actValues.Add(data->GetData());
 	}
 	// we need to sort the array
@@ -183,13 +184,13 @@ void OpenResourceDlg::OnTimer(wxTimerEvent &event)
 	m_listShortNames->Clear();
 	for (size_t i=0; i<tmpArr.GetCount(); i++) {
 		wxFileName fn(tmpArr.Item(i));
-		m_listShortNames->Append(fn.GetFullName(), new wxStringClientData(tmpArr.Item(i)));
+		m_listShortNames->Append(fn.GetFullName(), new MyStringClientData(tmpArr.Item(i)));
 	}
 	Thaw();
 	if (m_listShortNames->GetCount() > 0) {
 		m_listShortNames->Select(0);
 		// display the full name at the bottom static text control
-		wxStringClientData *data = (wxStringClientData *)m_listShortNames->GetClientObject(0);
+		MyStringClientData *data = (MyStringClientData *)m_listShortNames->GetClientObject(0);
 		m_fullText->SetLabel(data->GetData());
 	}
 }
@@ -210,7 +211,12 @@ void OpenResourceDlg::OnButtonOK(wxCommandEvent &event)
 
 void OpenResourceDlg::OnItemSelected(wxCommandEvent &event)
 {
-	wxStringClientData *data = (wxStringClientData *)m_listShortNames->GetClientObject(event.GetSelection());
+	if (event.GetSelection() == wxNOT_FOUND) {
+		// This would otherwise cause a wx assertion
+		return;
+	}
+
+	MyStringClientData *data = (MyStringClientData *)m_listShortNames->GetClientObject(event.GetSelection());
 	if(data) {
 	m_fullText->SetLabel(data->GetData());
 	UpdateFileName();
@@ -271,7 +277,7 @@ void OpenResourceDlg::OnCharHook(wxKeyEvent &event)
 			m_listShortNames->SetFirstItem(cursel);
 
 			// display the full name at the bottom static text control
-			wxStringClientData *data = (wxStringClientData *)m_listShortNames->GetClientObject(cursel);
+			MyStringClientData *data = (MyStringClientData *)m_listShortNames->GetClientObject(cursel);
 			m_fullText->SetLabel(data->GetData());
 
 		} else {
@@ -280,7 +286,7 @@ void OpenResourceDlg::OnCharHook(wxKeyEvent &event)
 			m_listShortNames->Select(0);
 
 			// display the full name at the bottom static text control
-			wxStringClientData *data = (wxStringClientData *)m_listShortNames->GetClientObject(0);
+			MyStringClientData *data = (MyStringClientData *)m_listShortNames->GetClientObject(0);
 			m_fullText->SetLabel(data->GetData());
 
 			m_listShortNames->SetFirstItem(0);
@@ -300,7 +306,7 @@ void OpenResourceDlg::OnCharHook(wxKeyEvent &event)
 			m_listShortNames->SetFirstItem(cursel);
 
 			// display the full name at the bottom static text control
-			wxStringClientData *data = (wxStringClientData *)m_listShortNames->GetClientObject(cursel);
+			MyStringClientData *data = (MyStringClientData *)m_listShortNames->GetClientObject(cursel);
 			m_fullText->SetLabel(data->GetData());
 		} else {
 			//no selection is made
@@ -308,7 +314,7 @@ void OpenResourceDlg::OnCharHook(wxKeyEvent &event)
 			m_listShortNames->SetFirstItem(0);
 
 			// display the full name at the bottom static text control
-			wxStringClientData *data = (wxStringClientData *)m_listShortNames->GetClientObject(0);
+			MyStringClientData *data = (MyStringClientData *)m_listShortNames->GetClientObject(0);
 			m_fullText->SetLabel(data->GetData());
 		}
 		return;

@@ -36,15 +36,11 @@ BEGIN_EVENT_TABLE(OutputTabWindow, wxPanel)
 	EVT_MENU(XRCID("word_wrap_output"),      OutputTabWindow::OnWordWrap)
 	EVT_MENU(XRCID("collapse_all"),          OutputTabWindow::OnCollapseAll)
 	EVT_MENU(XRCID("repeat_output"),         OutputTabWindow::OnRepeatOutput)
-	EVT_MENU(wxID_COPY,                      OutputTabWindow::OnCopy)
-
 	EVT_UPDATE_UI(XRCID("scroll_on_output"), OutputTabWindow::OnOutputScrollsUI)
 	EVT_UPDATE_UI(XRCID("clear_all_output"), OutputTabWindow::OnClearAllUI)
 	EVT_UPDATE_UI(XRCID("word_wrap_output"), OutputTabWindow::OnWordWrapUI)
 	EVT_UPDATE_UI(XRCID("collapse_all"),     OutputTabWindow::OnCollapseAllUI)
 	EVT_UPDATE_UI(XRCID("repeat_output"),    OutputTabWindow::OnRepeatOutputUI)
-	EVT_UPDATE_UI(wxID_COPY,                 OutputTabWindow::OnCopyUI)
-
 	EVT_SCI_DOUBLECLICK(wxID_ANY,            OutputTabWindow::OnMouseDClick)
 	EVT_SCI_HOTSPOT_CLICK(wxID_ANY,          OutputTabWindow::OnHotspotClicked)
 	EVT_SCI_MARGINCLICK(wxID_ANY,            OutputTabWindow::OnMarginClick)
@@ -60,6 +56,10 @@ OutputTabWindow::OutputTabWindow(wxWindow *parent, wxWindowID id, const wxString
 		, m_autoAppear(true)
 {
 	CreateGUIControls();
+	wxTheApp->Connect(wxID_COPY,      wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(OutputTabWindow::OnEdit),   NULL, this);
+	wxTheApp->Connect(wxID_SELECTALL, wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(OutputTabWindow::OnEdit),   NULL, this);
+	wxTheApp->Connect(wxID_COPY,      wxEVT_UPDATE_UI, wxUpdateUIEventHandler(OutputTabWindow::OnEditUI), NULL, this);
+	wxTheApp->Connect(wxID_SELECTALL, wxEVT_UPDATE_UI, wxUpdateUIEventHandler(OutputTabWindow::OnEditUI), NULL, this);
 }
 
 OutputTabWindow::~OutputTabWindow()
@@ -78,8 +78,10 @@ void OutputTabWindow::InitStyle(wxScintilla *sci, int lexer, bool folding)
 	sci->SetLexer(lexer);
 	sci->StyleClearAll();
 
-	sci->StyleSetBackground(0, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
-	sci->StyleSetBackground(wxSCI_STYLE_DEFAULT, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
+	for(int i=0; i<=wxSCI_STYLE_DEFAULT; i++) {
+		sci->StyleSetBackground(i, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
+		sci->StyleSetForeground(i, wxT("BLACK"));
+	}
 
 	wxFont defFont = wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT);
 	wxFont font(defFont.GetPointSize(), wxFONTFAMILY_TELETYPE, wxNORMAL, wxNORMAL);
@@ -103,7 +105,7 @@ void OutputTabWindow::InitStyle(wxScintilla *sci, int lexer, bool folding)
 
 	sci->SetHotspotActiveUnderline (true);
 	sci->SetHotspotActiveForeground(true, wxT("BLUE"));
-
+	sci->SetHotspotSingleLine(true);
 	sci->SetMarginType(1, wxSCI_MARGIN_SYMBOL);
 	sci->SetMarginMask(4, wxSCI_MASK_FOLDERS);
 
@@ -111,13 +113,10 @@ void OutputTabWindow::InitStyle(wxScintilla *sci, int lexer, bool folding)
 	sci->SetMarginWidth(1, 0);
 	sci->SetMarginWidth(2, 0);
 
-	sci->SetFoldFlags(16); // mark folded lines with line below
-
 	if (folding) {
 		sci->SetMarginWidth(4, 16);
 		sci->SetProperty(wxT("fold"), wxT("1"));
 		sci->SetMarginSensitive(4, true);
-		sci->StyleSetForeground(wxSCI_STYLE_DEFAULT, wxT("GREY"));
 	}
 
 	// current line marker
@@ -299,20 +298,9 @@ void OutputTabWindow::OnRepeatOutputUI(wxUpdateUIEvent& e)
 	e.Enable(false);
 }
 
-void OutputTabWindow::OnCopy(wxCommandEvent &e)
-{
-	if(m_sci) {
-	m_sci->Copy();
-	}
-}
-
-void OutputTabWindow::OnCopyUI(wxUpdateUIEvent& e)
-{
-	e.Enable(m_sci && (m_sci->GetSelectionStart() - m_sci->GetSelectionEnd() != 0) );
-}
-
 void OutputTabWindow::OnMouseDClick(wxScintillaEvent& e)
 {
+	e.Skip();
 }
 
 void OutputTabWindow::OnHotspotClicked(wxScintillaEvent& e)
@@ -324,5 +312,49 @@ void OutputTabWindow::OnMarginClick(wxScintillaEvent& e)
 {
 	if (m_sci && e.GetMargin() == 4) {
 		m_sci->ToggleFold(m_sci->LineFromPosition(e.GetPosition()));
+	}
+}
+
+bool OutputTabWindow::IsFocused()
+{
+	wxWindow *win = wxWindow::FindFocus();
+	return (win && win == m_sci);
+}
+
+void OutputTabWindow::OnEditUI(wxUpdateUIEvent& e)
+{
+	if ( !IsFocused() || !m_sci ) {
+		e.Skip();
+		return;
+	}
+
+	switch (e.GetId()) {
+	case wxID_COPY:
+		e.Enable( m_sci->GetSelectedText().IsEmpty() == false );
+		break;
+	case wxID_SELECTALL:
+		e.Enable(true);
+		break;
+	default:
+		break;
+	}
+}
+
+void OutputTabWindow::OnEdit(wxCommandEvent &e)
+{
+	if ( !IsFocused() || !m_sci ) {
+		e.Skip();
+		return;
+	}
+
+	switch (e.GetId()) {
+	case wxID_COPY:
+		m_sci->Copy();
+		break;
+	case wxID_SELECTALL:
+		m_sci->SelectAll();
+		break;
+	default:
+		break;
 	}
 }

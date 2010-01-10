@@ -22,6 +22,12 @@
 //
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
+#include "precompiled_header.h"
+#include <wx/imaglist.h>
+#include <wx/xrc/xmlres.h>
+#include "dirtraverser.h"
+#include "imanager.h"
+#include <wx/dataobj.h>
 #include <wx/stdpaths.h>
 #include "drawingutils.h"
 #include <wx/dir.h>
@@ -194,14 +200,13 @@ bool IsValidCppIndetifier(const wxString &id)
 long AppendListCtrlRow(wxListCtrl *list)
 {
 	long item;
+	list->GetItemCount() ? item = list->GetItemCount() : item = 0;
+
 	wxListItem info;
 	// Set the item display name
 	info.SetColumn(0);
+	info.SetId(item);
 	item = list->InsertItem(info);
-
-#ifdef __WXMAC__
-	item = list->GetItemCount()-1;
-#endif
 	return item;
 }
 
@@ -516,3 +521,100 @@ time_t GetFileModificationTime(const wxString &filename)
 	}
 	return buff.st_mtime;
 }
+
+void WrapInShell(wxString& cmd)
+{
+	wxString command;
+#ifdef __WXMSW__
+    wxChar *shell = wxGetenv(wxT("COMSPEC"));
+    if ( !shell )
+       shell = (wxChar*) wxT("\\COMMAND.COM");
+
+	command << shell << wxT(" /c \"");
+	command << cmd << wxT("\"");
+	cmd = command;
+#else
+	command << wxT("/bin/sh -c '");
+	command << cmd << wxT("'");
+	cmd = command;
+#endif
+}
+
+
+wxString clGetUserName()
+{
+    wxString squashedname, name = wxGetUserName();
+
+    // The wx doc says that 'name' may now be e.g. "Mr. John Smith"
+    // So try to make it more suitable to be an extension
+    name.MakeLower();
+	name.Replace(wxT(" "), wxT("_"));
+	for (size_t i=0; i<name.Len(); ++i) {
+		wxChar ch = name.GetChar(i);
+		if( (ch < wxT('a') || ch > wxT('z')) && ch != wxT('_')){
+			// Non [a-z_] character: skip it
+		} else {
+			squashedname << ch;
+		}
+	}
+
+	return (squashedname.IsEmpty() ? wxString(wxT("someone")) : squashedname);
+}
+
+void GetProjectTemplateList ( IManager *manager, std::list<ProjectPtr> &list, std::map<wxString,int> *imageMap, wxImageList **lstImages )
+{
+	wxString tmplateDir = manager->GetStartupDirectory() + wxFileName::GetPathSeparator() + wxT ( "templates/projects" );
+
+	//read all files under this directory
+	DirTraverser dt ( wxT ( "*.project" ) );
+
+	wxDir dir ( tmplateDir );
+	dir.Traverse ( dt );
+
+	wxArrayString &files = dt.GetFiles();
+
+	if ( files.GetCount() > 0 ) {
+
+		// Allocate image list
+		if(imageMap) {
+			// add the default icon at position 0
+			*lstImages = new wxImageList(24, 24, true);
+			//(*lstImages)->Add( wxXmlResource::Get()->LoadBitmap(wxT("plugin24")) );
+		}
+
+		for ( size_t i=0; i<files.GetCount(); i++ ) {
+			ProjectPtr proj ( new Project() );
+			if ( !proj->Load ( files.Item ( i ) ) ) {
+				//corrupted xml file?
+				wxLogMessage ( wxT ( "Failed to load template project: " ) + files.Item ( i ) + wxT ( " (corrupted XML?)" ) );
+				continue;
+			}
+			list.push_back ( proj );
+
+			// load template icon
+			if ( imageMap ) {
+
+				wxFileName fn( files.Item( i ) );
+				wxString imageFileName(fn.GetPath( wxPATH_GET_SEPARATOR ) + wxT("icon.png") );
+				if( wxFileExists( imageFileName )) {
+					int img_id = (*lstImages)->Add( wxBitmap( fn.GetPath( wxPATH_GET_SEPARATOR ) + wxT("icon.png"), wxBITMAP_TYPE_PNG ) );;
+					(*imageMap)[proj->GetName()] = img_id;
+				}
+			}
+		}
+	} else {
+		//if we ended up here, it means the installation got screwed up since
+		//there should be at least 8 project templates !
+		//create 3 default empty projects
+		ProjectPtr exeProj ( new Project() );
+		ProjectPtr libProj ( new Project() );
+		ProjectPtr dllProj ( new Project() );
+		libProj->Create ( wxT ( "Static Library" ), wxEmptyString, tmplateDir, Project::STATIC_LIBRARY );
+		dllProj->Create ( wxT ( "Dynamic Library" ), wxEmptyString, tmplateDir, Project::DYNAMIC_LIBRARY );
+		exeProj->Create ( wxT ( "Executable" ), wxEmptyString, tmplateDir, Project::EXECUTABLE );
+		list.push_back ( libProj );
+		list.push_back ( dllProj );
+		list.push_back ( exeProj );
+	}
+}
+

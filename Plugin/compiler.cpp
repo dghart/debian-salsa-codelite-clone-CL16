@@ -95,15 +95,19 @@ Compiler::Compiler(wxXmlNode *node)
 
 			else if (child->GetName() == wxT("Pattern")) {
 				if (XmlUtils::ReadString(child, wxT("Name")) == wxT("Error")) {
-					//found the error description
-					m_errorFileNameIndex = XmlUtils::ReadString(child, wxT("FileNameIndex"));
-					m_errorLineNubmerIndex = XmlUtils::ReadString(child, wxT("LineNumberIndex"));
-					m_errorPattern = child->GetNodeContent();
+					//found an error description
+					CmpInfoPattern errPattern;
+					errPattern.fileNameIndex = XmlUtils::ReadString(child, wxT("FileNameIndex"));
+					errPattern.lineNumberIndex = XmlUtils::ReadString(child, wxT("LineNumberIndex"));
+					errPattern.pattern = child->GetNodeContent();
+					m_errorPatterns.push_back(errPattern);
 				} else if (XmlUtils::ReadString(child, wxT("Name")) == wxT("Warning")) {
-					//found the warning description
-					m_warningFileNameIndex = XmlUtils::ReadString(child, wxT("FileNameIndex"));
-					m_warningLineNubmerIndex = XmlUtils::ReadString(child, wxT("LineNumberIndex"));
-					m_warningPattern = child->GetNodeContent();
+					//found a warning description
+					CmpInfoPattern warnPattern;
+					warnPattern.fileNameIndex = XmlUtils::ReadString(child, wxT("FileNameIndex"));
+					warnPattern.lineNumberIndex = XmlUtils::ReadString(child, wxT("LineNumberIndex"));
+					warnPattern.pattern = child->GetNodeContent();
+					m_warningPatterns.push_back(warnPattern);
 				}
 			}
 
@@ -118,7 +122,7 @@ Compiler::Compiler(wxXmlNode *node)
 			else if (child->GetName() == wxT("PathVariable")) {
 				m_pathVariable = child->GetNodeContent();
 			}
-			
+
 			else if (child->GetName() == wxT("CompilerOption")) {
 				CmpCmdLineOption cmpOption;
 				cmpOption.name = XmlUtils::ReadString(child, wxT("Name"));
@@ -149,13 +153,17 @@ Compiler::Compiler(wxXmlNode *node)
 		m_switches[wxT("ArchiveOutput")] = wxT(" ");
         m_switches[wxT("PreprocessOnly")] = wxT("-E");
 		m_objectSuffix = wxT(".o");
-		
-		m_errorPattern =   	wxT("^([^ ][a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([0-9]+ *)(:)([ eor]*)");
-		m_errorFileNameIndex = wxT("1");
-		m_errorLineNubmerIndex = wxT("3");
-		m_warningPattern = 	wxT("^([^ ][a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([0-9]+ *)(:)([0-9:]*)?( warning:)");
-		m_warningFileNameIndex = wxT("1");
-		m_warningLineNubmerIndex = wxT("3");
+
+		CmpInfoPattern pattern;
+		pattern.pattern         = wxT("^([^ ][a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([0-9]+ *)(:)( error)");
+		pattern.fileNameIndex   = wxT("1");
+		pattern.lineNumberIndex = wxT("3");
+		m_errorPatterns.push_back(pattern);
+		pattern.pattern         = wxT("^([^ ][a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([0-9]+ *)(:)([0-9:]*)?( warning:)");
+		pattern.fileNameIndex   = wxT("1");
+		pattern.lineNumberIndex = wxT("3");
+		m_warningPatterns.push_back(pattern);
+
 		m_tools[wxT("LinkerName")] = wxT("g++");
 		m_tools[wxT("SharedObjectLinkerName")] = wxT("g++ -shared -fPIC");
 		m_tools[wxT("CompilerName")] = wxT("g++");
@@ -174,14 +182,14 @@ Compiler::Compiler(wxXmlNode *node)
     }
 
 	if (m_fileTypes.empty()) {
-		AddCmpFileType(wxT("cpp"), CmpFileKindSource, wxT("$(CompilerName) $(SourceSwitch) \"$(FileFullPath)\" $(CmpOptions) $(ObjectSwitch)$(IntermediateDirectory)/$(FileName)$(ObjectSuffix) $(IncludePath)"));
-		AddCmpFileType(wxT("cxx"), CmpFileKindSource, wxT("$(CompilerName) $(SourceSwitch) \"$(FileFullPath)\" $(CmpOptions) $(ObjectSwitch)$(IntermediateDirectory)/$(FileName)$(ObjectSuffix) $(IncludePath)"));
-		AddCmpFileType(wxT("c++"), CmpFileKindSource, wxT("$(CompilerName) $(SourceSwitch) \"$(FileFullPath)\" $(CmpOptions) $(ObjectSwitch)$(IntermediateDirectory)/$(FileName)$(ObjectSuffix) $(IncludePath)"));
-		AddCmpFileType(wxT("c"), CmpFileKindSource, wxT("$(CompilerName) $(SourceSwitch) \"$(FileFullPath)\" $(CmpOptions) $(ObjectSwitch)$(IntermediateDirectory)/$(FileName)$(ObjectSuffix) $(IncludePath)"));
-		AddCmpFileType(wxT("cc"), CmpFileKindSource, wxT("$(CompilerName) $(SourceSwitch) \"$(FileFullPath)\" $(CmpOptions) $(ObjectSwitch)$(IntermediateDirectory)/$(FileName)$(ObjectSuffix) $(IncludePath)"));
-		AddCmpFileType(wxT("m"), CmpFileKindSource, wxT("$(CompilerName) -X objective-c $(SourceSwitch) \"$(FileFullPath)\" $(CmpOptions) $(ObjectSwitch)$(IntermediateDirectory)/$(FileName)$(ObjectSuffix) $(IncludePath)"));
-		AddCmpFileType(wxT("mm"), CmpFileKindSource, wxT("$(CompilerName) -X objective-c++ $(SourceSwitch) \"$(FileFullPath)\" $(CmpOptions) $(ObjectSwitch)$(IntermediateDirectory)/$(FileName)$(ObjectSuffix) $(IncludePath)"));
-		AddCmpFileType(wxT("rc"), CmpFileKindResource, wxT("$(RcCompilerName) -i \"$(FileFullPath)\" $(RcCmpOptions)   $(ObjectSwitch)$(IntermediateDirectory)/$(FileFullName)$(ObjectSuffix) $(RcIncludePath)"));
+		AddCmpFileType(wxT("cpp"), CmpFileKindSource, wxT("$(CompilerName) $(SourceSwitch) \"$(FileFullPath)\" $(CmpOptions) $(ObjectSwitch)$(FilePath)$(IntermediateDirectory)/$(FileName)$(ObjectSuffix) $(IncludePath)"));
+		AddCmpFileType(wxT("cxx"), CmpFileKindSource, wxT("$(CompilerName) $(SourceSwitch) \"$(FileFullPath)\" $(CmpOptions) $(ObjectSwitch)$(FilePath)$(IntermediateDirectory)/$(FileName)$(ObjectSuffix) $(IncludePath)"));
+		AddCmpFileType(wxT("c++"), CmpFileKindSource, wxT("$(CompilerName) $(SourceSwitch) \"$(FileFullPath)\" $(CmpOptions) $(ObjectSwitch)$(FilePath)$(IntermediateDirectory)/$(FileName)$(ObjectSuffix) $(IncludePath)"));
+		AddCmpFileType(wxT("c"), CmpFileKindSource, wxT("$(CompilerName) $(SourceSwitch) \"$(FileFullPath)\" $(CmpOptions) $(ObjectSwitch)$(FilePath)$(IntermediateDirectory)/$(FileName)$(ObjectSuffix) $(IncludePath)"));
+		AddCmpFileType(wxT("cc"), CmpFileKindSource, wxT("$(CompilerName) $(SourceSwitch) \"$(FileFullPath)\" $(CmpOptions) $(ObjectSwitch)$(FilePath)$(IntermediateDirectory)/$(FileName)$(ObjectSuffix) $(IncludePath)"));
+		AddCmpFileType(wxT("m"), CmpFileKindSource, wxT("$(CompilerName) -X objective-c $(SourceSwitch) \"$(FileFullPath)\" $(CmpOptions) $(ObjectSwitch)$(FilePath)$(IntermediateDirectory)/$(FileName)$(ObjectSuffix) $(IncludePath)"));
+		AddCmpFileType(wxT("mm"), CmpFileKindSource, wxT("$(CompilerName) -X objective-c++ $(SourceSwitch) \"$(FileFullPath)\" $(CmpOptions) $(ObjectSwitch)$(FilePath)$(IntermediateDirectory)/$(FileName)$(ObjectSuffix) $(IncludePath)"));
+		AddCmpFileType(wxT("rc"), CmpFileKindResource, wxT("$(RcCompilerName) -i \"$(FileFullPath)\" $(RcCmpOptions)   $(ObjectSwitch)$(FilePath)$(IntermediateDirectory)/$(FileFullName)$(ObjectSuffix) $(RcIncludePath)"));
 	}
 }
 
@@ -241,19 +249,24 @@ wxXmlNode *Compiler::ToXml() const
 	node->AddChild(options);
 
 	//add patterns
-	wxXmlNode *error = new wxXmlNode(NULL, wxXML_ELEMENT_NODE, wxT("Pattern"));
-	error->AddProperty(wxT("Name"), wxT("Error"));
-	error->AddProperty(wxT("FileNameIndex"), m_errorFileNameIndex);
-	error->AddProperty(wxT("LineNumberIndex"), m_errorLineNubmerIndex);
-	XmlUtils::SetNodeContent(error, m_errorPattern);
-	node->AddChild(error);
+	CmpListInfoPattern::const_iterator itPattern;
+	for (itPattern = m_errorPatterns.begin(); itPattern != m_errorPatterns.end(); ++itPattern) {
+		wxXmlNode *error = new wxXmlNode(NULL, wxXML_ELEMENT_NODE, wxT("Pattern"));
+		error->AddProperty(wxT("Name"), wxT("Error"));
+		error->AddProperty(wxT("FileNameIndex"), itPattern->fileNameIndex);
+		error->AddProperty(wxT("LineNumberIndex"), itPattern->lineNumberIndex);
+		XmlUtils::SetNodeContent(error, itPattern->pattern);
+		node->AddChild(error);
+	}
 
-	wxXmlNode *warning = new wxXmlNode(NULL, wxXML_ELEMENT_NODE, wxT("Pattern"));
-	warning->AddProperty(wxT("Name"), wxT("Warning"));
-	warning->AddProperty(wxT("FileNameIndex"), m_warningFileNameIndex);
-	warning->AddProperty(wxT("LineNumberIndex"), m_warningLineNubmerIndex);
-	XmlUtils::SetNodeContent(warning, m_warningPattern);
-	node->AddChild(warning);
+	for (itPattern = m_warningPatterns.begin(); itPattern != m_warningPatterns.end(); ++itPattern) {
+		wxXmlNode *warning = new wxXmlNode(NULL, wxXML_ELEMENT_NODE, wxT("Pattern"));
+		warning->AddProperty(wxT("Name"), wxT("Warning"));
+		warning->AddProperty(wxT("FileNameIndex"), itPattern->fileNameIndex);
+		warning->AddProperty(wxT("LineNumberIndex"), itPattern->lineNumberIndex);
+		XmlUtils::SetNodeContent(warning, itPattern->pattern);
+		node->AddChild(warning);
+	}
 
 	wxXmlNode *globalIncludePath = new wxXmlNode(NULL, wxXML_ELEMENT_NODE, wxT("GlobalIncludePath"));
 	XmlUtils::SetNodeContent(globalIncludePath, m_globalIncludePath);

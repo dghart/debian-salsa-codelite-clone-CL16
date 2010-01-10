@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<LiteEditor Revision="653">
+<CodeLite Revision="653" Version="2.0.2">
   <ArchiveObject Name="m_tagsOptionsData">
-    <long Value="984" Name="m_ccFlags"/>
+    <long Value="728" Name="m_ccFlags"/>
     <wxArrayString Name="m_prep">
 	  <wxString Value="EXPORT"/>
       <wxString Value="WXDLLIMPEXP_CORE"/>
@@ -47,16 +47,25 @@
       <wxString Value="_GLIBCXX_BEGIN_NAMESPACE(std)=namespace std{"/>
       <wxString Value="_GLIBCXX_END_NAMESPACE=}"/>
       <wxString Value="_GLIBCXX_BEGIN_NESTED_NAMESPACE(std, _GLIBCXX_STD)=namespace std{"/>
+	  <wxString Value="_GLIBCXX_BEGIN_NESTED_NAMESPACE(std, _GLIBCXX_STD_D)=namespace std{"/>	  
       <wxString Value="_GLIBCXX_END_NESTED_NAMESPACE=}"/>
       <wxString Value="_GLIBCXX_STD=std"/>
       <wxString Value="WXDLLIMPEXP_SCI"/>
+      <wxString Value="__const=const"/>
+      <wxString Value="__restrict"/>
+      <wxString Value="__THROW"/>
+      <wxString Value="__wur"/>
+      <wxString Value="_STD_BEGIN=namespace std{"/>
+      <wxString Value="_STD_END=}"/>
+      <wxString Value="__CLRCALL_OR_CDECL"/>
+      <wxString Value="_CRTIMP2_PURE"/>
     </wxArrayString>
-    <wxString Value="*.cpp;*.cc;*.cxx;*.h;*.hpp;*.c;*.c++" Name="m_fileSpec"/>
+    <wxString Value="*.cpp;*.cc;*.cxx;*.h;*.hpp;*.c;*.c++;*.tcc" Name="m_fileSpec"/>
     <wxArrayString Name="m_languages">
       <wxString Value="C++"/>
     </wxArrayString>
   </ArchiveObject>
-  <Options DisplayFoldMargin="yes" UnderlineFoldedLine="yes" FoldStyle="Arrows" DisplayBookmarkMargin="yes" BookmarkShape="Small Rectangle" BookmarkBgColour="#FF0080" BookmarkFgColour="#FF0080" HighlightCaretLine="no" ShowLineNumber="yes" IndentationGuides="no" CaretLineColour="#BFD8D8" CaretColour="#000000"/>
+  <Options DisplayFoldMargin="yes" UnderlineFoldedLine="yes" FoldStyle="Arrows" DisplayBookmarkMargin="yes" BookmarkShape="Small Rectangle" BookmarkBgColour="#FF0080" BookmarkFgColour="#FF0080" HighlightCaretLine="no" ShowLineNumber="yes" IndentationGuides="no" CaretLineColour="#BFD8D8" CaretColour="#000000" AutoAdjustHScrollBarWidth="no"/>
   <ArchiveObject Name="LexerTheme">
     <wxString Value="Default" Name="m_value"/>
   </ArchiveObject>
@@ -64,7 +73,7 @@
     <long Value="0" Name="m_value"/>
   </ArchiveObject>
   <ArchiveObject Name="WordHighlightColour">
-    <wxString Value="red" Name="m_value"/>
+    <wxString Value="yellow" Name="m_value"/>
   </ArchiveObject>
   <ArchiveObject Name="highlight_word">
     <long Value="1" Name="m_value"/>
@@ -75,4 +84,4 @@
   <ArchiveObject Name="GenerateFullPathMakefile">
     <long Value="1" Name="m_value"/>
   </ArchiveObject>
-</LiteEditor>
+</CodeLite>

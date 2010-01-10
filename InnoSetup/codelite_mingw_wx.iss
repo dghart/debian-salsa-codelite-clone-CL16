@@ -11,7 +11,7 @@ DefaultDirName={pf}\CodeLite
 DefaultGroupName=CodeLite
 LicenseFile=license.txt
 OutputDir=output
-OutputBaseFilename=codelite-mingw3.4.5-wx2.8.10
+OutputBaseFilename=codelite-mingw4.4.0-wx2.8.10
 ChangesEnvironment=yes
 FlatComponentsList=yes
 SetupIconFile=box_software.ico
@@ -24,56 +24,57 @@ PrivilegesRequired=none
 Name: "eng"; MessagesFile: "compiler:Default.isl"
 
 [Components]
-Name: "Editor"; Description: "CodeLite IDE (Editor + Plugins)"; Types: full custom;
-Name: "MinGW"; Description: "MinGW 3.4.5 full (gcc/g++/gdb/WinAPI)"; Types: full;
-Name: "wxWidgets_2_8_7"; Description: "wxWidgets framework, built as monolithic shared debug/release"; Types: full;
+Name: "Editor";           Description: "CodeLite IDE (Editor + Plugins)";                               Types: full custom;
+Name: "MinGW";            Description: "MinGW 4.4.0 full (gcc/g++/gdb/WinAPI)";                         Types: full;
+Name: "wxWidgets_2_8_10"; Description: "wxWidgets framework, built as monolithic shared debug/release"; Types: full;
+Name: "UnitTestPP";       Description: "UnitTest++ 1.3 framework";                                      Types: full;
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "C:\Development\C++\codelite\trunk\Runtime\CodeLite.exe"; DestDir: "{app}"; Flags: ignoreversion; Components: Editor
-Source: "C:\Development\C++\codelite\trunk\LICENSE"; DestDir: "{app}"; Flags: ignoreversion; Components: Editor
+Source: "..\Runtime\CodeLite.exe"; DestDir: "{app}"; Flags: ignoreversion; Components: Editor
+Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion; Components: Editor
 Source: "C:\wxWidgets-2.8.10\lib\gcc_dll\wxmsw28u_gcc_custom.dll"; DestDir: "{app}"; Flags: ignoreversion; Components: Editor
-Source: "C:\Development\C++\codelite\trunk\InnoSetup\license.txt"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
-Source: "C:\Program Files\CodeLite\common.tags"; DestDir: "{app}"; Flags: onlyifdoesntexist; Components: Editor
-Source: "C:\Development\C++\codelite\trunk\sdk\wxconfig\wx-config.exe"; DestDir: "{app}"; Components: Editor
-Source: "C:\Development\C++\codelite\trunk\Runtime\config\codelite.xml.default"; DestDir: "{app}\config"; Components: Editor;
-Source: "C:\Development\C++\codelite\trunk\Runtime\config\plugins.xml.default"; DestDir: "{app}\config";  Components: Editor;
-Source: "C:\Development\C++\codelite\trunk\Runtime\config\accelerators.conf.default"; DestDir: "{app}\config"; Components: Editor;
-Source: "C:\Development\C++\codelite\trunk\Runtime\config\debuggers.xml.default"; DestDir: "{app}\config"; Components: Editor;
-Source: "C:\Development\C++\codelite\trunk\Runtime\config\debuggers.xml"; DestDir: "{app}\config"; Components: Editor;
-Source: "C:\Development\C++\codelite\trunk\Runtime\config\build_settings.xml.default.win"; DestDir: "{app}\config"; DestName: "build_settings.xml.default"; Components: Editor
-Source: "C:\Development\C++\codelite\trunk\Runtime\rc\*"; DestDir: "{app}\rc"; Flags: ignoreversion ; Components: Editor
-Source: "C:\Development\C++\codelite\trunk\Runtime\astyle.sample"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
-Source: "C:\Development\C++\codelite\trunk\Runtime\config\codelite.layout.default"; DestDir: "{app}\config"; DestName: codelite.layout; Flags: ignoreversion ; Components: Editor
-Source: "C:\Development\C++\codelite\trunk\Runtime\templates\*"; DestDir: "{app}\templates"; Flags: recursesubdirs ; Components: Editor
-Source: "C:\Development\C++\codelite\trunk\Runtime\lexers\Default\*.xml"; DestDir: "{app}\lexers\Default\"; Flags: ignoreversion ; Components: Editor
-Source: "C:\Development\C++\codelite\trunk\Runtime\lexers\BlackTheme\*.xml"; DestDir: "{app}\lexers\BlackTheme\"; Excludes: "*.svn*"; Flags: ignoreversion ; Components: Editor
-Source: "C:\Development\C++\codelite\trunk\Runtime\debuggers\Debugger.dll"; DestDir: "{app}\debuggers"; Flags: ignoreversion ; Components: Editor
-Source: "C:\Development\C++\codelite\trunk\Runtime\plugins\*.dll"; DestDir: "{app}\plugins"; Flags: ignoreversion ; Components: Editor
-Source: "C:\Development\C++\codelite\trunk\Runtime\plugins\resources\*"; DestDir: "{app}\plugins\resources\"; Flags: ignoreversion ; Components: Editor
-Source: "C:\Development\C++\codelite\trunk\Runtime\codelite_indexer.exe"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
-Source: "C:\Development\C++\codelite\trunk\Runtime\codelite_launcher.exe"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
-Source: "C:\Development\C++\codelite\trunk\Runtime\codelite_cppcheck.exe"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
-Source: "C:\Development\C++\codelite\trunk\Runtime\le_exec.exe"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
-Source: "C:\Development\C++\codelite\trunk\Runtime\makedir.exe"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
-Source: "C:\Development\C++\codelite\trunk\Runtime\patch.exe"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
-Source: "C:\Development\C++\codelite\trunk\Runtime\*.html"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
-Source: "C:\Development\C++\codelite\trunk\Runtime\images\*"; DestDir: "{app}\images"; Flags: ignoreversion ; Components: Editor
-Source: "C:\Development\C++\codelite\trunk\Runtime\src\*"; DestDir: "{app}\src"; Flags: ignoreversion ; Components: Editor
-Source: "C:\MinGW-3.4.5\bin\mingwm10.dll"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
-Source: "C:\MinGW-3.4.5\bin\exchndl.dll"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
-Source: "C:\MinGW-3.4.5\bin\which.exe"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
-Source: "C:\MinGW-3.4.5\bin\rm.exe"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
-Source: "C:\MinGW-3.4.5\bin\cscope.exe"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
-Source: "C:\MinGW-3.4.5\bin\cygncurses-8.dll"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
-Source: "C:\MinGW-3.4.5\bin\cygwin1.dll"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
-Source: "C:\MinGW-3.4.5\bin\libintl3.dll"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
-Source: "C:\MinGW-3.4.5\bin\libiconv2.dll"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
-Source: "C:\MinGW-3.4.5\*"; DestDir: "{code:GetMinGWInstallDir}"; Flags: recursesubdirs ; Components: MinGW
-Source: "C:\Development\C++\codelite\trunk\Runtime\wxWidgets-2.8.10\*"; DestDir: "{code:GetWxInstallDir}"; Flags: recursesubdirs ; Components: wxWidgets_2_8_7
+Source: "..\InnoSetup\license.txt"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
+Source: "..\sdk\wxconfig\wx-config.exe"; DestDir: "{app}"; Components: Editor
+Source: "..\Runtime\config\codelite.xml.default"; DestDir: "{app}\config"; Components: Editor;
+Source: "..\Runtime\config\plugins.xml.default"; DestDir: "{app}\config";  Components: Editor;
+Source: "..\Runtime\config\accelerators.conf.default"; DestDir: "{app}\config"; Components: Editor;
+Source: "..\Runtime\config\debuggers.xml.default"; DestDir: "{app}\config"; Components: Editor;
+Source: "..\Runtime\config\debuggers.xml"; DestDir: "{app}\config"; Components: Editor;
+Source: "..\Runtime\config\build_settings.xml.default.win"; DestDir: "{app}\config"; DestName: "build_settings.xml.default"; Components: Editor
+Source: "..\Runtime\rc\*"; DestDir: "{app}\rc"; Flags: ignoreversion ; Components: Editor
+Source: "..\Runtime\astyle.sample"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
+Source: "..\Runtime\config\codelite.layout.default"; DestDir: "{app}\config"; DestName: codelite.layout; Flags: ignoreversion ; Components: Editor
+Source: "..\Runtime\templates\*"; DestDir: "{app}\templates"; Flags: recursesubdirs ; Components: Editor
+Source: "..\Runtime\lexers\Default\*.xml"; DestDir: "{app}\lexers\Default\"; Flags: ignoreversion ; Components: Editor
+Source: "..\Runtime\lexers\BlackTheme\*.xml"; DestDir: "{app}\lexers\BlackTheme\"; Excludes: "*.svn*"; Flags: ignoreversion ; Components: Editor
+Source: "..\Runtime\debuggers\Debugger.dll"; DestDir: "{app}\debuggers"; Flags: ignoreversion ; Components: Editor
+Source: "..\Runtime\plugins\*.dll"; DestDir: "{app}\plugins"; Flags: ignoreversion ; Components: Editor
+Source: "..\Runtime\plugins\resources\*"; DestDir: "{app}\plugins\resources\"; Flags: ignoreversion ; Components: Editor
+Source: "..\Runtime\codelite_indexer.exe"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
+Source: "..\Runtime\codelite_launcher.exe"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
+Source: "..\Runtime\codelite_cppcheck.exe"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
+Source: "..\Runtime\le_exec.exe"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
+Source: "..\Runtime\makedir.exe"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
+Source: "..\Runtime\patch.exe"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
+Source: "..\Runtime\*.html"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
+Source: "..\Runtime\images\*"; DestDir: "{app}\images"; Flags: ignoreversion ; Components: Editor
+Source: "C:\MinGW-4.4.0\bin\mingwm10.dll"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
+Source: "C:\MinGW-4.4.0\bin\libgcc_s_dw2-1.dll"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
+Source: "C:\MinGW-4.4.0\bin\exchndl.dll"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
+Source: "C:\MinGW-4.4.0\bin\which.exe"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
+Source: "C:\MinGW-4.4.0\bin\rm.exe"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
+Source: "C:\MinGW-4.4.0\bin\cscope.exe"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
+Source: "C:\MinGW-4.4.0\bin\cygncurses-8.dll"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
+Source: "C:\MinGW-4.4.0\bin\cygwin1.dll"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
+Source: "C:\MinGW-4.4.0\bin\libintl3.dll"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
+Source: "C:\MinGW-4.4.0\bin\libiconv2.dll"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
+Source: "C:\MinGW-4.4.0\*"; DestDir: "{code:GetMinGWInstallDir}"; Flags: recursesubdirs ; Components: MinGW
+Source: "..\Runtime\wxWidgets-2.8.10\*"; DestDir: "{code:GetWxInstallDir}"; Flags: recursesubdirs ; Components: wxWidgets_2_8_10
+Source: "..\UnitTest++\*"; DestDir: "{code:GetUnitTestPPInstallDir}"; Flags: recursesubdirs ; Components: UnitTestPP
 
 [Icons]
 Name: "{group}\CodeLite "; Filename: "{app}\CodeLite.exe"; WorkingDir: "{app}"
@@ -85,12 +86,14 @@ Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\CodeLite "; Workin
 Root: HKCR	; Subkey: "*\shell\Open With CodeLite\command"; ValueType: string; ValueName: ""; ValueData: "{app}\CodeLite.exe -b ""{app}"" ""%1"""
 Root: HKCU	; Subkey: "SOFTWARE\CodeLite\"; ValueType: string; ValueName: "mingw"; ValueData: "{code:GetMinGWInstallDir}"
 Root: HKCU	; Subkey: "SOFTWARE\CodeLite\"; ValueType: string; ValueName: "wx"; ValueData: "{code:GetWxInstallDir}"
+Root: HKCU	; Subkey: "SOFTWARE\CodeLite\"; ValueType: string; ValueName: "unittestpp"; ValueData: "{code:GetUnitTestPPInstallDir}"
 
 [Code]
 var
-  MinGW_Page: TInputDirWizardPage;
-  Wx_Page: TInputDirWizardPage;
-
+  MinGW_Page:      TInputDirWizardPage;
+  Wx_Page:         TInputDirWizardPage;
+  UnitTestPP_Page: TInputDirWizardPage;
+  
 procedure CreateMinGWPage();
 begin
   MinGW_Page := CreateInputDirPage(wpSelectComponents,
@@ -103,7 +106,7 @@ begin
   MinGW_Page.Add('');
 
   // Set initial value (optional)
-  MinGW_Page.Values[0] := ExpandConstant('{sd}\MinGW-3.4.5\');
+  MinGW_Page.Values[0] := ExpandConstant('{sd}\MinGW-4.4.0\');
 end;
 
 procedure CreateWxPage();
@@ -119,6 +122,26 @@ begin
 
   // Set initial value (optional)
   Wx_Page.Values[0] := ExpandConstant('{sd}\wxWidgets-2.8.10\');
+end;
+
+procedure CreateUnitTestPPPage();
+begin
+  UnitTestPP_Page := CreateInputDirPage(wpSelectComponents,
+          'Select UnitTest++ Installation Folder', 'Where should setup place UnitTest++?',
+          'UnitTest++ framework will be stored in the following folder.'#13#10#13#10 +
+          'To continue, click Next. If you would like to select a different folder, click Browse.',
+          False, 'New Folder');
+
+  // Add item (with an empty caption)
+  UnitTestPP_Page.Add('');
+
+  // Set initial value (optional)
+  UnitTestPP_Page.Values[0] := ExpandConstant('{sd}\UnitTest++-1.3\');
+end;
+
+function GetUnitTestPPInstallDir(Param: String): String;
+begin
+  Result := UnitTestPP_Page.Values[0];
 end;
 
 function GetMinGWInstallDir(Param: String): String;
@@ -162,8 +185,14 @@ begin
   end
 
   if PageID = Wx_Page.ID then begin
-    if IsComponentSelected('wxWidgets_2_8_7') = False then
+    if IsComponentSelected('wxWidgets_2_8_10') = False then
       Result := True;
   end
+  
+  if PageID = UnitTestPP_Page.ID then begin
+    if IsComponentSelected('UnitTestPP') = False then
+      Result := True;
+  end
+  
 end;
 

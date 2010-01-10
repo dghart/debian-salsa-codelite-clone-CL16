@@ -1,28 +1,28 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //
-// copyright            : (C) 2008 by Eran Ifrah                            
-// file name            : builder.h              
-//                                                                          
+// copyright            : (C) 2008 by Eran Ifrah
+// file name            : builder.h
+//
 // -------------------------------------------------------------------------
-// A                                                                        
-//              _____           _      _     _ _                            
-//             /  __ \         | |    | |   (_) |                           
-//             | /  \/ ___   __| | ___| |    _| |_ ___                      
-//             | |    / _ \ / _  |/ _ \ |   | | __/ _ )                     
-//             | \__/\ (_) | (_| |  __/ |___| | ||  __/                     
-//              \____/\___/ \__,_|\___\_____/_|\__\___|                     
-//                                                                          
-//                                                  F i l e                 
-//                                                                          
-//    This program is free software; you can redistribute it and/or modify  
-//    it under the terms of the GNU General Public License as published by  
-//    the Free Software Foundation; either version 2 of the License, or     
-//    (at your option) any later version.                                   
-//                                                                          
+// A
+//              _____           _      _     _ _
+//             /  __ \         | |    | |   (_) |
+//             | /  \/ ___   __| | ___| |    _| |_ ___
+//             | |    / _ \ / _  |/ _ \ |   | | __/ _ )
+//             | \__/\ (_) | (_| |  __/ |___| | ||  __/
+//              \____/\___/ \__,_|\___\_____/_|\__\___|
+//
+//                                                  F i l e
+//
+//    This program is free software; you can redistribute it and/or modify
+//    it under the terms of the GNU General Public License as published by
+//    the Free Software Foundation; either version 2 of the License, or
+//    (at your option) any later version.
+//
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
- #ifndef BUILDER_H
+#ifndef BUILDER_H
 #define BUILDER_H
 
 #include "wx/string.h"
@@ -40,7 +40,8 @@
  *
  * \author Eran
  */
-class Builder {
+class Builder
+{
 protected:
 	wxString m_name;
 	wxString m_buildTool;
@@ -55,57 +56,83 @@ public:
 	Builder(const wxString &name, const wxString &buildTool, const wxString &buildToolOptions) ;
 	virtual ~Builder();
 
-	void SetBuildTool(const wxString &buildTool) { m_buildTool = buildTool; }
-	void SetBuildToolOptions(const wxString &buildToolOptions) { m_buildToolOptions = buildToolOptions; }
-	void SetBuildToolJobs(const wxString &buildToolJobs) { m_buildToolJobs = buildToolJobs; }
+	void SetBuildTool(const wxString &buildTool) {
+		m_buildTool = buildTool;
+	}
+	void SetBuildToolOptions(const wxString &buildToolOptions) {
+		m_buildToolOptions = buildToolOptions;
+	}
+	void SetBuildToolJobs(const wxString &buildToolJobs) {
+		m_buildToolJobs = buildToolJobs;
+	}
 
 	/**
-	 * Normalize the configuration name, this is done by removing any trailing and leading 
+	 * Normalize the configuration name, this is done by removing any trailing and leading
 	 * spaces from the string, and replacing any space character with underscore.
 	 */
 	static wxString NormalizeConfigName(const wxString &confgName);
 
 	/**
-	 * \return the builder name 
+	 * \return the builder name
 	 */
-	const wxString &GetName() const { return m_name; }
-	
+	const wxString &GetName() const {
+		return m_name;
+	}
+
+	// ================ API ==========================
+	// The below API as default implementation, but can be
+	// overrided in the derived class
+	// ================ API ==========================
+
 	/**
 	 * \return the build tool assoicated with this builder
 	 */
-	wxString GetBuildToolCommand(bool isCommandlineCommand) const;
-	
+	virtual wxString GetBuildToolCommand(bool isCommandlineCommand) const {
+		return GetBuildToolFromConfig();
+	}
+
 	/**
-	 * return the build tool name 
+	 * return the build tool name
 	 */
-	wxString GetBuildToolName() const;
+	virtual wxString GetBuildToolName() const {
+		return GetBuildToolFromConfig();
+	}
 
 	/**
 	 * return the build tool options
 	 */
-	wxString GetBuildToolOptions() const;
-	
-	/**
-	 * return the build tool jobs
-	 */ 
-	wxString GetBuildToolJobs() const;
+	virtual wxString GetBuildToolOptions() const {
+		return GetBuildToolOptionsFromConfig();
+	}
 
 	/**
-	 * Export the build system specific file (e.g. GNU makefile, Ant file etc) 
+	 * return the build tool jobs
+	 */
+	virtual wxString GetBuildToolJobs() const {
+		return GetBuildToolJobsFromConfig();
+	}
+
+	// ================ API ==========================
+	// The below API must be implemented by the
+	// derived class
+	// ================ API ==========================
+
+	/**
+	 * Export the build system specific file (e.g. GNU makefile, Ant file etc)
 	 * to allow users to invoke them manualy from the command line
-	 * \param project project to export. 
+	 * \param project project to export.
 	 * \param errMsg output
 	 * \return true on success, false otherwise.
 	 */
 	virtual bool Export(const wxString &project, const wxString &confToBuild, bool isProjectOnly, bool force, wxString &errMsg) = 0;
 
-	/** 
+	/**
 	 * Return the command that should be executed for performing the clean
 	 * task
 	 */
 	virtual wxString GetCleanCommand(const wxString &project, const wxString &confToBuild) = 0;
 
-	/** 
+	/**
 	 * Return the command that should be executed for performing the build
 	 * task for a given project
 	 */
@@ -114,18 +141,18 @@ public:
 	//-----------------------------------------------------------------
 	// Project Only API
 	//-----------------------------------------------------------------
-	/** 
+	/**
 	 * Return the command that should be executed for performing the clean
 	 * task - for the project only (excluding dependencies)
 	 */
 	virtual wxString GetPOCleanCommand(const wxString &project, const wxString &confToBuild) = 0;
 
-	/** 
+	/**
 	 * Return the command that should be executed for performing the build
 	 * task for a given project - for the project only (excluding dependencies)
 	 */
 	virtual wxString GetPOBuildCommand(const wxString &project, const wxString &confToBuild) = 0;
-	
+
 	/**
 	 * \brief create a command to execute for compiling single source file
 	 * \param project
@@ -133,8 +160,8 @@ public:
 	 * \param errMsg [output]
 	 * \return the command
 	 */
-	virtual wxString GetSingleFileCmd(const wxString &project, const wxString &confToBuild, const wxString &fileName, wxString &errMsg) = 0;
-	
+	virtual wxString GetSingleFileCmd(const wxString &project, const wxString &confToBuild, const wxString &fileName) = 0;
+
 	/**
 	 * \brief create a command to execute for preprocessing single source file
 	 * \param project
@@ -143,6 +170,14 @@ public:
 	 * \return the command
 	 */
 	virtual wxString GetPreprocessFileCmd(const wxString &project, const wxString &confToBuild, const wxString &fileName, wxString &errMsg) = 0;
+
+	/**
+	 * @brief return the 'rebuild' command
+	 * @param project
+	 * @param confToBuild
+	 * @return
+	 */
+	virtual wxString GetPORebuildCommand(const wxString &project, const wxString &confToBuild) = 0;
 };
 
 typedef SmartPtr<Builder> BuilderPtr;

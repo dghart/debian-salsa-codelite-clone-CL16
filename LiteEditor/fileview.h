@@ -48,7 +48,7 @@ class FileViewTree : public wxTreeCtrl
 	wxMenu *m_workspaceMenu;
 
 	std::map<void*, bool> m_itemsToSort;
-	wxTreeItemId m_draggedItem;
+	wxArrayTreeItemIds m_draggedItems;
 
 public:
 	/**
@@ -111,6 +111,8 @@ public:
 
 	bool AddFilesToVirtualFolder(wxTreeItemId &item, wxArrayString &paths);
 	bool AddFilesToVirtualFolder(const wxString &vdFullPath, wxArrayString &paths);
+	bool AddFilesToVirtualFolderIntelligently(const wxString& vdFullPath, wxArrayString& paths);
+
 	bool CreateVirtualDirectory(const wxString &parentPath, const wxString &vdName);
 
 protected:
@@ -122,6 +124,7 @@ protected:
 	virtual void OnNewItem(wxCommandEvent &event);
 	virtual void OnAddExistingItem(wxCommandEvent &event);
 	virtual void OnNewVirtualFolder(wxCommandEvent &event);
+	virtual void OnLocalPrefs(wxCommandEvent &event);
 	virtual void OnProjectProperties(wxCommandEvent &event);
 	virtual void OnSortItem(wxCommandEvent &event);
 	virtual void OnRemoveVirtualFolder(wxCommandEvent &event);
@@ -135,6 +138,7 @@ protected:
 	virtual void OnRunPremakeStep(wxCommandEvent &event);
 	virtual void OnBuildProjectOnly(wxCommandEvent &event);
 	virtual void OnCleanProjectOnly(wxCommandEvent &event);
+	virtual void OnRebuildProjectOnly(wxCommandEvent &event);
 	virtual void OnStopBuild(wxCommandEvent &event);
 	virtual void OnRetagProject(wxCommandEvent &event);
 	virtual void OnRetagWorkspace(wxCommandEvent &event);
@@ -149,6 +153,9 @@ protected:
 	virtual void SortItem(wxTreeItemId &item);
 	virtual void OnRenameVirtualFolder(wxCommandEvent &e);
 	virtual wxTreeItemId ItemByFullPath(const wxString &fullPath);
+	virtual void OnLocalWorkspaceSettings(wxCommandEvent &e);
+
+
 
 	// Tree sorting
 	virtual int OnCompareItems(const wxTreeItemId& item1, const wxTreeItemId& item2);
@@ -168,7 +175,7 @@ private:
 	void DoSetProjectActive(wxTreeItemId &item);
 	void DoAddVirtualFolder(wxTreeItemId &parent, const wxString &text);
 	void DoRemoveVirtualFolder(wxTreeItemId &parent);
-	void DoRemoveItem(wxTreeItemId &item);
+	void DoRemoveItems();
 	void DoItemActivated(wxTreeItemId &item, wxEvent &event);
 	void DoAddItem(ProjectPtr proj, const FileViewItem &item);
 	wxTreeItemId DoGetItemByText(const wxTreeItemId &parent, const wxString &text);

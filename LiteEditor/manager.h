@@ -33,11 +33,10 @@
 #include "debuggerobserver.h"
 #include "workspace.h"
 #include "queuecommand.h"
-#include "compiler_action.h"
+#include "shell_command.h"
 #include "async_executable_cmd.h"
 #include "filehistory.h"
 #include "breakpointsmgr.h"
-#include "quickwatchdlg.h"
 
 
 // ====================================================================
@@ -45,6 +44,8 @@
 // ====================================================================
 
 extern const wxEventType wxEVT_CMD_RESTART_CODELITE;
+
+class DisplayVariableDlg;
 
 class Manager : public wxEvtHandler, public IDebuggerObserver
 {
@@ -56,7 +57,6 @@ class Manager : public wxEvtHandler, public IDebuggerObserver
  	ShellCommand           *m_shellProcess;
  	AsyncExeCmd            *m_asyncExeCmd;
  	BreakptMgr             *m_breakptsmgr;
- 	QuickWatchDlg          *m_quickWatchDlg;
  	bool                    m_isShutdown;
  	bool                    m_workspceClosing;
  	bool                    m_dbgCanInteract;
@@ -66,14 +66,16 @@ class Manager : public wxEvtHandler, public IDebuggerObserver
 	std::list<QueueCommand> m_buildQueue;
 	wxArrayString           m_dbgWatchExpressions;
 	wxFileName              m_codeliteLauncher;
+	DisplayVariableDlg       *m_displayVariableDlg;
 
 protected:
 	Manager(void);
 	virtual ~Manager(void);
 
-
      //--------------------------- Global State -----------------------------
 public:
+	DisplayVariableDlg * GetDisplayVariableDialog();
+
  	const wxString &GetStarupDirectory() const { return m_startupDir; }
  	void SetStarupDirectory(const wxString &path) { m_startupDir = path; }
 
@@ -147,6 +149,13 @@ public:
 	 * workspace data
 	 */
 	FileHistory &GetRecentlyOpenedWorkspacesClass() { return m_recentWorkspaces; }
+
+	/**
+	 * @brief update the C++ parser search / exclude paths with the global paths
+	 * and the workspace specifc ones
+	 * @return true if the paths were modified, false otherwise
+	 */
+	bool UpdateParserPaths();
 
 protected:
 	void DoSetupWorkspace(const wxString &path);
@@ -241,7 +250,13 @@ public:
 	/**
 	 * retag workspace
 	 */
-	void RetagWorkspace();
+	void RetagWorkspace(bool quickRetag);
+
+	/**
+	 * @brief the parser thread has completed to scan for include files to parse
+	 * @param event
+	 */
+	void OnIncludeFilesScanDone(wxCommandEvent &event);
 
 	/**
 	 * \brief retag a given file
@@ -313,7 +328,7 @@ public:
 	 * that belongs to a given project, and then re-index all files
 	 * \param projectName project to re-tag
 	 */
-	void RetagProject(const wxString &projectName);
+	void RetagProject(const wxString &projectName, bool quickRetag);
 
 	/**
 	 * return list of files in absolute path of a given project
@@ -366,21 +381,6 @@ public:
  	 * \return project execution command or wxEmptyString if the project does not exist
   	 */
  	wxString GetProjectExecutionCommand(const wxString &projectName, wxString &wd, bool considerPauseWhenExecuting = true);
-
-
-     //--------------------------- External Tags DB Management -----------------------------
-public:
-  	/**
- 	 * use an external database
-  	 */
- 	void SetExternalDatabase(const wxFileName &dbname);
-
-  	/**
- 	 * close the currenlty open extern database
- 	 * and free all its resources
-  	 */
- 	void CloseExternalDatabase();
-
 
      //--------------------------- Top Level Pane Management -----------------------------
 public:
@@ -482,35 +482,39 @@ public:
 
 	void SetMemory(const wxString &address, size_t count, const wxString &hex_value);
 
+	//---------------------------------------------------
 	// Debugging API
+	//---------------------------------------------------
+
 	void DbgStart(long pid = wxNOT_FOUND);
 	void DbgStop();
 	void DbgMarkDebuggerLine(const wxString &fileName, int lineno);
 	void DbgUnMarkDebuggerLine();
 	void DbgDoSimpleCommand(int cmd);
-	void DbgQuickWatch(const wxString &expression, bool useTipWin = false, long pos = wxNOT_FOUND);
-	void DbgCancelQuickWatchTip();
 	void DbgSetFrame(int frame, int lineno);
 	void DbgSetThread(long threadId);
 	bool DbgCanInteract() {	return m_dbgCanInteract; }
 	void DbgClearWatches();
 	void DbgRestoreWatches();
 
-    // IDebuggerObserver event handlers
-	void UpdateAddLine(const wxString &line);
-	void UpdateFileLine(const wxString &file, int lineno);
-	void UpdateLocals(TreeNode<wxString, NodeData> *tree);
-    void UpdateStopped();
-	void UpdateGotControl(DebuggerReasons reason);
-	void UpdateLostControl();
-	void UpdateBpAdded(const int internal_id, const int debugger_id);
-	void UpdateExpression(const wxString &expression, const wxString &evaluated);
-	void UpdateQuickWatch(const wxString &expression, TreeNode<wxString, NodeData> *tree);
-	void UpdateStackList(const StackEntryArray &stackArray);
-	void UpdateRemoteTargetConnected(const wxString &line);
-	void ReconcileBreakpoints(std::vector<BreakpointInfo>& li);
-	void UpdateBpHit(int id);
+	//---------------------------------------------------
+    // Internal implementaion for various debugger events
+	//---------------------------------------------------
 
+	void UpdateAddLine              (const wxString &line, const bool OnlyIfLoggingOn = false);
+	void UpdateFileLine             (const wxString &file, int lineno);
+	void UpdateGotControl           (DebuggerReasons reason);
+	void UpdateLostControl          ();
+	void UpdateRemoteTargetConnected(const wxString &line);
+	void UpdateTypeReolsved         (const wxString &expression, const wxString &type);
+	void UpdateAsciiViewer                  (const wxString &expression, const wxString &tip);
+
+	//---------------------------------------------------
+	// Handle debugger event
+	//---------------------------------------------------
+
+	void DebuggerUpdate        ( const DebuggerEvent &event );
+	void DoShowQuickWatchDialog( const DebuggerEvent &event );
 
     //--------------------------- Build Management -----------------------------
 public:
@@ -578,6 +582,7 @@ protected:
 	void DoCleanProject(const QueueCommand &buildInfo);
 	void DoCustomBuild(const QueueCommand &buildInfo);
 	void DoCmdWorkspace(int cmd);
+	void DoSaveAllFilesBeforeBuild();
 };
 
 typedef Singleton<Manager> ManagerST;

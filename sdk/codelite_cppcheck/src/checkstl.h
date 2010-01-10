@@ -13,7 +13,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 
@@ -49,9 +49,11 @@ public:
 
         checkStl.stlOutOfBounds();
         checkStl.iterators();
+        checkStl.mismatchingContainers();
         checkStl.erase();
         checkStl.pushback();
         checkStl.stlBoundries();
+        checkStl.find();
     }
 
 
@@ -67,6 +69,12 @@ public:
      */
     void iterators();
 
+    /**
+     * Mismatching containers:
+     * std::find(foo.begin(), bar.end(), x)
+     */
+    void mismatchingContainers();
+
     /** Dereferencing an erased iterator */
     void dereferenceErasedError(const Token *tok, const std::string &itername);
 
@@ -76,7 +84,7 @@ public:
     void erase();
 
     /**
-     * Dangerous usage of push_back
+     * Dangerous usage of push_back and insert
      */
     void pushback();
 
@@ -84,6 +92,9 @@ public:
      * bad condition.. "it < alist.end()"
      */
     void stlBoundries();
+
+    /** usage of std::find */
+    void find();
 
 private:
 
@@ -96,20 +107,24 @@ private:
 
     void stlOutOfBoundsError(const Token *tok, const std::string &num, const std::string &var);
     void iteratorsError(const Token *tok, const std::string &container1, const std::string &container2);
+    void mismatchingContainersError(const Token *tok);
     void eraseError(const Token *tok);
-    void pushbackError(const Token *tok, const std::string &iterator_name);
+    void invalidIteratorError(const Token *tok, const std::string &func, const std::string &iterator_name);
     void invalidPointerError(const Token *tok, const std::string &pointer_name);
     void stlBoundriesError(const Token *tok, const std::string &container_name);
+    void findError(const Token *tok);
 
     void getErrorMessages()
     {
         iteratorsError(0, "container1", "container2");
+        mismatchingContainersError(0);
         dereferenceErasedError(0, "iter");
         stlOutOfBoundsError(0, "i", "foo");
         eraseError(0);
-        pushbackError(0, "iterator");
+        invalidIteratorError(0, "push_back|push_front|insert", "iterator");
         invalidPointerError(0, "pointer");
         stlBoundriesError(0, "container");
+        findError(0);
     }
 
     std::string name() const
@@ -122,8 +137,10 @@ private:
         return "Check for invalid usage of STL:\n"
                " * out of bounds errors\n"
                " * misuse of iterators when iterating through a container\n"
+               " * mismatching containers in calls\n"
                " * dereferencing an erased iterator\n"
-               " * for vectors: using iterator/pointer after push_back has been used\n";
+               " * for vectors: using iterator/pointer after push_back has been used\n"
+               " * dangerous usage of find";
     }
 };
 /// @}

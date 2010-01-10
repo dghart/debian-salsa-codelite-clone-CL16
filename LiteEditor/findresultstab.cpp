@@ -35,6 +35,7 @@
 #include "editor_config.h"
 #include "globals.h"
 #include "findresultstab.h"
+#include "search_thread.h"
 
 
 BEGIN_EVENT_TABLE(FindResultsTab, OutputTabWindow)
@@ -91,6 +92,11 @@ FindResultsTab::FindResultsTab(wxWindow *parent, wxWindowID id, const wxString &
 	}
 
 	wxTheApp->Connect(XRCID("find_in_files"), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(FindResultsTab::OnFindInFiles), NULL, this);
+	m_tb->AddTool ( XRCID ( "stop_search" ), wxT ( "Stop current search" ), wxXmlResource::Get()->LoadBitmap ( wxT ( "stop_build16" ) ), wxT ( "Stop current search" ) );
+	Connect( XRCID ( "stop_search" ), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler ( FindResultsTab::OnStopSearch  ), NULL, this );
+	Connect( XRCID ( "stop_search" ), wxEVT_UPDATE_UI,             wxUpdateUIEventHandler( FindResultsTab::OnStopSearchUI), NULL, this );
+	m_tb->Realize();
+
 }
 
 FindResultsTab::~FindResultsTab()
@@ -134,19 +140,19 @@ void FindResultsTab::SetStyles(wxScintilla *sci)
 {
 	InitStyle(sci, wxSCI_LEX_FIF, true);
 
-	sci->StyleSetForeground(wxSCI_LEX_FIF_DEFAULT, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
+	sci->StyleSetForeground(wxSCI_LEX_FIF_DEFAULT, wxT("BLACK"));
 	sci->StyleSetBackground(wxSCI_LEX_FIF_DEFAULT, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
 
-	sci->StyleSetForeground(wxSCI_LEX_FIF_PROJECT, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
+	sci->StyleSetForeground(wxSCI_LEX_FIF_PROJECT, wxT("BLACK"));
 	sci->StyleSetBackground(wxSCI_LEX_FIF_PROJECT, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
 
 	sci->StyleSetForeground(wxSCI_LEX_FIF_FILE, wxT("BLUE"));
 	sci->StyleSetBackground(wxSCI_LEX_FIF_FILE, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
 
-	sci->StyleSetForeground(wxSCI_LEX_FIF_FILE_SHORT, wxSystemSettings::GetColour(wxSYS_COLOUR_3DDKSHADOW));
+	sci->StyleSetForeground(wxSCI_LEX_FIF_FILE_SHORT, wxSystemSettings::GetColour(wxSYS_COLOUR_GRAYTEXT));
 	sci->StyleSetBackground(wxSCI_LEX_FIF_FILE_SHORT, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
 
-	sci->StyleSetForeground(wxSCI_LEX_FIF_MATCH, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
+	sci->StyleSetForeground(wxSCI_LEX_FIF_MATCH, wxT("BLACK"));
 	sci->StyleSetBackground(wxSCI_LEX_FIF_MATCH, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
 
 	sci->StyleSetForeground(wxSCI_LEX_FIF_SCOPE, wxT("PURPLE"));
@@ -567,4 +573,15 @@ void FindResultsTab::DoOpenSearchResult(const SearchResult &result, wxScintilla 
 			}
 		}
 	}
+}
+
+void FindResultsTab::OnStopSearch(wxCommandEvent& e)
+{
+	// stop the search thread
+	SearchThreadST::Get()->StopSearch();
+}
+
+void FindResultsTab::OnStopSearchUI(wxUpdateUIEvent& e)
+{
+	e.Enable(m_searchInProgress);
 }

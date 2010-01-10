@@ -22,6 +22,7 @@
 //
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
+#include "editor_config.h"
 #include "optionsconfig.h"
 #include <wx/fontmap.h>
 #include "xmlutils.h"
@@ -60,6 +61,13 @@ OptionsConfig::OptionsConfig(wxXmlNode *node)
 		, m_programConsoleCommand(TERMINAL_CMD)
 		, m_eolMode(wxT("Default"))
 		, m_hideChangeMarkerMargin(false)
+		, m_hideOutpuPaneOnUserClick(false)
+		, m_hideOutputPaneNotIfDebug(true)
+		, m_showQuickFinder(true)
+		, m_TrimLine(true)
+		, m_AppendLF(true)
+		, m_disableSmartIndent(false)
+		, m_disableSemicolonShift(false)
 {
 	//set the default font name to be UTF8
 	SetFileFontEncoding(wxFontMapper::GetEncodingName(wxFONTENCODING_UTF8));
@@ -97,6 +105,18 @@ OptionsConfig::OptionsConfig(wxXmlNode *node)
 		m_programConsoleCommand = XmlUtils::ReadString(node, wxT("ConsoleCommand"), m_programConsoleCommand);
 		m_eolMode = XmlUtils::ReadString(node, wxT("EOLMode"), m_eolMode);
 		m_hideChangeMarkerMargin = XmlUtils::ReadBool(node, wxT("HideChangeMarkerMargin"));
+		m_hideOutpuPaneOnUserClick = XmlUtils::ReadBool(node, wxT("HideOutputPaneOnUserClick"));
+		m_hideOutputPaneNotIfDebug = XmlUtils::ReadBool(node, wxT("HideOutputPaneNotIfDebug"));
+		m_showQuickFinder = XmlUtils::ReadBool(node, wxT("ShowQuickFinder"), m_showQuickFinder);
+		m_disableSmartIndent = XmlUtils::ReadBool(node, wxT("DisableSmartIndent"), m_disableSmartIndent);
+		m_disableSemicolonShift = XmlUtils::ReadBool(node, wxT("DisableSemicolonShift"), m_disableSemicolonShift);
+
+		// These hacks will likely be changed in the future. If so, we'll be able to remove the #include "editor_config.h" too
+		long trim(0); long appendLf(0);
+		EditorConfigST::Get()->GetLongValue(wxT("EditorTrimEmptyLines"), trim);
+		m_TrimLine = (trim > 0);
+		EditorConfigST::Get()->GetLongValue(wxT("EditorAppendLf"), appendLf);
+		m_AppendLF = (appendLf > 0);
 	}
 }
 
@@ -107,28 +127,33 @@ OptionsConfig::~OptionsConfig(void)
 wxXmlNode *OptionsConfig::ToXml() const
 {
 	wxXmlNode *n = new wxXmlNode(NULL, wxXML_ELEMENT_NODE, wxT("Options"));
-	n->AddProperty(wxT("DisplayFoldMargin"), BoolToString(m_displayFoldMargin));
-	n->AddProperty(wxT("UnderlineFoldedLine"), BoolToString(m_underlineFoldLine));
-	n->AddProperty(wxT("FoldStyle"), m_foldStyle);
-	n->AddProperty(wxT("DisplayBookmarkMargin"), BoolToString(m_displayBookmarkMargin));
-	n->AddProperty(wxT("BookmarkShape"), m_bookmarkShape);
-	n->AddProperty(wxT("BookmarkBgColour"), m_bookmarkBgColour.GetAsString(wxC2S_HTML_SYNTAX));
-	n->AddProperty(wxT("BookmarkFgColour"), m_bookmarkFgColour.GetAsString(wxC2S_HTML_SYNTAX));
-	n->AddProperty(wxT("HighlightCaretLine"), BoolToString(m_highlightCaretLine));
-	n->AddProperty(wxT("ShowLineNumber"), BoolToString(m_displayLineNumbers));
-	n->AddProperty(wxT("IndentationGuides"), BoolToString(m_showIndentationGuidelines));
-	n->AddProperty(wxT("CaretLineColour"), m_caretLineColour.GetAsString(wxC2S_HTML_SYNTAX));
-	n->AddProperty(wxT("IndentUsesTabs"), BoolToString(m_indentUsesTabs));
-	n->AddProperty(wxT("FoldCompact"), BoolToString(m_foldCompact));
-	n->AddProperty(wxT("FoldAtElse"), BoolToString(m_foldAtElse));
-	n->AddProperty(wxT("FoldPreprocessor"), BoolToString(m_foldPreprocessor));
-	n->AddProperty(wxT("HighlightMatchedBraces"), BoolToString(m_highlightMatchedBraces));
-	n->AddProperty(wxT("AutoAddMatchedBraces"), BoolToString(m_autoAddMatchedBraces));
-	n->AddProperty(wxT("FoldBgColour"), m_foldBgColour.GetAsString(wxC2S_HTML_SYNTAX));
+	n->AddProperty(wxT("DisplayFoldMargin"),         BoolToString(m_displayFoldMargin));
+	n->AddProperty(wxT("UnderlineFoldedLine"),       BoolToString(m_underlineFoldLine));
+	n->AddProperty(wxT("FoldStyle"),                 m_foldStyle);
+	n->AddProperty(wxT("DisplayBookmarkMargin"),     BoolToString(m_displayBookmarkMargin));
+	n->AddProperty(wxT("BookmarkShape"),             m_bookmarkShape);
+	n->AddProperty(wxT("BookmarkBgColour"),          m_bookmarkBgColour.GetAsString(wxC2S_HTML_SYNTAX));
+	n->AddProperty(wxT("BookmarkFgColour"),          m_bookmarkFgColour.GetAsString(wxC2S_HTML_SYNTAX));
+	n->AddProperty(wxT("HighlightCaretLine"),        BoolToString(m_highlightCaretLine));
+	n->AddProperty(wxT("ShowLineNumber"),            BoolToString(m_displayLineNumbers));
+	n->AddProperty(wxT("IndentationGuides"),         BoolToString(m_showIndentationGuidelines));
+	n->AddProperty(wxT("CaretLineColour"),           m_caretLineColour.GetAsString(wxC2S_HTML_SYNTAX));
+	n->AddProperty(wxT("IndentUsesTabs"),            BoolToString(m_indentUsesTabs));
+	n->AddProperty(wxT("FoldCompact"),               BoolToString(m_foldCompact));
+	n->AddProperty(wxT("FoldAtElse"),                BoolToString(m_foldAtElse));
+	n->AddProperty(wxT("FoldPreprocessor"),          BoolToString(m_foldPreprocessor));
+	n->AddProperty(wxT("HighlightMatchedBraces"),    BoolToString(m_highlightMatchedBraces));
+	n->AddProperty(wxT("AutoAddMatchedBraces"),      BoolToString(m_autoAddMatchedBraces));
+	n->AddProperty(wxT("FoldBgColour"),              m_foldBgColour.GetAsString(wxC2S_HTML_SYNTAX));
 	n->AddProperty(wxT("AutoAdjustHScrollBarWidth"), BoolToString(m_autoAdjustHScrollBarWidth));
-	n->AddProperty(wxT("HideChangeMarkerMargin"), BoolToString(m_hideChangeMarkerMargin));
-	n->AddProperty(wxT("ConsoleCommand"), m_programConsoleCommand);
-	n->AddProperty(wxT("EOLMode"), m_eolMode);
+	n->AddProperty(wxT("HideChangeMarkerMargin"),    BoolToString(m_hideChangeMarkerMargin));
+	n->AddProperty(wxT("HideOutputPaneOnUserClick"), BoolToString(m_hideOutpuPaneOnUserClick));
+	n->AddProperty(wxT("HideOutputPaneNotIfDebug"),	 BoolToString(m_hideOutputPaneNotIfDebug));
+	n->AddProperty(wxT("ShowQuickFinder"),           BoolToString(m_showQuickFinder));
+	n->AddProperty(wxT("DisableSmartIndent"),        BoolToString(m_disableSmartIndent));
+	n->AddProperty(wxT("DisableSemicolonShift"),     BoolToString(m_disableSemicolonShift));
+	n->AddProperty(wxT("ConsoleCommand"),            m_programConsoleCommand);
+	n->AddProperty(wxT("EOLMode"),                   m_eolMode);
 
 	wxString tmp;
     tmp << m_indentWidth;
@@ -179,3 +204,4 @@ void OptionsConfig::SetFileFontEncoding(const wxString& strFileFontEncoding)
 		this->m_fileFontEncoding = wxFONTENCODING_UTF8;
 	}
 }
+

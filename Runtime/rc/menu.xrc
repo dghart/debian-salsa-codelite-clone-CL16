@@ -1,6 +1,5 @@
 <resource>
     <object class="wxMenuBar" name="main_menu">
-		<style>wxMB_DOCKABLE</style>
         <object class="wxMenu" name="file_tool_or_menuitem">
             <label>&amp;File</label>
             <style>wxMENU_TEAROFF</style>
@@ -13,6 +12,9 @@
 			<object class="wxMenuItem" name="refresh_file">
 				<label>&amp;Reload File</label>
 			</object>
+            <object class="wxMenuItem" name="load_tab_group">
+                <label>Load a group of tabs</label>
+            </object>
 			<object class="wxMenuItem" name="wxID_SEPARATOR"/>
             <object class="wxMenuItem" name="save_file">
                 <label>&amp;Save File</label>
@@ -22,6 +24,9 @@
             </object>
             <object class="wxMenuItem" name="save_all">
                 <label>Save all files</label>
+            </object>
+            <object class="wxMenuItem" name="save_tab_group">
+                <label>Save tabs as group</label>
             </object>
             <object class="wxMenuItem" name="wxID_SEPARATOR"/>
 
@@ -234,7 +239,26 @@
         <object class="wxMenu" name="search_menu">
             <label>&amp;Search</label>
             <style>wxMENU_TEAROFF</style>
-			<object class="wxMenuItem" name="find_in_files">
+			<object class="wxMenu" name="show_quick_finder">
+                <label>Open QuickFinder for</label>
+				<object class="wxMenuItem" name="quickfinder_class">
+					<label>Class, struct or union</label>
+				</object>
+				<object class="wxMenuItem" name="quickfinder_function">
+					<label>Function</label>
+				</object>
+				<object class="wxMenuItem" name="quickfinder_macro">
+					<label>Macro</label>
+				</object>
+				<object class="wxMenuItem" name="quickfinder_typedef">
+					<label>Typedef</label>
+				</object>
+				<object class="wxMenuItem" name="quickfinder_file">
+					<label>Workspace file</label>
+				</object>
+            </object>
+			<object class="wxMenuItem" name="wxID_SEPARATOR"/>
+            <object class="wxMenuItem" name="find_in_files">
                 <label>&amp;Find In Files...</label>
             </object>
             <object class="wxMenuItem" name="wxID_FIND">
@@ -333,10 +357,17 @@
                 <label>&amp;Add an Existing Project</label>
             </object>
 			<object class="wxMenuItem" name="wxID_SEPARATOR"/>
-			<object class="wxMenuItem" name="retag_workspace">
-				<label>Retag Workspace</label>
+			<object class="wxMenuItem" name="project_properties">
+                <label>&amp;Open Active Project Settings...</label>
+            </object>
+			<object class="wxMenuItem" name="wxID_SEPARATOR"/>
+			<object class="wxMenuItem" name="full_retag_workspace">
+				<label>Retag Workspace ( Full )</label>
+				<help>Retag the workspace by dropping the old tags tables, and recreate them</help>
 			</object>
-
+			<object class="wxMenuItem" name="retag_workspace">
+				<label>Retag Workspace ( Quick )</label>
+			</object>
         </object>
 
         <object class="wxMenu" name="build_menu">
@@ -436,25 +467,6 @@
 			</object>
 		</object>
 
-        <object class="wxMenu" name="tags_menu">
-            <label>&amp;Tags</label>
-            <style>wxMENU_TEAROFF</style>
-            <object class="wxMenuItem" name="create_ext_database">
-                <label>&amp;Create external tags database...</label>
-            </object>
-
-            <object class="wxMenuItem" name="open_ext_database">
-                <label>&amp;Attach external tags database...</label>
-            </object>
-            <object class="wxMenuItem" name="close_ext_database">
-                <label>Cl&amp;ose external tags database</label>
-            </object>
-			<object class="wxMenuItem" name="wxID_SEPARATOR"/>
-            <object class="wxMenuItem" name="manage_tags">
-                <label>&amp;Manage external tags databases...</label>
-            </object>
-        </object>
-
         <object class="wxMenu" name="plugins">
             <label>&amp;Plugins</label>
             <style>wxMENU_TEAROFF</style>
@@ -467,8 +479,8 @@
 		<object class="wxMenu" name="settings_menu">
             <label>Settin&amp;gs</label>
             <style>wxMENU_TEAROFF</style>
-            <object class="wxMenuItem" name="options">
-                <label>&amp;Editor...</label>
+            <object class="wxMenuItem" name="wxID_PREFERENCES">
+                <label>Global &amp;Editor Preferences...</label>
             </object>
 			<object class="wxMenuItem" name="syntax_highlight">
                 <label>&amp;Syntax Highlight and &amp;Fonts...</label>
@@ -498,6 +510,10 @@
             <style>wxMENU_TEAROFF</style>
             <object class="wxMenuItem" name="wxID_ABOUT">
                 <label>&amp;About...</label>
+            </object>
+			<object class="wxMenuItem" name="wxID_SEPARATOR"/>
+			<object class="wxMenuItem" name="check_for_update">
+                <label>&amp;Check for updates...</label>
             </object>
         </object>
     </object>
@@ -618,6 +634,13 @@
 			</object>
 
 			<object class="wxMenuItem" name="wxID_SEPARATOR"/>
+			<object class="wxMenuItem" name="add_virtual_impl">
+				<label>Implement inherited virtual Functions...</label>
+			</object>
+			<object class="wxMenuItem" name="add_pure_virtual_impl">
+				<label>Implement inherited pure virtual Functions...</label>
+			</object>
+			<object class="wxMenuItem" name="wxID_SEPARATOR"/>
 			<object class="wxMenuItem" name="rename_function">
 				<label>Rename Symbol...</label>
 			</object>
@@ -703,13 +726,13 @@
         <label>Project</label>
         <style>wxMENU_TEAROFF</style>
         <object class="wxMenuItem" name="new_item">
-            <label>Add New Item...</label>
+            <label>Add a New File...</label>
         </object>
         <object class="wxMenuItem" name="add_existing_item">
-            <label>Add Existing Item...</label>
+            <label>Add an Existing File...</label>
         </object>
         <object class="wxMenuItem" name="new_virtual_folder">
-            <label>New Virtual Folder</label>
+            <label>New virtual Folder</label>
         </object>
          <object class="wxMenuItem" name="wxID_SEPARATOR"/>
         <object class="wxMenuItem" name="sort_item">
@@ -745,6 +768,7 @@
 		<object class="wxMenuItem" name="clean_project">
 			<label>Clean</label>
 		</object>
+		<object class="wxMenuItem" name="wxID_SEPARATOR"/>
 		<object class="wxMenu" name="project_only">
 			<label>Project Only</label>
 			<style>wxMENU_TEAROFF</style>
@@ -753,6 +777,10 @@
 			</object>
 			<object class="wxMenuItem" name="clean_project_only">
 				<label>Clean</label>
+			</object>
+			<object class="wxMenuItem" name="wxID_SEPARATOR"/>
+			<object class="wxMenuItem" name="rebuild_project_only">
+				<label>Rebuild</label>
 			</object>
 		</object>
 
@@ -800,6 +828,11 @@
         <object class="wxMenuItem" name="save_as_template">
             <label>Save As Template...</label>
         </object>
+		<object class="wxMenuItem" name="wxID_SEPARATOR"/>
+        <object class="wxMenuItem" name="local_project_prefs">
+            <label>Project Editor Preferences...</label>
+        </object>
+		<object class="wxMenuItem" name="wxID_SEPARATOR"/>
         <object class="wxMenuItem" name="project_properties">
             <label>Settings...</label>
         </object>
@@ -833,6 +866,14 @@
         </object>
 		<object class="wxMenuItem" name="reload_workspace">
             <label>Reload Workspace</label>
+        </object>
+        <object class="wxMenuItem" name="wxID_SEPARATOR"/>
+        <object class="wxMenuItem" name="local_workspace_prefs">
+            <label>Workspace Editor Preferences...</label>
+        </object>
+		<object class="wxMenuItem" name="wxID_SEPARATOR"/>
+        <object class="wxMenuItem" name="local_workspace_settings">
+            <label>Workspace Settings...</label>
         </object>
     </object>
 
@@ -904,9 +945,29 @@
             <label>Search...</label>
         </object>
         <object class="wxMenuItem" name="wxID_SEPARATOR"/>
-		<object class="wxMenuItem" name="tag_node">
-            <label>Add Tags...</label>
-        </object>
+
+		<object class="wxMenu" name="tags_paths">
+			<label>Tags</label>
+			<object class="wxMenu" name="global_paths">
+				<label>Global Parser Paths</label>
+				<object class="wxMenuItem" name="tags_add_global_include">
+					<label>Add to include paths</label>
+				</object>
+				<object class="wxMenuItem" name="tags_add_global_exclude">
+					<label>Add to exclude paths</label>
+				</object>
+			</object>
+			<object class="wxMenu" name="workspcae_paths">
+				<label>Workspace Parser Paths</label>
+				<object class="wxMenuItem" name="tags_add_workspace_include">
+					<label>Add to include paths</label>
+				</object>
+				<object class="wxMenuItem" name="tags_add_workspace_exclude">
+					<label>Add to exclude paths</label>
+				</object>
+			</object>
+		</object>
+
 		<object class="wxMenuItem" name="wxID_SEPARATOR"/>
         <object class="wxMenuItem" name="open_file">
             <label>&amp;Open</label>

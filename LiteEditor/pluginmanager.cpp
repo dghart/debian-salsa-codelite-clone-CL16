@@ -88,7 +88,7 @@ void PluginManager::Load()
 #endif
 
 	wxString fileSpec( wxT( "*." ) + ext );
-	PluginConfig::Instance()->Load(wxT("config/plugins.xml"));
+	PluginConfig::Instance()->Load(wxT("config/plugins.xml"), wxT("2.0.1"));
 
 	PluginsData pluginsData;
 	PluginConfig::Instance()->ReadObject(wxT("plugins_data"), &pluginsData);
@@ -104,7 +104,7 @@ void PluginManager::Load()
 	TagsManagerST::Get()->SetLanguage( LanguageST::Get() );
 
 #ifdef __WXGTK__
-	wxString pluginsDir(_U(PLUGINS_DIR));
+	wxString pluginsDir(PLUGINS_DIR, wxConvUTF8);
 #else
 	wxString pluginsDir(ManagerST::Get()->GetInstallDir() + wxT( "/plugins" ));
 #endif
@@ -128,9 +128,9 @@ void PluginManager::Load()
 			bool success( false );
 			GET_PLUGIN_INFO_FUNC pfnGetPluginInfo = ( GET_PLUGIN_INFO_FUNC )dl->GetSymbol( wxT( "GetPluginInfo" ), &success );
 			if ( !success ) {
-				wxLogMessage(wxT("Failed to find GetPluginInfo in dll: ") + fileName);
-				if (!dl->GetError().IsEmpty())
-					wxLogMessage(dl->GetError());
+//				wxLogMessage(wxT("Failed to find GetPluginInfo in dll: ") + fileName);
+//				if (!dl->GetError().IsEmpty())
+//					wxLogMessage(dl->GetError());
 				delete dl;
 				continue;
 			}
@@ -200,7 +200,7 @@ void PluginManager::Load()
 			m_plugins[plugin->GetShortName()] = plugin;
 
 			//load the toolbar
-			wxToolBar *tb = plugin->CreateToolBar( Frame::Get() );
+			wxToolBar *tb = plugin->CreateToolBar( AllowToolbar() ? (wxWindow*)Frame::Get()->GetMainPanel() : (wxWindow*)Frame::Get() );
 			if ( tb ) {
 				Frame::Get()->GetDockingManager().AddPane( tb, wxAuiPaneInfo().Name( plugin->GetShortName() ).LeftDockable( true ).RightDockable( true ).Caption( plugin->GetShortName() ).ToolbarPane().Top() );
 
@@ -345,6 +345,11 @@ bool PluginManager::AddFilesToVirtualFolder(const wxString &vdFullPath, wxArrayS
 	return Frame::Get()->GetWorkspaceTab()->GetFileView()->AddFilesToVirtualFolder(vdFullPath, paths);
 }
 
+bool PluginManager::AddFilesToVirtualFolderIntelligently(const wxString &vdFullPath, wxArrayString &paths)
+{
+	return Frame::Get()->GetWorkspaceTab()->GetFileView()->AddFilesToVirtualFolderIntelligently(vdFullPath, paths);
+}
+
 int PluginManager::GetToolbarIconSize()
 {
 	//for now return 24 by default
@@ -381,7 +386,8 @@ wxApp* PluginManager::GetTheApp()
 
 void PluginManager::ReloadWorkspace()
 {
-	ManagerST::Get()->ReloadWorkspace();
+	wxCommandEvent evt(wxEVT_COMMAND_MENU_SELECTED, XRCID("reload_workspace"));
+	Frame::Get()->AddPendingEvent( evt );
 }
 
 IPlugin* PluginManager::GetPlugin(const wxString& pluginName)
@@ -420,6 +426,12 @@ bool PluginManager::CreateVirtualDirectory(const wxString& parentPath, const wxS
 
 OptionsConfigPtr PluginManager::GetEditorSettings()
 {
+	// First try to use LEditor::GetOptions, as it takes account of local preferences
+	LEditor *editor = Frame::Get()->GetMainBook()->GetActiveEditor();
+	if (editor) {
+		return editor->GetOptions();
+	}
+	// Failing that...
 	return EditorConfigST::Get()->GetOptions();
 }
 
@@ -561,3 +573,7 @@ void PluginManager::UnHookProjectSettingsTab(wxNotebook* book, const wxString &p
 	}
 }
 
+IEditor* PluginManager::NewEditor()
+{
+	return Frame::Get()->GetMainBook()->NewEditor();
+}

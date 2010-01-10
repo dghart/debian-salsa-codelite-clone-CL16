@@ -93,6 +93,16 @@ BuildTab::~BuildTab()
 
 int BuildTab::ColorLine ( int, const char *text, size_t &start, size_t &len )
 {
+	wxString txt(text, wxConvUTF8);
+
+	if(txt.Contains(wxT("Entering directory"))) {
+		return wxSCI_LEX_GCC_MAKE_ENTER;
+	}
+
+	if(txt.Contains(wxT("Leaving directory"))) {
+		return wxSCI_LEX_GCC_MAKE_LEAVING;
+	}
+
 	std::map<wxString,int>::iterator i = s_bt->m_lineMap.find ( _U ( text ) );
 	if ( i == s_bt->m_lineMap.end() )
 		return wxSCI_LEX_GCC_OUTPUT;
@@ -125,10 +135,16 @@ void BuildTab::SetStyles ( wxScintilla *sci )
 
 	InitStyle ( sci, wxSCI_LEX_GCC, true );
 
-	sci->StyleSetForeground ( wxSCI_LEX_GCC_OUTPUT, wxSystemSettings::GetColour ( wxSYS_COLOUR_WINDOWTEXT ) );
+	sci->StyleSetForeground ( wxSCI_LEX_GCC_MAKE_ENTER, wxSystemSettings::GetColour(wxSYS_COLOUR_GRAYTEXT) );
+	sci->StyleSetBackground ( wxSCI_LEX_GCC_MAKE_ENTER, wxSystemSettings::GetColour (wxSYS_COLOUR_WINDOW ) );
+
+	sci->StyleSetForeground ( wxSCI_LEX_GCC_MAKE_LEAVING, wxSystemSettings::GetColour(wxSYS_COLOUR_GRAYTEXT) );
+	sci->StyleSetBackground ( wxSCI_LEX_GCC_MAKE_LEAVING, wxSystemSettings::GetColour (wxSYS_COLOUR_WINDOW ) );
+
+	sci->StyleSetForeground ( wxSCI_LEX_GCC_OUTPUT, wxT("BLACK") );
 	sci->StyleSetBackground ( wxSCI_LEX_GCC_OUTPUT, wxSystemSettings::GetColour ( wxSYS_COLOUR_WINDOW ) );
 
-	sci->StyleSetForeground ( wxSCI_LEX_GCC_BUILDING, wxSystemSettings::GetColour ( wxSYS_COLOUR_WINDOWTEXT ) );
+	sci->StyleSetForeground ( wxSCI_LEX_GCC_BUILDING, wxT("BLACK") );
 	sci->StyleSetBackground ( wxSCI_LEX_GCC_BUILDING, wxSystemSettings::GetColour ( wxSYS_COLOUR_WINDOW ) );
 
 	sci->StyleSetForeground ( wxSCI_LEX_GCC_WARNING, options.GetWarnColour() );
@@ -146,12 +162,14 @@ void BuildTab::SetStyles ( wxScintilla *sci )
 	wxFont font ( defFont.GetPointSize(), wxFONTFAMILY_TELETYPE, wxNORMAL, wxNORMAL );
 	wxFont bold ( defFont.GetPointSize(), wxFONTFAMILY_TELETYPE, wxNORMAL, wxFONTWEIGHT_BOLD );
 
-	sci->StyleSetFont ( wxSCI_LEX_GCC_DEFAULT,   font );
-	sci->StyleSetFont ( wxSCI_LEX_GCC_OUTPUT,    font );
-	sci->StyleSetFont ( wxSCI_LEX_GCC_BUILDING,  bold );
-	sci->StyleSetFont ( wxSCI_LEX_GCC_FILE_LINK, font );
-	sci->StyleSetFont ( wxSCI_LEX_GCC_WARNING,   options.GetBoldWarnFont() ? bold : font );
-	sci->StyleSetFont ( wxSCI_LEX_GCC_ERROR,     options.GetBoldErrFont()  ? bold : font );
+	sci->StyleSetFont ( wxSCI_LEX_GCC_DEFAULT,      font );
+	sci->StyleSetFont ( wxSCI_LEX_GCC_OUTPUT,       font );
+	sci->StyleSetFont ( wxSCI_LEX_GCC_BUILDING,     bold );
+	sci->StyleSetFont ( wxSCI_LEX_GCC_FILE_LINK,    font );
+	sci->StyleSetFont ( wxSCI_LEX_GCC_WARNING,      options.GetBoldWarnFont() ? bold : font );
+	sci->StyleSetFont ( wxSCI_LEX_GCC_ERROR,        options.GetBoldErrFont()  ? bold : font );
+	sci->StyleSetFont ( wxSCI_LEX_GCC_MAKE_ENTER,   font );
+	sci->StyleSetFont ( wxSCI_LEX_GCC_MAKE_LEAVING, font );
 
 	sci->Colourise ( 0, sci->GetLength() );
 }
@@ -178,84 +196,27 @@ void BuildTab::Clear()
 
 void BuildTab::AppendText ( const wxString &text )
 {
-	LineInfo info;
-	int lineno = m_sci->GetLineCount()-1; // get line number before appending new text
-
-    info.linetext = text;
-	OutputTabWindow::AppendText ( text );
-
-	if ( text.Contains ( BUILD_PROJECT_PREFIX ) ) {
-		// now building the next project
-		wxString prj = text.AfterFirst ( wxT ( '[' ) ).BeforeFirst ( wxT ( ']' ) );
-		info.project       = prj.BeforeFirst ( wxT ( '-' ) ).Trim ( false ).Trim();
-		info.configuration = prj.AfterFirst ( wxT ( '-' ) ).Trim ( false ).Trim();
-		info.linecolor     = wxSCI_LEX_GCC_BUILDING;
-		m_cmp.Reset ( NULL );
-		// need to know the compiler in use for this project to extract
-		// file/line and error/warning status from the text
-		ProjectPtr proj = ManagerST::Get()->GetProject ( info.project );
-		if ( proj ) {
-			ProjectSettingsPtr settings = proj->GetSettings();
-			if ( settings ) {
-				BuildConfigPtr bldConf = settings->GetBuildConfiguration ( info.configuration );
-				if ( !bldConf ) {
-					// no buildconf matching the named conf, so use first buildconf instead
-					ProjectSettingsCookie cookie;
-					bldConf = settings->GetFirstBuildConfiguration ( cookie );
-				}
-				if ( bldConf ) {
-					m_cmp = BuildSettingsConfigST::Get()->GetCompiler ( bldConf->GetCompilerType() );
-				}
-			}
-		} else {
-			// probably custom build with project names incorret
-			// assign the default compiler for this purpose
-			if ( BuildSettingsConfigST::Get()->IsCompilerExist(wxT("gnu g++")) ) {
-				m_cmp = BuildSettingsConfigST::Get()->GetCompiler( wxT("gnu g++") );
-			}
+	int lineno = m_sci->GetLineCount()-1;    // get line number before appending new text
+    OutputTabWindow::AppendText ( text );
+	int newLineno = m_sci->GetLineCount()-1; // Get the new line number
+	int lineCount = newLineno - lineno;
+	if(lineCount == 0) {
+		// We are still at the same line number
+		DoProcessLine(m_sci->GetLine(lineno), lineno);
+	} else {
+		for(int i=0; i<lineCount; i++) {
+			DoProcessLine(m_sci->GetLine(lineno+i), lineno+i);
 		}
-	} else if ( !m_lineInfo.empty() ) {
-		// consider this line part of the currently building project
-		info.project       = m_lineInfo.rbegin()->second.project;
-		info.configuration = m_lineInfo.rbegin()->second.configuration;
-	}
-
-	// check for start-of-build or end-of-build messages
-	if ( text.StartsWith ( BUILD_START_MSG ) || text.StartsWith ( BUILD_END_MSG ) ) {
-		info.linecolor = wxSCI_LEX_GCC_BUILDING;
-	}
-
-	if ( info.linecolor == wxSCI_LEX_GCC_BUILDING || !m_cmp ) {
-		// no more line info to get
-	} else if ( ExtractLineInfo ( info, text, m_cmp->GetWarnPattern(),
-	                              m_cmp->GetWarnFileNameIndex(), m_cmp->GetWarnLineNumberIndex() ) ) {
-		info.linecolor = wxSCI_LEX_GCC_WARNING;
-		m_warnCount++;
-	} else if ( ExtractLineInfo ( info, text, m_cmp->GetErrPattern(),
-	                              m_cmp->GetErrFileNameIndex(), m_cmp->GetErrLineNumberIndex() ) ) {
-		info.linecolor = wxSCI_LEX_GCC_ERROR;
-		m_errorCount++;
-	}
-
-	if ( info.linecolor != wxSCI_LEX_GCC_OUTPUT ) {
-		m_lineInfo[lineno] = info;
-		m_lineMap[text] = lineno;
-        if (!info.filename.IsEmpty() && (info.linecolor == wxSCI_LEX_GCC_ERROR || info.linecolor == wxSCI_LEX_GCC_WARNING)) {
-            m_fileMap.insert(std::make_pair(info.filename, lineno));
-        }
-		Frame::Get()->GetOutputPane()->GetErrorsTab()->AppendLine ( lineno );
 	}
 }
 
-bool BuildTab::ExtractLineInfo ( LineInfo &info, const wxString &text, const wxString &pattern,
-                                 const wxString &fileidx, const wxString &lineidx )
+bool BuildTab::ExtractLineInfo ( LineInfo &info, const wxString &text, const wxRegEx &re, const wxString &fileidx, const wxString &lineidx )
 {
 	long fidx, lidx;
 	if ( !fileidx.ToLong ( &fidx ) || !lineidx.ToLong ( &lidx ) )
 		return false;
 
-	wxRegEx re ( pattern );
-	if ( !re.IsValid() || !re.Matches ( text ) )
+	if ( !re.Matches ( text ) )
 		return false;
 
 	size_t start;
@@ -268,12 +229,24 @@ bool BuildTab::ExtractLineInfo ( LineInfo &info, const wxString &text, const wxS
 		}
 		info.filestart = start;
 		info.filelen = len;
+
         // find the actual workspace file (if possible)
-        wxFileName fn = ManagerST::Get()->FindFile(text.Mid( info.filestart, info.filelen ), info.project);
-        if (fn.IsOk()) {
-            info.filename = fn.GetFullPath();
-        }
+		wxString filename = text.Mid( info.filestart, info.filelen).Trim().Trim(false);
+		wxFileName fn(filename);
+		
+		// Use the current base dir
+		wxString baseDir ( m_baseDir );
+		if(baseDir.IsEmpty()) {
+			ProjectPtr project = ManagerST::Get()->GetProject(info.project);
+			if(project) {
+				baseDir = project->GetFileName().GetPath();
+			}
+		}
+		
+		fn.Normalize(wxPATH_NORM_ALL & ~wxPATH_NORM_LONG, baseDir);
+		info.filename = fn.GetFullPath();
 	}
+
 	if ( re.GetMatch ( &start, &len, lidx ) ) {
 		text.Mid ( start, len ).ToLong ( &info.linenum );
 		info.linenum--; // scintilla starts counting lines from 0
@@ -283,38 +256,52 @@ bool BuildTab::ExtractLineInfo ( LineInfo &info, const wxString &text, const wxS
 
 std::map<int,BuildTab::LineInfo>::iterator BuildTab::GetNextBadLine()
 {
-	// start scanning from current line
-	std::map<int,LineInfo>::iterator i = m_lineInfo.upper_bound ( m_sci->GetCurrentLine() );
+	// start scanning from currently marked line
+	int nFoundLine = m_sci->MarkerNext(0, 255);
+	std::map<int,LineInfo>::iterator i = m_lineInfo.upper_bound ( nFoundLine );
 	std::map<int,LineInfo>::iterator e = m_lineInfo.end();
 	for ( ; i != e && i->second.linecolor != wxSCI_LEX_GCC_ERROR &&
 	        ( m_skipWarnings || i->second.linecolor != wxSCI_LEX_GCC_WARNING ); i++ ) { }
 	if ( i == e ) {
 		// wrap around to beginning
 		i = m_lineInfo.begin();
-		e = m_lineInfo.lower_bound ( m_sci->GetCurrentLine() );
+		e = m_lineInfo.lower_bound ( nFoundLine );
 		for ( ; i != e && i->second.linecolor != wxSCI_LEX_GCC_ERROR &&
 		        ( m_skipWarnings || i->second.linecolor != wxSCI_LEX_GCC_WARNING ); i++ ) { }
 	}
 	return i != e ? i : m_lineInfo.end();
 }
 
-void BuildTab::DoMarkAndOpenFile ( std::map<int,LineInfo>::iterator i, bool clearsel )
+void BuildTab::DoMarkAndOpenFile ( std::map<int,LineInfo>::iterator i, bool scrollToLine )
 {
 	if ( i == m_lineInfo.end() )
         return;
+
     const LineInfo &info = i->second;
     if (info.linecolor != wxSCI_LEX_GCC_ERROR && info.linecolor != wxSCI_LEX_GCC_WARNING)
         return;
-    if (Frame::Get()->GetMainBook()->OpenFile ( info.filename, info.project, info.linenum ) == NULL)
-        return;
+
+	wxFileName filename(info.filename);
+
+	ProjectPtr project = ManagerST::Get()->GetProject(info.project);
+	if(project) {
+		filename.Normalize(wxPATH_NORM_ALL & ~wxPATH_NORM_LONG, project->GetFileName().GetPath());
+	} else {
+		filename.Normalize(wxPATH_NORM_ALL & ~wxPATH_NORM_LONG);
+	}
+
+	LEditor *editor = Frame::Get()->GetMainBook()->OpenFile ( filename.GetFullPath(), info.project, info.linenum );
+    if (editor == NULL) {
+		return;
+	}
+
     // mark the current error/warning line in the output tab
-    m_sci->MarkerDeleteAll ( 0x7 );
-    m_sci->MarkerAdd ( i->first, 0x7 );
-    m_sci->EnsureVisible ( i->first );
-    m_sci->EnsureCaretVisible();
-    if ( clearsel ) {
-        m_sci->SetSelection ( wxNOT_FOUND, m_sci->PositionFromLine ( i->first ) );
-    }
+    m_sci->MarkerDeleteAll   ( 0x7           );
+	m_sci->MarkerAdd         ( i->first, 0x7 );
+
+	if(scrollToLine)
+		m_sci->ScrollToLine      ( i->first      );
+
     // mark it in the errors tab too
     Frame::Get()->GetOutputPane()->GetErrorsTab()->MarkLine ( i->first );
 }
@@ -342,8 +329,11 @@ void BuildTab::MarkEditor ( LEditor *editor )
 	std::multimap<wxString,int>::iterator e = iters.second;
     if (b == m_fileMap.end())
         return;
+		
+	std::set<wxString> uniqueSet;
     for (; b != e; b++ ) {
-
+		
+		// get the line info related to the BuildTab's line number (b->second)
         std::map<int,LineInfo>::iterator i = m_lineInfo.find ( b->second ) ;
 
         if ( i == m_lineInfo.end() )
@@ -353,9 +343,25 @@ void BuildTab::MarkEditor ( LEditor *editor )
 		if ( line_colour == wxSCI_LEX_GCC_ERROR || line_colour == wxSCI_LEX_GCC_WARNING ) {
 
 			wxMemoryBuffer style_bytes;
-			int      line_number = i->second.linenum;
+			LineInfo lineInfo = i->second;
+			
+			// For performance, dont add the exact same markers to the same line number/filename 
+			// with the exact same tip
+			wxString tipMagic;
+			tipMagic << lineInfo.linenum << lineInfo.linetext;
+			if(uniqueSet.find(tipMagic) != uniqueSet.end()) {
+				// we already reported the exact same tip for that line
+				// skip this one
+				continue;
+			} else {
+				// add it to the unique set
+				uniqueSet.insert(tipMagic);
+			}
+			
+			// format the tip
+			int line_number = lineInfo.linenum;
 			wxString tip = GetBuildToolTip(editor->GetFileName().GetFullPath(), line_number, style_bytes);
-
+						
 			// Set annotations
 			if ( options.GetErrorWarningStyle() & BuildTabSettingsData::EWS_Annotations ) {
 				editor->AnnotationSetText (line_number, tip);
@@ -400,14 +406,47 @@ void BuildTab::OnRepeatOutputUI ( wxUpdateUIEvent& e )
 void BuildTab::OnBuildStarted ( wxCommandEvent &e )
 {
 	e.Skip();
-
+	
 	m_building = true;
-
+	
+	// Clear all compiler parsing information
+	m_compilerParseInfo.clear();
+		
+	// Loop over all known compilers and cache the regular expressions
+	BuildSettingsConfigCookie cookie;
+	CompilerPtr cmp = BuildSettingsConfigST::Get()->GetFirstCompiler(cookie);
+	while( cmp ) {
+		CompilerPatterns cmpPatterns;
+		const Compiler::CmpListInfoPattern& errPatterns  = cmp->GetErrPatterns();
+		const Compiler::CmpListInfoPattern& warnPatterns = cmp->GetWarnPatterns();
+		Compiler::CmpListInfoPattern::const_iterator iter;
+		for (iter = errPatterns.begin(); iter != errPatterns.end(); iter++) {
+			
+			CompiledPatternPtr compiledPatternPtr(new CompiledPattern(new wxRegEx(iter->pattern), iter->fileNameIndex, iter->lineNumberIndex));
+			if(compiledPatternPtr->regex->IsValid()) {
+				cmpPatterns.errorsPatterns.push_back( compiledPatternPtr );
+			}
+		}
+		
+		for (iter = warnPatterns.begin(); iter != warnPatterns.end(); iter++) {
+			
+			CompiledPatternPtr compiledPatternPtr(new CompiledPattern(new wxRegEx(iter->pattern), iter->fileNameIndex, iter->lineNumberIndex));
+			if(compiledPatternPtr->regex->IsValid()) {
+				cmpPatterns.warningPatterns.push_back( compiledPatternPtr );
+			}
+		}
+		
+		m_compilerParseInfo[cmp->GetName()] = cmpPatterns;
+		cmp =  BuildSettingsConfigST::Get()->GetNextCompiler(cookie);
+	}
+	
 	if ( e.GetEventType() != wxEVT_SHELL_COMMAND_STARTED_NOCLEAN ) {
+		// Reset output and counters
 		Clear();
 	}
+	
 	AppendText ( BUILD_START_MSG );
-	Frame::Get()->SetStatusMessage ( e.GetString(), 4, XRCID ( "build" ) );
+	Frame::Get()->SetStatusMessage ( e.GetString(), 3, XRCID ( "build" ) );
     OutputPane *opane = Frame::Get()->GetOutputPane();
 	if (m_showMe == BuildTabSettingsData::ShowOnEnd &&
             m_autoHide &&
@@ -431,7 +470,7 @@ void BuildTab::OnBuildAddLine ( wxCommandEvent &e )
         // try to show more specific progress in custom builds
         LineInfo &info = m_lineInfo.rbegin()->second;
         Frame::Get()->SetStatusMessage(wxString::Format(wxT("Building %s (%s)"),
-                                       info.project.c_str(), info.configuration.c_str()), 4, XRCID("build"));
+                                       info.project.c_str(), info.configuration.c_str()), 3, XRCID("build"));
     }
 }
 
@@ -454,7 +493,7 @@ void BuildTab::OnBuildEnded ( wxCommandEvent &e )
 	term << wxT ( '\n' );
 	AppendText ( term );
 
-	Frame::Get()->SetStatusMessage ( wxEmptyString, 4, XRCID ( "build" ) );
+	Frame::Get()->SetStatusMessage ( wxEmptyString, 3, XRCID ( "build" ) );
 
 	bool success = m_errorCount == 0 && ( m_skipWarnings || m_warnCount == 0 );
 	bool viewing = ManagerST::Get()->IsPaneVisible ( Frame::Get()->GetOutputPane()->GetCaption() ) &&
@@ -476,8 +515,8 @@ void BuildTab::OnBuildEnded ( wxCommandEvent &e )
 	}
 
 	MarkEditor ( Frame::Get()->GetMainBook()->GetActiveEditor() );
-
-	// notify the plugins that the build had started
+	
+	// notify the plugins that the build had ended
 	PostCmdEvent(wxEVT_BUILD_ENDED);
 }
 
@@ -513,7 +552,7 @@ void BuildTab::OnCompilerColours ( wxCommandEvent &e )
 void BuildTab::OnNextBuildError ( wxCommandEvent &e )
 {
 	wxUnusedVar ( e );
-	if ( m_errorCount > 0 || !m_skipWarnings && m_warnCount > 0 ) {
+	if ( (m_errorCount > 0) || (!m_skipWarnings && m_warnCount > 0) ) {
 		std::map<int,LineInfo>::iterator i = GetNextBadLine();
 		if ( i != m_lineInfo.end() ) {
 			wxString showpane = m_name;
@@ -529,7 +568,7 @@ void BuildTab::OnNextBuildError ( wxCommandEvent &e )
 
 void BuildTab::OnNextBuildErrorUI ( wxUpdateUIEvent &e )
 {
-	e.Enable ( m_errorCount > 0 || !m_skipWarnings && m_warnCount > 0 );
+	e.Enable ( (m_errorCount > 0) || (!m_skipWarnings && m_warnCount > 0) );
 }
 
 void BuildTab::OnActiveEditorChanged ( wxCommandEvent &e )
@@ -552,7 +591,7 @@ void BuildTab::OnMouseDClick ( wxScintillaEvent &e )
 
 	} else {
 		PERF_BLOCK("DoMarkAndOpenFile") {
-			DoMarkAndOpenFile ( m_lineInfo.find ( m_sci->LineFromPosition ( e.GetPosition() ) ), true );
+			DoMarkAndOpenFile ( m_lineInfo.find ( m_sci->LineFromPosition ( e.GetPosition() ) ), false );
 		}
 	}
 	PERF_END();
@@ -614,4 +653,112 @@ wxString BuildTab::GetBuildToolTip(const wxString& fileName, int lineno, wxMemor
 	}
 
 	return tip ;
+}
+
+void BuildTab::DoProcessLine(const wxString& text, int lineno)
+{
+	LineInfo info;
+	info.linetext = text;
+
+	if ( text.Contains ( BUILD_PROJECT_PREFIX ) ) {
+		// now building the next project
+		wxString prj = text.AfterFirst ( wxT ( '[' ) ).BeforeFirst ( wxT ( ']' ) );
+		info.project       = prj.BeforeFirst ( wxT ( '-' ) ).Trim ( false ).Trim();
+		info.configuration = prj.AfterFirst ( wxT ( '-' ) ).Trim ( false ).Trim();
+		info.linecolor     = wxSCI_LEX_GCC_BUILDING;
+		m_cmp.Reset ( NULL );
+		// need to know the compiler in use for this project to extract
+		// file/line and error/warning status from the text
+		ProjectPtr proj = ManagerST::Get()->GetProject ( info.project );
+		if ( proj ) {
+			ProjectSettingsPtr settings = proj->GetSettings();
+			if ( settings ) {
+				BuildConfigPtr bldConf = settings->GetBuildConfiguration ( info.configuration );
+				if ( !bldConf ) {
+					// no buildconf matching the named conf, so use first buildconf instead
+					ProjectSettingsCookie cookie;
+					bldConf = settings->GetFirstBuildConfiguration ( cookie );
+				}
+				if ( bldConf ) {
+					m_cmp = BuildSettingsConfigST::Get()->GetCompiler ( bldConf->GetCompilerType() );
+				}
+			}
+		} else {
+			// probably custom build with project names incorret
+			// assign the default compiler for this purpose
+			if ( BuildSettingsConfigST::Get()->IsCompilerExist(wxT("gnu g++")) ) {
+				m_cmp = BuildSettingsConfigST::Get()->GetCompiler( wxT("gnu g++") );
+			}
+		}
+	} else if ( !m_lineInfo.empty() ) {
+		// consider this line part of the currently building project
+		info.project       = m_lineInfo.rbegin()->second.project;
+		info.configuration = m_lineInfo.rbegin()->second.configuration;
+	}
+
+	// check for start-of-build or end-of-build messages
+	if ( text.StartsWith ( BUILD_START_MSG ) || text.StartsWith ( BUILD_END_MSG ) ) {
+		info.linecolor = wxSCI_LEX_GCC_BUILDING;
+	}
+	
+	// Check for makefile directory changes lines
+	if(text.Contains(wxT("Entering directory `"))) {
+		wxString currentDir = text.AfterFirst(wxT('`'));
+		currentDir = currentDir.BeforeLast(wxT('\''));
+		m_baseDir = currentDir;
+	}
+	
+	if ( info.linecolor == wxSCI_LEX_GCC_BUILDING || !m_cmp ) {
+		// no more line info to get
+	} else {
+		
+		// Find error first
+		bool isError = false;
+		
+		CompilerPatterns cmpPatterns;
+		if(!GetCompilerPatterns(m_cmp->GetName(), cmpPatterns)) {
+			return;
+		}
+		
+		for(size_t i=0; i<cmpPatterns.errorsPatterns.size(); i++) {
+			CompiledPatternPtr cmpPatterPtr = cmpPatterns.errorsPatterns.at(i);
+			if ( ExtractLineInfo(info, text, *(cmpPatterPtr->regex), cmpPatterPtr->fileIndex, cmpPatterPtr->lineIndex) ) {
+				info.linecolor = wxSCI_LEX_GCC_ERROR;
+				m_errorCount++;
+				isError = true;
+				break;
+			}
+		}
+		if (!isError) {
+			// If it is not an error, maybe it's a warning
+			for(size_t i=0; i<cmpPatterns.warningPatterns.size(); i++) {
+				CompiledPatternPtr cmpPatterPtr = cmpPatterns.warningPatterns.at(i);
+				if ( ExtractLineInfo(info, text, *(cmpPatterPtr->regex), cmpPatterPtr->fileIndex, cmpPatterPtr->lineIndex) ) {
+					info.linecolor = wxSCI_LEX_GCC_WARNING;
+					m_warnCount++;
+					isError = true;
+					break;
+				}
+			}
+		}
+	}
+
+	if ( info.linecolor != wxSCI_LEX_GCC_OUTPUT ) {
+		m_lineInfo[lineno] = info;
+		m_lineMap[text] = lineno;
+        if (!info.filename.IsEmpty() && (info.linecolor == wxSCI_LEX_GCC_ERROR || info.linecolor == wxSCI_LEX_GCC_WARNING)) {
+            m_fileMap.insert(std::make_pair(info.filename, lineno));
+        }
+		Frame::Get()->GetOutputPane()->GetErrorsTab()->AppendLine ( lineno );
+	}
+}
+
+bool BuildTab::GetCompilerPatterns(const wxString& compilerName, CompilerPatterns& patterns)
+{
+	std::map<wxString, CompilerPatterns>::iterator iter = m_compilerParseInfo.find(compilerName);
+	if(iter == m_compilerParseInfo.end()) {
+		return false;
+	}
+	patterns = iter->second;
+	return true;
 }

@@ -42,6 +42,7 @@
 #endif //WX_PRECOMP
 
 #include "tags_options_dlg.h"
+#include "ctags_manager.h"
 #include "windowattrmanager.h"
 #include "macros.h"
 #include "wx/tokenzr.h"
@@ -70,33 +71,33 @@ void TagsOptionsDlg::InitValues()
 	//initialize the CodeLite page
 	m_checkParseComments->SetValue                (m_data.GetFlags() & CC_PARSE_COMMENTS ? true : false);
 	m_checkDisplayFunctionTip->SetValue           (m_data.GetFlags() & CC_DISP_FUNC_CALLTIP ? true : false);
-	m_checkLoadLastDB->SetValue                   (m_data.GetFlags() & CC_LOAD_EXT_DB ? true : false);
 	m_checkDisplayTypeInfo->SetValue              (m_data.GetFlags() & CC_DISP_TYPE_INFO ? true : false);
 	m_checkDisplayComments->SetValue              (m_data.GetFlags() & CC_DISP_COMMENTS ? true : false);
-	m_checkLoadToMemory->SetValue                 (m_data.GetFlags() & CC_LOAD_EXT_DB_TO_MEMORY ? true : false);
 	m_checkFilesWithoutExt->SetValue              (m_data.GetFlags() & CC_PARSE_EXT_LESS_FILES ? true : false);
 	m_checkColourLocalVars->SetValue              (m_data.GetFlags() & CC_COLOUR_VARS ? true : false);
 	m_checkColourProjTags->SetValue               (m_data.GetFlags() & CC_COLOUR_WORKSPACE_TAGS ? true : false);
 	m_checkCppKeywordAssist->SetValue             (m_data.GetFlags() & CC_CPP_KEYWORD_ASISST ? true : false);
 	m_checkDisableParseOnSave->SetValue           (m_data.GetFlags() & CC_DISABLE_AUTO_PARSING ? true : false);
 	m_checkBoxMarkTagsFilesInBold->SetValue       (m_data.GetFlags() & CC_MARK_TAGS_FILES_IN_BOLD ? true : false);
-	m_checkBoxFullRetagging->SetValue             (m_data.GetFlags() & CC_USE_FULL_RETAGGING ? true : false);
+//	m_checkBoxFullRetagging->SetValue             (m_data.GetFlags() & CC_USE_FULL_RETAGGING ? true : false);
 	m_checkBoxretagWorkspaceOnStartup->SetValue   (m_data.GetFlags() & CC_RETAG_WORKSPACE_ON_STARTUP ? true : false);
 	m_checkBoxAccurateScopeNameResolving->SetValue(m_data.GetFlags() & CC_ACCURATE_SCOPE_RESOLVING ? true : false);
 
-	m_checkBoxClass->SetValue     (m_data.GetCcColourFlags() & CC_COLOUR_CLASS);
-	m_checkBoxEnum->SetValue      (m_data.GetCcColourFlags() & CC_COLOUR_ENUM);
-	m_checkBoxFunction->SetValue  (m_data.GetCcColourFlags() & CC_COLOUR_FUNCTION);
-	m_checkBoxMacro->SetValue     (m_data.GetCcColourFlags() & CC_COLOUR_MACRO);
-	m_checkBoxNamespace->SetValue (m_data.GetCcColourFlags() & CC_COLOUR_NAMESPACE);
-	m_checkBoxPrototype->SetValue (m_data.GetCcColourFlags() & CC_COLOUR_PROTOTYPE);
-	m_checkBoxStruct->SetValue    (m_data.GetCcColourFlags() & CC_COLOUR_STRUCT);
-	m_checkBoxTypedef->SetValue   (m_data.GetCcColourFlags() & CC_COLOUR_TYPEDEF);
-	m_checkBoxUnion->SetValue     (m_data.GetCcColourFlags() & CC_COLOUR_UNION);
-	m_checkBoxEnumerator->SetValue(m_data.GetCcColourFlags() & CC_COLOUR_ENUMERATOR);
-	m_checkBoxMember->SetValue    (m_data.GetCcColourFlags() & CC_COLOUR_MEMBER);
-	m_checkBoxVariable->SetValue  (m_data.GetCcColourFlags() & CC_COLOUR_VARIABLE);
-
+	m_checkBoxClass->SetValue                     (m_data.GetCcColourFlags() & CC_COLOUR_CLASS);
+	m_checkBoxEnum->SetValue                      (m_data.GetCcColourFlags() & CC_COLOUR_ENUM);
+	m_checkBoxFunction->SetValue                  (m_data.GetCcColourFlags() & CC_COLOUR_FUNCTION);
+	m_checkBoxMacro->SetValue                     (m_data.GetCcColourFlags() & CC_COLOUR_MACRO);
+	m_checkBoxNamespace->SetValue                 (m_data.GetCcColourFlags() & CC_COLOUR_NAMESPACE);
+	m_checkBoxPrototype->SetValue                 (m_data.GetCcColourFlags() & CC_COLOUR_PROTOTYPE);
+	m_checkBoxStruct->SetValue                    (m_data.GetCcColourFlags() & CC_COLOUR_STRUCT);
+	m_checkBoxTypedef->SetValue                   (m_data.GetCcColourFlags() & CC_COLOUR_TYPEDEF);
+	m_checkBoxUnion->SetValue                     (m_data.GetCcColourFlags() & CC_COLOUR_UNION);
+	m_checkBoxEnumerator->SetValue                (m_data.GetCcColourFlags() & CC_COLOUR_ENUMERATOR);
+	m_checkBoxMember->SetValue                    (m_data.GetCcColourFlags() & CC_COLOUR_MEMBER);
+	m_checkBoxVariable->SetValue                  (m_data.GetCcColourFlags() & CC_COLOUR_VARIABLE);
+	m_listBoxSearchPaths->Append                  ( m_data.GetParserSearchPaths() );
+	m_listBoxSearchPaths1->Append                 ( m_data.GetParserExcludePaths() );
+	m_spinCtrlMaxItemToColour->SetValue           ( m_data.GetMaxItemToColour() );
 	//initialize the ctags page
 	wxString prep;
 	for (size_t i=0; i<m_data.GetPreprocessor().GetCount(); i++) {
@@ -108,8 +109,13 @@ void TagsOptionsDlg::InitValues()
 	m_textFileSpec->SetValue(m_data.GetFileSpec());
 	m_comboBoxLang->Clear();
 	m_comboBoxLang->Append(m_data.GetLanguages());
-	wxString lan = m_data.GetLanguages().Item(0);
-	m_comboBoxLang->SetStringSelection(lan);
+	if ( m_data.GetLanguages().IsEmpty() == false ) {
+		wxString lan = m_data.GetLanguages().Item(0);
+		m_comboBoxLang->SetStringSelection(lan);
+	} else {
+		m_comboBoxLang->Append(wxT("c++"));
+		m_comboBoxLang->SetSelection(0);
+	}
 }
 
 void TagsOptionsDlg::OnButtonOK(wxCommandEvent &event)
@@ -135,17 +141,14 @@ void TagsOptionsDlg::CopyData()
 	SetFlag(CC_DISP_COMMENTS,              m_checkDisplayComments->IsChecked());
 	SetFlag(CC_DISP_FUNC_CALLTIP,          m_checkDisplayFunctionTip->IsChecked());
 	SetFlag(CC_DISP_TYPE_INFO,             m_checkDisplayTypeInfo->IsChecked());
-	SetFlag(CC_LOAD_EXT_DB,                m_checkLoadLastDB->IsChecked());
 	SetFlag(CC_PARSE_COMMENTS,             m_checkParseComments->IsChecked());
-	SetFlag(CC_LOAD_EXT_DB_TO_MEMORY,      m_checkLoadToMemory->IsChecked());
 	SetFlag(CC_PARSE_EXT_LESS_FILES,       m_checkFilesWithoutExt->IsChecked());
 	SetFlag(CC_COLOUR_VARS,                m_checkColourLocalVars->IsChecked());
 	SetFlag(CC_CPP_KEYWORD_ASISST,         m_checkCppKeywordAssist->IsChecked());
-	SetFlag(CC_CACHE_WORKSPACE_TAGS,       false);
 	SetFlag(CC_DISABLE_AUTO_PARSING,       m_checkDisableParseOnSave->IsChecked());
 	SetFlag(CC_COLOUR_WORKSPACE_TAGS,      m_checkColourProjTags->IsChecked());
 	SetFlag(CC_MARK_TAGS_FILES_IN_BOLD,    m_checkBoxMarkTagsFilesInBold->IsChecked());
-	SetFlag(CC_USE_FULL_RETAGGING,         m_checkBoxFullRetagging->IsChecked());
+//	SetFlag(CC_USE_FULL_RETAGGING,         m_checkBoxFullRetagging->IsChecked());
 	SetFlag(CC_RETAG_WORKSPACE_ON_STARTUP, m_checkBoxretagWorkspaceOnStartup->IsChecked());
 	SetFlag(CC_ACCURATE_SCOPE_RESOLVING,   m_checkBoxAccurateScopeNameResolving->IsChecked());
 
@@ -165,9 +168,11 @@ void TagsOptionsDlg::CopyData()
 	m_data.SetFileSpec(m_textFileSpec->GetValue());
 	wxArrayString prep = wxStringTokenize(m_textPrep->GetValue(), wxT(";"), wxTOKEN_STRTOK);
 	m_data.SetPreprocessor(prep);
-
 	m_data.SetLanguages(m_comboBoxLang->GetStrings());
 	m_data.SetLanguageSelection(m_comboBoxLang->GetStringSelection());
+	m_data.SetParserSearchPaths( m_listBoxSearchPaths->GetStrings() );
+	m_data.SetParserExcludePaths( m_listBoxSearchPaths1->GetStrings() );
+	m_data.SetMaxItemToColour( m_spinCtrlMaxItemToColour->GetValue() );
 
 }
 
@@ -193,3 +198,86 @@ void TagsOptionsDlg::OnColourWorkspaceUI(wxUpdateUIEvent& e)
 {
 	e.Enable(m_checkColourProjTags->IsChecked());
 }
+
+void TagsOptionsDlg::OnAddSearchPath(wxCommandEvent& e)
+{
+	wxUnusedVar(e);
+	wxString new_path = wxDirSelector(wxT("Add Parser Search Path:"), wxT(""), wxDD_DEFAULT_STYLE, wxDefaultPosition, this);
+	if(new_path.IsEmpty() == false){
+		if(m_listBoxSearchPaths->GetStrings().Index(new_path) == wxNOT_FOUND) {
+			m_listBoxSearchPaths->Append(new_path);
+		}
+	}
+}
+
+void TagsOptionsDlg::OnAddSearchPathUI(wxUpdateUIEvent& e)
+{
+	e.Enable(true);
+}
+
+void TagsOptionsDlg::OnClearAll(wxCommandEvent& e)
+{
+	wxUnusedVar(e);
+	m_listBoxSearchPaths->Clear();
+}
+
+void TagsOptionsDlg::OnClearAllUI(wxUpdateUIEvent& e)
+{
+	e.Enable(m_listBoxSearchPaths->IsEmpty() == false);
+}
+
+void TagsOptionsDlg::OnRemoveSearchPath(wxCommandEvent& e)
+{
+	wxUnusedVar(e);
+	int sel = m_listBoxSearchPaths->GetSelection();
+	if( sel != wxNOT_FOUND) {
+		m_listBoxSearchPaths->Delete((unsigned int)sel);
+	}
+}
+
+void TagsOptionsDlg::OnRemoveSearchPathUI(wxUpdateUIEvent& e)
+{
+	e.Enable(m_listBoxSearchPaths->GetSelection() != wxNOT_FOUND);
+}
+
+void TagsOptionsDlg::OnAddExcludePath(wxCommandEvent& e)
+{
+	wxUnusedVar(e);
+	wxString new_path = wxDirSelector(wxT("Add Parser Search Path:"), wxT(""), wxDD_DEFAULT_STYLE, wxDefaultPosition, this);
+	if(new_path.IsEmpty() == false){
+		if(m_listBoxSearchPaths1->GetStrings().Index(new_path) == wxNOT_FOUND) {
+			m_listBoxSearchPaths1->Append(new_path);
+		}
+	}
+}
+
+void TagsOptionsDlg::OnAddExcludePathUI(wxUpdateUIEvent& e)
+{
+	e.Enable(true);
+}
+
+void TagsOptionsDlg::OnClearAllExcludePaths(wxCommandEvent& e)
+{
+	wxUnusedVar(e);
+	m_listBoxSearchPaths1->Clear();
+}
+
+void TagsOptionsDlg::OnClearAllExcludePathsUI(wxUpdateUIEvent& e)
+{
+	e.Enable(m_listBoxSearchPaths1->IsEmpty() == false);
+}
+
+void TagsOptionsDlg::OnRemoveExcludePath(wxCommandEvent& e)
+{
+	wxUnusedVar(e);
+	int sel = m_listBoxSearchPaths1->GetSelection();
+	if( sel != wxNOT_FOUND) {
+		m_listBoxSearchPaths1->Delete((unsigned int)sel);
+	}
+}
+
+void TagsOptionsDlg::OnRemoveExcludePathUI(wxUpdateUIEvent& e)
+{
+	e.Enable(m_listBoxSearchPaths1->GetSelection() != wxNOT_FOUND);
+}
+

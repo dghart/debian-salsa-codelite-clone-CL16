@@ -1,4 +1,4 @@
-%{   
+%{
 // Copyright Eran Ifrah(c)
 %}
 
@@ -38,7 +38,7 @@ extern void cl_expr_lex_clean();
 %token  LE_BREAK           LE_ELSE            LE_LONG            LE_SWITCH
 %token  LE_CASE            LE_ENUM            LE_REGISTER        LE_TYPEDEF
 %token  LE_CHAR            LE_EXTERN          LE_RETURN          LE_UNION
-%token  LE_CONST           LE_FLOAT           LE_SHORT           LE_UNSIGNED
+%token  LE_CONST           LE_FLOAT           LE_SHORT           LE_UNSIGNED      LE_BOOL
 %token  LE_CONTINUE        LE_FOR             LE_SIGNED          LE_VOID
 %token  LE_DEFAULT         LE_GOTO            LE_SIZEOF          LE_VOLATILE
 %token  LE_DO              LE_IF              LE_STATIC          LE_WHILE
@@ -51,7 +51,7 @@ extern void cl_expr_lex_clean();
 %token  LE_PUBLIC          LE_PROTECTED       LE_PRIVATE
 %token  LE_VIRTUAL         LE_FRIEND
 %token  LE_INLINE          LE_OVERLOAD
-%token  LE_TEMPLATE		  LE_TYPENAME
+%token  LE_TEMPLATE		   LE_TYPENAME
 %token  LE_THROW		  	LE_CATCH
 /* ANSI C Grammar suggestions */
 %token  LE_IDENTIFIER              LE_STRINGliteral
@@ -78,7 +78,7 @@ extern void cl_expr_lex_clean();
 %token  LE_PLUSassign  LE_MINUSassign              		/*   +=      -=              */
 %token  LE_LSassign    LE_RSassign                 		/*   <<=     >>=             */
 %token  LE_ANDassign   LE_ERassign     LE_ORassign    	/*   &=      ^=      |=      */
-%token  LE_MACRO 
+%token  LE_MACRO
 %token  LE_DYNAMIC_CAST
 %token  LE_STATIC_CAST
 %token  LE_CONST_CAST
@@ -94,9 +94,9 @@ extern void cl_expr_lex_clean();
 translation_unit	:		/*empty*/
 						| translation_unit primary_expr
 						;
-						
-primary_expr		:	{result.Reset();} simple_expr	
-						| 	error { 
+
+primary_expr		:	{result.Reset();} simple_expr
+						| 	error {
 								yyclearin;	//clear lookahead token
 								yyerrok;
 								//fprintf(stderr, "CodeLite: syntax error, unexpected token '%s' found at line %d \n", cl_expr_text, cl_expr_lineno);
@@ -104,40 +104,47 @@ primary_expr		:	{result.Reset();} simple_expr
 								expr_syncParser();
 						}
 					;
-					
+
 const_spec			:	/* empty */	{$$ = ""; }
 					| 	LE_CONST 	{ $$ = $1; }
 					;
-					
-basic_type_name:
-        LE_INT			{ $$ = $1; }
-        | LE_CHAR		{ $$ = $1; }
-        | LE_SHORT		{ $$ = $1; }
-        | LE_LONG		{ $$ = $1; } 
-        | LE_FLOAT		{ $$ = $1; }
-        | LE_DOUBLE		{ $$ = $1; }
-        | LE_SIGNED		{ $$ = $1; }
-        | LE_UNSIGNED	{ $$ = $1; }
-        | LE_VOID		{ $$ = $1; }
-        ;
-		
+
+basic_type_name_inter:    LE_INT          { $$ = $1; }
+                |         LE_CHAR         { $$ = $1; }
+                |         LE_SHORT        { $$ = $1; }
+                |         LE_LONG         { $$ = $1; }
+                |         LE_FLOAT        { $$ = $1; }
+                |         LE_DOUBLE       { $$ = $1; }
+                |         LE_SIGNED       { $$ = $1; }
+                |         LE_UNSIGNED     { $$ = $1; }
+                |         LE_VOID         { $$ = $1; }
+                |         LE_BOOL         { $$ = $1; }
+                ;
+
+basic_type_name:	LE_UNSIGNED basic_type_name_inter     { $$ = $1 + " " + $2; }
+                |	LE_SIGNED basic_type_name_inter     { $$ = $1 + " " + $2; }
+                |	LE_LONG LE_LONG                     { $$ = $1 + " " + $2; }
+                |	LE_LONG LE_INT                         { $$ = $1 + " " + $2; }
+                |	basic_type_name_inter                   { $$ = $1; }
+                ;
+
 parameter_list	: /* empty */		{$$ = "";}
 				| template_parameter	{$$ = $1;}
 				| parameter_list ',' template_parameter {$$ = $1 + $2 + $3;}
 				;
 
 
-template_parameter	:	const_spec nested_scope_specifier LE_IDENTIFIER special_star_amp 
+template_parameter	:	const_spec nested_scope_specifier LE_IDENTIFIER special_star_amp
 						{$$ = $1 + " " + $2 + " " + $3 +$4;}
-					|  	const_spec nested_scope_specifier basic_type_name special_star_amp 
+					|  	const_spec nested_scope_specifier basic_type_name special_star_amp
 						{$$ = $1 + " " + $2 + " " + $3 +$4;}
 					|  	const_spec nested_scope_specifier LE_IDENTIFIER '<' parameter_list '>' special_star_amp
 						{$$ = $1 + " " + $2 + " " + $3 +$4 + $5 + $6;}
 					;
-						
-simple_expr	:	stmnt_starter special_cast '<' cast_type '>' '(' 
+
+simple_expr	:	stmnt_starter special_cast '<' cast_type '>' '('
 					{
-						expr_FuncArgList(); 
+						expr_FuncArgList();
 						$$ = $4;
 						result.m_isaType = true;
 						result.m_name = $4;
@@ -145,7 +152,7 @@ simple_expr	:	stmnt_starter special_cast '<' cast_type '>' '('
 						printf("Rule 1\n");
 						//result.Print();
 					}
-				| stmnt_starter LE_THIS 
+				| stmnt_starter LE_THIS
 					{
 						$$ = $2;
 						result.m_isaType = false;
@@ -155,7 +162,7 @@ simple_expr	:	stmnt_starter special_cast '<' cast_type '>' '('
 						result.m_isPtr = true;
 						//result.Print();
 					}
-				| 	stmnt_starter '*' LE_THIS 
+				| 	stmnt_starter '*' LE_THIS
 					{
 						$$ = $3;
 						result.m_isaType = false;
@@ -164,7 +171,7 @@ simple_expr	:	stmnt_starter special_cast '<' cast_type '>' '('
 						result.m_isThis = true;
 						//result.Print();
 					}
-				| 	stmnt_starter '*' identifier_name 
+				| 	stmnt_starter '*' identifier_name
 					{
 						$$ = $3;
 						result.m_isaType = false;
@@ -174,15 +181,15 @@ simple_expr	:	stmnt_starter special_cast '<' cast_type '>' '('
 						result.m_isPtr = false;
 						//result.Print();
 					}
-				|	stmnt_starter '(' cast_type ')' special_star_amp identifier_name
-					{
-						$$ = $3;
-						result.m_isaType = true;
-						result.m_name = $$;
-						result.m_isFunc = false;
-						result.m_isThis = false;
-						//result.Print();
-					}
+//				|	stmnt_starter '(' cast_type ')' special_star_amp identifier_name
+//					{
+//						$$ = $3;
+//						result.m_isaType = true;
+//						result.m_name = $$;
+//						result.m_isFunc = false;
+//						result.m_isThis = false;
+//						//result.Print();
+//					}
 				| stmnt_starter nested_scope_specifier identifier_name optional_template_init_list  optinal_postifx
 					{
 						result.m_isaType = false;
@@ -194,7 +201,7 @@ simple_expr	:	stmnt_starter special_cast '<' cast_type '>' '('
 						result.m_templateInitList = $4;
 						//result.Print();
 					}
-					
+
 				| 	stmnt_starter '(' '(' cast_type ')' special_star_amp identifier_name ')'
 					{
 						$$ = $4;
@@ -204,7 +211,7 @@ simple_expr	:	stmnt_starter special_cast '<' cast_type '>' '('
 						result.m_isThis = false;
 						//result.Print();
 					}
-				
+
 				;
 
 identifier_name	:	LE_IDENTIFIER array_brackets {$$ = $1;}
@@ -214,14 +221,14 @@ optional_template_init_list: /*empty*/ {$$ = "";}
 							;
 
 optinal_postifx: 	/*empty*/ {$$ = "";}
-					|	'(' 
+					|	'('
 					{
-						$$ = $1; 
+						$$ = $1;
 						expr_FuncArgList();
 						result.m_isFunc = true;
 					}
 					;
-					
+
 special_cast 	: 	LE_DYNAMIC_CAST {$$ = $1;}
 					|	LE_STATIC_CAST {$$ = $1;}
 					|	LE_CONST_CAST {$$ = $1;}
@@ -231,7 +238,7 @@ special_cast 	: 	LE_DYNAMIC_CAST {$$ = $1;}
 amp_item				:	/*empty*/	{$$ = ""; }
 						|   '&' 			{ $$ = $1; }
 						;
-						
+
 star_list			: 	/*empty*/		{$$ = ""; }
 						|	star_list '*'	{$$ = $1 + $2;}
 						;
@@ -246,9 +253,9 @@ stmnt_starter		:	/*empty*/ {$$ = "";}
 
 cast_type: nested_scope_specifier LE_IDENTIFIER '<' parameter_list '>' special_star_amp
 				{
-					$$ = $1 + $2; 
+					$$ = $1 + $2;
 					$1.erase($1.find_last_not_of(":")+1);
-					result.m_scope = $1; 
+					result.m_scope = $1;
 					result.m_name = $2;
 					result.m_isPtr = ($6.find("*") != (size_t)-1);;
 					result.m_isTemplate = true;
@@ -256,9 +263,9 @@ cast_type: nested_scope_specifier LE_IDENTIFIER '<' parameter_list '>' special_s
 				}
 			| nested_scope_specifier LE_IDENTIFIER special_star_amp
 				{
-					$$ = $1 + $2; 
+					$$ = $1 + $2;
 					$1.erase($1.find_last_not_of(":")+1);
-					result.m_scope = $1; 
+					result.m_scope = $1;
 					result.m_name = $2;
 					result.m_isPtr = ($3.find("*") != (size_t)-1);;
 				}
@@ -280,7 +287,7 @@ void yyerror(char *s) {}
 void expr_consumBracketsContent(char openBrace)
 {
 	char closeBrace;
-	
+
 	switch(openBrace) {
 	case '(': closeBrace = ')'; break;
 	case '[': closeBrace = ']'; break;
@@ -291,7 +298,7 @@ void expr_consumBracketsContent(char openBrace)
 		closeBrace = ')';
 		break;
 	}
-	
+
 	int depth = 1;
 	while(depth > 0)
 	{
@@ -301,7 +308,7 @@ void expr_consumBracketsContent(char openBrace)
 		if(ch == 0){
 			break;
 		}
-		
+
 		if(ch == closeBrace)
 		{
 			depth--;
@@ -326,7 +333,7 @@ void expr_FuncArgList()
 		if(ch ==0){
 			break;
 		}
-		
+
 		if(ch == ')')
 		{
 			depth--;
@@ -351,7 +358,7 @@ void expr_consumeTemplateDecl()
 		if(ch ==0){
 			break;
 		}
-		
+
 		if(ch == '>')
 		{
 			depth--;
@@ -378,11 +385,11 @@ ExpressionResult &parse_expression(const std::string &in)
 	if( !setExprLexerInput(in) ){
 		return result;
 	}
-	
+
 	//printf("parsing...\n");
 	cl_expr_parse();
 	//do the lexer cleanup
 	cl_expr_lex_clean();
-	
+
 	return result;
 }

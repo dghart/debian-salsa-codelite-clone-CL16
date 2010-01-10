@@ -43,12 +43,36 @@ enum DebuggerCommands {
 };
 
 // Breakpoint types. If you add more, LEditor::FillBPtoMarkerArray will also need altering
-enum BP_type { /*Convenient return-codes*/ BP_type_invalid = -1, BP_type_none = 0, /*Real breakpoint-types*/ BP_FIRST_ITEM, BP_type_break = BP_FIRST_ITEM,
-        BP_type_cmdlistbreak, BP_type_condbreak, BP_type_ignoredbreak, BP_type_tempbreak, BP_LAST_MARKED_ITEM = BP_type_tempbreak,
-        BP_type_watchpt, BP_LAST_ITEM = BP_type_watchpt
-             };
+enum BreakpointType {
+	/*Convenient return-codes*/
+	BP_type_invalid = -1,
+	BP_type_none = 0,
+	/*Real breakpoint-types*/
+	BP_FIRST_ITEM,
+	BP_type_break = BP_FIRST_ITEM,
+	BP_type_cmdlistbreak,
+	BP_type_condbreak,
+	BP_type_ignoredbreak,
+	BP_type_tempbreak,
+	BP_LAST_MARKED_ITEM = BP_type_tempbreak,
+	BP_type_watchpt,
+	BP_LAST_ITEM = BP_type_watchpt
+};
+
 // Watchpoint subtypes: write,read and both
-enum WP_type { WP_watch, WP_rwatch, WP_awatch };
+enum WatchpointType {
+	WP_watch,
+	WP_rwatch,
+	WP_awatch
+};
+
+// The breakpoint origin:
+// Can be from the Editor (user clicked 'F9')
+// or from any other source (direct command to gdb, from the start up command etc)
+enum BreakpointOrigin {
+	BO_Editor,
+	BO_Other
+};
 
 //-------------------------------------------------------
 // Data structures used by the debugger
@@ -69,13 +93,45 @@ struct StackEntry {
 };
 
 struct ThreadEntry {
-	bool 	 	active;
-	long 		dbgid;
-	wxString	more;
+	bool     active;
+	long     dbgid;
+	wxString more;
 };
 
-typedef std::vector<StackEntry> StackEntryArray;
-typedef std::vector<ThreadEntry> ThreadEntryArray;
+struct VariableObjChild {
+	int      numChilds;    // If this child has children (i.e. is this child a node or leaf)
+	wxString varName;      // the name of the variable object node
+	wxString gdbId;        // A unique name given by gdb which holds this node information for further queries
+	wxString value;
+	bool     isAFake;      // Sets to true of this variable object is a fake node
+	VariableObjChild() : numChilds(0), isAFake(false) {}
+};
+
+struct VariableObject {
+	bool     isPtr;         // if this variable object is of type pointer
+	bool     isPtrPtr;      // if this variable object is of type pointer pointer
+	wxString gdbId;         // GDB unique identifier for this variable object
+	wxString typeName;      // the type of this variable object
+	int      numChilds;     // Number of children
+
+	VariableObject() : isPtr(false), isPtrPtr(false), numChilds(0) {}
+};
+
+struct LocalVariable {
+	wxString name;
+	wxString value;
+	wxString type;
+	bool     updated;
+	wxString gdbId; // Mac generates variable object for locals as well...
+
+	LocalVariable() : updated(false) {}
+	~LocalVariable(){}
+};
+
+typedef std::vector<VariableObjChild> VariableObjChildren;
+typedef std::vector<StackEntry>       StackEntryArray;
+typedef std::vector<ThreadEntry>      ThreadEntryArray;
+typedef std::vector<LocalVariable>    LocalVariables;
 
 class BreakpointInfo: public SerializedObject
 {
@@ -86,17 +142,20 @@ public:
 	wxString               watchpt_data;
 	wxString               function_name;
 	bool                   regex;            // Is the function_name a regex?
-	int                    memory_address;
+	wxString               memory_address;
 	// How to identify the bp. Because the debugger won't always be running, we need an internal id as well as the debugger's one
 	int                    internal_id;
 	int                    debugger_id;	// -1 signifies not set
-	enum BP_type           bp_type;  // Is it a plain vanilla breakpoint, or a temporary one, or a watchpoint, or...
+	BreakpointType         bp_type;  // Is it a plain vanilla breakpoint, or a temporary one, or a watchpoint, or...
 	unsigned int           ignore_number; // 0 means 'not ignored'. >0 is the number of times the bp must be hit before it becomes enabled
 	bool                   is_enabled;
 	bool                   is_temp;
-	enum WP_type           watchpoint_type;	// If this is a watchpoint, holds which sort it is
+	WatchpointType         watchpoint_type;	// If this is a watchpoint, holds which sort it is
 	wxString               commandlist;
 	wxString               conditions;
+	wxString               at;
+	wxString               what;
+	BreakpointOrigin       origin;
 
 	BreakpointInfo(const BreakpointInfo& BI ):
 			file(BI.file),
@@ -113,11 +172,14 @@ public:
 			is_temp (BI.is_temp),
 			watchpoint_type(BI.watchpoint_type),
 			commandlist(BI.commandlist),
-			conditions(BI.conditions) {
-	}
+			conditions(BI.conditions),
+			at(BI.at),
+			what(BI.what),
+			origin(BI.origin)
+	{}
 
-	BreakpointInfo() : lineno(-1), regex(false), memory_address(-1), debugger_id(-1), bp_type(BP_type_break),
-			ignore_number(0), is_enabled(true), is_temp(false), watchpoint_type(WP_watch)	{}
+	BreakpointInfo() : lineno(-1), regex(false), debugger_id(-1), bp_type(BP_type_break),
+			ignore_number(0), is_enabled(true), is_temp(false), watchpoint_type(WP_watch), origin(BO_Other) {}
 
 //	BreakpointInfo(const BreakpointInfo& BI ) {
 //		*this = BI;
@@ -135,24 +197,6 @@ public:
 		debugger_id = ext_id;
 	}
 
-//	BreakpointInfo& operator=(const BreakpointInfo& BI) {
-//		file = BI.file;
-//		lineno = BI.lineno;
-//		function_name = BI.function_name;
-//		memory_address = BI.memory_address;
-//		bp_type = BI.bp_type;
-//		watchpoint_type = BI.watchpoint_type;
-//		watchpt_data = BI.watchpt_data;
-//		commandlist = BI.commandlist;
-//		regex = BI.regex;
-//		is_temp = BI.is_temp;
-//		internal_id = BI.internal_id;
-//		debugger_id = BI.debugger_id;
-//		is_enabled = BI.is_enabled;
-//		ignore_number = BI.ignore_number;
-//		conditions = BI.conditions;
-//		return *this;
-//	}
 	BreakpointInfo& operator=(const BreakpointInfo& BI) {
 		file             = BI.file;
 		lineno           = BI.lineno;
@@ -169,11 +213,14 @@ public:
 		watchpoint_type  = BI.watchpoint_type;
 		commandlist      = BI.commandlist;
 		conditions       = BI.conditions;
+		at               = BI.at;                 // Provided by the debugger, no need to serialize
+		what             = BI.what;               // Provided by the debugger, no need to serialize
+		origin           = BI.origin;
 		return *this;
 	}
 
 	bool operator==(const BreakpointInfo& BI) {
-		return ((file == BI.file) && (lineno == BI.lineno) && (function_name == BI.function_name) && (memory_address == BI.memory_address)
+		return ((origin == BI.origin) && (what == BI.what) && (at == BI.at) && (file == BI.file) && (lineno == BI.lineno) && (function_name == BI.function_name) && (memory_address == BI.memory_address)
 		        && (bp_type == BI.bp_type) &&  (watchpt_data == BI.watchpt_data)&& (is_enabled == BI.is_enabled)
 		        && (ignore_number == BI.ignore_number) && (conditions == BI.conditions) && (commandlist == BI.commandlist) && (is_temp == BI.is_temp)
 		        && (bp_type==BP_type_watchpt ? (watchpoint_type == BI.watchpoint_type) : true) && (!function_name.IsEmpty() ? (regex == BI.regex) : true));
@@ -189,12 +236,14 @@ protected:
 		arch.Write(wxT("bp_type"), bp_type);
 		arch.Write(wxT("watchpoint_type"), watchpoint_type);
 		arch.Write(wxT("watchpt_data"), watchpt_data);
-		arch.Write(wxT("commandlist"), commandlist);
+		// WriteCDate tends to write white-space even for empty commandlists
+		arch.WriteCData(wxT("commandlist"), commandlist.Trim().Trim(false));
 		arch.Write(wxT("regex"), regex);
 		arch.Write(wxT("is_temp"), is_temp);
 		arch.Write(wxT("is_enabled"), is_enabled);
 		arch.Write(wxT("ignore_number"), (int)ignore_number);
 		arch.Write(wxT("conditions"), conditions);
+		arch.Write(wxT("origin"),     (int)origin);
 	}
 
 	virtual void DeSerialize(Archive& arch) {
@@ -205,14 +254,14 @@ protected:
 		arch.Read(wxT("bp_type"), (int&)bp_type);
 		arch.Read(wxT("watchpoint_type"), (int&)watchpoint_type);
 		arch.Read(wxT("watchpt_data"), watchpt_data);
-		arch.Read(wxT("commandlist"), commandlist);
+		arch.ReadCData(wxT("commandlist"), commandlist);
+		commandlist.Trim().Trim(false); // ReadCData tends to add white-space to the commands e.g. a terminal \n
 		arch.Read(wxT("regex"), regex);
 		arch.Read(wxT("is_temp"), is_temp);
-		// arch.Read(wxT("is_enabled"), is_enabled); // It's currently not possible to create a disabled bp
 		arch.Read(wxT("ignore_number"), (int&)ignore_number);
 		arch.Read(wxT("conditions"), conditions);
+		arch.Read(wxT("origin"),     (int&)origin);
 	}
-	//
 };
 
 /**
@@ -279,7 +328,6 @@ public:
 	bool      enableDebugLog;
 	bool      enablePendingBreakpoints;
 	bool      breakAtWinMain;
-	bool      resolveThis;
 	bool      showTerminal;
 	wxString  consoleCommand;
 	bool      useRelativeFilePaths;
@@ -287,6 +335,8 @@ public:
 	bool      showTooltips;
 	bool      debugAsserts;
 	wxString  startupCommands;
+	int       maxDisplayStringSize;
+	bool      resolveLocals;
 
 public:
 	DebuggerInformation()
@@ -295,14 +345,15 @@ public:
 			, enableDebugLog(false)
 			, enablePendingBreakpoints(true)
 			, breakAtWinMain(false)
-			, resolveThis(false)
 			, showTerminal(false)
 			, consoleCommand(TERMINAL_CMD)
 			, useRelativeFilePaths(false)
 			, catchThrow(false)
 			, showTooltips(false)
 			, debugAsserts(false)
-			, startupCommands(wxEmptyString) {}
+			, startupCommands(wxEmptyString)
+			, maxDisplayStringSize(200)
+			, resolveLocals (false){}
 	~DebuggerInformation() {}
 };
 
@@ -346,7 +397,7 @@ class EnvironmentConfig;
 //-------------------------------------------------------
 /**
  * \ingroup Interfaces
- * Defines the debugger interface
+ * Defines the *GDB* debugger interface
  *
  * \version 1.0
  * first version
@@ -362,10 +413,14 @@ protected:
 	IDebuggerObserver * m_observer;
 	DebuggerInformation m_info;
 	EnvironmentConfig * m_env;
+	wxString            m_name;
 
 public:
 	IDebugger() : m_env(NULL) {};
 	virtual ~IDebugger() {};
+
+	void SetName(const wxString &name) {m_name = name;}
+	wxString GetName() const {return m_name;}
 
 	void SetObserver(IDebuggerObserver *observer) {
 		m_observer = observer;
@@ -386,6 +441,23 @@ public:
 	DebuggerInformation GetDebuggerInformation() {
 		return m_info;
 	}
+
+	/**
+	 * \brief Sets the logging level 'on the fly'
+	 * \param level the new level
+	 */
+	void EnableLogging(bool level) {
+		m_info.enableDebugLog = level;
+	}
+
+	/**
+	 * \brief Gets the current logging level
+	 * \return the current level
+	 */
+	bool IsLoggingEnabled() const {
+		return m_info.enableDebugLog;
+	}
+
 	//-------------------------------------------------------------
 	// Debugger operations
 	//-------------------------------------------------------------
@@ -503,12 +575,7 @@ public:
 	 * \brief executes a command that does not yield any output from the debugger
 	 */
 	virtual bool ExecuteCmd(const wxString &cmd) = 0;
-	/**
-	 * \brief excute a command and waits from its answer from the debugger
-	 * \param command command to execute
-	 * \param output the debugger response
-	 */
-	virtual bool ExecSyncCmd(const wxString &command, wxString &output) = 0;
+
 	/**
 	 * \brief ask the debugger to print the current stack local variable. When the results arrives, the observer->UpdateLocals() is called
 	 * \return true on success, false otherwise
@@ -528,10 +595,9 @@ public:
 	virtual bool SetFrame(int frame) = 0;
 	/**
 	 * \brief return list of threads.
-	 * \param threads [output]
 	 * \return true on success, false otherwise
 	 */
-	virtual bool ListThreads(ThreadEntryArray &threads) = 0;
+	virtual bool ListThreads() = 0;
 	/**
 	 * \brief select threadId to be active
 	 * \param threadId thread id
@@ -544,36 +610,34 @@ public:
 	virtual void Poke() = 0;
 
 	/**
-	 * @brief return string to show the user as tip for expression
+	 * @brief return string to show the user as tip for expression. this is an async call. When this function is done, it will trigger a call to
+	 * IDebuggerObserver::UpdateTip()
 	 * @param dbgCommand debugger command to evaluate the tip (e.g. "print")
 	 * @param expression expression to evaluate
-	 * @param evaluated [output]
 	 * @return true if evaluation succeeded, false otherwise
 	 */
-	virtual bool GetTip(const wxString &dbgCommand, const wxString &expression, wxString &evaluated) = 0;
+	virtual bool GetAsciiViewerContent(const wxString &dbgCommand, const wxString &expression) = 0;
 
 	/**
-	 * \brief resolve expression and return its actual type
+	 * \brief resolve expression and return its actual type this is an async call. When this function is done, it will trigger a call to
+	 * IDebuggerObserver::UpdateTypeResolved()
 	 * \param expression expression to evaluate
-	 * \param type the type [output]
 	 * \return true on success, false otherwise
 	 */
-	virtual bool ResolveType(const wxString &expression, wxString &type) = 0;
+	virtual bool ResolveType(const wxString &expression) = 0;
 
 	//We provide two ways of evulating an expressions:
 	//The short one, which returns a string, and long one
 	//which returns a tree of the result
 	virtual bool EvaluateExpressionToString(const wxString &expression, const wxString &format) = 0;
-	virtual bool EvaluateExpressionToTree(const wxString &expression) = 0;
 
 	/**
 	 * \brief a request to display memory from address -> address + count. This is a synchronous call
 	 * \param address starting address
 	 * \param count address range
-	 * \param output [output] string containing the formatted result
 	 * \return true on success, false otherwise
 	 */
-	virtual bool WatchMemory(const wxString &address, size_t count, wxString &output) = 0;
+	virtual bool WatchMemory(const wxString &address, size_t count) = 0;
 
 	/**
 	 * \brief set memory at given address and of size count. the value to set must be a space delimited
@@ -585,8 +649,37 @@ public:
 	 * \brief have the debugger list all breakpoints
 	 */
 	virtual void BreakList() = 0;
-};
 
+	// ----------------------------------------------------------------------------------------
+	// Variable object manipulation (GDB only)
+	// If you wish to implement a debugger other than
+	// GDB, implement all the 'Variable Object' releated method
+	// with an empty implementation
+	// ----------------------------------------------------------------------------------------
+	/**
+	 * @brief list the children of a variable object
+	 * @param name
+	 */
+	virtual bool ListChildren(const wxString& name, int userReason) = 0;
+
+	/**
+	 * @brief create variable object from a given expression
+	 * @param expression
+	 */
+	virtual bool CreateVariableObject(const wxString &expression, int userReason) = 0;
+
+	/**
+	 * @brief delete variable object
+	 * @param name
+	 */
+	virtual bool DeleteVariableObject(const wxString &name) = 0;
+
+	/**
+	 * @brief evaluate variable object
+	 * @param name variable object
+	 */
+	virtual bool EvaluateVariableObject(const wxString &name, int userReason) = 0;
+};
 
 //-----------------------------------------------------------
 // Each debugger module must implement these two functions

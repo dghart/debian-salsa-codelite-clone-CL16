@@ -28,17 +28,20 @@ class CppCheckPlugin : public IPlugin
 	bool                 m_restartRequired;
 #endif // __WXMSW__
 	size_t               m_fileProcessed;
+
 protected:
 	wxMenu *         CreateFileExplorerPopMenu();
 	wxMenu *         CreateWorkspacePopMenu();
 	wxMenu *         CreateProjectPopMenu();
 
+protected:
 	void             GetFileListFromDir( const wxString &root );
 	void             ProcessNextFromList();
 	void             RemoveExcludedFiles();
 	void             SetTabVisible(bool clearContent);
-	CppCheckResults* ParseResults(const wxString& res);
 	void             DoProcess(size_t count);
+	void             DoStartTest();
+
 protected:
 	// Events
 	void OnStartDaemon          (wxCommandEvent &e);
@@ -81,6 +84,11 @@ protected:
 	void OnReport               (wxCommandEvent &e);
 
 	/**
+	 * @brief handle the workspace closed event and clear the view
+	 * @param e
+	 */
+	void OnWorkspaceClosed      (wxCommandEvent &e);
+	/**
 	 * @brief handle the settings item
 	 * @param e event
 	 */
@@ -103,15 +111,6 @@ public:
 	virtual void HookPopupMenu(wxMenu *menu, MenuType type);
 	virtual void UnHookPopupMenu(wxMenu *menu, MenuType type);
 	virtual void UnPlug();
-
-	/** setters/getters **/
-
-	void SetCanRestart(const bool& canRestart) {
-		this->m_canRestart = canRestart;
-	}
-	const bool& GetCanRestart() const {
-		return m_canRestart;
-	}
 
 	/**
 	 * @brief stop the analysis of the current file

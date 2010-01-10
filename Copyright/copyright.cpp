@@ -23,6 +23,7 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 #include <wx/filefn.h>
+#include <wx/log.h>
 #include <wx/progdlg.h>
 #include <wx/ffile.h>
 #include <wx/tokenzr.h>
@@ -280,11 +281,11 @@ void Copyright::OnBatchInsertCopyrights(wxCommandEvent& e)
 		return;
 	}
 
-	CopyrightsProjectSelDlg *dlg = new CopyrightsProjectSelDlg(NULL, m_mgr->GetWorkspace());
-	if (dlg->ShowModal() == wxID_OK) {
+	CopyrightsProjectSelDlg dlg(m_mgr->GetTheApp()->GetTopWindow(), m_mgr->GetWorkspace());
+	if (dlg.ShowModal() == wxID_OK) {
 		wxArrayString projects;
-		dlg->GetProjects( projects );
-		dlg->Destroy();
+		dlg.GetProjects( projects );
+		dlg.Destroy();
 
 		// expand constants
 		wxString err_msg;
@@ -317,7 +318,6 @@ void Copyright::OnBatchInsertCopyrights(wxCommandEvent& e)
 		}
 
 	}
-	dlg->Destroy();
 }
 
 void Copyright::OnProjectInsertCopyrights(wxCommandEvent& e)

@@ -2,9 +2,7 @@
 <CodeLite_Project Name="CodeLite">
   <Plugins>
     <Plugin Name="qmake">
-      <![CDATA[00040001N0012DebugUnicode0000000000000001N0014ReleaseUnicode0000000000000001N0015WinDebugUnicode0000000000000001N0017WinReleaseUnicode000000000000
-    
-    ]]>
+      <![CDATA[00040001N0012DebugUnicode0000000000000001N0014ReleaseUnicode0000000000000001N0015WinDebugUnicode0000000000000001N0017WinReleaseUnicode000000000000]]>
     </Plugin>
   </Plugins>
   <VirtualDirectory Name="Source Files">
@@ -29,12 +27,10 @@
     <File Name="tags_options_data.cpp"/>
     <File Name="setters_getters_data.cpp"/>
     <File Name="archive.cpp"/>
-    <File Name="winprocess.h"/>
     <File Name="winprocess.cpp"/>
     <File Name="cl_calltip.cpp"/>
     <File Name="performance.cpp"/>
     <File Name="fileextmanager.cpp"/>
-    <File Name="fileextmanager.h"/>
   </VirtualDirectory>
   <VirtualDirectory Name="Header Files">
     <File Name="y.tab.h"/>
@@ -70,6 +66,8 @@
     <File Name="extdbdata.h"/>
     <File Name="cl_calltip.h"/>
     <File Name="performance.h"/>
+    <File Name="fileextmanager.h"/>
+    <File Name="winprocess.h"/>
   </VirtualDirectory>
   <VirtualDirectory Name="GeneratedFiles">
     <File Name="expression_result.h"/>
@@ -84,27 +82,18 @@
     <File Name="variable.cpp"/>
   </VirtualDirectory>
   <VirtualDirectory Name="database">
-    <File Name="tags_database.h"/>
-    <File Name="db_record.h"/>
     <File Name="comment.h"/>
     <File Name="entry.h"/>
     <File Name="entry.cpp"/>
     <File Name="comment.cpp"/>
-    <File Name="tags_database.cpp"/>
-    <File Name="variable_entry.cpp"/>
-    <File Name="variable_entry.h"/>
     <File Name="fileentry.cpp"/>
     <File Name="fileentry.h"/>
+    <File Name="istorage.h"/>
+    <File Name="tags_storage_sqlite3.h"/>
+    <File Name="tags_storage_sqlite3.cpp"/>
   </VirtualDirectory>
   <Dependencies/>
   <Dependencies/>
-  <VirtualDirectory Name="TagsCache">
-    <File Name="tagcacheentry.cpp"/>
-    <File Name="tagcacheentry.h"/>
-    <File Name="tagscache.cpp"/>
-    <File Name="tagscache.h"/>
-  </VirtualDirectory>
-  <Dependencies Name="ReleaseUnicode"/>
   <VirtualDirectory Name="codelite_indexer_API">
     <File Name="../sdk/codelite_indexer/network/np_connections_server.h"/>
     <File Name="../sdk/codelite_indexer/network/cl_indexer_reply.cpp"/>
@@ -121,6 +110,12 @@
     <File Name="../sdk/codelite_indexer/network/named_pipe_server.h"/>
     <File Name="../sdk/codelite_indexer/network/np_connections_server.cpp"/>
     <File Name="../sdk/codelite_indexer/network/cl_indexer_macros.h"/>
+  </VirtualDirectory>
+  <VirtualDirectory Name="file_crawler">
+    <File Name="crawler_lexer.cpp"/>
+    <File Name="fc_fileopener.cpp"/>
+    <File Name="fc_fileopener.h"/>
+    <File Name="crawler_include.h"/>
   </VirtualDirectory>
   <Settings Type="Static Library">
     <Configuration Name="DebugUnicode" CompilerType="gnu g++" DebuggerType="GNU gdb debugger" Type="Static Library" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
@@ -263,6 +258,22 @@
       <ResourceCompiler Options=""/>
     </GlobalSettings>
   </Settings>
+  <VirtualDirectory Name="AsyncProcess">
+    <File Name="asyncprocess.cpp"/>
+    <File Name="asyncprocess.h"/>
+    <File Name="processreaderthread.cpp"/>
+    <File Name="processreaderthread.h"/>
+    <File Name="unixprocess_impl.cpp"/>
+    <File Name="unixprocess_impl.h"/>
+    <File Name="winprocess_impl.cpp"/>
+    <File Name="winprocess_impl.h"/>
+  </VirtualDirectory>
+  <VirtualDirectory Name="include_finder">
+    <File Name="include_finder.h"/>
+    <File Name="include_finder.cpp"/>
+  </VirtualDirectory>
+  <Dependencies Name="DebugUnicode"/>
+  <Dependencies Name="ReleaseUnicode"/>
   <Dependencies Name="WinDebugUnicode"/>
   <Dependencies Name="WinReleaseUnicode"/>
 </CodeLite_Project>

@@ -73,7 +73,7 @@ static const char *Checkbox_on_XPM[] = {
 };
 
 /* XPM */
-static char * check_box_disabled_xpm[] = {
+static const char * check_box_disabled_xpm[] = {
 "16 16 10 1",
 " 	c None",
 ".	c #185284",
@@ -194,5 +194,30 @@ void SettersGettersTreeCtrl::OnItemChecked(wxCheckTreeCtrlEvent& e)
 			}
 		}
 		e.Skip();
+	}
+}
+
+void SettersGettersTreeCtrl::Check(const wxTreeItemId& item, bool check)
+{
+	if (item.IsOk()) {
+		wxTreeItemData *data = this->GetItemData(item);
+		if ( data ) {
+			SettersGettersTreeData* d = dynamic_cast<SettersGettersTreeData*>( data );
+			if ( d ) {
+				if ( d->m_disabled ) {
+					return; // do nothing
+				} else {
+					switch (d->m_kind) {
+					case SettersGettersTreeData::Kind_Root:
+					case SettersGettersTreeData::Kind_Parent:
+						// do nothing
+						break;
+					default:
+						wxCheckTreeCtrl::Check(item, check);
+						break;
+					}
+				}
+			}
+		}
 	}
 }

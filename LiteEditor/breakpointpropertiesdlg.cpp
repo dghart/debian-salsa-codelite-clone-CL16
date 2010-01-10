@@ -32,7 +32,7 @@ void BreakptPropertiesDlg::EnterBPData( const BreakpointInfo &bp )
 		m_textWatchExpression->SetValue(bp.watchpt_data);
 	} else {
 		its_a_breakpt = true;
-		if (bp.memory_address != -1) {
+		if (bp.memory_address.IsEmpty() == false) {
 			m_checkBreakMemory->SetValue(true);
 			m_textBreakMemory->Clear();
 			*m_textBreakMemory << bp.memory_address;
@@ -53,11 +53,15 @@ void BreakptPropertiesDlg::EnterBPData( const BreakpointInfo &bp )
 		}
 	}
 
+	// We need temporarily to Disconnect this event, otherwise it's impossible to edit a watchpoint while the debugger's running
+	// as SetSelection(1) causes a wxEVT_COMMAND_CHOICEBOOK_PAGE_CHANGING event, which is vetoed
+	m_choicebook->Disconnect( wxEVT_COMMAND_CHOICEBOOK_PAGE_CHANGING, wxChoicebookEventHandler( BreakptPropertiesDlg::OnPageChanging ), NULL, this );
 	if (its_a_breakpt) {
 		m_choicebook->SetSelection(0);
 	} else {
 		m_choicebook->SetSelection(1);
 	}
+	m_choicebook->Connect( wxEVT_COMMAND_CHOICEBOOK_PAGE_CHANGING, wxChoicebookEventHandler( BreakptPropertiesDlg::OnPageChanging ), NULL, this );
 
 	// if b.debugger_id > -1, the debugger must be running
 	if (b.debugger_id > -1) {
@@ -86,7 +90,7 @@ void BreakptPropertiesDlg::EndModal( int retCode )
 	int selectedPage = m_choicebook->GetSelection();
 	if (m_choicebook->GetPageText((size_t)selectedPage) == _("Watchpoint")) {
 		b.bp_type = BP_type_watchpt;
-		b.watchpoint_type = (WP_type)m_radioWatchtype->GetSelection();
+		b.watchpoint_type = (WatchpointType)m_radioWatchtype->GetSelection();
 		b.watchpt_data = m_textWatchExpression->GetValue();
 		if (b.watchpt_data.IsEmpty()) {
 			wxMessageBox(_("You don't seem to have entered a variable for the watchpoint to watch. Please try again."), wxT(":/"), wxICON_ERROR);
@@ -116,16 +120,12 @@ void BreakptPropertiesDlg::EndModal( int retCode )
 			b.file = m_textFilename->GetValue();
 			// Reset other data, so that it'll be recognised as a function bp
 			b.lineno = -1;
-			b.memory_address = -1;
+			b.memory_address.Clear();
 			break;
 
 		case wbc_memory:
 			contents = m_textBreakMemory->GetValue();
-			if ( ! contents.ToLong(&l, 0) ) {
-				wxMessageBox(_("The breakpoint's memory address is invalid. Please try again."), _(":/"), wxICON_ERROR);
-				return;
-			}
-			b.memory_address = (int)l;
+			b.memory_address = contents;
 			break;
 		}
 	}

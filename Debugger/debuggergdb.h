@@ -22,12 +22,11 @@
 //
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
- #ifndef DBGINTERFACE_H
+#ifndef DBGINTERFACE_H
 #define DBGINTERFACE_H
 
 #include "wx/string.h"
 #include "wx/event.h"
-#include "interactiveprocess.h"
 #include "list"
 #include "debugger.h"
 #include <wx/hashmap.h>
@@ -48,35 +47,47 @@ extern "C" DebuggerInfo GetDebuggerInfo();
 #endif
 
 class DbgCmdHandler;
+class DbgCmdCLIHandler;
+class IProcess;
+
 WX_DECLARE_STRING_HASH_MAP(DbgCmdHandler*, HandlersMap);
 
-class DbgGdb : public InteractiveProcess, public IDebugger
+class DbgGdb : public wxEvtHandler, public IDebugger
 {
-	HandlersMap m_handlers;
-	long m_debuggeePid;
-	ConsoleFinder m_consoleFinder;
+	HandlersMap                 m_handlers;
+	long                        m_debuggeePid;
+	ConsoleFinder               m_consoleFinder;
 	std::vector<BreakpointInfo> m_bpList;
-	bool m_isRemote;
+	bool                        m_isRemote;
+	DbgCmdCLIHandler*           m_cliHandler;
+	IProcess*                   m_gdbProcess;
+	wxArrayString               m_gdbOutputArr;
 
 protected:
-	void RegisterHandler(const wxString &id, DbgCmdHandler *cmd);
+	void           RegisterHandler(const wxString &id, DbgCmdHandler *cmd);
 	DbgCmdHandler *PopHandler(const wxString &id);
-	void EmptyQueue();
-	bool FilterMessage(const wxString &msg);
+	void           EmptyQueue();
+	bool           FilterMessage(const wxString &msg);
+	bool           DoGetNextLine(wxString &line);
 
 	//wrapper for convinience
-	bool WriteCommand(const wxString &command, DbgCmdHandler *cmd);
 	void DoProcessAsyncCommand(wxString &line, wxString &id);
 	void SetBreakpoints();
-	void OnProcessEndEx(wxProcessEvent &e);
 
-	bool DoLocateGdbExecutable(const wxString &debuggerPath, wxString &dbgExeName);
-	bool DoInitializeGdb      (const std::vector<BreakpointInfo> &bpList, const wxArrayString &cmds);
+	bool               DoLocateGdbExecutable(const wxString &debuggerPath, wxString &dbgExeName);
+	bool               DoInitializeGdb      (const std::vector<BreakpointInfo> &bpList, const wxArrayString &cmds);
+	void               SetCliHandler        (DbgCmdCLIHandler *handler);
+	DbgCmdCLIHandler * GetCliHandler        ();
+
+public:
+	bool WriteCommand  (const wxString &command, DbgCmdHandler *   cmd);
+	bool ExecCLICommand(const wxString &command, DbgCmdCLIHandler* cmd);
+
 public:
 	DbgGdb();
 	virtual ~DbgGdb();
 
-	virtual bool ExecSyncCmd(const wxString &command, wxString &output);
+	//------ IDebugger ---------
 	virtual bool Start(const wxString &debuggerPath, const wxString &exeName, const wxString &cwd, const std::vector<BreakpointInfo> &bpList, const wxArrayString &cmds);
 	virtual bool Start(const wxString &debuggerPath, const wxString &exeName, int pid, const std::vector<BreakpointInfo> &bpList, const wxArrayString &cmds);
 	virtual bool Start(const wxString &exeName, const wxString &cwd, const std::vector<BreakpointInfo> &bpList, const wxArrayString &cmds);
@@ -97,21 +108,27 @@ public:
 	virtual bool Interrupt();
 	virtual bool IsRunning();
 	virtual bool ExecuteCmd(const wxString &cmd);
-	virtual bool EvaluateExpressionToTree(const wxString &expression);
 	virtual bool EvaluateExpressionToString(const wxString &expression, const wxString &format);
 	virtual bool QueryLocals();
 	virtual bool ListFrames();
-	virtual bool ListThreads(ThreadEntryArray &threads);
+	virtual bool ListThreads();
 	virtual bool SelectThread(long threadId);
 	virtual bool SetFrame(int frame);
 	virtual void Poke();
-	virtual bool GetTip(const wxString &dbgCommand, const wxString &expression, wxString &evaluated);
-	virtual bool ResolveType(const wxString &expression, wxString &type);
-	virtual bool WatchMemory(const wxString &address, size_t count, wxString &output);
+	virtual bool GetAsciiViewerContent(const wxString &dbgCommand, const wxString &expression);
+	virtual bool ResolveType(const wxString &expression);
+	virtual bool WatchMemory(const wxString &address, size_t count);
 	virtual bool SetMemory(const wxString &address, size_t count, const wxString &hex_value);
 	virtual void SetDebuggerInformation(const DebuggerInformation &info);
 	virtual void BreakList();
+	virtual bool ListChildren(const wxString &name, int userReason);
+	virtual bool CreateVariableObject(const wxString &expression, int userReason);
+	virtual bool DeleteVariableObject(const wxString &name);
+	virtual bool EvaluateVariableObject(const wxString &name, int userReason);
+
+	// Event handlers
+	DECLARE_EVENT_TABLE()
+	void OnProcessEnd(wxCommandEvent &e);
+	void OnDataRead  (wxCommandEvent &e);
 };
 #endif //DBGINTERFACE_H
-
-

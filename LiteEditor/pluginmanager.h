@@ -86,6 +86,7 @@ public:
 	virtual Workspace *            GetWorkspace();
 	virtual bool                   AddFilesToVirtualFolder(wxTreeItemId &item, wxArrayString &paths);
 	virtual bool                   AddFilesToVirtualFolder(const wxString &vdFullPath, wxArrayString &paths);
+	virtual bool                   AddFilesToVirtualFolderIntelligently(const wxString &vdFullPath, wxArrayString &paths);
 	virtual int                    GetToolbarIconSize();
 	virtual wxAuiManager*          GetDockingManager();
 	virtual EnvironmentConfig*     GetEnv();
@@ -117,7 +118,8 @@ public:
     virtual bool                   AddPage(wxWindow *win, const wxString &text, const wxBitmap &bmp = wxNullBitmap, bool selected = false);
     virtual bool                   SelectPage(wxWindow *win);
 	virtual NavMgr *               GetNavigationMgr();
-
+	virtual IEditor*               NewEditor();
+	
 	//------------------------------------
 	//End of IManager interface
 	//------------------------------------

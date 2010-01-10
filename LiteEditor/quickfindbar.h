@@ -40,7 +40,7 @@ protected:
 	wxButton	*m_closeButton;
 
     void DoSearch(bool fwd, bool incr);
-
+	bool IsFocused();
 	void OnHide    (wxCommandEvent  &e);
 	void OnNext    (wxCommandEvent  &e);
 	void OnPrev    (wxCommandEvent  &e);
@@ -50,6 +50,10 @@ protected:
 	void OnEnter   (wxCommandEvent  &e);
     void OnUpdateUI(wxUpdateUIEvent &e);
 
+	void OnCopy     (wxCommandEvent  &e);
+	void OnPaste    (wxCommandEvent  &e);
+	void OnSelectAll(wxCommandEvent  &e);
+	void OnEditUI   (wxUpdateUIEvent &e);
     DECLARE_EVENT_TABLE()
 
 public:

@@ -13,20 +13,15 @@ class IDebugger;
 /** Implementing DebuggerAsciiViewerBase */
 class DebuggerAsciiViewer : public DebuggerAsciiViewerBase
 {
-	IDebugger *m_debugger;
-	wxString   m_dbgCommand;
-protected:
-	// Handlers for DebuggerAsciiViewerBase events.
-	void OnEnter( wxCommandEvent& event );
-	void DoUpdateView();
+	void OnClearView(wxCommandEvent &e);
+	void OnEdit  (wxCommandEvent &e);
+	void OnEditUI(wxUpdateUIEvent &e);
 
+	bool IsFocused();
 public:
 	/** Constructor */
 	DebuggerAsciiViewer( wxWindow* parent     );
-	void SetExpression (const wxString &expr  );
-	void SetDebugger   (IDebugger *debugger   );
-	void SetDbgCommand (const wxString &dbgCmd);
-	void UpdateView();
+	void UpdateView    (const wxString &expr, const wxString &value);
 };
 
 #endif // __debuggerasciiviewer__

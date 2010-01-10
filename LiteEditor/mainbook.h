@@ -58,6 +58,7 @@ private:
     void OnWorkspaceClosed   (wxCommandEvent    &e);
 
 	bool AskUserToSave(LEditor *editor);
+	bool DoSelectPage (wxWindow *win  );
 
 public:
 	MainBook(wxWindow *parent);
@@ -72,7 +73,7 @@ public:
 	void UpdateNavBar (LEditor *editor);
 	bool IsNavBarShown()                    { return m_navBar->IsShown(); }
 
-    void SaveSession   (SessionEntry &session);
+    void SaveSession   (SessionEntry &session, wxArrayInt& intArr);
     void RestoreSession(SessionEntry &session);
 
     LEditor *GetActiveEditor();
@@ -102,7 +103,7 @@ public:
 
 	bool SaveAll(bool askUser, bool includeUntitled);
 
-    void ReloadExternallyModified();
+    void ReloadExternallyModified(bool prompt);
 
     bool ClosePage      (const wxString &text) { return ClosePage(FindPage(text)); }
     bool ClosePage      (wxWindow *win);

@@ -20,6 +20,7 @@
 #include "ScintillaWX.h"
 #include "wx/wxscintilla.h"
 
+#include <wx/dcbuffer.h>
 #include <wx/wx.h>
 #include <wx/tokenzr.h>
 #include <wx/mstream.h>
@@ -184,7 +185,7 @@ bool wxScintilla::Create (wxWindow *parent,
     // Reduces flicker on GTK+/X11
     SetBackgroundStyle(wxBG_STYLE_CUSTOM);
 #if wxCHECK_VERSION(2, 8, 0)
-	SetInitialBestSize(size);
+	SetInitialSize(size);
 #else
     SetBestFittingSize(size);
 #endif
@@ -2617,6 +2618,11 @@ int wxScintilla::IndicatorValueAt(int indicator, int position)
 	return SendMsg(SCI_INDICATORVALUEAT, indicator, position);
 }
 
+void wxScintilla::SetInidicatorValue(int indicator, int value)
+{
+	SendMsg(SCI_SETINDICATORVALUE, indicator, value);
+}
+
 void wxScintilla::IndicatorFillRange(int position, int len)
 {
 	SendMsg(SCI_INDICATORFILLRANGE, position, len);
@@ -3104,7 +3110,12 @@ void wxScintilla::AppendTextRaw (const char* text) {
 // Event handlers
 
 void wxScintilla::OnPaint (wxPaintEvent& WXUNUSED(evt)) {
-    wxPaintDC dc(this);
+#ifdef __WXGTK__
+	// On Mac / Windows there is no real need for this
+    wxBufferedPaintDC dc(this);
+#else
+	wxPaintDC dc(this);
+#endif	
     m_swx->DoPaint (&dc, GetUpdateRegion().GetBox());
 }
 

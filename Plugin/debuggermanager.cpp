@@ -50,13 +50,15 @@ void DebuggersData::Serialize(Archive &arch)
 		arch.Write(wxT("enableDebugLog"), info.enableDebugLog);
 		arch.Write(wxT("enablePendingBreakpoints"), info.enablePendingBreakpoints);
 		arch.Write(wxT("breakAtWinMain"), info.breakAtWinMain);
-		arch.Write(wxT("resolveThis"), info.resolveThis);
 		arch.Write(wxT("showTerminal"), info.showTerminal);
 		arch.Write(wxT("useRelativePaths"), info.useRelativeFilePaths);
 		arch.Write(wxT("catchThrow"), info.catchThrow);
 		arch.Write(wxT("showTooltips"), info.showTooltips);
 		arch.Write(wxT("debugAsserts"), info.debugAsserts);
+		arch.Write(wxT("maxDisplayStringSize"), info.maxDisplayStringSize);
+		arch.Write(wxT("resolveLocals"), info.resolveLocals);
 		arch.WriteCData(wxT("startup_commands"), info.startupCommands);
+
 	}
 }
 
@@ -71,13 +73,17 @@ void DebuggersData::DeSerialize(Archive &arch)
 		arch.Read(wxT("enableDebugLog"), info.enableDebugLog);
 		arch.Read(wxT("enablePendingBreakpoints"), info.enablePendingBreakpoints);
 		arch.Read(wxT("breakAtWinMain"), info.breakAtWinMain);
-		arch.Read(wxT("resolveThis"), info.resolveThis);
 		arch.Read(wxT("showTerminal"), info.showTerminal);
 		arch.Read(wxT("useRelativePaths"), info.useRelativeFilePaths);
 		arch.Read(wxT("catchThrow"), info.catchThrow);
 		arch.Read(wxT("showTooltips"), info.showTooltips);
 		arch.Read(wxT("debugAsserts"), info.debugAsserts);
+		arch.Read(wxT("maxDisplayStringSize"), info.maxDisplayStringSize);
+		arch.Read(wxT("resolveLocals"), info.resolveLocals);
 		arch.ReadCData(wxT("startup_commands"), info.startupCommands);
+
+		// Trim leading whitepsace
+		info.startupCommands.Trim();
 		m_debuggers.push_back(info);
 	}
 }
@@ -249,6 +255,14 @@ void DebuggerMgr::SetActiveDebugger(const wxString &name)
 void DebuggerMgr::SetDebuggerInformation(const wxString &name, const DebuggerInformation &info)
 {
 	m_debuggersData.SetDebuggerInformation(name, info);
+
+	if (m_activeDebuggerName == name) {
+		IDebugger *dbgr = GetActiveDebugger();
+		if (dbgr && dbgr->IsRunning()) {
+			// If this debugger is currently running, tell it that the logging level may have changed
+			dbgr->EnableLogging(info.enableDebugLog);
+		}
+	}
 }
 
 bool DebuggerMgr::GetDebuggerInformation(const wxString &name, DebuggerInformation &info)

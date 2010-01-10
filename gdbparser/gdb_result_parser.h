@@ -22,3 +22,13 @@
 #define GDB_DATA 278
 #define GDB_ADDR 279
 #define GDB_ASCII 280
+#define GDB_CHILDREN 281
+#define GDB_CHILD 282
+#define GDB_MORE 283
+#define GDB_VAROBJ 284
+#define GDB_BREAKPOINT_TABLE 285
+#define GDB_NR_ROWS 286
+#define GDB_NR_COLS 287
+#define GDB_HDR 288
+#define GDB_BODY 289
+#define GDB_BKPT 290

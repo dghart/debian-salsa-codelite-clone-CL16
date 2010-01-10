@@ -81,6 +81,8 @@ CCBox::CCBox(LEditor* parent, bool autoHide, bool autoInsertSingleChoice)
 	// assign the image list and let the control take owner ship (i.e. delete it)
 	m_listCtrl->AssignImageList(il, wxIMAGE_LIST_SMALL);
 	m_listCtrl->InsertColumn(0, wxT("Name"));
+	m_listCtrl->SetBackgroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_INFOBK));
+	m_listCtrl->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_INFOTEXT));
 
 	m_listCtrl->SetFocus();
 	// return the focus to scintilla
@@ -258,6 +260,10 @@ void CCBox::Show(const wxString& word)
 		DoInsertSelection(_tags.at(0).displayName, false);
 
 		// return without calling to wxWindow::Show()
+		// also, make sure we are hidden
+		if ( IsShown() ) {
+			Hide();
+		}
 		return;
 	}
 
@@ -315,7 +321,7 @@ void CCBox::DoInsertSelection(const wxString& word, bool triggerTip)
 				int pos = editor->GetCurrentPos();
 				editor->SetSelectionStart(pos);
 				editor->SetSelectionEnd(pos);
-				editor->SetIndicatorCurrent(5); // Move MATCH_INDICATOR to cl_editor.h
+				editor->SetIndicatorCurrent(MATCH_INDICATOR);
 				editor->IndicatorFillRange(pos, 1);
 				// trigger function tip
 				editor->CodeComplete();

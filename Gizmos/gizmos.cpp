@@ -23,6 +23,10 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 #include "gizmos.h"
+#include <wx/app.h>
+#include <wx/menu.h>
+#include <wx/log.h>
+#include <wx/msgdlg.h>
 #include "workspace.h"
 #include "ctags_manager.h"
 #include "newplugindata.h"
@@ -36,6 +40,16 @@
 #include "newclassdlg.h"
 #include "newwxprojectdlg.h"
 #include <algorithm>
+
+static wxString MI_NEW_WX_PROJECT      = wxT("Create new wxWidgets project...");
+static wxString MI_NEW_CODELITE_PLUGIN = wxT("Create new CodeLite plugin...");
+static wxString MI_NEW_NEW_CLASS       = wxT("Create new C++ class...");
+
+enum {
+	ID_MI_NEW_WX_PROJECT = 9000,
+	ID_MI_NEW_CODELITE_PLUGIN,
+	ID_MI_NEW_NEW_CLASS
+};
 
 static GizmosPlugin* theGismos = NULL;
 
@@ -70,19 +84,6 @@ struct ascendingSortOp {
 	}
 };
 
-static void GizmosRemoveDuplicates(std::vector<TagEntryPtr>& src, std::vector<TagEntryPtr>& target)
-{
-	for (size_t i=0; i<src.size(); i++) {
-		if (i == 0) {
-			target.push_back(src.at(0));
-		} else {
-			if (src.at(i)->GetName() != target.at(target.size()-1)->GetName()) {
-				target.push_back(src.at(i));
-			}
-		}
-	}
-}
-
 //-------------------------------------
 // helper methods
 //-------------------------------------
@@ -94,11 +95,26 @@ static void ExpandVariables(wxString &content, const NewWxProjectInfo &info)
 
 	wxString appfilename = projname + wxT("_app");
 	wxString framefilename = projname + wxT("_frame");
+
+	content.Replace(wxT("$(MainFile)"),      projname);
+	content.Replace(wxT("$(AppFile)"),       appfilename);
 	content.Replace(wxT("$(MainFrameFile)"), framefilename);
-	content.Replace(wxT("$(AppFile)"), appfilename);
-	content.Replace(wxT("$(Unicode)"), info.GetFlags() & wxWidgetsUnicode ? wxT("yes") : wxT("no"));
-	content.Replace(wxT("$(MWindowsFlag)"), info.GetFlags() & wxWidgetsSetMWindows ? wxT("-mwindows") : wxEmptyString);
-	content.Replace(wxT("$(MainFile)"), projname);
+	content.Replace(wxT("$(Unicode)"),       info.GetFlags() & wxWidgetsUnicode ? wxT("yes") : wxT("no"));
+	content.Replace(wxT("$(Static)"),        info.GetFlags() & wxWidgetsStatic ? wxT("yes") : wxT("no"));
+	content.Replace(wxT("$(Universal)"),     info.GetFlags() & wxWidgetsUniversal ? wxT("yes") : wxT("no"));
+	content.Replace(wxT("$(WinResFlag)"),    info.GetFlags() & wxWidgetsWinRes ? wxT("yes") : wxT("no"));
+	content.Replace(wxT("$(MWindowsFlag)"),  info.GetFlags() & wxWidgetsSetMWindows ? wxT("-mwindows") : wxEmptyString);
+	content.Replace(wxT("$(PCHFlag)"),       info.GetFlags() & wxWidgetsPCH ? wxT("WX_PRECOMP") : wxEmptyString);
+	content.Replace(wxT("$(PCHCmpOptions)"), info.GetFlags() & wxWidgetsPCH ? wxT("-Winvalid-pch;-include wx_pch.h") : wxEmptyString);
+	content.Replace(wxT("$(PCHFileName)"),   info.GetFlags() & wxWidgetsPCH ? wxT("wx_pch.h") : wxEmptyString);
+
+	if( info.GetFlags() & wxWidgetsWinRes ) content.Replace(wxT("$(WinResFile)"), wxT("<File Name=\"resources.rc\" />") );
+	if( info.GetFlags() & wxWidgetsPCH )content.Replace(wxT("$(PCHFile)"), wxT("<File Name=\"wx_pch.h\" />") );
+
+	wxString othersettings;
+	if( info.GetVersion() != wxT("Default") ) othersettings << wxT("--version=") << info.GetVersion();
+	if( !info.GetPrefix().IsEmpty() ) othersettings << wxT(" --prefix=") << info.GetPrefix();
+	content.Replace(wxT("$(Other)"), othersettings);
 
 	//create the application class name
 	wxString initial = appfilename.Mid(0, 1);
@@ -135,6 +151,14 @@ static void WriteFile(const wxString &fileName, const wxString &content)
 	file.Close();
 }
 
+static void WriteNamespacesDeclaration(const wxArrayString& namespacesList, wxString& buffer)
+{
+	for (int i = 0; i < namespacesList.Count(); i++)
+	{
+		buffer << wxT("namespace ") << namespacesList[i] << wxT("\n{\n\n");
+	}
+}
+
 GizmosPlugin::GizmosPlugin(IManager *manager)
 		: IPlugin(manager)
 {
@@ -157,27 +181,26 @@ wxToolBar *GizmosPlugin::CreateToolBar(wxWindow *parent)
 		tb->SetToolBitmapSize(wxSize(size, size));
 
 		if (size == 24) {
-			tb->AddTool(XRCID("new_plugin"), wxT("New CodeLite Plugin Project"), wxXmlResource::Get()->LoadBitmap(wxT("plugin24")), wxT("New Plugin Wizard..."));
-			tb->AddTool(XRCID("new_class"), wxT("Create New Class"), wxXmlResource::Get()->LoadBitmap(wxT("class24")), wxT("New Class..."));
-			tb->AddTool(XRCID("new_wx_project"), wxT("New wxWidget Project"), wxXmlResource::Get()->LoadBitmap(wxT("new_wx_project24")), wxT("New wxWidget Project"));
+			tb->AddTool(XRCID("gizmos_options"), wxT("Gizmos..."), wxXmlResource::Get()->LoadBitmap(wxT("plugin24")), wxT("Open Gizmos quick menu"));
 		} else {
-			tb->AddTool(XRCID("new_plugin"), wxT("New CodeLite Plugin Project"), wxXmlResource::Get()->LoadBitmap(wxT("plugin16")), wxT("New Plugin Wizard..."));
-			tb->AddTool(XRCID("new_class"), wxT("Create New Class"), wxXmlResource::Get()->LoadBitmap(wxT("class16")), wxT("New Class..."));
-			tb->AddTool(XRCID("new_wx_project"), wxT("New wxWidget Project"), wxXmlResource::Get()->LoadBitmap(wxT("new_wx_project16")), wxT("New wxWidget Project"));
+			tb->AddTool(XRCID("gizmos_options"), wxT("Gizmos..."), wxXmlResource::Get()->LoadBitmap(wxT("plugin16")), wxT("Open Gizmos quick menu"));
 		}
 		tb->Realize();
 	}
 
 	//Connect the events to us
-	parent->Connect(XRCID("new_plugin"), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(GizmosPlugin::OnNewPlugin), NULL, (wxEvtHandler*)this);
-	parent->Connect(XRCID("new_plugin"), wxEVT_UPDATE_UI, wxUpdateUIEventHandler(GizmosPlugin::OnNewPluginUI), NULL, (wxEvtHandler*)this);
+	m_mgr->GetTheApp()->Connect(XRCID("gizmos_options"), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(GizmosPlugin::OnGizmos   ), NULL, (wxEvtHandler*)this);
+	m_mgr->GetTheApp()->Connect(XRCID("gizmos_options"), wxEVT_UPDATE_UI,             wxUpdateUIEventHandler(GizmosPlugin::OnGizmosUI), NULL, (wxEvtHandler*)this);
+
+	m_mgr->GetTheApp()->Connect(ID_MI_NEW_CODELITE_PLUGIN, wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(GizmosPlugin::OnNewPlugin), NULL, (wxEvtHandler*)this);
+	m_mgr->GetTheApp()->Connect(ID_MI_NEW_CODELITE_PLUGIN, wxEVT_UPDATE_UI, wxUpdateUIEventHandler(GizmosPlugin::OnNewPluginUI), NULL, (wxEvtHandler*)this);
 
 
-	parent->Connect(XRCID("new_class"), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(GizmosPlugin::OnNewClass), NULL, (wxEvtHandler*)this);
-	parent->Connect(XRCID("new_class"), wxEVT_UPDATE_UI, wxUpdateUIEventHandler(GizmosPlugin::OnNewClassUI), NULL, (wxEvtHandler*)this);
+	m_mgr->GetTheApp()->Connect(ID_MI_NEW_NEW_CLASS, wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(GizmosPlugin::OnNewClass), NULL, (wxEvtHandler*)this);
+	m_mgr->GetTheApp()->Connect(ID_MI_NEW_NEW_CLASS, wxEVT_UPDATE_UI, wxUpdateUIEventHandler(GizmosPlugin::OnNewClassUI), NULL, (wxEvtHandler*)this);
 
-	parent->Connect(XRCID("new_wx_project"), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(GizmosPlugin::OnNewWxProject), NULL, (wxEvtHandler*)this);
-	parent->Connect(XRCID("new_wx_project"), wxEVT_UPDATE_UI, wxUpdateUIEventHandler(GizmosPlugin::OnNewWxProjectUI), NULL, (wxEvtHandler*)this);
+	m_mgr->GetTheApp()->Connect(ID_MI_NEW_WX_PROJECT, wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(GizmosPlugin::OnNewWxProject), NULL, (wxEvtHandler*)this);
+	m_mgr->GetTheApp()->Connect(ID_MI_NEW_WX_PROJECT, wxEVT_UPDATE_UI, wxUpdateUIEventHandler(GizmosPlugin::OnNewWxProjectUI), NULL, (wxEvtHandler*)this);
 	return tb;
 }
 
@@ -185,11 +208,11 @@ void GizmosPlugin::CreatePluginMenu(wxMenu *pluginsMenu)
 {
 	wxMenu *menu = new wxMenu();
 	wxMenuItem *item(NULL);
-	item = new wxMenuItem(menu, XRCID("new_plugin"), _("New CodeLite Plugin Wizard..."), wxEmptyString, wxITEM_NORMAL);
+	item = new wxMenuItem(menu, ID_MI_NEW_CODELITE_PLUGIN, _("New CodeLite Plugin Wizard..."), wxEmptyString, wxITEM_NORMAL);
 	menu->Append(item);
-	item = new wxMenuItem(menu, XRCID("new_class"), _("New Class Wizard..."), wxEmptyString, wxITEM_NORMAL);
+	item = new wxMenuItem(menu, ID_MI_NEW_NEW_CLASS, _("New Class Wizard..."), wxEmptyString, wxITEM_NORMAL);
 	menu->Append(item);
-	item = new wxMenuItem(menu, XRCID("new_wx_project"), _("New wxWidgets Project Wizard..."), wxEmptyString, wxITEM_NORMAL);
+	item = new wxMenuItem(menu, ID_MI_NEW_WX_PROJECT, _("New wxWidgets Project Wizard..."), wxEmptyString, wxITEM_NORMAL);
 	menu->Append(item);
 	pluginsMenu->Append(wxID_ANY, _("Gizmos"), menu);
 }
@@ -204,7 +227,7 @@ void GizmosPlugin::HookPopupMenu(wxMenu *menu, MenuType type)
 		menu->Prepend(item);
 		m_vdDynItems.push_back(item);
 
-		item = new wxMenuItem(menu, XRCID("new_class"), wxT("&New Class..."), wxEmptyString, wxITEM_NORMAL);
+		item = new wxMenuItem(menu, ID_MI_NEW_NEW_CLASS, wxT("&New Class..."), wxEmptyString, wxITEM_NORMAL);
 		menu->Prepend(item);
 		m_vdDynItems.push_back(item);
 	}
@@ -223,12 +246,16 @@ void GizmosPlugin::UnHookPopupMenu(wxMenu *menu, MenuType type)
 
 void GizmosPlugin::UnPlug()
 {
-	//TODO:: perform the unplug action of this plugin
 }
 
 void GizmosPlugin::OnNewPlugin(wxCommandEvent &e)
 {
 	wxUnusedVar(e);
+	DoCreateNewPlugin();
+}
+
+void GizmosPlugin::DoCreateNewPlugin()
+{
 	//Load the wizard
 	PluginWizard *wiz = new PluginWizard(NULL, wxID_ANY);
 	NewPluginData data;
@@ -248,6 +275,7 @@ void GizmosPlugin::OnNewPlugin(wxCommandEvent &e)
 		if (!fn.MakeRelativeTo(wxGetCwd())) {
 			wxLogMessage(wxT("Warning: Failed to convert paths to relative path."));
 		}
+
 #ifdef __WXMSW__
 		wxString dllExt(wxT("dll"));
 #else
@@ -344,6 +372,12 @@ void GizmosPlugin::OnNewClassUI(wxUpdateUIEvent &e)
 
 void GizmosPlugin::OnNewClass(wxCommandEvent &e)
 {
+	wxUnusedVar(e);
+	DoCreateNewClass();
+}
+
+void GizmosPlugin::DoCreateNewClass()
+{
 	NewClassDlg *dlg = new NewClassDlg(NULL, m_mgr);
 	if (dlg->ShowModal() == wxID_OK) {
 		//do something with the information here
@@ -357,8 +391,19 @@ void GizmosPlugin::OnNewClass(wxCommandEvent &e)
 
 void GizmosPlugin::CreateClass(const NewClassInfo &info)
 {
-	wxString macro(info.name);
-	macro.MakeLower();
+	wxString macro(info.blockGuard);
+	if( macro.IsEmpty() ) {
+		// use the name instead
+		macro = info.name;
+		macro.MakeUpper();
+		macro << wxT("_H");
+	}
+
+	wxString srcFile;
+	srcFile << info.path << wxFileName::GetPathSeparator() << info.fileName << wxT(".cpp");
+
+	wxString hdrFile;
+	hdrFile << info.path << wxFileName::GetPathSeparator() << info.fileName << wxT(".h");
 
 	//create cpp + h file
 	wxString cpp;
@@ -367,9 +412,39 @@ void GizmosPlugin::CreateClass(const NewClassInfo &info)
 	//----------------------------------------------------
 	// header file
 	//----------------------------------------------------
-	header << wxT("#ifndef __") << macro << wxT("__\n");
-	header << wxT("#define __") << macro << wxT("__\n");
+	header << wxT("#ifndef ") << macro << wxT("\n");
+	header << wxT("#define ") << macro << wxT("\n");
 	header << wxT("\n");
+
+	wxString closeMethod;
+	if (info.isInline)
+		closeMethod = wxT("\n\t{\n\t}\n");
+	else
+		closeMethod = wxT(";\n");
+
+	// Add include for base classes
+	if (info.parents.empty() == false) {
+		for (size_t i=0; i< info.parents.size(); i++) {
+
+			ClassParentInfo pi = info.parents.at(i);
+
+			// Make the include file name relative to the header file
+			// we are generating
+			wxFileName headerFileName(hdrFile);
+
+			wxFileName includeFileName(pi.fileName);
+			includeFileName.MakeRelativeTo (headerFileName.GetPath());
+
+			header << wxT("#include \"") << includeFileName.GetFullPath() << wxT("\" // Base class\n");
+		}
+		header << wxT("\n");
+	}
+
+	// Open namespace
+	if (!info.namespacesList.IsEmpty()) {
+		WriteNamespacesDeclaration (info.namespacesList, header);
+	}
+
 	header << wxT("class ") << info.name;
 
 	if (info.parents.empty() == false) {
@@ -389,8 +464,8 @@ void GizmosPlugin::CreateClass(const NewClassInfo &info)
 	if (info.isAssingable == false) {
 		//declare copy constructor & assingment operator as private
 		header << wxT("private:\n");
-		header << wxT("\t") << info.name << wxT("(const ") << info.name << wxT("& rhs);\n");
-		header << wxT("\t") << info.name << wxT("& operator=(const ") << info.name << wxT("& rhs);\n");
+		header << wxT("\t") << info.name << wxT("(const ") << info.name << wxT("& rhs)") << closeMethod;
+		header << wxT("\t") << info.name << wxT("& operator=(const ") << info.name << wxT("& rhs)") << closeMethod;
 		header << wxT("\n");
 	}
 
@@ -409,11 +484,11 @@ void GizmosPlugin::CreateClass(const NewClassInfo &info)
 		}
 	} else {
 		header << wxT("public:\n");
-		header << wxT("\t") << info.name << wxT("();\n");
+		header << wxT("\t") << info.name << wxT("()") << closeMethod;
 		if (info.isVirtualDtor) {
-			header << wxT("\tvirtual ~") << info.name << wxT("();\n\n");
+			header << wxT("\tvirtual ~") << info.name << wxT("()") << closeMethod << wxT("\n");
 		} else {
-			header << wxT("\t~") << info.name << wxT("();\n\n");
+			header << wxT("\t~") << info.name << wxT("()") << closeMethod << wxT("\n");
 		}
 
 	}
@@ -425,50 +500,17 @@ void GizmosPlugin::CreateClass(const NewClassInfo &info)
 		header << v_decl;
 	}
 
-	header << wxT("};\n");
-	header << wxT("#endif // __") << macro << wxT("__\n");
+	header << wxT("};\n\n");
 
-	//----------------------------------------------------
-	// source file
-	//----------------------------------------------------
-	cpp << wxT("#include \"") << info.fileName << wxT(".h\"\n");
-	if (info.isSingleton) {
-		cpp << info.name << wxT("* ") << info.name << wxT("::ms_instance = 0;\n\n");
-	}
-	//ctor/dtor
-	cpp << info.name << wxT("::") << info.name << wxT("()\n");
-	cpp << wxT("{\n}\n\n");
-	cpp << info.name << wxT("::~") << info.name << wxT("()\n");
-	cpp << wxT("{\n}\n\n");
-	if (info.isSingleton) {
-		cpp << info.name << wxT("* ") << info.name << wxT("::Instance()\n");
-		cpp << wxT("{\n");
-		cpp << wxT("\tif(ms_instance == 0){\n");
-		cpp << wxT("\t\tms_instance = new ") << info.name << wxT("();\n");
-		cpp << wxT("\t}\n");
-		cpp << wxT("\treturn ms_instance;\n");
-		cpp << wxT("}\n\n");
-
-		cpp << wxT("void ") << info.name << wxT("::Release()\n");
-		cpp << wxT("{\n");
-		cpp << wxT("\tif(ms_instance){\n");
-		cpp << wxT("\t\tdelete ms_instance;\n");
-		cpp << wxT("\t}\n");
-		cpp << wxT("\tms_instance = 0;\n");
-		cpp << wxT("}\n\n");
+	// Close namespaces
+	for (int i = 0; i < info.namespacesList.Count(); i++)
+	{
+		header << wxT("}\n\n");
 	}
 
-	cpp << DoGetVirtualFuncImpl(info);
+	header << wxT("#endif // ") << macro << wxT("\n");
 
 	wxFFile file;
-	wxString srcFile;
-	wxString hdrFile;
-	srcFile << info.path << wxFileName::GetPathSeparator() << info.fileName << wxT(".cpp");
-	hdrFile << info.path << wxFileName::GetPathSeparator() << info.fileName << wxT(".h");
-
-	file.Open(srcFile, wxT("w+b"));
-	file.Write(cpp);
-	file.Close();
 
 	file.Open(hdrFile, wxT("w+b"));
 	file.Write(header);
@@ -476,14 +518,74 @@ void GizmosPlugin::CreateClass(const NewClassInfo &info)
 
 	//if we have a selected virtual folder, add the files to it
 	wxArrayString paths;
-	paths.Add(srcFile);
 	paths.Add(hdrFile);
 
-	wxString err_msg;
-	m_mgr->AddFilesToVirtualFolder(info.virtualDirectory, paths);
+	//----------------------------------------------------
+	// source file
+	//----------------------------------------------------
+	if (!info.isInline)
+	{
+		cpp << wxT("#include \"") << info.fileName << wxT(".h\"\n\n");
+
+		// Open namespace
+		if (!info.namespacesList.IsEmpty()) {
+			WriteNamespacesDeclaration (info.namespacesList, cpp);
+		}
+
+		if (info.isSingleton) {
+			cpp << info.name << wxT("* ") << info.name << wxT("::ms_instance = 0;\n\n");
+		}
+		//ctor/dtor
+		cpp << info.name << wxT("::") << info.name << wxT("()\n");
+		cpp << wxT("{\n}\n\n");
+		cpp << info.name << wxT("::~") << info.name << wxT("()\n");
+		cpp << wxT("{\n}\n\n");
+		if (info.isSingleton) {
+			cpp << info.name << wxT("* ") << info.name << wxT("::Instance()\n");
+			cpp << wxT("{\n");
+			cpp << wxT("\tif(ms_instance == 0){\n");
+			cpp << wxT("\t\tms_instance = new ") << info.name << wxT("();\n");
+			cpp << wxT("\t}\n");
+			cpp << wxT("\treturn ms_instance;\n");
+			cpp << wxT("}\n\n");
+
+			cpp << wxT("void ") << info.name << wxT("::Release()\n");
+			cpp << wxT("{\n");
+			cpp << wxT("\tif(ms_instance){\n");
+			cpp << wxT("\t\tdelete ms_instance;\n");
+			cpp << wxT("\t}\n");
+			cpp << wxT("\tms_instance = 0;\n");
+			cpp << wxT("}\n\n");
+		}
+
+		cpp << DoGetVirtualFuncImpl(info);
+
+		// Close namespaces
+		for (int i = 0; i < info.namespacesList.Count(); i++)
+		{
+			cpp << wxT("}\n\n");
+		}
+
+		file.Open(srcFile, wxT("w+b"));
+		file.Write(cpp);
+		file.Close();
+
+		paths.Add(srcFile);
+	}
+
+	// We have a .cpp and an .h file, and there may well be a :src and an :include folder available
+	// So try to place the files appropriately. If that fails, dump both in the selected folder
+	if (! m_mgr->AddFilesToVirtualFolderIntelligently(info.virtualDirectory, paths) )
+		m_mgr->AddFilesToVirtualFolder(info.virtualDirectory, paths);
 }
 
 void GizmosPlugin::OnNewWxProject(wxCommandEvent &e)
+{
+	wxUnusedVar(e);
+	DoCreateNewWxProject();
+}
+
+void GizmosPlugin::DoCreateNewWxProject()
 {
 	NewWxProjectDlg *dlg = new NewWxProjectDlg(NULL, m_mgr);
 	if (dlg->ShowModal() == wxID_OK) {
@@ -504,17 +606,19 @@ void GizmosPlugin::OnNewWxProjectUI(wxUpdateUIEvent &e)
 void GizmosPlugin::CreateWxProject(NewWxProjectInfo &info)
 {
 	//TODO:: Implement this ...
+	wxString basedir = m_mgr->GetStartupDirectory();
+
 	//we first create the project files
 	if (info.GetType() == wxProjectTypeGUI) {
 
 		//we are creating a project of type GUI
-		wxString basedir = m_mgr->GetStartupDirectory();
-
 		wxString projectConent;
 		wxString mainFrameCppContent;
 		wxString mainFrameHContent;
 		wxString appCppConent;
 		wxString apphConent;
+		wxString rcContent;
+		wxString pchContent;
 
 		if (!ReadFileWithConversion(basedir + wxT("/templates/gizmos/wxproject.project.wizard"), projectConent)) {
 			return;
@@ -529,6 +633,12 @@ void GizmosPlugin::CreateWxProject(NewWxProjectInfo &info)
 			return;
 		}
 		if (!ReadFileWithConversion(basedir + wxT("/templates/gizmos/app.cpp.wizard"), appCppConent)) {
+			return;
+		}
+		if (!ReadFileWithConversion(basedir + wxT("/templates/gizmos/resources.rc.wizard"), rcContent)) {
+			return;
+		}
+		if (!ReadFileWithConversion(basedir + wxT("/templates/gizmos/wx_pch.h.wizard"), pchContent)) {
 			return;
 		}
 
@@ -552,25 +662,162 @@ void GizmosPlugin::CreateWxProject(NewWxProjectInfo &info)
 		WriteFile(framefilename + wxT(".h"), mainFrameHContent);
 		WriteFile(appfilename + wxT(".h"), apphConent);
 		WriteFile(appfilename+ wxT(".cpp"), appCppConent);
+		if( info.GetFlags() & wxWidgetsWinRes ) WriteFile(wxT("resources.rc"), rcContent);
+		if( info.GetFlags() & wxWidgetsPCH ) WriteFile(wxT("wx_pch.h"), pchContent);
 		WriteFile(info.GetName() + wxT(".project"), projectConent);
 
 		//If every this is OK, add the project as well
 		m_mgr->AddProject(info.GetName() + wxT(".project"));
-	} else if (info.GetType() == wxProjectTypeSimpleMain) {
 
-		//we are creating a project of type GUI
-		wxString basedir = m_mgr->GetStartupDirectory();
+	} else if (info.GetType() == wxProjectTypeGUIFBDialog) {
 
-		wxString projectConent;
+		//we are creating a project of type GUI (dialog generated by wxFormBuilder)
+
+		wxString projectContent;
 		wxString mainFrameCppContent;
 		wxString mainFrameHContent;
+		wxString appCppContent;
+		wxString apphContent;
+		wxString fbContent;
+		wxString rcContent;
+		wxString pchContent;
+
+		if (!ReadFileWithConversion(basedir + wxT("/templates/gizmos/wxproject-fb.project.wizard"), projectContent)) {
+			return;
+		}
+		if (!ReadFileWithConversion(basedir + wxT("/templates/gizmos/gui-dialog.cpp.wizard"), mainFrameCppContent)) {
+			return;
+		}
+		if (!ReadFileWithConversion(basedir + wxT("/templates/gizmos/gui-dialog.h.wizard"), mainFrameHContent)) {
+			return;
+		}
+		if (!ReadFileWithConversion(basedir + wxT("/templates/gizmos/main-dialog.h.wizard"), apphContent)) {
+			return;
+		}
+		if (!ReadFileWithConversion(basedir + wxT("/templates/gizmos/main-dialog.cpp.wizard"), appCppContent)) {
+			return;
+		}
+		if (!ReadFileWithConversion(basedir + wxT("/templates/gizmos/gui-dialog.fbp.wizard"), fbContent)) {
+			return;
+		}
+		if (!ReadFileWithConversion(basedir + wxT("/templates/gizmos/resources.rc.wizard"), rcContent)) {
+			return;
+		}
+		if (!ReadFileWithConversion(basedir + wxT("/templates/gizmos/wx_pch.h.wizard"), pchContent)) {
+			return;
+		}
+
+		ExpandVariables(projectContent, info);
+		ExpandVariables(mainFrameCppContent, info);
+		ExpandVariables(mainFrameHContent, info);
+		ExpandVariables(apphContent, info);
+		ExpandVariables(appCppContent, info);
+
+		//Write the files content into the project directory
+		DirSaver ds;
+		wxSetWorkingDirectory(info.GetPath());
+
+		wxString projname = info.GetName();
+		projname.MakeLower();
+
+		wxString appfilename = projname + wxT("_app");
+
+		WriteFile(wxT("gui.cpp"), mainFrameCppContent);
+		WriteFile(wxT("gui.h"), mainFrameHContent);
+		WriteFile(appfilename + wxT(".h"), apphContent);
+		WriteFile(appfilename+ wxT(".cpp"), appCppContent);
+		WriteFile(wxT("gui.fbp"), fbContent);
+		if( info.GetFlags() & wxWidgetsWinRes ) WriteFile(wxT("resources.rc"), rcContent);
+		if( info.GetFlags() & wxWidgetsPCH ) WriteFile(wxT("wx_pch.h"), pchContent);
+		WriteFile(info.GetName() + wxT(".project"), projectContent);
+
+		//If every this is OK, add the project as well
+		m_mgr->AddProject(info.GetName() + wxT(".project"));
+
+	} else if (info.GetType() == wxProjectTypeGUIFBFrame) {
+
+		//we are creating a project of type GUI (dialog generated by wxFormBuilder)
+
+		wxString projectContent;
+		wxString mainFrameCppContent;
+		wxString mainFrameHContent;
+		wxString appCppContent;
+		wxString apphContent;
+		wxString fbContent;
+		wxString pchContent;
+		wxString rcContent;
+
+		if (!ReadFileWithConversion(basedir + wxT("/templates/gizmos/wxproject-fb.project.wizard"), projectContent)) {
+			return;
+		}
+		if (!ReadFileWithConversion(basedir + wxT("/templates/gizmos/gui-frame.cpp.wizard"), mainFrameCppContent)) {
+			return;
+		}
+		if (!ReadFileWithConversion(basedir + wxT("/templates/gizmos/gui-frame.h.wizard"), mainFrameHContent)) {
+			return;
+		}
+		if (!ReadFileWithConversion(basedir + wxT("/templates/gizmos/main-frame.h.wizard"), apphContent)) {
+			return;
+		}
+		if (!ReadFileWithConversion(basedir + wxT("/templates/gizmos/main-frame.cpp.wizard"), appCppContent)) {
+			return;
+		}
+		if (!ReadFileWithConversion(basedir + wxT("/templates/gizmos/gui-frame.fbp.wizard"), fbContent)) {
+			return;
+		}
+		if (!ReadFileWithConversion(basedir + wxT("/templates/gizmos/resources.rc.wizard"), rcContent)) {
+			return;
+		}
+		if (!ReadFileWithConversion(basedir + wxT("/templates/gizmos/wx_pch.h.wizard"), pchContent)) {
+			return;
+		}
+
+		ExpandVariables(projectContent, info);
+		ExpandVariables(mainFrameCppContent, info);
+		ExpandVariables(mainFrameHContent, info);
+		ExpandVariables(apphContent, info);
+		ExpandVariables(appCppContent, info);
+
+		//Write the files content into the project directory
+		DirSaver ds;
+		wxSetWorkingDirectory(info.GetPath());
+
+		wxString projname = info.GetName();
+		projname.MakeLower();
+
+		wxString appfilename = projname + wxT("_app");
+
+		WriteFile(wxT("gui.cpp"), mainFrameCppContent);
+		WriteFile(wxT("gui.h"), mainFrameHContent);
+		WriteFile(appfilename + wxT(".h"), apphContent);
+		WriteFile(appfilename+ wxT(".cpp"), appCppContent);
+		WriteFile(wxT("gui.fbp"), fbContent);
+		if( info.GetFlags() & wxWidgetsWinRes ) WriteFile(wxT("resources.rc"), rcContent);
+		if( info.GetFlags() & wxWidgetsPCH ) WriteFile(wxT("wx_pch.h"), pchContent);
+		WriteFile(info.GetName() + wxT(".project"), projectContent);
+
+		//If every this is OK, add the project as well
+		m_mgr->AddProject(info.GetName() + wxT(".project"));
+
+	} else if (info.GetType() == wxProjectTypeSimpleMain) {
+
+		//we are creating a project of type console app
+
+		wxString projectConent;
 		wxString appCppConent;
-		wxString apphConent;
+		wxString pchContent;
+		wxString rcContent;
 
 		if (!ReadFileWithConversion(basedir + wxT("/templates/gizmos/wxmain.project.wizard"), projectConent)) {
 			return;
 		}
 		if (!ReadFileWithConversion(basedir + wxT("/templates/gizmos/main.cpp.wizard"), appCppConent)) {
+			return;
+		}
+		if (!ReadFileWithConversion(basedir + wxT("/templates/gizmos/resources.rc.wizard"), rcContent)) {
+			return;
+		}
+		if (!ReadFileWithConversion(basedir + wxT("/templates/gizmos/wx_pch.h.wizard"), pchContent)) {
 			return;
 		}
 
@@ -586,6 +833,8 @@ void GizmosPlugin::CreateWxProject(NewWxProjectInfo &info)
 
 		wxString appfilename = projname;
 		WriteFile(appfilename+ wxT(".cpp"), appCppConent);
+		if( info.GetFlags() & wxWidgetsWinRes ) WriteFile(wxT("resources.rc"), rcContent);
+		if( info.GetFlags() & wxWidgetsPCH ) WriteFile(wxT("wx_pch.h"), pchContent);
 		WriteFile(info.GetName() + wxT(".project"), projectConent);
 
 		//If every this is OK, add the project as well
@@ -604,8 +853,12 @@ wxString GizmosPlugin::DoGetVirtualFuncImpl(const NewClassInfo &info)
 	std::vector< TagEntryPtr > tags;
 	for (std::vector< TagEntryPtr >::size_type i=0; i< info.parents.size(); i++) {
 		ClassParentInfo pi = info.parents.at(i);
-		m_mgr->GetTagsManager()->TagsByScope(pi.name, tmp_tags);
+
+		// Load all prototypes / functions of the parent scope
+		m_mgr->GetTagsManager()->TagsByScope(pi.name, wxT("prototype"), tmp_tags, false);
+		m_mgr->GetTagsManager()->TagsByScope(pi.name, wxT("function"),  tmp_tags, false);
 	}
+
 	// and finally sort the results
 	std::sort(tmp_tags.begin(), tmp_tags.end(), ascendingSortOp());
 	GizmosRemoveDuplicates(tmp_tags, no_dup_tags);
@@ -644,7 +897,10 @@ wxString GizmosPlugin::DoGetVirtualFuncDecl(const NewClassInfo &info)
 	std::vector< TagEntryPtr > tags;
 	for (std::vector< TagEntryPtr >::size_type i=0; i< info.parents.size(); i++) {
 		ClassParentInfo pi = info.parents.at(i);
-		m_mgr->GetTagsManager()->TagsByScope(pi.name, tmp_tags);
+
+		// Load all prototypes / functions of the parent scope
+		m_mgr->GetTagsManager()->TagsByScope(pi.name, wxT("prototype"), tmp_tags, false);
+		m_mgr->GetTagsManager()->TagsByScope(pi.name, wxT("function"),  tmp_tags, false);
 	}
 
 	// and finally sort the results
@@ -654,14 +910,15 @@ wxString GizmosPlugin::DoGetVirtualFuncDecl(const NewClassInfo &info)
 	//filter out all non virtual functions
 	for (std::vector< TagEntryPtr >::size_type i=0; i< no_dup_tags.size(); i++) {
 		TagEntryPtr tt = no_dup_tags.at(i);
-		bool collect(false);
-		if (info.implAllVirtual) {
-			collect = m_mgr->GetTagsManager()->IsVirtual(tt);
-		} else if (info.implAllPureVirtual) {
-			collect = m_mgr->GetTagsManager()->IsPureVirtual(tt);
-		}
 
-		if (collect) {
+		// Skip c-tors/d-tors
+		if(tt->IsDestructor() || tt->IsConstructor())
+			continue;
+
+		if (info.implAllVirtual && m_mgr->GetTagsManager()->IsVirtual(tt)) {
+			tags.push_back(tt);
+
+		} else if (info.implAllPureVirtual && m_mgr->GetTagsManager()->IsPureVirtual(tt)) {
 			tags.push_back(tt);
 		}
 	}
@@ -669,7 +926,74 @@ wxString GizmosPlugin::DoGetVirtualFuncDecl(const NewClassInfo &info)
 	wxString decl;
 	for (std::vector< TagEntryPtr >::size_type i=0; i< tags.size(); i++) {
 		TagEntryPtr tt = tags.at(i);
-		decl << wxT("\t") << m_mgr->GetTagsManager()->FormatFunction(tt);
+		wxString ff = m_mgr->GetTagsManager()->FormatFunction(tt);
+
+		if (info.isInline)
+			ff.Replace (wxT(";"), wxT("\n\t{\n\t}"));
+
+		decl << wxT("\t") << ff;
 	}
 	return decl;
+}
+
+void GizmosPlugin::OnGizmos(wxCommandEvent& e)
+{
+	// open a popup menu
+	wxUnusedVar(e);
+
+#ifdef __WXMSW__
+	wxFont font = wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT);
+#endif
+
+	wxMenu popupMenu;
+
+	std::map<wxString, int> options;
+	options[MI_NEW_CODELITE_PLUGIN] = ID_MI_NEW_CODELITE_PLUGIN;
+	options[MI_NEW_NEW_CLASS      ] = ID_MI_NEW_NEW_CLASS;
+	options[MI_NEW_WX_PROJECT     ] = ID_MI_NEW_WX_PROJECT;
+
+	std::map<wxString, int>::iterator iter = options.begin();
+	for (; iter != options.end(); iter++) {
+		int      id   = (*iter).second;
+		wxString text = (*iter).first;
+		wxMenuItem *item = new wxMenuItem(&popupMenu, id, text, text, wxITEM_NORMAL);
+		popupMenu.Append(item);
+	}
+	m_mgr->GetTheApp()->GetTopWindow()->PopupMenu(&popupMenu);
+}
+
+void GizmosPlugin::OnGizmosUI(wxUpdateUIEvent& e)
+{
+	e.Enable(m_mgr->IsWorkspaceOpen());
+}
+
+void GizmosPlugin::GizmosRemoveDuplicates(std::vector<TagEntryPtr>& src, std::vector<TagEntryPtr>& target)
+{
+	std::map<wxString, TagEntryPtr> uniqueSet;
+	for (size_t i=0; i<src.size(); i++) {
+
+		wxString  signature = src.at(i)->GetSignature();
+		wxString  key              = m_mgr->GetTagsManager()->NormalizeFunctionSig(signature, 0);
+		int       hasDefaultValues = signature.Find(wxT("="));
+
+		key.Prepend(src.at(i)->GetName());
+		if ( uniqueSet.find(key) != uniqueSet.end() ) {
+			// we already got an instance of this method,
+			// incase we have default values in the this Tag, keep this
+			// TagEntryPtr, otherwise keep the previous tag
+			if(hasDefaultValues != wxNOT_FOUND) {
+				uniqueSet[key] = src.at(i);
+			}
+
+		} else {
+			// First time
+			uniqueSet[key] = src.at(i);
+		}
+	}
+
+	// copy the unique set to the output vector
+	std::map<wxString, TagEntryPtr>::iterator iter = uniqueSet.begin();
+	for(; iter != uniqueSet.end(); iter++) {
+		target.push_back( iter->second );
+	}
 }

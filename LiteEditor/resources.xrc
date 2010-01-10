@@ -1,4 +1,5 @@
 <resource>
+	<object class="wxBitmap" name="findwhat">res/find_what.png</object>
 	<object class="wxBitmap" name="fold_airplane">res/outbox.png</object>
 	<object class="wxBitmap" name="read_only">res/lock.png</object>
 	<object class="wxBitmap" name="find_refresh">res/find_refresh.png</object>
@@ -33,22 +34,25 @@
 	<object class="wxBitmap" name="folder">res/folder.png</object>
 	<object class="wxBitmap" name="cross">res/cross.png</object>
     <object class="wxBitmap" name="document_delete">res/clean.png</object>
-    <object class="wxBitmap" name="build">res/cog.png</object>
-    <object class="wxBitmap" name="find_results">res/page_find.png</object>
-    <object class="wxBitmap" name="file_view">res/folder_table.png</object>
+    <object class="wxBitmap" name="build">res/rebuild.png</object>
+    <object class="wxBitmap" name="find_results">res/16/find.png</object>
     <object class="wxBitmap" name="class_view">res/chart_organisation.png</object>
     <object class="wxBitmap" name="page_open">res/folder.png</object>
 	<object class="wxBitmap" name="word_wrap">res/wrap_arrow.png</object>
-	<object class="wxBitmap" name="output_win">res/output_win.png</object>
-	<object class="wxBitmap" name="debug_window">res/debug_windows.png</object>
+	<object class="wxBitmap" name="output_win">res/commandprompt.png</object>
+	<object class="wxBitmap" name="debug_window">res/trace.png</object>
 	<object class="wxBitmap" name="sym_wiz_bmp">res/sym_wiz_bmp.png</object>
-	<object class="wxBitmap" name="debugger_tab">res/bug.png</object>
+	<object class="wxBitmap" name="debugger_tab">res/debug_windows.png</object>
 	<object class="wxBitmap" name="help_icon">res/help.png</object>
+	<object class="wxBitmap" name="svn_info">res/help_about.png</object>
+	<object class="wxBitmap" name="svn_refresh">res/reload.png</object>
 	<object class="wxBitmap" name="svn_repo">res/svn_repo.png</object>
+	<object class="wxBitmap" name="svn_checkout">res/svn_checkout.png</object>
+	<object class="wxBitmap" name="svn_settings">res/configure.png</object>
 	<object class="wxBitmap" name="document_root">res/drive.png</object>
 	<object class="wxBitmap" name="locals_view">res/locals_view.png</object>
 	<object class="wxBitmap" name="watches">res/watches.png</object>
-	<object class="wxBitmap" name="frames">res/frames.png</object>
+	<object class="wxBitmap" name="frames">res/window_duplicate.png</object>
 	<object class="wxBitmap" name="breakpoint">res/breakpoint.png</object>
 	<object class="wxBitmap" name="new_plugin_wiz_bmp">res/puzzle.png</object>
 	<object class="wxBitmap" name="question_and_answer">res/question_and_answer.png</object>
@@ -58,10 +62,16 @@
 	<object class="wxBitmap" name="text_ok">res/page_green.png</object>
 	<object class="wxBitmap" name="new_class_title">res/new_class.png</object>
 	<object class="wxBitmap" name="wx_project_header">res/wxproject.png</object>
-	<object class="wxBitmap" name="colourise">res/colorize.png</object>
+	<object class="wxBitmap" name="colourise">res/package_utilities.png</object>
 	<object class="wxBitmap" name="collapse">res/collapse.png</object>
 	<object class="wxBitmap" name="gohome">res/gohome.png</object>
-	<object class="wxBitmap" name="project_conflict">res/error.png</object>
+	<object class="wxBitmap" name="project_conflict">res/messagebox_warning.png</object>
+	<object class="wxBitmap" name="files_unversioned">res/messagebox_info.png</object>
+	<object class="wxBitmap" name="error">res/mail_mark_important.png</object>
+	<object class="wxBitmap" name="text_view">res/view_text.png</object>
+	<object class="wxBitmap" name="edit_add">res/edit_add.png</object>
+	<object class="wxBitmap" name="edit_delete">res/edit_delete.png</object>
+	<object class="wxBitmap" name="eraser">res/eraser.png</object>
 
 	<!-- Mimetype -->
 	<object class="wxBitmap" name="page_white_c">res/mimetype/page_white_c.png</object>
@@ -82,6 +92,7 @@
 	<!--
 		Toolbar bitmaps (24x24)
 	-->
+	<object class="wxBitmap" name="quickfinder24">res/24/quickfinder.png</object>
 	<object class="wxBitmap" name="outline24">res/24/text_tree.png</object>
 	<object class="wxBitmap" name="configure_ext_tools24">res/24/external_tools24.png</object>
 	<object class="wxBitmap" name="ext_tool_default24">res/24/gear24.png</object>
@@ -135,6 +146,7 @@
 	<!--
 		Toolbar bitmaps (16x16)
 	-->
+	<object class="wxBitmap" name="quickfinder16">res/16/quickfinder.png</object>
 	<object class="wxBitmap" name="outline16">res/16/text_tree.png</object>
 	<object class="wxBitmap" name="configure_ext_tools16">res/16/external_tools16.png</object>
 	<object class="wxBitmap" name="ext_tool_default16">res/16/gear16.png</object>

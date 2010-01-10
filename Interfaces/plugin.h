@@ -42,28 +42,6 @@
 
 class IManager;
 
-class ParseThreadEventData
-{
-	wxString m_fileName;
-	std::vector<std::pair<wxString, TagEntry> >  m_items;
-public:
-	ParseThreadEventData() {}
-	~ParseThreadEventData() {}
-
-	void SetFileName(const wxString& fileName) {
-		this->m_fileName = fileName.c_str();
-	}
-	void SetItems(const std::vector<std::pair<wxString, TagEntry> >& items) {
-		this->m_items = items;
-	}
-	const wxString& GetFileName() const {
-		return m_fileName;
-	}
-	const std::vector<std::pair<wxString, TagEntry> >& GetItems() const {
-		return m_items;
-	}
-};
-
 /**
  * Possible popup menu
  */
@@ -118,10 +96,20 @@ enum {
 	//clientData is the selected word (wxString*)
 	wxEVT_CCBOX_SELECTION_MADE,
 
-	//clientData is fileName (wxString*)
+	// the following 2 events are used as "transaction"
+	// the first event indicates that any "wxEVT_FILE_SAVED" event sent from this point
+	// is due to build process which is about to starte
+	// the later event, indicates the end of that transaction
+	wxEVT_FILE_SAVE_BY_BUILD_END,
+	wxEVT_FILE_SAVE_BY_BUILD_START,
+
+	// clientData is fileName (wxString*)
 	wxEVT_FILE_SAVED,
-	//clientData is list of files which have been retagged (std::vector<wxFileName>*)
+	// clientData is list of files which have been retagged (std::vector<wxFileName>*)
 	wxEVT_FILE_RETAGGED,
+	// clientData is wxArrayString*: Item(0) = oldName
+	//                               Item(1) = newName
+	wxEVT_FILE_RENAMED,
 	//clientData is ParseThreadEventData*
 	wxEVT_SYNBOL_TREE_UPDATE_ITEM,
 	//clientData is ParseThreadEventData*
@@ -136,10 +124,26 @@ enum {
 	//clientData is NULL
 	wxEVT_ALL_EDITORS_CLOSED,
 
+	// This event is sent when the user clicks inside an editor
+	// this event can not be Veto()
+	// clientData is NULL. You may query the clicked editor by calling to
+	// IManager::GetActiveEditor()
+	wxEVT_EDITOR_CLICKED,
+
+	// User dismissed the Editor's settings dialog with
+	// Apply or OK (Settings | Editor)
+	// clientData is NULL
+	wxEVT_EDITOR_SETTINGS_CHANGED,
 
 	// This event is sent from plugins to the application to tell it to reload
 	// any open files (and re-tag them as well)
 	wxEVT_CMD_RELOAD_EXTERNALLY_MODIFIED,
+
+	// Same as wxEVT_CMD_RELOAD_EXTERNALLY_MODIFIED
+	// just without prompting the user
+	// this event only reload code files without
+	// any reload to the workspace / project
+	wxEVT_CMD_RELOAD_EXTERNALLY_MODIFIED_NOPROMPT,
 
 	// Sent by the project settings dialogs to indicate that
 	// the project configurations are saved

@@ -24,6 +24,16 @@ createVariables()
 	is_so_lib=$1
 	additional_include_path=$2
 
+	if [ "$os_name" = "Darwin" ]; then
+		if [ "$is_64bit" = "yes" ]; then
+			compiler_name=${compiler_name}" -m64 "
+			c_compiler_name=${c_compiler_name}" -m64 "
+		else
+			compiler_name=${compiler_name}" -m32 "
+			c_compiler_name=${c_compiler_name}" -m32 "
+		fi
+	fi
+
 	if [ "$is_64bit" = "yes" ]; then
 		compiler_name=${compiler_name}" -DON_64_BIT "
 		c_compiler_name=${c_compiler_name}" -DON_64_BIT "
@@ -66,13 +76,9 @@ createVariables()
 	echo "" >> Makefile
 	echo "CCFLAGS= -Wall \$(shell wx-config --cxxflags \$(WXCFG)) -fno-strict-aliasing -DASTYLE_LIB -DYY_NEVER_INTERACTIVE=1 -DGTK -DSCI_LEXER -DLINK_LEXERS -D__WX__ -DINSTALL_DIR=\\\"${prefix}/share/codelite\\\" -DPLUGINS_DIR=\\\"${plugins_dir}\\\"" >> Makefile
 	echo "LINK_FLAGS =  -L${base_dir}/\$(OUTPUT_DIR) ${rpaths} -lplugin\$(EXT) -lcodelite\$(EXT) -lwxsqlite3\$(EXT) \\" >> Makefile
-	echo "	-lwxscintilla\$(EXT) -lwxpropgrid\$(EXT) -L${base_dir}/sdk/sqlite3/lib \$(shell wx-config --libs \$(WXCFG))" >> Makefile
+	#echo "	-lwxscintilla\$(EXT) -lwxpropgrid\$(EXT) -L${base_dir}/sdk/sqlite3/lib \$(shell wx-config --libs \$(WXCFG))" >> Makefile
+	echo "	-lwxscintilla\$(EXT) -L${base_dir}/sdk/sqlite3/lib \$(shell wx-config --libs \$(WXCFG))" >> Makefile
 	echo "PLUGIN_LINK_FLAGS =  -L${base_dir}/\$(OUTPUT_DIR) \$(shell wx-config --libs \$(WXCFG))" >> Makefile
-
-
-	if [ "$is_so_lib" = "no" ]; then
-		echo "INCLUDES := \$(INCLUDES) -ILiteEditor " >> Makefile
-	fi
 	echo "INCLUDES := \$(INCLUDES) ${additional_include_path} " >> Makefile
 	echo "" >> Makefile
 	if [ "$os_name" != "Darwin" ] ; then
@@ -81,6 +87,9 @@ createVariables()
 		echo "PLUGIN_LINK_FLAGS := \$(PLUGIN_LINK_FLAGS) \$(shell pkg-config --libs gtk+-2.0)" >> Makefile
 	else
 		echo "CCFLAGS := \$(CCFLAGS) -D__APPLE__ -DMACOSX" >> Makefile
+	fi
+	if [ "$os_name" = "FreeBSD" ]; then
+		echo "LINK_FLAGS += -lkvm" >> Makefile
 	fi
 	echo "INCLUDES := \$(INCLUDES) -I. -I${base_dir}/sdk/codelite_indexer/network -I${base_dir}/sdk/wxsqlite3/include -I${base_dir}/sdk/wxsqlite3/sqlite3/include -I${base_dir}/sdk/wxscintilla/include -I${base_dir}/sdk/wxscintilla/src/scintilla/include -I${base_dir}/sdk/wxpropgrid/include	 -I${base_dir}/sdk/wxscintilla/src/scintilla/src -I${base_dir}/Interfaces -I${base_dir}/Debugger -I${base_dir}/Plugin -I${base_dir}/CodeLite " >> Makefile
 	echo "" >> Makefile
@@ -190,7 +199,7 @@ createCodeLiteCppcheckMakefile ()
 	echo "" >> Makefile
 	echo "all: codelite_cppcheck" >> Makefile
 
-	createObjectList "network/*.cpp src/*.cpp " "codelite_cppcheck_objects"
+	createObjectList "network/*.cpp src/*.cpp utils/*.cpp" "codelite_cppcheck_objects"
 
 	for a_file in $files_list
 	do
@@ -212,8 +221,8 @@ createCodeLiteCppcheckMakefile ()
 			echo "	\$(CMP) -I. -MT${configuration}/${a_file_no_ext}.o -MF${configuration}/${a_file_no_ext}.o.d  -MM ${a_file}" >> Makefile
 		fi
 
-		echo "-include ${configuration}/*.d" >> Makefile
 	done
+	echo "-include ${configuration}/*.d" >> Makefile
 	echo >> Makefile
 
 	echo "codelite_cppcheck: make_dirs \$(codelite_cppcheck_objects)" >> Makefile
@@ -300,8 +309,8 @@ createCodeLiteIndexerMakefile ()
 			echo "	\$(CMP) -DHAVE_CONFIG_H -I. -Ilibctags  -MT${configuration}/${a_file_no_ext}.o -MF${configuration}/${a_file_no_ext}.o.d  -MM ${a_file}" >> Makefile
 		fi
 
-		echo "-include ${configuration}/*.d" >> Makefile
 	done
+	echo "-include ${configuration}/*.d" >> Makefile
 	echo >> Makefile
 
 	echo "codelite_indexer: make_dirs \$(codelite_indexer_objects)" >> Makefile
@@ -452,7 +461,7 @@ createPluginMakefile()
 	if [ "$plugin_name" = "CppCheck" ] ; then
 	  createVariables "yes" "-I../sdk/codelite_cppcheck/"
 	else
-	  createVariables "yes" 
+	  createVariables "yes"
 	fi
 
 	## Hack to include the md5c.c file in the makefile for the qmake plugin
@@ -466,11 +475,14 @@ createPluginMakefile()
 
 	createPluginTargets "${plugin_name}" "${post_install_path}"
 	if [ "$plugin_name" = "QmakePlugin" ] ; then
-	  createRules_sharedObject "*.cpp md5c.c" "${plugin_name}Objects" "${plugin_name}" "${plugin_name}" "copy" "-L../lib -lplugin\$(EXT) -lcodelite\$(EXT) -lwxscintilla\$(EXT) -lwxsqlite3\$(EXT) -lwxpropgrid\$(EXT)"
+	  #createRules_sharedObject "*.cpp md5c.c" "${plugin_name}Objects" "${plugin_name}" "${plugin_name}" "copy" "-L../lib -lplugin\$(EXT) -lcodelite\$(EXT) -lwxscintilla\$(EXT) -lwxsqlite3\$(EXT) -lwxpropgrid\$(EXT)"
+	  createRules_sharedObject "*.cpp md5c.c" "${plugin_name}Objects" "${plugin_name}" "${plugin_name}" "copy" "-L../lib -lplugin\$(EXT) -lcodelite\$(EXT) -lwxscintilla\$(EXT) -lwxsqlite3\$(EXT)"
 	elif [ "$plugin_name" = "CppCheck" ] ; then
-	  createRules_sharedObject "*.cpp ../sdk/codelite_cppcheck/network/*.cpp" "${plugin_name}Objects" "${plugin_name}" "${plugin_name}" "copy" "-L../lib -lplugin\$(EXT) -lcodelite\$(EXT) -lwxscintilla\$(EXT) -lwxsqlite3\$(EXT) -lwxpropgrid\$(EXT)"
+	  #createRules_sharedObject "*.cpp ../sdk/codelite_cppcheck/network/*.cpp" "${plugin_name}Objects" "${plugin_name}" "${plugin_name}" "copy" "-L../lib -lplugin\$(EXT) -lcodelite\$(EXT) -lwxscintilla\$(EXT) -lwxsqlite3\$(EXT) -lwxpropgrid\$(EXT)"
+	  createRules_sharedObject "*.cpp ../sdk/codelite_cppcheck/network/*.cpp" "${plugin_name}Objects" "${plugin_name}" "${plugin_name}" "copy" "-L../lib -lplugin\$(EXT) -lcodelite\$(EXT) -lwxscintilla\$(EXT) -lwxsqlite3\$(EXT)"
 	else
-	 createRules_sharedObject "*.cpp" "${plugin_name}Objects" "${plugin_name}" "${plugin_name}" "copy" "-L../lib -lplugin\$(EXT) -lcodelite\$(EXT) -lwxscintilla\$(EXT) -l    wxsqlite3\$(EXT) -lwxpropgrid\$(EXT)"
+	 #createRules_sharedObject "*.cpp" "${plugin_name}Objects" "${plugin_name}" "${plugin_name}" "copy" "-L../lib -lplugin\$(EXT) -lcodelite\$(EXT) -lwxscintilla\$(EXT) -l    wxsqlite3\$(EXT) -lwxpropgrid\$(EXT)"
+	 createRules_sharedObject "*.cpp" "${plugin_name}Objects" "${plugin_name}" "${plugin_name}" "copy" "-L../lib -lplugin\$(EXT) -lcodelite\$(EXT) -lwxscintilla\$(EXT) -l    wxsqlite3\$(EXT)"
 	fi
 
 	## restore the path
@@ -579,6 +591,7 @@ createInstallTarget()
 	if [ "$add_desktop_icon" = "yes" ] ; then
 	  if test -d $HOME/Desktop/ ; then
 	    echo "	@cp -fpr Runtime/codelite.desktop $HOME/Desktop/" >> Makefile
+		echo "	@chmod +x $HOME/Desktop/codelite.desktop" >> Makefile
 	  fi
 	fi
 	echo "" >> Makefile
@@ -729,7 +742,7 @@ createRules_sharedObject  "sdk/wxpropgrid/src/*.cpp" "wxPropGridObjects" "PropGr
 # Then the binary, and indexer
 createRules_exe "LiteEditor/*.cpp" "LiteEditorObjects" "LiteEditor" ${exe_name}
 createCodeLiteIndexerMakefile "sdk/codelite_indexer/*.cpp sdk/codelite_indexer/network/*.cpp sdk/codelite_indexer/libctags/*.c sdk/codelite_indexer/libctags/*.cpp"
-createCodeLiteCppcheckMakefile "sdk/codelite_cppcheck/network/*.cpp sdk/codelite_cppcheck/src/*.cpp"
+createCodeLiteCppcheckMakefile "sdk/codelite_cppcheck/network/*.cpp sdk/codelite_cppcheck/src/*.cpp sdk/codelite_cppcheck/utils/*.cpp"
 createInstallTarget
 createUnInstallTarget
 
@@ -749,7 +762,7 @@ echo "Plugins:\\" >> Makefile
 echo "Debugger\\" >> Makefile
 echo "Gizmos\\" >> Makefile
 echo "cscope\\" >> Makefile
-echo "Subversion\\" >> Makefile
+echo "Subversion2\\" >> Makefile
 echo "CodeFormatter\\" >> Makefile
 echo "Copyright\\" >> Makefile
 echo "UnitTestCPP\\" >> Makefile
@@ -757,7 +770,7 @@ echo "ExternalTools\\" >> Makefile
 echo "SnipWiz\\" >> Makefile
 echo "wxformbuilder\\" >> Makefile
 echo "abbreviation\\" >> Makefile
-echo "SymbolView\\" >> Makefile
+#echo "SymbolView\\" >> Makefile
 echo "ContinuousBuild\\" >> Makefile
 echo "QmakePlugin\\" >> Makefile
 echo "CppCheck" >> Makefile
@@ -772,7 +785,7 @@ echo "plugins_install:\\" >> Makefile
 echo "Debugger_install\\" >> Makefile
 echo "Gizmos_install\\" >> Makefile
 echo "cscope_install\\" >> Makefile
-echo "Subversion_install\\" >> Makefile
+echo "Subversion2_install\\" >> Makefile
 echo "CodeFormatter_install\\" >> Makefile
 echo "Copyright_install\\" >> Makefile
 echo "UnitTestCPP_install\\" >> Makefile
@@ -780,7 +793,7 @@ echo "ExternalTools_install\\" >> Makefile
 echo "SnipWiz_install\\" >> Makefile
 echo "wxformbuilder_install\\" >> Makefile
 echo "abbreviation_install\\" >> Makefile
-echo "SymbolView_install\\" >> Makefile
+#echo "SymbolView_install\\" >> Makefile
 echo "ContinuousBuild_install\\" >> Makefile
 echo "QmakePlugin_install\\" >> Makefile
 echo "CppCheck_install" >> Makefile
@@ -796,7 +809,7 @@ echo "clean_plugins:\\" >> Makefile
 echo "Debugger_clean\\" >> Makefile
 echo "Gizmos_clean\\" >> Makefile
 echo "cscope_clean\\" >> Makefile
-echo "Subversion_clean\\" >> Makefile
+echo "Subversion2_clean\\" >> Makefile
 echo "CodeFormatter_clean\\" >> Makefile
 echo "Copyright_clean\\" >> Makefile
 echo "UnitTestCPP_clean\\" >> Makefile
@@ -804,7 +817,7 @@ echo "ExternalTools_clean\\" >> Makefile
 echo "SnipWiz_clean\\" >> Makefile
 echo "wxformbuilder_clean\\" >> Makefile
 echo "abbreviation_clean\\" >> Makefile
-echo "SymbolView_clean\\" >> Makefile
+#echo "SymbolView_clean\\" >> Makefile
 echo "ContinuousBuild_clean\\" >> Makefile
 echo "QmakePlugin_clean\\" >> Makefile
 echo "CppCheck_clean" >> Makefile
@@ -820,7 +833,7 @@ echo "" >> Makefile
 createPluginMakefile "Debugger" "Debugger" "\$(DESTDIR)$plugins_dir/debuggers/" "../Runtime/debuggers"
 createPluginMakefile "Gizmos" "Gizmos"  "\$(DESTDIR)$plugins_dir/" "../Runtime/plugins"
 createPluginMakefile "cscope" "cscope" "\$(DESTDIR)$plugins_dir/" "../Runtime/plugins"
-createPluginMakefile "Subversion" "Subversion" "\$(DESTDIR)$plugins_dir/" "../Runtime/plugins"
+createPluginMakefile "Subversion2" "Subversion2" "\$(DESTDIR)$plugins_dir/" "../Runtime/plugins"
 createPluginMakefile "CodeFormatter" "CodeFormatter" "\$(DESTDIR)$plugins_dir/" "../Runtime/plugins"
 createPluginMakefile "Copyright" "Copyright" "\$(DESTDIR)$plugins_dir/" "../Runtime/plugins"
 createPluginMakefile "UnitTestCPP" "UnitTestCPP" "\$(DESTDIR)$plugins_dir/" "../Runtime/plugins"
@@ -828,7 +841,7 @@ createPluginMakefile "ExternalTools" "ExternalTools" "\$(DESTDIR)$plugins_dir/" 
 createPluginMakefile "SnipWiz" "SnipWiz" "\$(DESTDIR)$plugins_dir/" "../Runtime/plugins"
 createPluginMakefile "wxformbuilder" "wxformbuilder" "\$(DESTDIR)$plugins_dir/" "../Runtime/plugins"
 createPluginMakefile "abbreviation" "abbreviation" "\$(DESTDIR)$plugins_dir/" "../Runtime/plugins"
-createPluginMakefile "SymbolView" "SymbolView" "\$(DESTDIR)$plugins_dir/" "../Runtime/plugins"
+#createPluginMakefile "SymbolView" "SymbolView" "\$(DESTDIR)$plugins_dir/" "../Runtime/plugins"
 createPluginMakefile "ContinuousBuild" "ContinuousBuild" "\$(DESTDIR)$plugins_dir/" "../Runtime/plugins"
 createPluginMakefile "QmakePlugin" "QmakePlugin" "\$(DESTDIR)$plugins_dir/" "../Runtime/plugins"
 createPluginMakefile "cppchecker" "CppCheck" "\$(DESTDIR)$plugins_dir/" "../Runtime/plugins"

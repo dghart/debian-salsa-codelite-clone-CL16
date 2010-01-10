@@ -1,12 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <CodeLite_Project Name="plugin_sdk">
-  <VirtualDirectory Name="Source Files">
+  <VirtualDirectory Name="src">
     <File Name="async_executable_cmd.cpp"/>
     <File Name="build_config.cpp"/>
     <File Name="buildmanager.cpp"/>
     <File Name="clean_request.cpp"/>
     <File Name="compile_request.cpp"/>
-    <File Name="compiler_action.cpp"/>
     <File Name="configuration_mapping.cpp"/>
     <File Name="lexer_configuration.cpp"/>
     <File Name="optionsconfig.cpp"/>
@@ -23,14 +22,16 @@
     <File Name="custombuildrequest.cpp"/>
     <File Name="custombuildrequest.h"/>
     <File Name="build_config_common.cpp"/>
+    <File Name="localworkspace.h"/>
+    <File Name="localworkspace.cpp"/>
+    <File Name="shell_command.cpp"/>
   </VirtualDirectory>
-  <VirtualDirectory Name="Header Files">
+  <VirtualDirectory Name="include">
     <File Name="async_executable_cmd.h"/>
     <File Name="buildmanager.h"/>
     <File Name="clean_request.h"/>
     <File Name="compile_request.h"/>
     <File Name="compiler.h"/>
-    <File Name="compiler_action.h"/>
     <File Name="configuration_mapping.h"/>
     <File Name="configuration_object.h"/>
     <File Name="lexer_configuration.h"/>
@@ -43,6 +44,7 @@
     <File Name="volumelocatorthread.h"/>
     <File Name="queuecommand.cpp"/>
     <File Name="queuecommand.h"/>
+    <File Name="shell_command.h"/>
   </VirtualDirectory>
   <VirtualDirectory Name="Commons">
     <File Name="xmlutils.cpp"/>
@@ -58,6 +60,7 @@
     <File Name="dynamiclibrary.cpp"/>
     <File Name="conffilelocator.cpp"/>
     <File Name="conffilelocator.h"/>
+    <File Name="string_client_data.h"/>
   </VirtualDirectory>
   <VirtualDirectory Name="Builders">
     <File Name="builder.h"/>
@@ -112,11 +115,11 @@
     <File Name="tagsmanagementconf.cpp"/>
     <File Name="tagsmanagementconf.h"/>
     <File Name="build_config_common.h"/>
+    <File Name="includepathlocator.cpp"/>
+    <File Name="includepathlocator.h"/>
   </VirtualDirectory>
   <VirtualDirectory Name="ProcessControl">
     <File Name="pipedprocess.h"/>
-    <File Name="interactiveprocess.cpp"/>
-    <File Name="interactiveprocess.h"/>
     <File Name="pipedprocess.cpp"/>
     <File Name="consolefinder.cpp"/>
     <File Name="consolefinder.h"/>
@@ -129,8 +132,6 @@
       <File Name="filepicker.h"/>
       <File Name="dirpicker.cpp"/>
       <File Name="dirpicker.h"/>
-      <File Name="splashscreen.cpp"/>
-      <File Name="splashscreen.h"/>
       <File Name="progressctrl.cpp"/>
       <File Name="progressctrl.h"/>
       <File Name="virtualdirectoryselectorbase.h"/>
@@ -139,6 +140,8 @@
       <File Name="virtualdirectoryselectorbase.cpp"/>
       <File Name="windowstack.h"/>
       <File Name="windowstack.cpp"/>
+      <File Name="outputviewcontrolbar.cpp"/>
+      <File Name="outputviewcontrolbar.h"/>
     </VirtualDirectory>
     <VirtualDirectory Name="Dialogs">
       <File Name="threebuttondlg.h"/>
@@ -157,6 +160,14 @@
       <File Name="macrosbasedlg.cpp"/>
       <File Name="macrosbasedlg.h"/>
       <File Name="macrosdlg.cpp"/>
+      <File Name="quickfinder_basedlg.h"/>
+      <File Name="quickfinder_basedlg.cpp"/>
+      <File Name="quickfinder_selectsymbol.h"/>
+      <File Name="quickfinder_selectsymbol.cpp"/>
+      <File Name="renamefilebasedlg.cpp"/>
+      <File Name="renamefilebasedlg.h"/>
+      <File Name="renamefiledlg.h"/>
+      <File Name="renamefiledlg.cpp"/>
     </VirtualDirectory>
     <VirtualDirectory Name="Notebook">
       <File Name="custom_notebook.cpp"/>
@@ -188,8 +199,6 @@
     </VirtualDirectory>
   </VirtualDirectory>
   <VirtualDirectory Name="TokenScanner">
-    <File Name="tokendb.cpp"/>
-    <File Name="tokendb.h"/>
     <File Name="cpptoken.cpp"/>
     <File Name="cpptoken.h"/>
     <File Name="cppwordscanner.cpp"/>
@@ -204,16 +213,22 @@
     <File Name="job.cpp"/>
   </VirtualDirectory>
   <Dependencies/>
-  <Dependencies Name="ReleaseUnicode"/>
   <VirtualDirectory Name="BrowsingRecords">
     <File Name="browse_record.h"/>
     <File Name="navigationmanager.h"/>
     <File Name="navigationmanager.cpp"/>
   </VirtualDirectory>
+  <VirtualDirectory Name="Images">
+    <File Name="overlaytool.cpp"/>
+    <File Name="overlaytool.h"/>
+  </VirtualDirectory>
+  <VirtualDirectory Name="QuickFinder">
+    <File Name="quickfinder.h"/>
+    <File Name="quickfinder.cpp"/>
+  </VirtualDirectory>
   <Settings Type="Static Library">
-    <Configuration Name="DebugUnicode" CompilerType="gnu g++" DebuggerType="GNU gdb debugger" Type="">
-      <General OutputFile="../lib/gcc_lib/libplugin_sdkud.a" IntermediateDirectory="./DebugUnicode" Command="" CommandArguments="" WorkingDirectory="" PauseExecWhenProcTerminates="yes"/>
-      <Compiler Required="yes" Options="-g;$(shell wx-config --cxxflags --debug=yes --unicode=yes);$(shell pkg-config --cflags gtk+-2.0)">
+    <Configuration Name="DebugUnicode" CompilerType="gnu g++" DebuggerType="GNU gdb debugger" Type="" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
+      <Compiler Options="-g;$(shell wx-config --cxxflags --debug=yes --unicode=yes);$(shell pkg-config --cflags gtk+-2.0)" Required="yes" PreCompiledHeader="">
         <IncludePath Value="."/>
         <IncludePath Value="./include"/>
         <IncludePath Value="../CodeLite"/>
@@ -223,17 +238,20 @@
         <Preprocessor Value="__WX__"/>
         <Preprocessor Value="WXUSINGDLL"/>
       </Compiler>
-      <Linker Required="yes" Options=" "/>
+      <Linker Options=" " Required="yes"/>
+      <ResourceCompiler Options="" Required="no"/>
+      <General OutputFile="../lib/gcc_lib/libplugin_sdkud.a" IntermediateDirectory="./DebugUnicode" Command="" CommandArguments="" WorkingDirectory="" PauseExecWhenProcTerminates="yes"/>
       <Debugger IsRemote="no" RemoteHostName="" RemoteHostPort="" DebuggerPath="">
         <PostConnectCommands/>
         <StartupCommands/>
       </Debugger>
-      <ResourceCompiler Required="no" Options=""/>
       <PreBuild/>
       <PostBuild/>
       <CustomBuild Enabled="no">
+        <RebuildCommand/>
         <CleanCommand/>
         <BuildCommand/>
+        <PreprocessFileCommand/>
         <SingleFileCommand/>
         <MakefileGenerationCommand/>
         <ThirdPartyToolName/>
@@ -244,9 +262,8 @@
         <CustomPreBuild/>
       </AdditionalRules>
     </Configuration>
-    <Configuration Name="ReleaseUnicode" CompilerType="gnu g++" DebuggerType="GNU gdb debugger" Type="Static Library">
-      <General OutputFile="../lib/gcc_lib/libplugin_sdku.a" IntermediateDirectory="./ReleaseUnicode" Command="" CommandArguments="" WorkingDirectory="" PauseExecWhenProcTerminates="yes"/>
-      <Compiler Required="yes" Options="$(shell wx-config --cxxflags --unicode=yes --debug=no);-O2;$(shell pkg-config --cflags gtk+-2.0);-fPIC">
+    <Configuration Name="ReleaseUnicode" CompilerType="gnu g++" DebuggerType="GNU gdb debugger" Type="Static Library" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
+      <Compiler Options="$(shell wx-config --cxxflags --unicode=yes --debug=no);-O2;$(shell pkg-config --cflags gtk+-2.0);-fPIC" Required="yes" PreCompiledHeader="">
         <IncludePath Value="."/>
         <IncludePath Value="./include"/>
         <IncludePath Value="../CodeLite"/>
@@ -257,17 +274,20 @@
         <Preprocessor Value="WXUSINGDLL"/>
         <Preprocessor Value="ON_64_BIT"/>
       </Compiler>
-      <Linker Required="yes" Options=" "/>
+      <Linker Options=" " Required="yes"/>
+      <ResourceCompiler Options="" Required="no"/>
+      <General OutputFile="../lib/gcc_lib/libplugin_sdku.a" IntermediateDirectory="./ReleaseUnicode" Command="" CommandArguments="" WorkingDirectory="" PauseExecWhenProcTerminates="yes"/>
       <Debugger IsRemote="no" RemoteHostName="" RemoteHostPort="" DebuggerPath="">
         <PostConnectCommands/>
         <StartupCommands/>
       </Debugger>
-      <ResourceCompiler Required="no" Options=""/>
       <PreBuild/>
       <PostBuild/>
       <CustomBuild Enabled="no">
+        <RebuildCommand/>
         <CleanCommand/>
         <BuildCommand/>
+        <PreprocessFileCommand/>
         <SingleFileCommand/>
         <MakefileGenerationCommand/>
         <ThirdPartyToolName>None</ThirdPartyToolName>
@@ -278,9 +298,8 @@
         <CustomPreBuild/>
       </AdditionalRules>
     </Configuration>
-    <Configuration Name="WinDebugUnicode" CompilerType="gnu g++" DebuggerType="GNU gdb debugger" Type="">
-      <General OutputFile="../lib/gcc_lib/libplugin_sdkud.a" IntermediateDirectory="./WinDebugUnicode" Command="" CommandArguments="" WorkingDirectory="" PauseExecWhenProcTerminates="yes"/>
-      <Compiler Required="yes" Options="$(shell wx-config --cxxflags --debug=yes --unicode=yes);-g;-Wall">
+    <Configuration Name="WinDebugUnicode" CompilerType="gnu g++" DebuggerType="GNU gdb debugger" Type="" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
+      <Compiler Options="$(shell wx-config --cxxflags --debug=yes --unicode=yes);-g;-Wall" Required="yes" PreCompiledHeader="">
         <IncludePath Value="."/>
         <IncludePath Value="./include"/>
         <IncludePath Value="../CodeLite"/>
@@ -290,17 +309,20 @@
         <Preprocessor Value="__WX__"/>
         <Preprocessor Value="WXUSINGDLL"/>
       </Compiler>
-      <Linker Required="yes" Options=""/>
+      <Linker Options="" Required="yes"/>
+      <ResourceCompiler Options="" Required="yes"/>
+      <General OutputFile="../lib/gcc_lib/libplugin_sdkud.a" IntermediateDirectory="./WinDebugUnicode" Command="" CommandArguments="" WorkingDirectory="" PauseExecWhenProcTerminates="yes"/>
       <Debugger IsRemote="no" RemoteHostName="" RemoteHostPort="" DebuggerPath="">
         <PostConnectCommands/>
         <StartupCommands/>
       </Debugger>
-      <ResourceCompiler Required="yes" Options=""/>
       <PreBuild/>
       <PostBuild/>
       <CustomBuild Enabled="no">
+        <RebuildCommand/>
         <CleanCommand/>
         <BuildCommand/>
+        <PreprocessFileCommand/>
         <SingleFileCommand/>
         <MakefileGenerationCommand/>
         <ThirdPartyToolName/>
@@ -311,9 +333,8 @@
         <CustomPreBuild/>
       </AdditionalRules>
     </Configuration>
-    <Configuration Name="WinReleaseUnicode" CompilerType="gnu g++" DebuggerType="GNU gdb debugger" Type="Static Library">
-      <General OutputFile="../lib/gcc_lib/libplugin_sdku.a" IntermediateDirectory="./WinReleaseUnicode" Command="" CommandArguments="" WorkingDirectory="" PauseExecWhenProcTerminates="yes"/>
-      <Compiler Required="yes" Options="$(shell wx-config --cxxflags --debug=no --unicode=yes);">
+    <Configuration Name="WinReleaseUnicode" CompilerType="gnu g++" DebuggerType="GNU gdb debugger" Type="Static Library" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
+      <Compiler Options="-Wall;$(shell wx-config --cxxflags --debug=no --unicode=yes)" Required="yes" PreCompiledHeader="">
         <IncludePath Value="."/>
         <IncludePath Value="./include"/>
         <IncludePath Value="../CodeLite"/>
@@ -323,17 +344,20 @@
         <Preprocessor Value="__WX__"/>
         <Preprocessor Value="WXUSINGDLL"/>
       </Compiler>
-      <Linker Required="yes" Options=""/>
+      <Linker Options="" Required="yes"/>
+      <ResourceCompiler Options="" Required="yes"/>
+      <General OutputFile="../lib/gcc_lib/libplugin_sdku.a" IntermediateDirectory="./WinReleaseUnicode" Command="" CommandArguments="" WorkingDirectory="" PauseExecWhenProcTerminates="yes"/>
       <Debugger IsRemote="no" RemoteHostName="" RemoteHostPort="" DebuggerPath="">
         <PostConnectCommands/>
         <StartupCommands/>
       </Debugger>
-      <ResourceCompiler Required="yes" Options=""/>
       <PreBuild/>
       <PostBuild/>
       <CustomBuild Enabled="no">
+        <RebuildCommand/>
         <CleanCommand/>
         <BuildCommand/>
+        <PreprocessFileCommand/>
         <SingleFileCommand/>
         <MakefileGenerationCommand/>
         <ThirdPartyToolName>None</ThirdPartyToolName>
@@ -344,11 +368,27 @@
         <CustomPreBuild/>
       </AdditionalRules>
     </Configuration>
+    <GlobalSettings>
+      <Compiler Options="">
+        <IncludePath Value="."/>
+      </Compiler>
+      <Linker Options="">
+        <LibraryPath Value="."/>
+      </Linker>
+      <ResourceCompiler Options=""/>
+    </GlobalSettings>
   </Settings>
-  <VirtualDirectory Name="Images">
-    <File Name="overlaytool.cpp"/>
-    <File Name="overlaytool.h"/>
+  <VirtualDirectory Name="formbuilder">
+    <File Name="renamefilebasedlg.fbp"/>
   </VirtualDirectory>
+  <VirtualDirectory Name="Terminal">
+    <File Name="wxterminalbase.h"/>
+    <File Name="wxterminal.cpp"/>
+    <File Name="wxterminal.h"/>
+    <File Name="wxterminalbase.cpp"/>
+  </VirtualDirectory>
+  <Dependencies Name="DebugUnicode"/>
+  <Dependencies Name="ReleaseUnicode"/>
   <Dependencies Name="WinDebugUnicode"/>
   <Dependencies Name="WinReleaseUnicode"/>
 </CodeLite_Project>

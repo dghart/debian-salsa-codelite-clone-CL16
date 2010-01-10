@@ -112,13 +112,15 @@
 #define SCLEX_SML 97
 
 //Eran - START
-#define SCLEX_GCC 150
-#define SCLEX_GCC_DEFAULT 0
-#define SCLEX_GCC_ERROR	  1
-#define SCLEX_GCC_WARNING 2
-#define SCLEX_GCC_BUILDING 3
-#define SCLEX_GCC_FILE_LINK 4
-#define SCLEX_GCC_OUTPUT 5
+#define SCLEX_GCC            150
+#define SCLEX_GCC_DEFAULT      0
+#define SCLEX_GCC_ERROR        1
+#define SCLEX_GCC_WARNING      2
+#define SCLEX_GCC_BUILDING     3
+#define SCLEX_GCC_FILE_LINK    4
+#define SCLEX_GCC_OUTPUT       5
+#define SCLEX_GCC_MAKE_ENTER   6
+#define SCLEX_GCC_MAKE_LEAVING 7
 
 #define SCLEX_FIF 151
 #define SCLEX_FIF_DEFAULT 0
@@ -129,12 +131,13 @@
 #define SCLEX_FIF_SCOPE 5
 
 #define SCLEX_SVN 152
-#define SCLEX_SVN_DEFAULT 	0
-#define SCLEX_SVN_UPDATED  	1
+#define SCLEX_SVN_DEFAULT   0
+#define SCLEX_SVN_UPDATED   1
 #define SCLEX_SVN_CONFLICT  2
-#define SCLEX_SVN_MERGED 	3
-#define SCLEX_SVN_DELETED 	4
-#define SCLEX_SVN_ADDED 	5
+#define SCLEX_SVN_MERGED    3
+#define SCLEX_SVN_DELETED   4
+#define SCLEX_SVN_ADDED     5
+#define SCLEX_SVN_INFO      6
 //Eran - END
 
 #define SCLEX_AUTOMATIC 1000

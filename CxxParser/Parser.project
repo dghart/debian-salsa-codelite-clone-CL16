@@ -2,8 +2,7 @@
 <CodeLite_Project Name="Parser">
   <Plugins>
     <Plugin Name="qmake">
-      <![CDATA[00010001N0007Release000000000000
-    ]]>
+      <![CDATA[00010001N0007Release000000000000]]>
     </Plugin>
   </Plugins>
   <VirtualDirectory Name="src">
@@ -38,7 +37,7 @@
   </VirtualDirectory>
   <Settings Type="Executable">
     <Configuration Name="Release" CompilerType="gnu g++" DebuggerType="GNU gdb debugger" Type="Executable" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
-      <Compiler Options="-g;" Required="yes">
+      <Compiler Options="-g;" Required="yes" PreCompiledHeader="">
         <IncludePath Value="."/>
       </Compiler>
       <Linker Options="-O2" Required="yes">
@@ -53,10 +52,11 @@
       </Debugger>
       <PreBuild/>
       <PostBuild>
-        <Command Enabled="yes">copy *.h ../CodeLite/.</Command>
-        <Command Enabled="yes">copy *.cpp ../CodeLite/.</Command>
+        <Command Enabled="yes">copy *.h ..\CodeLite\.</Command>
+        <Command Enabled="yes">copy *.cpp ..\CodeLite\.</Command>
       </PostBuild>
       <CustomBuild Enabled="no">
+        <RebuildCommand/>
         <CleanCommand/>
         <BuildCommand/>
         <PreprocessFileCommand/>
