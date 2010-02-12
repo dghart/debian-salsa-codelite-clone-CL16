@@ -23,6 +23,7 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 #include "precompiled_header.h"
+#include <wx/log.h>
 #include <wx/imaglist.h>
 #include <wx/xrc/xmlres.h>
 #include "dirtraverser.h"
@@ -143,6 +144,7 @@ wxString GetColumnText(wxListCtrl *list, long index, long column)
 
 bool ReadFileWithConversion(const wxString &fileName, wxString &content)
 {
+	wxLogNull noLog;
 	content.Clear();
 	wxFFile file(fileName, wxT("rb"));
 	if (file.IsOpened()) {
@@ -305,8 +307,14 @@ wxString DoExpandAllVariables(const wxString &expression, Workspace *workspace, 
 				output.Replace(wxT("$(ConfigurationName)"), bldConf->GetName());
 				output.Replace(wxT("$(OutDir)"), bldConf->GetIntermediateDirectory());
 			}
+			if(output.Find(wxT("$(ProjectFiles)")) != wxNOT_FOUND)
+				output.Replace(wxT("$(ProjectFiles)"),   proj->GetFiles());
+			
+			if(output.Find(wxT("$(ProjectFilesAbs)")) != wxNOT_FOUND)
+				output.Replace(wxT("$(ProjectFilesAbs)"),proj->GetFiles(true));
 		}
 	}
+	
 	if (fileName.IsEmpty() == false) {
 		wxFileName fn(fileName);
 

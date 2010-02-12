@@ -23,6 +23,8 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 #include "precompiled_header.h"
+#include "environmentconfig.h"
+#include "evnvarlist.h"
 #include "crawler_include.h"
 #include "renamefiledlg.h"
 #include "localstable.h"
@@ -243,6 +245,7 @@ void Manager::CreateWorkspace ( const wxString &name, const wxString &path )
 
 void Manager::OpenWorkspace ( const wxString &path )
 {
+	wxLogNull noLog;
 	CloseWorkspace();
 
 	wxString errMsg;
@@ -286,6 +289,7 @@ void Manager::DoSetupWorkspace ( const wxString &path )
 
 	// Update the parser search paths
 	UpdateParserPaths();
+	Frame::Get()->SetEnvStatusMessage();
 
 	// send an event to the main frame indicating that a re-tag is required
 	// we do this only if the "smart retagging" is on
@@ -934,6 +938,7 @@ bool Manager::RenameFile(const wxString &origName, const wxString &newName, cons
 
 	if(!SendCmdEvent(wxEVT_FILE_RENAMED, (void*)&f)){
 		// rename the file on filesystem
+		wxLogNull noLog;
 		wxRenameFile(origName, newName);
 	}
 
@@ -1175,7 +1180,7 @@ wxString Manager::GetProjectExecutionCommand ( const wxString& projectName, wxSt
 		execLine = opts->GetProgramConsoleCommand();
 
 		wxString tmp_cmd;
-		tmp_cmd = wxT("cd ") + proj->GetFileName().GetPath() + wxT ( " && cd " ) + wd + wxT ( " && " ) + cmd + wxT ( " " ) + cmdArgs;
+		tmp_cmd = wxT("cd \"") + proj->GetFileName().GetPath() + wxT ( "\" && cd \"" ) + wd + wxT ( "\" && " ) + cmd + wxT ( " " ) + cmdArgs;
 
 		execLine.Replace(wxT("$(CMD)"), tmp_cmd);
 		execLine.Replace(wxT("$(TITLE)"), cmd + wxT ( " " ) + cmdArgs);
@@ -1659,7 +1664,7 @@ void Manager::ExecuteNoDebug ( const wxString &projectName )
 	//execute the program:
 	//- no hiding the console
 	//- no redirection of the stdin/out
-	EnvironmentConfig::Instance()->ApplyEnv ( NULL );
+	EnvSetter env;
 
 	// call it again here to get the actual exection line - we do it here since
 	// the environment has been applied
@@ -1669,7 +1674,6 @@ void Manager::ExecuteNoDebug ( const wxString &projectName )
 	if ( m_asyncExeCmd->GetProcess() ) {
 		m_asyncExeCmd->GetProcess()->Connect ( wxEVT_END_PROCESS, wxProcessEventHandler ( Manager::OnProcessEnd ), NULL, this );
 	}
-	EnvironmentConfig::Instance()->UnApplyEnv();
 }
 
 void Manager::KillProgram()
@@ -1692,9 +1696,6 @@ void Manager::OnProcessEnd ( wxProcessEvent &event )
 
 	delete m_asyncExeCmd;
 	m_asyncExeCmd = NULL;
-
-	//unset the environment variables
-	EnvironmentConfig::Instance()->UnApplyEnv();
 
 	//return the focus back to the editor
 	if ( Frame::Get()->GetMainBook()->GetActiveEditor() ) {
@@ -1925,7 +1926,10 @@ void Manager::DbgStart ( long pid )
 
 	//set ourselves as the observer for the debugger class
 	dbgr->SetObserver ( this );
-
+	
+	// Set the 'Is remote debugging' flag'
+	dbgr->SetIsRemoteDebugging(bldConf && bldConf->GetIsDbgRemoteTarget() && PID == wxNOT_FOUND);
+	
 	// Loop through the open editors and let each editor
 	// a chance to update the debugger manager with any line
 	// changes (i.e. file was edited and breakpoints were moved)
@@ -1997,7 +2001,7 @@ void Manager::DbgStart ( long pid )
 	// set the debug tab as active
 	ShowOutputPane(OutputPane::OUTPUT_DEBUG);
 
-	if ( bldConf && bldConf->GetIsDbgRemoteTarget() && pid == wxNOT_FOUND ) {
+	if ( dbgr->GetIsRemoteDebugging() ) {
 
 		// debugging remote target
 		wxString comm;
@@ -2198,18 +2202,24 @@ void Manager::UpdateGotControl ( DebuggerReasons reason )
 	//put us on top of the z-order window
 	Frame::Get()->Raise();
 	m_dbgCanInteract = true;
-
+	
 	switch ( reason ) {
-	case DBG_RECV_SIGNAL_EXC_BAD_ACCESS:
-	case DBG_RECV_SIGNAL_SIGABRT:
-	case DBG_RECV_SIGNAL_SIGSEGV: { //program received signal sigsegv
+	case DBG_RECV_SIGNAL_SIGTRAP:         // DebugBreak()
+	case DBG_RECV_SIGNAL_EXC_BAD_ACCESS:  // SIGSEGV on Mac
+	case DBG_RECV_SIGNAL_SIGABRT:         // assert() ?
+	case DBG_RECV_SIGNAL_SIGSEGV: {       // program received signal sigsegv
+	
 		wxString signame = wxT ( "SIGSEGV" );
-		if ( reason == DBG_RECV_SIGNAL_EXC_BAD_ACCESS ) {
+		
+		if ( reason == DBG_RECV_SIGNAL_EXC_BAD_ACCESS )
 			signame = wxT ( "EXC_BAD_ACCESS" );
-		} else if ( reason == DBG_RECV_SIGNAL_SIGABRT ) {
+			
+		else if ( reason == DBG_RECV_SIGNAL_SIGABRT )
 			signame = wxT ( "SIGABRT" );
-		}
-
+			
+		else if ( reason == DBG_RECV_SIGNAL_SIGTRAP )
+			signame = wxT ( "SIGTRAP" );
+		
 		DebugMessage ( _("Program Received signal ") + signame + _("\n") );
 		wxMessageDialog dlg( Frame::Get(), _("Program Received signal ") + signame + wxT("\n") +
 		                     _("Stack trace is available in the 'Call Stack' tab\n"),
@@ -2247,10 +2257,6 @@ void Manager::UpdateGotControl ( DebuggerReasons reason )
 		if ( dbgr && dbgr->IsRunning() ) {
 			dbgr->QueryFileLine();
 			dbgr->BreakList();
-//			// If a bp hit, do -break-list so that we can update breakpoint info e.g. ignore-count
-//			if ((reason==DBG_BP_HIT) || (reason==DBG_UNKNOWN)) {
-//				dbgr->BreakList();
-//			}
 		}
 	}
 	break;
@@ -2909,15 +2915,16 @@ bool Manager::UpdateParserPaths()
 	}
 
 	// Update the parser thread with the new paths
-	wxArrayString uniIncludePath, uniExcludePath;
+	wxArrayString globalIncludePath, uniExcludePath;
 	TagsOptionsData tod = Frame::Get()->GetTagsOptions();
-	uniIncludePath = tod.GetParserSearchPaths();
-	uniExcludePath = tod.GetParserExcludePaths();
+	globalIncludePath   = tod.GetParserSearchPaths();
+	uniExcludePath      = tod.GetParserExcludePaths();
 
-	// Add new paths to the include path
-	for(size_t i=0; i<localIncludePaths.GetCount(); i++){
-		if(uniIncludePath.Index(localIncludePaths.Item(i)) == wxNOT_FOUND) {
-			uniIncludePath.Add( localIncludePaths.Item(i) );
+	// Add the global search paths to the local workspace
+	// include paths (the order does matter)
+	for(size_t i=0; i<globalIncludePath.GetCount(); i++){
+		if(localIncludePaths.Index(globalIncludePath.Item(i)) == wxNOT_FOUND) {
+			localIncludePaths.Add( globalIncludePath.Item(i) );
 		}
 	}
 
@@ -2927,15 +2934,15 @@ bool Manager::UpdateParserPaths()
 		}
 	}
 
-	ParseThreadST::Get()->SetSearchPaths( uniIncludePath, uniExcludePath );
+	ParseThreadST::Get()->SetSearchPaths( localIncludePaths, uniExcludePath );
 	return true;
 }
 
 void Manager::OnIncludeFilesScanDone(wxCommandEvent& event)
 {
 	Frame::Get()->SetStatusMessage(wxT("Retagging..."), 0);
-	std::set<std::string> fileSet = *(std::set<std::string>*)event.GetClientData();
-	delete (std::set<std::string>*)event.GetClientData();
+	std::set<std::string> *fileSet = (std::set<std::string>*)event.GetClientData();
+//	fprintf(stderr, "fileSet size=%d\n", fileSet->size());
 
 	wxArrayString projects;
 	GetProjectList ( projects );
@@ -2952,15 +2959,20 @@ void Manager::OnIncludeFilesScanDone(wxCommandEvent& event)
 	// files
 	for (size_t i=0; i<projectFiles.size(); i++) {
 		wxString fn( projectFiles.at(i).GetFullPath() );
-		fileSet.insert( fn.mb_str(wxConvUTF8).data() );
+		fileSet->insert( fn.mb_str(wxConvUTF8).data() );
 	}
 
+//	fprintf(stderr, "Parsing the following files\n");
 	// recreate the list in the form of vector (the API requirs vector)
 	projectFiles.clear();
-	std::set<std::string>::iterator iter = fileSet.begin();
-	for (; iter != fileSet.end(); iter++ ) {
+	std::set<std::string>::iterator iter = fileSet->begin();
+	for (; iter != fileSet->end(); iter++ ) {
 		wxFileName fn(wxString((*iter).c_str(), wxConvUTF8));
 		fn.MakeAbsolute();
+
+//		const wxCharBuffer cfile = _C(fn.GetFullPath());
+//		fprintf(stderr, "%s\n", cfile.data());
+
 		projectFiles.push_back( fn );
 	}
 
@@ -2976,6 +2988,8 @@ void Manager::OnIncludeFilesScanDone(wxCommandEvent& event)
 	Frame::Get()->SetStatusMessage(wxT("Done"), 0);
 	wxLogMessage(wxT("INFO: Retag workspace completed in %d seconds (%d files were scanned)"), (end)/1000, projectFiles.size());
 	SendCmdEvent ( wxEVT_FILE_RETAGGED, ( void* ) &projectFiles );
+
+	delete fileSet;
 }
 
 void Manager::DoSaveAllFilesBeforeBuild()

@@ -28,7 +28,7 @@ SvnConsole::SvnConsole(wxWindow *parent, Subversion2* plugin)
 
 	for (int i=0; i<=wxSCI_STYLE_DEFAULT; i++) {
 		m_sci->StyleSetBackground(i, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
-		m_sci->StyleSetForeground(i, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
+		m_sci->StyleSetForeground(i, *wxBLACK);
 	}
 
 	wxFont defFont = wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT);
@@ -128,8 +128,13 @@ void SvnConsole::OnProcessEnd(wxCommandEvent& event)
 		if (m_handler->TestLoginRequired(m_output)) {
 			// re-issue the last command but this time with login dialog
 			m_handler->GetPlugin()->GetConsole()->AppendText(wxT("Authentication failed. Retrying...\n"));
-			m_handler->ProcessLoginRequired(m_workingDirectory);
-
+			
+			// If we got a URL use it
+			if(m_url.IsEmpty() == false)
+				m_handler->ProcessLoginRequiredForURL(m_url);
+			else 
+				m_handler->ProcessLoginRequired(m_workingDirectory);
+			
 		} else if (m_handler->TestVerificationFailed(m_output)) {
 			m_handler->GetPlugin()->GetConsole()->AppendText(wxT("Server certificate verification failed. Retrying...\n"));
 			m_handler->ProcessVerificationRequired();
@@ -149,37 +154,25 @@ void SvnConsole::OnProcessEnd(wxCommandEvent& event)
 		delete m_process;
 		m_process = NULL;
 	}
+	
+	m_workingDirectory.Clear();
+	m_url.Clear();
 }
 
-bool SvnConsole::Execute(const wxString& cmd, const wxString& workingDirectory, SvnCommandHandler* handler, bool printCommand, bool printProcessOutput)
+bool SvnConsole::ExecuteURL(const wxString& cmd, const wxString& url, SvnCommandHandler* handler, bool printProcessOutput)
 {
-	m_printProcessOutput = printProcessOutput;
-	if (m_process) {
-		// another process is already running...
-		//AppendText(svnANOTHER_PROCESS_RUNNING);
-		if (handler)
-			delete handler;
+	if(!DoExecute(cmd, handler, wxT(""), printProcessOutput))
 		return false;
-	}
+	
+	m_url = url;
+	return true;
+}
 
-	m_output.Clear();
-	m_handler = handler;
-
-	EnsureVisible();
-
-	// Print the command?
-	if (printCommand)
-		AppendText(cmd + wxT("\n"));
-
-	// Wrap the command in the OS Shell
-	wxString cmdShell (cmd);
-	//WrapInShell(cmdShell);
-
-	m_process = CreateAsyncProcess(this, cmdShell, workingDirectory);
-	if (!m_process) {
-		AppendText(wxT("Failed to launch Subversion client.\n"));
+bool SvnConsole::Execute(const wxString& cmd, const wxString& workingDirectory, SvnCommandHandler* handler, bool printProcessOutput)
+{
+	if(!DoExecute(cmd, handler, workingDirectory, printProcessOutput))
 		return false;
-	}
+	
 	m_workingDirectory = workingDirectory;
 	return true;
 }
@@ -190,8 +183,19 @@ void SvnConsole::AppendText(const wxString& text)
 	m_sci->SetSelectionEnd(m_sci->GetLength());
 	m_sci->SetSelectionStart(m_sci->GetLength());
 	m_sci->SetCurrentPos(m_sci->GetLength());
-
-	m_sci->AppendText(text);
+	
+	wxString noPasswordText(text);
+	
+	int where = noPasswordText.Find(wxT("--password "));
+	if(where != wxNOT_FOUND) {
+		where += wxStrlen(wxT("--password "));
+		wxString password = noPasswordText.Mid(where);
+		password = password.BeforeFirst(wxT(' '));
+		
+		noPasswordText.Replace(password, wxT("******"));
+	}
+		
+	m_sci->AppendText(noPasswordText);
 
 	m_sci->SetSelectionEnd(m_sci->GetLength());
 	m_sci->SetSelectionStart(m_sci->GetLength());
@@ -242,4 +246,38 @@ void SvnConsole::EnsureVisible()
 	if (where != Notebook::npos) {
 		book->SetSelection(where);
 	}
+}
+
+bool SvnConsole::DoExecute(const wxString& cmd, SvnCommandHandler* handler, const wxString &workingDirectory, bool printProcessOutput)
+{
+	m_workingDirectory.Clear();
+	m_url.Clear();
+
+	m_printProcessOutput = printProcessOutput;
+	if (m_process) {
+		// another process is already running...
+		//AppendText(svnANOTHER_PROCESS_RUNNING);
+		if (handler)
+			delete handler;
+		return false;
+	}
+
+	m_output.Clear();
+	m_handler = handler;
+
+	EnsureVisible();
+
+	// Print the command?
+	AppendText(cmd + wxT("\n"));
+
+	// Wrap the command in the OS Shell
+	wxString cmdShell (cmd);
+	//WrapInShell(cmdShell);
+
+	m_process = CreateAsyncProcess(this, cmdShell, workingDirectory);
+	if (!m_process) {
+		AppendText(wxT("Failed to launch Subversion client.\n"));
+		return false;
+	}
+	return true;
 }

@@ -323,7 +323,13 @@ clProcess *TagsManager::StartCtagsProcess()
 	// build the command, we surround ctags name with double quatations
 	wxString uid;
 	uid << wxGetProcessId();
-
+	
+	if(m_codeliteIndexerPath.FileExists() == false) {
+		wxLogMessage(wxT("ERROR: Could not locate indexer: %s"), m_codeliteIndexerPath.GetFullPath().c_str());
+		m_codeliteIndexerProcess = NULL;
+		return NULL;
+	}
+	
 	// concatenate the PID to identifies this channel to this instance of codelite
 	cmd << wxT("\"") << m_codeliteIndexerPath.GetFullPath() << wxT("\" ") << uid << wxT(" --pid");
 	clProcess* process;
@@ -365,6 +371,9 @@ void TagsManager::SetCodeLiteIndexerPath(const wxString& path)
 	wxCriticalSectionLocker locker(m_cs);
 
 	m_codeliteIndexerPath = wxFileName(path, wxT("codelite_indexer"));
+#ifdef __WXMSW__
+	m_codeliteIndexerPath.SetExt(wxT("exe"));
+#endif
 }
 
 void TagsManager::OnCtagsEnd(wxProcessEvent& event)
@@ -513,7 +522,10 @@ bool TagsManager::IsValidCtagsFile(const wxFileName &filename) const
 	wxStringTokenizer tkz(filespec, wxT(";"));
 	while (tkz.HasMoreTokens()) {
 		wxString spec = tkz.NextToken();
-		if (wxMatchWild(spec, filename.GetFullName())) {
+		spec.MakeLower();
+		wxString lowerName = filename.GetFullName();
+		lowerName.MakeLower();
+		if (wxMatchWild(spec, lowerName)) {
 			is_ok = true;
 			break;
 		}
@@ -704,12 +716,12 @@ bool TagsManager::AutoCompleteCandidates(const wxFileName &fileName, int lineno,
 	if ( isGlobalScopeOperator ) {
 		// Fetch all tags from the global scope
 		GetDatabase()->GetGlobalFunctions(candidates);
-		
+
 		if(candidates.empty() == false)
 			std::sort(candidates.begin(), candidates.end(), SAscendingSort());
-		
+
 	} else if (oper == wxT("::")) {
-		
+
 		filter.Add(wxT("function"));
 		filter.Add(wxT("member"));
 		filter.Add(wxT("prototype"));
@@ -1983,7 +1995,7 @@ void TagsManager::GetUnImplementedFunctions(const wxString& scopeName, std::map<
 		//override the scope to be our scope...
 		tag->SetScope( scopeName );
 
-		key << NormalizeFunctionSig( tag->GetSignature() );
+		key << NormalizeFunctionSig( tag->GetSignature(), 0 );
 		protos[key] = tag;
 	}
 
@@ -1993,7 +2005,7 @@ void TagsManager::GetUnImplementedFunctions(const wxString& scopeName, std::map<
 	for ( size_t i=0; i < vimpl.size() ; i++ ) {
 		TagEntryPtr tag = vimpl.at(i);
 		wxString key = tag->GetName();
-		key << NormalizeFunctionSig( tag->GetSignature() );
+		key << NormalizeFunctionSig( tag->GetSignature(), 0 );
 		std::map<wxString, TagEntryPtr>::iterator iter = protos.find(key);
 
 		if ( iter != protos.end() ) {

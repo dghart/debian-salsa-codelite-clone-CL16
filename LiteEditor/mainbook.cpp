@@ -401,12 +401,11 @@ LEditor *MainBook::NewEditor()
 
 static bool IsFileExists(const wxFileName &filename) {
 #ifdef __WXMSW__
-	struct stat buff;
-	const wxCharBuffer cname = filename.GetFullPath(wxPATH_UNIX).mb_str(wxConvUTF8);
-	if (stat(cname.data(), &buff) < 0) {
+	wxString drive  = filename.GetVolume();
+	if(drive.Length()>1)
 		return false;
-	}
-	return true;
+
+	return filename.FileExists();
 #else
 	return filename.FileExists();
 #endif
@@ -444,7 +443,8 @@ LEditor *MainBook::OpenFile(const wxString &file_name, const wxString &projectNa
 		editor = new LEditor(m_book);
 		editor->Create(projName, fileName);
 		AddPage(editor, fileName.GetFullName());
-
+		editor->SetSyntaxHighlight();
+		
 		// mark the editor as read only if needed
 		MarkEditorReadOnly(editor, IsFileReadOnly(editor->GetFileName()));
 

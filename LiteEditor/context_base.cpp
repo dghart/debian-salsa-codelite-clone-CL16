@@ -30,6 +30,9 @@
 #include "cl_editor.h"
 #include "frame.h"
 
+#define CL_LINE_MODIFIED_STYLE      200
+#define CL_LINE_SAVED_STYLE         201
+
 ContextBase::ContextBase(LEditor *container)
 		: m_container(container)
 		, m_name(wxEmptyString)
@@ -66,6 +69,10 @@ void ContextBase::DoApplySettings(LexerConfPtr lexPtr)
 	rCtrl.StyleClearAll();
 	rCtrl.SetStyleBits(rCtrl.GetStyleBitsNeeded());
 
+	// Define the styles for the editing margin
+	rCtrl.StyleSetBackground(CL_LINE_SAVED_STYLE,    wxColour(wxT("PALE GREEN")));
+	rCtrl.StyleSetBackground(CL_LINE_MODIFIED_STYLE, wxColour(wxT("ORANGE")));
+
 	// by default indicators are set to be opaque rounded box
 #ifdef __WXMAC__
 	rCtrl.IndicatorSetStyle(1, wxSCI_INDIC_BOX);
@@ -85,25 +92,29 @@ void ContextBase::DoApplySettings(LexerConfPtr lexPtr)
     }
 	std::list<StyleProperty>::iterator iter = styles.begin();
 	for (; iter != styles.end(); iter++) {
-		StyleProperty sp = (*iter);
-		int size = sp.GetFontSize();
-		wxString face = sp.GetFaceName();
-		bool bold = sp.IsBold();
-		bool italic = sp.GetItalic();
-		bool underline = sp.GetUnderlined();
+
+		StyleProperty sp        = (*iter);
+		int           size      = sp.GetFontSize();
+		wxString      face      = sp.GetFaceName();
+		bool          bold      = sp.IsBold();
+		bool          italic    = sp.GetItalic();
+		bool          underline = sp.GetUnderlined();
 
 		// handle special cases
 		if ( sp.GetId() == -1 ) {
 			// fold margin foreground colour
 			rCtrl.SetFoldMarginColour(true, sp.GetBgColour());
 			rCtrl.SetFoldMarginHiColour(true, sp.GetFgColour());
+
 		} else if ( sp.GetId() == -2 ) {
 			// selection colour
 			rCtrl.SetSelForeground(true, sp.GetFgColour());
 			rCtrl.SetSelBackground(true, sp.GetBgColour());
+
 		} else if ( sp.GetId() == -3 ) {
 			// caret colour
 			rCtrl.SetCaretForeground(sp.GetFgColour());
+
 		} else {
 			int fontSize( sp.GetFontSize() );
 

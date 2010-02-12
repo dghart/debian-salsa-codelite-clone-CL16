@@ -52,7 +52,7 @@ fix_shared_object_depends libplugin
 fix_shared_object_depends libcodelite
 fix_shared_object_depends libwxscintilla
 fix_shared_object_depends libwxsqlite
-fix_shared_object_depends libwxpropgrid
+#fix_shared_object_depends libwxpropgrid
 
 #echo install_name_tool -change /usr/lib/libcurl.4.dylib @executable_path/libcurl.4.dylib ${exe_name}
 #install_name_tool -change /usr/lib/libcurl.4.dylib @executable_path/libcurl.4.dylib ${exe_name}
@@ -119,7 +119,6 @@ cp ../lib/libwxscintillau.so ./CodeLite.app/Contents/MacOS/
 cp ../lib/libpluginu.so ./CodeLite.app/Contents/MacOS/
 cp ../lib/libcodeliteu.so ./CodeLite.app/Contents/MacOS/
 cp ../lib/libwxsqlite3u.so ./CodeLite.app/Contents/MacOS/
-cp ../lib/libwxpropgridu.so ./CodeLite.app/Contents/MacOS/
 
 cp ../sdk/codelite_indexer/codelite_indexer   ./CodeLite.app/Contents/SharedSupport/
 cp ../sdk/codelite_cppcheck/codelite_cppcheck ./CodeLite.app/Contents/SharedSupport/

@@ -294,6 +294,9 @@ bool DbgCmdHandlerAsyncCmd::ProcessOutput(const wxString &line)
 		} else if (signame == wxT("SIGABRT")) {
 			m_observer->UpdateGotControl(DBG_RECV_SIGNAL_SIGABRT);
 
+		} else if (signame == wxT("SIGTRAP")) {
+			m_observer->UpdateGotControl(DBG_RECV_SIGNAL_SIGTRAP);
+			
 		} else {
 			//default
 			m_observer->UpdateGotControl(DBG_RECV_SIGNAL);
@@ -592,8 +595,15 @@ bool DbgCmdSelectFrame::ProcessOutput(const wxString &line)
 bool DbgCmdHandlerRemoteDebugging::ProcessOutput(const wxString& line)
 {
 	// We use this handler as a callback to indicate that gdb has connected to the debugger
-	m_observer->UpdateRemoteTargetConnected(line);
+	m_observer->UpdateRemoteTargetConnected(wxT("Successfully connected to debugger server"));
 
+	// Apply the breakpoints
+	m_observer->UpdateRemoteTargetConnected(wxT("Applying breakpoints..."));
+	DbgGdb *gdb = dynamic_cast<DbgGdb*>(m_debugger);
+	if(gdb) {
+		gdb->SetBreakpoints();
+	}
+	m_observer->UpdateRemoteTargetConnected(wxT("Applying breakpoints... done"));
 	// continue execution
 	return m_debugger->Continue();
 }

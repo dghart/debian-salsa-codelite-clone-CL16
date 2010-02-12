@@ -672,20 +672,20 @@ void Frame::CreateGUIControls(void)
 #endif
 
 // Mac only
-#if defined (__WXMAC__)
-	m_mgr.GetArtProvider()->SetColor(wxAUI_DOCKART_ACTIVE_CAPTION_COLOUR, wxSystemSettings::GetColour(wxSYS_COLOUR_3DDKSHADOW));
-	m_mgr.GetArtProvider()->SetColor(wxAUI_DOCKART_ACTIVE_CAPTION_TEXT_COLOUR, wxT("WHITE"));
-	m_mgr.GetArtProvider()->SetColor(wxAUI_DOCKART_ACTIVE_CAPTION_GRADIENT_COLOUR, wxSystemSettings::GetColour(wxSYS_COLOUR_3DFACE));
+#if defined (__WXMAC__) || defined (__WXGTK__)
+	m_mgr.GetArtProvider()->SetColor(wxAUI_DOCKART_ACTIVE_CAPTION_COLOUR,        wxSystemSettings::GetColour(wxSYS_COLOUR_ACTIVECAPTION));
+	m_mgr.GetArtProvider()->SetColor(wxAUI_DOCKART_INACTIVE_CAPTION_COLOUR,      DrawingUtils::GetPanelBgColour());
+	m_mgr.GetArtProvider()->SetColor(wxAUI_DOCKART_ACTIVE_CAPTION_TEXT_COLOUR,   wxSystemSettings::GetColour(wxSYS_COLOUR_CAPTIONTEXT));
+	m_mgr.GetArtProvider()->SetColor(wxAUI_DOCKART_INACTIVE_CAPTION_TEXT_COLOUR, wxSystemSettings::GetColour(wxSYS_COLOUR_INACTIVECAPTIONTEXT));
+	m_mgr.GetArtProvider()->SetColor(wxAUI_DOCKART_SASH_COLOUR,                  DrawingUtils::GetPanelBgColour());
+	m_mgr.GetArtProvider()->SetColor(wxAUI_DOCKART_BACKGROUND_COLOUR,            DrawingUtils::GetPanelBgColour());
 #endif
 
 	//initialize debugger configuration tool
 	DebuggerConfigTool::Get()->Load(wxT("config/debuggers.xml"), wxT("2.0.1"));
 	WorkspaceST::Get()->SetStartupDir(ManagerST::Get()->GetStarupDirectory());
 
-	// FIXME:: Dragging toolar with transparent ON seems to crash (WX > 2.8.8)
-//	m_mgr.SetFlags(m_mgr.GetFlags() | wxAUI_MGR_TRANSPARENT_DRAG);
-
-// On wx2.8.7, AUI dragging is broken but this happens only in debug build & on GTK
+	// On wx2.8.7, AUI dragging is broken but this happens only in debug build & on GTK
 #if defined (__WXGTK__) && defined (__WXDEBUG__)
 	m_mgr.SetFlags(wxAUI_MGR_ALLOW_FLOATING|wxAUI_MGR_ALLOW_ACTIVE_PANE|wxAUI_MGR_TRANSPARENT_DRAG|wxAUI_MGR_RECTANGLE_HINT);
 #endif
@@ -775,7 +775,7 @@ void Frame::CreateGUIControls(void)
 	// And finally create a status bar
 	wxStatusBar* statusBar = new wxStatusBar(this, wxID_ANY);
 	SetStatusBar(statusBar);
-	m_status.resize(4);
+	m_status.resize(3);
 	GetStatusBar()->SetFieldsCount(m_status.size());
 	SetStatusMessage(wxT("Ready"), 0);
 	SetStatusMessage(wxT("Done"), m_status.size()-1);
@@ -918,7 +918,6 @@ void Frame::CreateToolbars24()
 	tb->AddTool(wxID_FIND, wxT("Find"), wxXmlResource::Get()->LoadBitmap(wxT("find_and_replace24")), wxT("Find"));
 	tb->AddTool(wxID_REPLACE, wxT("Replace"), wxXmlResource::Get()->LoadBitmap(wxT("refresh24")), wxT("Replace"));
 	tb->AddTool(XRCID("find_in_files"), wxT("Find In Files"), wxXmlResource::Get()->LoadBitmap(wxT("find_in_files24")), wxT("Find In Files"));
-	tb->AddTool(XRCID("show_quick_finder"), wxT("Show Finder"), wxXmlResource::Get()->LoadBitmap(wxT("quickfinder24")), wxT("Show Finder"));
 	tb->AddSeparator();
 	tb->AddTool(XRCID("find_resource"), wxT("Find Resource In Workspace"), wxXmlResource::Get()->LoadBitmap(wxT("open_resource24")), wxT("Find Resource In Workspace"));
 	tb->AddTool(XRCID("find_type"), wxT("Find Type In Workspace"), wxXmlResource::Get()->LoadBitmap(wxT("open_type24")), wxT("Find Type In Workspace"));
@@ -1039,8 +1038,8 @@ void Frame::CreateToolbars16()
 	tb->AddTool(wxID_FIND, wxT("Find"), wxXmlResource::Get()->LoadBitmap(wxT("find_and_replace16")), wxT("Find"));
 	tb->AddTool(wxID_REPLACE, wxT("Replace"), wxXmlResource::Get()->LoadBitmap(wxT("refresh16")), wxT("Replace"));
 	tb->AddTool(XRCID("find_in_files"), wxT("Find In Files"), wxXmlResource::Get()->LoadBitmap(wxT("find_in_files16")), wxT("Find In Files"));
-	tb->AddTool(XRCID("show_quick_finder"), wxT("Show Finder"), wxXmlResource::Get()->LoadBitmap(wxT("quickfinder16")), wxT("Show Finder"));
 	tb->AddSeparator();
+
 	tb->AddTool(XRCID("find_resource"), wxT("Find Resource In Workspace"), wxXmlResource::Get()->LoadBitmap(wxT("open_resource16")), wxT("Find Resource In Workspace"));
 	tb->AddTool(XRCID("find_type"), wxT("Find Type In Workspace"), wxXmlResource::Get()->LoadBitmap(wxT("open_type16")), wxT("Find Type In Workspace"));
 	tb->AddTool(XRCID("find_symbol"), wxT("Quick Outline"), wxXmlResource::Get()->LoadBitmap(wxT("outline16")), wxT("Show Current File Outline"));
@@ -1115,7 +1114,8 @@ void Frame::UpdateBuildTools()
 	wxString path;
 	bool is_ok ( true );
 
-	EnvironmentConfig::Instance()->ApplyEnv ( NULL );
+	// Apply the environment
+	EnvSetter env;
 
 	if ( tool.Contains ( wxT ( "$" ) ) ) {
 		//expand
@@ -1137,10 +1137,8 @@ void Frame::UpdateBuildTools()
 		}
 	} else {
 		//we are good, nothing to be done
-		EnvironmentConfig::Instance()->UnApplyEnv();
 		return;
 	}
-	EnvironmentConfig::Instance()->UnApplyEnv();
 
 	wxString message;
 	if ( !is_ok ) {
@@ -1262,7 +1260,7 @@ void Frame::OnAbout(wxCommandEvent& WXUNUSED(event))
 	mainTitle = CODELITE_VERSION_STR;
 
 	AboutDlg dlg(this, mainTitle);
-	dlg.SetInfo(wxString::Format(wxT("SVN build, revision: %s"), SvnRevision));
+	dlg.SetInfo(mainTitle);
 	dlg.ShowModal();
 }
 
@@ -1761,8 +1759,8 @@ void Frame::OnTogglePanes(wxCommandEvent &event)
 void Frame::OnAddEnvironmentVariable(wxCommandEvent &event)
 {
 	wxUnusedVar(event);
-	EnvVarsTableDlg *dlg = new EnvVarsTableDlg(this);
-	dlg->ShowModal();
+	EnvVarsTableDlg dlg(this);
+	dlg.ShowModal();
 
 	if (ManagerST::Get()->IsWorkspaceOpen()) {
 		//mark all the projects as dirty
@@ -1775,8 +1773,6 @@ void Frame::OnAddEnvironmentVariable(wxCommandEvent &event)
 			}
 		}
 	}
-
-	dlg->Destroy();
 }
 
 void Frame::OnAdvanceSettings(wxCommandEvent &event)
@@ -1786,8 +1782,8 @@ void Frame::OnAdvanceSettings(wxCommandEvent &event)
 		selected_page = 1;
 	}
 
-	AdvancedDlg *dlg = new AdvancedDlg(this, selected_page);
-	if (dlg->ShowModal() == wxID_OK) {
+	AdvancedDlg dlg(this, selected_page);
+	if (dlg.ShowModal() == wxID_OK) {
 		//mark the whole workspace as dirty so makefile generation will take place
 		//force makefile generation upon configuration change
 		if (ManagerST::Get()->IsWorkspaceOpen()) {
@@ -1801,7 +1797,7 @@ void Frame::OnAdvanceSettings(wxCommandEvent &event)
 			}
 		}
 	}
-	dlg->Destroy();
+	SetEnvStatusMessage();
 }
 
 void Frame::OnBuildEnded(wxCommandEvent &event)
@@ -2663,6 +2659,8 @@ void Frame::CompleteInitialization()
 	// Connect some system events
 	m_mgr.Connect(wxEVT_AUI_PANE_CLOSE, wxAuiManagerEventHandler(Frame::OnDockablePaneClosed), NULL, this);
 	m_mgr.Connect(wxEVT_AUI_RENDER,     wxAuiManagerEventHandler(Frame::OnAuiManagerRender),   NULL, this);
+
+	SetEnvStatusMessage();
 }
 
 void Frame::OnAppActivated(wxActivateEvent &e)
@@ -3275,7 +3273,8 @@ void Frame::OnQuickDebug(wxCommandEvent& e)
 			if (SendCmdEvent(wxEVT_DEBUG_STARTING, &startup_info))
 				// plugin stopped debugging
 				return;
-
+			
+			dbgr->SetIsRemoteDebugging(false);
 			dbgr->Start(dbgname, exepath, wd, bpList, cmds);
 
 			// notify plugins that the debugger just started
@@ -3348,40 +3347,16 @@ void Frame::OnRetagWorkspace(wxCommandEvent& event)
 void Frame::OnShowFullScreen(wxCommandEvent& e)
 {
 	wxUnusedVar(e);
-	static std::set<wxString> s_toolbars;
 
 	if (IsFullScreen()) {
-
-		// show all toolbars that were hiddne due to fullscreen mode
-		std::set<wxString>::iterator iter = s_toolbars.begin();
-		for (; iter != s_toolbars.end(); iter++) {
-			wxAuiPaneInfo &info = GetDockingManager().GetPane(*iter);
-			if (info.IsOk() && info.IsShown() == false) {
-				info.Show();
-			}
-		}
-
-		// apply the changes
-		GetDockingManager().Update();
-
-		// clear the list
-		s_toolbars.clear();
-
 		ShowFullScreen(false);
+		
 	} else {
-		// get list of all shown toolbars
-		std::map<int, wxString>::iterator iter = m_toolbars.begin();
-		for (; iter != m_toolbars.end(); iter++) {
-			wxAuiPaneInfo &info = GetDockingManager().GetPane(iter->second);
-			if (info.IsOk() && info.IsShown()) {
-				s_toolbars.insert(iter->second);
-				info.Hide();
-			}
-		}
+		
+		ShowFullScreen(true, wxFULLSCREEN_NOCAPTION|wxFULLSCREEN_NOBORDER);
 
-		// apply the changes
-		GetDockingManager().Update();
-		ShowFullScreen(true);
+		// Re-apply the menu accelerators
+		ManagerST::Get()->UpdateMenuAccelerators();
 	}
 }
 
@@ -3667,4 +3642,20 @@ void Frame::OnLoadPerspective(wxCommandEvent& e)
 
 	EditorConfigST::Get()->SaveLongValue(wxT("LoadSavedPrespective"), 1);
 
+}
+
+void Frame::SetEnvStatusMessage()
+{
+	// Set the workspace's environment variable set to the active one
+	wxString   activeSet       = LocalWorkspaceST::Get()->GetActiveEnvironmentSet();
+	wxString   globalActiveSet = EnvironmentConfig::Instance()->GetSettings().GetActiveSet();
+	EvnVarList vars            = EnvironmentConfig::Instance()->GetSettings();
+
+	// Make sure that the environment set exist, if not, set it to the editor's set
+	if(vars.IsSetExist(activeSet) == false)
+		activeSet = globalActiveSet;
+
+	vars.SetActiveSet(activeSet);
+	EnvironmentConfig::Instance()->SetSettings(vars);
+	SetStatusMessage(wxString::Format(wxT("Env: '%s', Builder: '%s'"), activeSet.c_str(), BuildSettingsConfigST::Get()->GetSelectedBuildSystem().c_str()), 2);
 }

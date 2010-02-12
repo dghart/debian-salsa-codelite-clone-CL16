@@ -24,6 +24,7 @@
 //////////////////////////////////////////////////////////////////////////////
 
 #include "cl_editor.h"
+#include "cl_editor_tip_window.h"
 #include "new_quick_watch_dlg.h"
 #include "buildtabsettingsdata.h"
 #include "jobqueue.h"
@@ -150,12 +151,13 @@ LEditor::LEditor(wxWindow* parent)
 		, m_autoAdjustHScrollbarWidth(true)
 		, m_calltipType              (ct_none)
 		, m_reloadingFile            (false)
+		, m_functionTip              (NULL)
 {
 	ms_bookmarkShapes[wxT("Small Rectangle")]   = wxSCI_MARK_SMALLRECT;
 	ms_bookmarkShapes[wxT("Rounded Rectangle")] = wxSCI_MARK_ROUNDRECT;
 	ms_bookmarkShapes[wxT("Small Arrow")]       = wxSCI_MARK_ARROW;
 	ms_bookmarkShapes[wxT("Circle")]            = wxSCI_MARK_CIRCLE;
-
+	
 	SetSyntaxHighlight();
 	CmdKeyClear(wxT('D'), wxSCI_SCMOD_CTRL); // clear Ctrl+D because we use it for something else
 	Connect(wxEVT_SCI_DWELLSTART, wxScintillaEventHandler(LEditor::OnDwellStart), NULL, this);
@@ -170,7 +172,7 @@ LEditor::LEditor(wxWindow* parent)
 		eol = alternate_eol;
 	}
 	SetEOLMode(eol);
-
+	m_functionTip = new clEditorTipWindow(this);
 	m_disableSmartIndent = GetOptions()->GetDisableSmartIndent();
 }
 
@@ -183,15 +185,34 @@ time_t LEditor::GetFileLastModifiedTime() const
 	return GetFileModificationTime(m_fileName.GetFullPath());
 }
 
+void LEditor::SetSyntaxHighlight(const wxString &lexerName)
+{
+	ClearDocumentStyle();
+	m_context = ContextManager::Get()->NewContext(this, lexerName);
+	m_rightClickMenu = m_context->GetMenu();
+	m_rightClickMenu->AppendSeparator(); // separates plugins
+
+	SetProperties();
+	
+	SetEOL();
+	m_context->SetActive();
+	m_context->ApplySettings();
+	
+	UpdateColours();
+}
+
 void LEditor::SetSyntaxHighlight()
 {
 	ClearDocumentStyle();
 	m_context = ContextManager::Get()->NewContextByFileName(this, m_fileName);
 	m_rightClickMenu = m_context->GetMenu();
 	m_rightClickMenu->AppendSeparator(); // separates plugins
+
 	SetProperties();
-	UpdateColours();
+	
 	m_context->SetActive();
+	m_context->ApplySettings();
+	UpdateColours();
 }
 
 // Fills the struct array that marries breakpoint type to marker and mask
@@ -329,10 +350,6 @@ void LEditor::SetProperties()
 
 	// line number margin displays every thing but folding, bookmarks and breakpoint
 	SetMarginMask(NUMBER_MARGIN_ID, ~(mmt_folds | mmt_bookmarks | mmt_indicator | mmt_compiler | mmt_all_breakpoints));
-
-	// Define the styles for the editing margin
-	StyleSetBackground(CL_LINE_SAVED_STYLE, wxColour(wxT("PALE GREEN")));
-	StyleSetBackground(CL_LINE_MODIFIED_STYLE, wxColour(wxT("ORANGE")));
 
 	SetMarginType     (EDIT_TRACKER_MARGIN_ID, 4); // Styled Text margin
 	SetMarginWidth    (EDIT_TRACKER_MARGIN_ID, options->GetHideChangeMarkerMargin() ? 0 : 3);
@@ -628,15 +645,15 @@ void LEditor::OnCharAdded(wxScintillaEvent& event)
 
 	wxChar matchChar (0);
 	switch ( event.GetKey() ) {
-	case ',':
-		if (m_context->IsCommentOrString(GetCurrentPos()) == false) {
-			// try to force the function tooltip
-			ShowFunctionTipFromCurrentPos();
-		}
-		break;
-
+//	case ',':
+//		if (m_context->IsCommentOrString(GetCurrentPos()) == false) {
+//			// try to force the function tooltip
+//			ShowFunctionTipFromCurrentPos();
+//		}
+//		break;
+//
 	case ';':
-		if(!m_disableSemicolonShift)
+		if (!m_disableSemicolonShift)
 			m_context->SemicolonShift();
 		break;
 
@@ -652,13 +669,12 @@ void LEditor::OnCharAdded(wxScintillaEvent& event)
 		break;
 
 	case '{':
+		m_context->AutoIndent(event.GetKey());
 		matchChar = '}';
 		break;
 
 	case ':':
-
-		if(m_disableSmartIndent == false)
-			m_context->AutoIndent(event.GetKey());
+		m_context->AutoIndent(event.GetKey());
 
 		// fall through...
 	case '.':
@@ -668,12 +684,13 @@ void LEditor::OnCharAdded(wxScintillaEvent& event)
 		}
 		break;
 	case ')':
-		DoCancelCalltip();
-		ShowFunctionTipFromCurrentPos();
+		// Remove one tip from the queue. If the queue new size is 0
+		// the tooltip is then cancelled
+		GetFunctionTip()->Remove();
 		break;
+		
 	case '}':
-		if(m_disableSmartIndent == false)
-			m_context->AutoIndent(event.GetKey());
+		m_context->AutoIndent(event.GetKey());
 		break;
 	case '\n': {
 			// incase ENTER was hit immediatly after we inserted '{' into the code...
@@ -684,21 +701,18 @@ void LEditor::OnCharAdded(wxScintillaEvent& event)
 				//InsertText(pos, GetEolString());
 				CharRight();
 
-				if(m_disableSmartIndent == false)
-					m_context->AutoIndent(wxT('}'));
+				m_context->AutoIndent(wxT('}'));
 
 				InsertText(pos, GetEolString());
 				CharRight();
 				SetCaretAt(pos);
 
-				if(m_disableSmartIndent == false)
-					m_context->AutoIndent(wxT('\n'));
+				m_context->AutoIndent(wxT('\n'));
 
 				EndUndoAction();
 			} else {
 
-				if(m_disableSmartIndent == false)
-					m_context->AutoIndent(event.GetKey());
+				m_context->AutoIndent(event.GetKey());
 
 				// incase we are typing in a folded line, make sure it is visible
 				EnsureVisible(curLine+1);
@@ -801,15 +815,15 @@ void LEditor::OnSciUpdateUI(wxScintillaEvent &event)
 
 	int foldLevel = (GetFoldLevel(curLine) & wxSCI_FOLDLEVELNUMBERMASK) - wxSCI_FOLDLEVELBASE;
 	message << wxT("Ln ")
-			<< curLine+1
-			<< wxT(",  Col ")
-			<< GetColumn(pos)
-			<< wxT(",  Pos ")
-			<< pos
-			<< wxT(",  Style ")
-			<< GetStyleAt(pos)
-			<< wxT(", Fold ")
-			<< foldLevel;
+	<< curLine+1
+	<< wxT(",  Col ")
+	<< GetColumn(pos)
+	<< wxT(",  Pos ")
+	<< pos
+	<< wxT(",  Style ")
+	<< GetStyleAt(pos)
+	<< wxT(", Fold ")
+	<< foldLevel;
 
 	// Always update the status bar with event, calling it directly causes performance degredation
 	DoSetStatusMessage(message, 1);
@@ -820,18 +834,6 @@ void LEditor::OnSciUpdateUI(wxScintillaEvent &event)
 	int end = PositionFromLine(curLine+1);
 	if (end >= pos && end < GetTextLength()) {
 		IndicatorClearRange(end, GetTextLength()-end);
-	}
-
-	switch ( GetEOLMode() ) {
-	case wxSCI_EOL_CR:
-		DoSetStatusMessage(wxT("EOL Mode: Mac"), 2);
-		break;
-	case wxSCI_EOL_CRLF:
-		DoSetStatusMessage(wxT("EOL Mode: Dos/Windows"), 2);
-		break;
-	default:
-		DoSetStatusMessage(wxT("EOL Mode: Unix"), 2);
-		break;
 	}
 
 	if (sel_text.IsEmpty()) {
@@ -1071,19 +1073,6 @@ bool LEditor::SaveToFile(const wxFileName &fileName)
 	wxString file_name = fileName.GetFullPath();
 	SendCmdEvent(wxEVT_FILE_SAVED, (void*)&file_name);
 	return true;
-}
-
-void LEditor::SetSyntaxHighlight(const wxString &lexerName)
-{
-	ClearDocumentStyle();
-	m_context = ContextManager::Get()->NewContext(this, lexerName);
-	m_rightClickMenu = m_context->GetMenu();
-	m_rightClickMenu->AppendSeparator(); // separates plugins
-	SetProperties();
-	UpdateColours();
-
-	SetEOL();
-	m_context->SetActive();
 }
 
 //this function is called before the debugger startup
@@ -1513,7 +1502,7 @@ void LEditor::SetActive()
 
 	SetFocus();
 	SetSCIFocus(true);
-
+	
 	m_context->SetActive();
 
 	wxScintillaEvent dummy;
@@ -1954,35 +1943,45 @@ bool LEditor::ReplaceAll()
 		txt = GetText();
 	}
 
+	bool replaceInSelectionOnly = m_findReplaceDlg->GetData().GetFlags() & wxFRD_SELECTIONONLY;
+
+	BeginUndoAction();
+	long savedPos = GetCurrentPos();
 	while ( StringFindReplacer::Search(txt, offset, findWhat, flags, pos, match_len, posInChars, match_lenInChars) ) {
+		// Manipulate the buffer
 		txt.Remove(posInChars, match_lenInChars);
 		txt.insert(posInChars, replaceWith);
+
+		// When not in 'selection only' update the editor buffer as well
+		if( !replaceInSelectionOnly ) {
+			SetSelectionStart(pos);
+			SetSelectionEnd  (pos + match_len);
+			ReplaceSelection (replaceWith);
+		}
+
 		m_findReplaceDlg->IncReplacedCount();
 		offset = pos + UTF8Length(replaceWith, replaceWith.length()); // match_len;
 	}
 
-	// replace the buffer
-	BeginUndoAction();
-	long savedPos = GetCurrentPos();
-
-	if ( m_findReplaceDlg->GetData().GetFlags() & wxFRD_SELECTIONONLY ) {
+	if ( replaceInSelectionOnly ) {
 		// replace the selection
 		ReplaceSelection(txt);
 
 		// place the caret at the end of the selection
 		SetCurrentPos(GetSelectionEnd());
 		EnsureCaretVisible();
+
 	} else {
-		SetText(txt);
+		// The editor buffer was already updated
 		// Restore the caret
 		SetCaretAt(savedPos);
 	}
 
 	EndUndoAction();
 
-	if ( m_findReplaceDlg->GetData().GetFlags() & wxFRD_SELECTIONONLY ) {
+	if ( replaceInSelectionOnly )
 		m_findReplaceDlg->ResetSelectionOnlyFlag();
-	}
+
 	m_findReplaceDlg->SetReplacementsMessage();
 	return m_findReplaceDlg->GetReplacedCount() > 0;
 }
@@ -2081,14 +2080,6 @@ void LEditor::ReloadFile()
 
 	SetReloadingFile( false );
 	ManagerST::Get()->GetBreakpointsMgr()->RefreshBreakpointsForEditor(this);
-//	IDebugger *dbgr = DebuggerMgr::Get().GetActiveDebugger();
-//	if(dbgr && dbgr->IsRunning() && ManagerST::Get()->DbgCanInteract()) {
-//		// Trigger a break list command, which in turn
-//		// will reply with a complete list of breakpoints and will cause
-//		// codelite to refresh the breakpoints on this editor (as well as
-//		// on all open editors)
-//		dbgr->BreakList();
-//	}
 }
 
 void LEditor::SetEditorText(const wxString &text)
@@ -2223,6 +2214,9 @@ void LEditor::OnContextMenu(wxContextMenuEvent &event)
 void LEditor::OnKeyDown(wxKeyEvent &event)
 {
 	//let the context process it as well
+	if(GetFunctionTip()->IsActive() && event.GetKeyCode() == WXK_ESCAPE)
+		GetFunctionTip()->Deactivate();
+		
 	if (IsCompletionBoxShown()) {
 		switch (event.GetKeyCode()) {
 		case WXK_NUMPAD_ENTER:
@@ -2343,8 +2337,9 @@ void LEditor::OnLeftDown(wxMouseEvent &event)
 {
 	// hide completion box
 	HideCompletionBox();
-
-	if( ManagerST::Get()->GetDisplayVariableDialog()->IsShown() )
+	GetFunctionTip()->Deactivate();
+	
+	if ( ManagerST::Get()->GetDisplayVariableDialog()->IsShown() )
 		ManagerST::Get()->GetDisplayVariableDialog()->HideDialog();
 
 #ifdef __WXMSW__
@@ -2536,14 +2531,14 @@ void LEditor::ToggleBreakpoint(int lineno)
 
 void LEditor::SetWarningMarker(int lineno)
 {
-	if(lineno >= 0) {
+	if (lineno >= 0) {
 		MarkerAdd(lineno, smt_warning);
 	}
 }
 
 void LEditor::SetErrorMarker(int lineno)
 {
-	if(lineno >= 0) {
+	if (lineno >= 0) {
 		MarkerAdd(lineno, smt_error);
 	}
 }
@@ -2712,12 +2707,6 @@ void LEditor::UpdateColours()
 		}
 	}
 
-	//colourise the document
-	int startLine = GetFirstVisibleLine();
-	int endLine =  startLine + LinesOnScreen();
-	if (endLine >= (GetLineCount() - 1))
-		endLine--;
-
 	Colourise(0, wxSCI_INVALID_POSITION);
 }
 
@@ -2756,7 +2745,7 @@ void LEditor::ShowCompletionBox(const std::vector<TagEntryPtr>& tags, const wxSt
 	// If the number of elements exceeds the maximum query result,
 	// alert the user
 	int limit ( TagsManagerST::Get()->GetDatabase()->GetSingleSearchLimit() );
-	if( tags.size() >= (size_t) limit ) {
+	if ( tags.size() >= (size_t) limit ) {
 		this->DoSetStatusMessage(wxString::Format(wxT("Too many items were found. Narrow your search criteria (Displaying %d)"), tags.size()), 0);
 	}
 
@@ -2777,7 +2766,7 @@ void LEditor::ShowCompletionBox(const std::vector<TagEntryPtr>& tags, const wxSt
 	// If the number of elements exceeds the maximum query result,
 	// alert the user
 	int limit ( TagsManagerST::Get()->GetDatabase()->GetSingleSearchLimit() );
-	if( tags.size() >= (size_t) limit ) {
+	if ( tags.size() >= (size_t) limit ) {
 		this->DoSetStatusMessage(wxString::Format(wxT("Too many items were found. Narrow your search criteria (Displaying %d)"), tags.size()), 0);
 	}
 
@@ -3169,6 +3158,7 @@ void LEditor::DoCancelCalltip()
 {
 	m_calltipType = ct_none;
 	CallTipCancel();
+	GetFunctionTip()->Deactivate();
 	// let the context process this as well
 	m_context->OnCalltipCancel();
 }
@@ -3334,7 +3324,7 @@ bool LEditor::DoFindAndSelect(const wxString& _pattern, const wxString& what, in
 	int match_len ( 0 ), pos ( 0 );
 
 	// set the caret at the document start
-	if(start_pos < 0 || start_pos > GetLength()) {
+	if (start_pos < 0 || start_pos > GetLength()) {
 		start_pos = 0;
 	}
 
@@ -3478,4 +3468,9 @@ bool LEditor::ReplaceAllExactMatch(const wxString& what, const wxString& replace
 
 	EndUndoAction();
 	return (matchCount > 0);
+}
+
+void LEditor::SetLexerName(const wxString& lexerName)
+{
+	SetSyntaxHighlight(lexerName);
 }

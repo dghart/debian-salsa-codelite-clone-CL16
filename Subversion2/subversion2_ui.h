@@ -185,20 +185,12 @@ class SvnPreferencesDialogBase : public wxDialog
 		wxTextCtrl* m_textCtrlIgnorePattern;
 		wxCheckBox* m_checkBoxAddToSvn;
 		wxCheckBox* m_checkBoxRetag;
+		wxCheckBox* m_checkBoxRenameFile;
 		wxPanel* m_panel4;
 		wxCheckBox* m_checkBoxUseExternalDiff;
 		wxStaticText* m_staticText10;
 		wxTextCtrl* m_textCtrlDiffViewer;
 		wxButton* m_buttonBrowseExtDiff;
-		wxStaticText* m_staticText11;
-		wxTextCtrl* m_textCtrlDiffViewerCommand;
-		
-		
-		wxStaticText* m_staticText16;
-		wxStaticText* m_staticText17;
-		
-		wxStaticText* m_staticText18;
-		wxStaticText* m_staticText19;
 		wxPanel* m_panel5;
 		wxStaticText* m_staticText20;
 		wxTextCtrl* m_textCtrlSSHClient;
@@ -206,6 +198,10 @@ class SvnPreferencesDialogBase : public wxDialog
 		wxStaticText* m_staticText21;
 		wxTextCtrl* m_textCtrlSshClientArgs;
 		wxStaticText* m_staticText22;
+		wxPanel* m_panel6;
+		wxCheckBox* m_checkBoxExposeRevisionMacro;
+		wxStaticText* m_staticText29;
+		wxTextCtrl* m_textCtrlMacroName;
 		wxButton* m_button8;
 		wxButton* m_button9;
 		
@@ -214,6 +210,7 @@ class SvnPreferencesDialogBase : public wxDialog
 		virtual void OnUseExternalDiffUI( wxUpdateUIEvent& event ) { event.Skip(); }
 		virtual void OnBrowseDiffViewer( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnBrowseSSHClient( wxCommandEvent& event ) { event.Skip(); }
+		virtual void OnAddRevisionMacroUI( wxUpdateUIEvent& event ) { event.Skip(); }
 		virtual void OnButtonOK( wxCommandEvent& event ) { event.Skip(); }
 		
 	
@@ -272,6 +269,7 @@ class SvnCheckoutDialogBase : public wxDialog
 		// Virtual event handlers, overide them in your derived class
 		virtual void OnCheckoutDirectoryText( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnBrowseDirectory( wxCommandEvent& event ) { event.Skip(); }
+		virtual void OnOK( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnOkUI( wxUpdateUIEvent& event ) { event.Skip(); }
 		
 	

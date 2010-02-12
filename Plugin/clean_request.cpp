@@ -69,7 +69,8 @@ void CleanRequest::Process(IManager *manager)
 	}
 	wxString             pname (proj->GetName());
 
-	BuilderPtr builder = bm->GetBuilder(wxT("GNU makefile for g++/gcc"));
+	//BuilderPtr builder = bm->GetBuilder(wxT("GNU makefile for g++/gcc"));
+	BuilderPtr builder = bm->GetSelectedBuilder();
 	if (m_info.GetProjectOnly()) {
 		cmd = builder->GetPOCleanCommand(m_info.GetProject(), m_info.GetConfiguration());
 	} else {
@@ -137,12 +138,11 @@ void CleanRequest::Process(IManager *manager)
 	}
 
 	//apply environment settings
-	EnvironmentConfig::Instance()->ApplyEnv( &om );
+	EnvSetter env(&om);
 	m_proc = CreateAsyncProcess(this, cmd);
 	if ( !m_proc ) {
 
 		//remove environment settings applied
-		EnvironmentConfig::Instance()->UnApplyEnv();
 		wxString message;
 		message << wxT("Failed to start clean process, command: ") << cmd << wxT(", process terminated with exit code: 0");
 		AppendLine(message);

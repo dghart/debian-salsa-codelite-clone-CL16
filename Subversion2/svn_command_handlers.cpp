@@ -51,19 +51,17 @@ void SvnUpdateHandler::Process(const wxString& output)
 
 void SvnDiffHandler::Process(const wxString& output)
 {
-	// Open an editor with the .diff file
-	wxFile fp;
-	wxString fileName = wxFileName::CreateTempFileName( wxT("svnDiff"), (wxFile*)&fp );
-
-	if(fileName.IsEmpty() == false && fp.IsOpened()) {
-		wxString modOutput (output);
-		modOutput.Replace(wxT("\r\n"), wxT("\n"));
-		fp.Write(modOutput);
-		fp.Close();
+	// Open the changes inside the editor only if we are not using an external 
+	// diff viewer
+	if(GetPlugin()->GetSettings().GetFlags() & SvnUseExternalDiff)
+		return;
+	
+	IEditor *editor = GetPlugin()->GetManager()->NewEditor();
+	if(editor) {
+		// Set the lexer name to 'Diff'
+		editor->SetLexerName(wxT("Diff"));
+		editor->AppendText(output);
 	}
-
-	wxRenameFile(fileName, fileName + wxT(".diff"));
-	GetPlugin()->GetManager()->OpenFile(fileName + wxT(".diff"));
 }
 
 void SvnPatchHandler::Process(const wxString& output)

@@ -58,7 +58,7 @@
 // Define the version string for this codelite
 //////////////////////////////////////////////
 extern wxChar *SvnRevision;
-wxString CODELITE_VERSION_STR = wxString::Format(wxT("v2.1.0.%s"), SvnRevision);
+wxString CODELITE_VERSION_STR = wxString::Format(wxT("v2.2.0.%s"), SvnRevision);
 
 #if defined(__WXMAC__)||defined(__WXGTK__)
 #include <signal.h> // sigprocmask
@@ -96,28 +96,16 @@ wxString MacGetBasePath()
 // helper method to draw the revision + version
 // on our splash screen
 //-------------------------------------------------
-static wxBitmap clDrawSplashBitmap(	const wxBitmap& bitmap,
-								    const wxString &mainTitle,
-									const wxString &subTitle)
+static wxBitmap clDrawSplashBitmap(const wxBitmap& bitmap, const wxString &mainTitle)
 {
 	wxBitmap bmp ( bitmap.GetWidth(), bitmap.GetHeight()  );
-
     wxMemoryDC dcMem;
-
-#ifdef USE_PALETTE_IN_SPLASH
-    bool hiColour = (wxDisplayDepth() >= 16) ;
-
-    if (bitmap.GetPalette() && !hiColour)
-    {
-        dcMem.SetPalette(* bitmap.GetPalette());
-    }
-#endif // USE_PALETTE_IN_SPLASH
-
+	
     dcMem.SelectObject( bmp );
 	dcMem.DrawBitmap  ( bitmap, 0, 0, true);
 
 	//write the main title & subtitle
-	wxCoord w, h, w1, h1;
+	wxCoord w, h;
 	wxFont font = wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT);
 	wxFont smallfont = wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT);
 	font.SetPointSize(12);
@@ -125,40 +113,26 @@ static wxBitmap clDrawSplashBitmap(	const wxBitmap& bitmap,
 	dcMem.SetFont(font);
 	dcMem.GetMultiLineTextExtent(mainTitle, &w, &h);
 	wxCoord bmpW = bitmap.GetWidth();
-	wxCoord bmpH = bitmap.GetHeight();
 
 	//draw shadow
-	dcMem.SetTextForeground(wxT("LIGHT GRAY"));
-
-	dcMem.DrawText(mainTitle, bmpW - w - 9, 11);
-	//draw the text
-	dcMem.SetTextForeground(wxT("BLACK"));
-	dcMem.SetFont(font);
-
-	//draw the main title
-	wxCoord textX = bmpW - w - 10;
-	wxCoord textY = 10;
-	dcMem.DrawText(mainTitle, textX, textY);
-
-	//draw the subtitle
-	dcMem.SetFont(smallfont);
 	dcMem.SetTextForeground(wxT("WHITE"));
-	dcMem.GetMultiLineTextExtent(subTitle, &w1, &h1);
-
-	wxCoord stextX = textX + (w - w1)/2;
-	wxCoord stextY = bmpH - h1 - 10;
-
-	dcMem.DrawText(subTitle, stextX, stextY);
+	
+	wxCoord textX = (bmpW - w)/2;
+	dcMem.DrawText(mainTitle, textX, 11);
 	dcMem.SelectObject(wxNullBitmap);
-
-#ifdef USE_PALETTE_IN_SPLASH
-    if (bitmap.GetPalette() && !hiColour)
-    {
-        dcMem.SetPalette(wxNullPalette);
-    }
-#endif // USE_PALETTE_IN_SPLASH
 	return bmp;
 }
+
+//-----------------------------------------------------
+// Splashscreen
+//-----------------------------------------------------
+class clSplashScreen : public wxSplashScreen
+{
+public:
+	clSplashScreen(const wxBitmap& bmp) : wxSplashScreen(bmp, wxSPLASH_CENTRE_ON_SCREEN|wxSPLASH_TIMEOUT, 5000, NULL, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxBORDER_SIMPLE| wxFRAME_NO_TASKBAR| wxSTAY_ON_TOP)
+	{
+	}
+};
 
 #if wxVERSION_NUMBER < 2900
 static const wxCmdLineEntryDesc cmdLineDesc[] = {
@@ -407,25 +381,21 @@ bool App::OnInit()
 				rk.QueryValue(wxT("mingw"), strMingw);
 			}
 
-			long up(0);
-			if( !cfg->GetLongValue(wxT("UpdateWxPaths"), up)){
-				if(strWx.IsEmpty() == false) {
-					// we have WX installed on this machine, set the path of WXWIN & WXCFG to point to it
-					EvnVarList vars;
-					EnvironmentConfig::Instance()->Load();
+			EvnVarList vars;
+			EnvironmentConfig::Instance()->Load();
+			EnvironmentConfig::Instance()->ReadObject(wxT("Variables"), &vars);
 
-					EnvironmentConfig::Instance()->ReadObject(wxT("Variables"), &vars);
-					StringMap varMap = vars.GetVariables();
-					varMap[wxT("WXWIN")] = strWx;
-					varMap[wxT("WXCFG")] = wxT("gcc_dll\\mswu");
+			if(strWx.IsEmpty() == false) {
+				// we have WX installed on this machine, set the path of WXWIN & WXCFG to point to it
+				std::map<wxString, wxString> envs = vars.GetVariables(wxT("Default"));
+				if(envs.find(wxT("WXWIN")) == envs.end())
+					vars.AddVariable(wxT("Default"), wxT("WXWIN"), strWx);
 
-					vars.SetVariables(varMap);
+				if(envs.find(wxT("WXCFG")) == envs.end())
+					vars.AddVariable(wxT("Default"), wxT("WXCFG"), wxT("gcc_dll\\mswu"));
 
-					EnvironmentConfig::Instance()->WriteObject(wxT("Variables"), &vars);
-					cfg->SaveLongValue(wxT("UpdateWxPaths"), 1);
-
-					wxSetEnv(wxT("WX_INCL_HOME"), strWx + wxT("\\include"));
-				}
+				EnvironmentConfig::Instance()->WriteObject(wxT("Variables"), &vars);
+				wxSetEnv(wxT("WX_INCL_HOME"), strWx + wxT("\\include"));
 			}
 
 			if(strMingw.IsEmpty() == false) {
@@ -445,25 +415,18 @@ bool App::OnInit()
 	cfg->ReadObject(wxT("GeneralInfo"), &inf);
 
 	bool showSplash = inf.GetFlags() & CL_SHOW_SPLASH ? true : false;
-
-	// Dont show splashscreen in debug build, its annoying
-#ifdef __WXDEBUG__
-	showSplash = false;
-#endif
-
+	
+	m_splash = NULL;
 	if (showSplash) {
 		wxBitmap bitmap;
 		wxString splashName(mgr->GetStarupDirectory() + wxT("/images/splashscreen.png"));
 		if (bitmap.LoadFile(splashName, wxBITMAP_TYPE_PNG)) {
 			wxString mainTitle = CODELITE_VERSION_STR;
-			wxBitmap splash = clDrawSplashBitmap(bitmap, mainTitle, wxT(""));
-			m_splash = new wxSplashScreen(splash,
-			                            wxSPLASH_CENTRE_ON_SCREEN|wxSPLASH_TIMEOUT,
-			                            2000, NULL, wxID_ANY);
-			wxTheApp->Yield();
+			wxBitmap splash = clDrawSplashBitmap(bitmap, mainTitle);
+			m_splash = new clSplashScreen(splash);
 		}
 	}
-
+	
 	// Create the main application window (a dialog in this case)
 	// NOTE: Vertical dimension comprises the caption bar.
 	//       Horizontal dimension has to take into account the thin
@@ -476,11 +439,6 @@ bool App::OnInit()
 	ManagerST::Get()->UpdateMenuAccelerators();
 	m_pMainFrame->Show(TRUE);
 	SetTopWindow(m_pMainFrame);
-
-	if ( showSplash ) {
-		m_splash->Close(true);
-		m_splash->Destroy();
-	}
 
 	long lineNumber(0);
 	parser.Found(wxT("l"), &lineNumber);
@@ -634,3 +592,4 @@ bool App::CheckSingularity(const wxCmdLineParser &parser, const wxString &curdir
 	}
 	return true;
 }
+

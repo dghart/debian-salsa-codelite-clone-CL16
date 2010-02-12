@@ -23,6 +23,9 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 #include <wx/tokenzr.h>
+#include "build_settings_config.h"
+#include "environmentconfig.h"
+#include "evnvarlist.h"
 #include "pluginmanager.h"
 #include "workspacesettingsdlg.h"
 #include "importfilesdialog.h"
@@ -550,8 +553,7 @@ void FileViewTree::OnExportMakefile( wxCommandEvent &event )
 	wxTreeItemId item = GetSingleSelection();
 	if ( item.IsOk() ) {
 		wxString projectName, errMsg;
-		//TODO:: make the builder name configurable
-		BuilderPtr builder = BuildManagerST::Get()->GetBuilder( wxT( "GNU makefile for g++/gcc" ) );
+		BuilderPtr builder = BuildManagerST::Get()->GetSelectedBuilder(); // use current builder 
 		projectName = GetItemText( item );
 		if ( !builder->Export( projectName, wxEmptyString, false, true, errMsg ) ) {
 			wxMessageBox( errMsg, wxT( "CodeLite" ), wxICON_HAND );
@@ -1840,16 +1842,11 @@ void FileViewTree::OnRebuildProjectOnly(wxCommandEvent& event)
 void FileViewTree::OnLocalWorkspaceSettings(wxCommandEvent& e)
 {
 	bool retagRequires;
-	wxArrayString includePaths, excludePaths;
-	LocalWorkspaceST::Get()->GetParserPaths(includePaths, excludePaths);
-
-	WorkspaceSettingsDlg dlg(Frame::Get(), includePaths, excludePaths);
+	WorkspaceSettingsDlg dlg(Frame::Get(), LocalWorkspaceST::Get());
 	if(dlg.ShowModal() == wxID_OK) {
+		
+		Frame::Get()->SetEnvStatusMessage();
 		// Update the new paths
-		wxArrayString localIncludePaths = dlg.GetIncludePaths();
-		wxArrayString localExcludePaths = dlg.GetExcludePaths();
-
-		LocalWorkspaceST::Get()->SetParserPaths(localIncludePaths, localExcludePaths);
 		retagRequires = ManagerST::Get()->UpdateParserPaths();
 
 		// send notification to the main frame to perform retag

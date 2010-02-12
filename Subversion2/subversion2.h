@@ -2,6 +2,7 @@
 #define __Subversion2__
 
 #include "plugin.h"
+#include "svninfo.h"
 #include "commitmessagescache.h"
 #include "svncommand.h"
 #include "svnsettingsdata.h"
@@ -47,8 +48,16 @@ protected:
 	void OnIgnoreFilePattern(wxCommandEvent &event);
 	void OnSelectAsView     (wxCommandEvent &event);
 
+	///////////////////////////////////////////////////////////
+	// IDE events
+	///////////////////////////////////////////////////////////
+	void OnGetCompileLine   (wxCommandEvent &event);
+
 	wxMenu* CreateFileExplorerPopMenu();
-	bool    IsSubversionViewDetached();
+	bool    IsSubversionViewDetached ();
+public:
+	void    DoGetSvnInfoSync         (SvnInfo& svnInfo, const wxString &workingDirectory);
+
 public:
 	Subversion2(IManager *manager);
 	~Subversion2();
@@ -78,7 +87,7 @@ public:
 	void            SetSettings(SvnSettingsData& ssd);
 	wxString        GetSvnExeName(bool nonInteractive = true);
 	wxString        GetUserConfigDir();
-	void            UpdateIgnorePatterns();
+	void            RecreateLocalSvnConfigFile();
 	void            Patch(bool dryRun, const wxString &workingDirectory, wxEvtHandler *owner, int id);
 	void            IgnoreFiles(const wxArrayString& files, bool pattern);
 	void            Blame(wxCommandEvent& event, const wxArrayString &files);
@@ -87,12 +96,16 @@ public:
 		this->m_svnClientVersion = svnClientVersion;
 	}
 
+	double GetSvnClientVersion() const {
+		return m_svnClientVersion;
+	}
 	CommitMessagesCache& GetCommitMessagesCache() {
 		return m_commitMessagesCache;
 	}
 
-	bool LoginIfNeeded        (wxCommandEvent &event, wxString& loginString);
+	bool LoginIfNeeded        (wxCommandEvent &event, const wxString &workingDirectory, wxString& loginString);
 	bool GetNonInteractiveMode(wxCommandEvent &event);
+	bool IsPathUnderSvn       (const wxString &path);
 
 protected:
 	void DoInitialize();

@@ -48,6 +48,7 @@
 
 class wxFindReplaceDialog;
 class CCBox;
+class clEditorTipWindow;
 
 enum sci_annotation_styles {
 	eAnnotationStyleError = 128, eAnnotationStyleWarning
@@ -132,6 +133,7 @@ class LEditor : public wxScintilla, public IEditor
 	bool                                        m_reloadingFile;
 	bool                                        m_disableSmartIndent;
 	bool                                        m_disableSemicolonShift;
+	clEditorTipWindow*                        m_functionTip;
 
 public:
 	static FindReplaceData &GetFindReplaceData() {
@@ -145,6 +147,9 @@ public:
 		return m_reloadingFile;
 	}
 
+	clEditorTipWindow* GetFunctionTip() {
+		return m_functionTip;
+	}
 public:
 	/// Construct a LEditor object
 	LEditor(wxWindow* parent);
@@ -163,6 +168,9 @@ public:
 		this->m_disableSmartIndent = disableSmartIndent;
 	}
 
+	bool GetDisableSmartIndent() const {
+		return m_disableSmartIndent;
+	}
 	/**
 	 * @brief set the EOL mode of the file by applying this logic:
 	 * - if the file has content, use the current cotext EOL
@@ -515,6 +523,8 @@ public:
 	virtual void ReplaceSelection(const wxString &text);
 	virtual wxString GetSelection();
 	virtual void SelectText(int startPos, int len);
+
+	virtual void SetLexerName(const wxString &lexerName);
 
 	// User Indicators API
 	virtual void SetUserIndicatorStyleAndColour(int style, const wxColour &colour);

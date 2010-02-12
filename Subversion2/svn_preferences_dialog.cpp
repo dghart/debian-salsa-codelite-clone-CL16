@@ -14,28 +14,33 @@ SvnPreferencesDialog::SvnPreferencesDialog( wxWindow* parent, Subversion2 *plugi
 	ssd = m_plugin->GetSettings();
 
 	m_textCtrlDiffViewer->SetValue(ssd.GetExternalDiffViewer());
-	m_textCtrlDiffViewerCommand->SetValue(ssd.GetExternalDiffViewerCommand());
 	m_textCtrlIgnorePattern->SetValue(ssd.GetIgnoreFilePattern());
 	m_textCtrlSshClientArgs->SetValue(ssd.GetSshClientArgs());
 	m_textCtrlSSHClient->SetValue(ssd.GetSshClient());
 	m_textCtrlSvnExecutable->SetValue(ssd.GetExecutable());
+	m_textCtrlMacroName->SetValue(ssd.GetRevisionMacroName());
 
 	m_checkBoxAddToSvn->SetValue( ssd.GetFlags() & SvnAddFileToSvn );
 	m_checkBoxRetag->SetValue( ssd.GetFlags() & SvnRetagWorkspace );
 	m_checkBoxUseExternalDiff->SetValue( ssd.GetFlags() & SvnUseExternalDiff );
+	m_checkBoxExposeRevisionMacro->SetValue( ssd.GetFlags() & SvnExposeRevisionMacro );
+	m_checkBoxRenameFile->SetValue( ssd.GetFlags() & SvnRenameFileInRepo );
+
 	WindowAttrManager::Load(this, wxT("SvnPreferencesDialog"), m_plugin->GetManager()->GetConfigTool());
-	
+
 	wxImageList *imgList = new wxImageList(32, 32, true);
 	imgList->Add(m_plugin->LoadBitmapFile(wxT("svn_settings.png")));
 	imgList->Add(m_plugin->LoadBitmapFile(wxT("svn_diff.png")));
 	imgList->Add(m_plugin->LoadBitmapFile(wxT("svn_ssh.png")));
-	
+	imgList->Add(m_plugin->LoadBitmapFile(wxT("connect_no.png")));
+
 	m_notebook->AssignImageList( imgList );
 	m_notebook->SetPageImage(0, 0);
 	m_notebook->SetPageImage(1, 1);
 	m_notebook->SetPageImage(2, 2);
+	m_notebook->SetPageImage(3, 3);
 	m_notebook->Refresh();
-	
+
 }
 
 SvnPreferencesDialog::~SvnPreferencesDialog()
@@ -90,24 +95,33 @@ void SvnPreferencesDialog::OnButtonOK(wxCommandEvent& event)
 
 	SvnSettingsData ssd;
 	ssd.SetExternalDiffViewer(m_textCtrlDiffViewer->GetValue());
-	ssd.SetExternalDiffViewerCommand(m_textCtrlDiffViewerCommand->GetValue());
 	ssd.SetIgnoreFilePattern(m_textCtrlIgnorePattern->GetValue());
 	ssd.SetSshClient(m_textCtrlSSHClient->GetValue());
 	ssd.SetSshClientArgs(m_textCtrlSshClientArgs->GetValue());
 	ssd.SetExecutable(m_textCtrlSvnExecutable->GetValue());
+	ssd.SetRevisionMacroName(m_textCtrlMacroName->GetValue());
 	size_t flags(0);
 
-	if(m_checkBoxAddToSvn->IsChecked()) {
+	if (m_checkBoxAddToSvn->IsChecked()) {
 		flags |= SvnAddFileToSvn;
 	}
 
-	if(m_checkBoxRetag->IsChecked()) {
+	if (m_checkBoxRetag->IsChecked()) {
 		flags |= SvnRetagWorkspace;
 	}
 
-	if(m_checkBoxUseExternalDiff->IsChecked()) {
+	if (m_checkBoxUseExternalDiff->IsChecked()) {
 		flags |= SvnUseExternalDiff;
 	}
+
+	if (m_checkBoxExposeRevisionMacro->IsChecked()) {
+		flags |= SvnExposeRevisionMacro;
+	}
+
+	if (m_checkBoxRenameFile->IsChecked()) {
+		flags |= SvnRenameFileInRepo;
+	}
+
 	ssd.SetFlags(flags);
 	m_plugin->SetSettings( ssd );
 }
@@ -115,4 +129,9 @@ void SvnPreferencesDialog::OnButtonOK(wxCommandEvent& event)
 void SvnPreferencesDialog::OnUseExternalDiffUI(wxUpdateUIEvent& event)
 {
 	event.Enable(m_checkBoxUseExternalDiff->IsChecked());
+}
+
+void SvnPreferencesDialog::OnAddRevisionMacroUI(wxUpdateUIEvent& event)
+{
+	event.Enable(m_checkBoxExposeRevisionMacro->IsChecked());
 }

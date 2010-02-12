@@ -319,6 +319,12 @@ public:
 	void GetFiles(std::vector<wxFileName> &files, bool absPath = false);
 
 	/**
+	 * Return list of files in this project as a wxString in blank separated format.
+	 * \param files
+	 */
+	wxString GetFiles(bool absPath = false);	
+
+	/**
 	 * Return list of files in this project - in both absolute and relative path
 	 * \param files relative paths
 	 * \param absFiles absolute paths
@@ -496,7 +502,13 @@ private:
 	 * Return list of projects that this projects depends on
 	 */
 	wxArrayString GetDependencies() const;
-
+	
+	/**
+	 * @brief convert all the files paths to Unix format
+	 * @param parent
+	 */
+	void ConvertToUnixFormat(wxXmlNode *parent);
+	
 	bool SaveXmlFile();
 };
 

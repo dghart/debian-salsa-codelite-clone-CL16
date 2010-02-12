@@ -9,7 +9,6 @@
 #include "svn_login_dialog.h"
 #include "svn_command_handlers.h"
 #include "svn_copy_dialog.h"
-#include "svninfohandler.h"
 #include "commit_dialog.h"
 #include "svn_default_command_handler.h"
 #include <wx/menu.h>
@@ -47,6 +46,7 @@ BEGIN_EVENT_TABLE(SubversionView, SubversionPageBase)
 	EVT_MENU(XRCID("svn_ignore_file"),        SubversionView::OnIgnoreFile)
 	EVT_MENU(XRCID("svn_ignore_file_pattern"),SubversionView::OnIgnoreFilePattern)
 	EVT_MENU(XRCID("svn_blame"),              SubversionView::OnBlame)
+	EVT_MENU(XRCID("svn_checkout"),           SubversionView::OnCheckout)
 
 END_EVENT_TABLE()
 
@@ -164,7 +164,6 @@ void SubversionView::CreatGUIControls()
 	tb->Connect(XRCID("svn_cleanup"),      wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(SubversionView::OnCleanup),     NULL, this);
 	tb->Connect(XRCID("svn_info"),         wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(SubversionView::OnShowSvnInfo), NULL, this);
 	tb->Connect(XRCID("svn_refresh"),      wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(SubversionView::OnRefreshView), NULL, this);
-	tb->Connect(XRCID("svn_checkout"),     wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(SubversionView::OnCheckout),    NULL, this);
 	tb->Connect(XRCID("svn_settings"),     wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(SubversionView::OnSettings),    NULL, this);
 
 	wxSizer *sz = GetSizer();
@@ -466,7 +465,7 @@ void SubversionView::OnUpdate(wxCommandEvent& event)
 {
 	wxString command;
 	wxString loginString;
-	if(m_plugin->LoginIfNeeded(event, loginString) == false) {
+	if(m_plugin->LoginIfNeeded(event, m_textCtrlRootDir->GetValue(), loginString) == false) {
 		return;
 	}
 	bool nonInteractive = m_plugin->GetNonInteractiveMode(event);
@@ -479,14 +478,19 @@ void SubversionView::OnUpdate(wxCommandEvent& event)
 		}
 	}
 
-	m_plugin->GetConsole()->Execute(command, m_textCtrlRootDir->GetValue(), new SvnUpdateHandler(m_plugin, event.GetId(), this), loginString.IsEmpty());
+	m_plugin->GetConsole()->Execute(command, m_textCtrlRootDir->GetValue(), new SvnUpdateHandler(m_plugin, event.GetId(), this));
 }
 
 void SubversionView::OnCommit(wxCommandEvent& event)
 {
 	wxString command;
+	wxString loginString;
+	if(m_plugin->LoginIfNeeded(event, m_textCtrlRootDir->GetValue(), loginString) == false) {
+		return;
+	}
 
-	// Pope the "Commit Dialog" dialog
+	bool nonInteractive = m_plugin->GetNonInteractiveMode(event);
+	command << m_plugin->GetSvnExeName(nonInteractive) << loginString << wxT(" commit ");
 
 	CommitDialog dlg(m_plugin->GetManager()->GetTheApp()->GetTopWindow(), m_selectionInfo.m_paths, m_plugin);
 	if (dlg.ShowModal() == wxID_OK) {
@@ -494,12 +498,6 @@ void SubversionView::OnCommit(wxCommandEvent& event)
 		if (m_selectionInfo.m_paths.IsEmpty())
 			return;
 
-		wxString loginString;
-		if(m_plugin->LoginIfNeeded(event, loginString) == false) {
-			return;
-		}
-		bool nonInteractive = m_plugin->GetNonInteractiveMode(event);
-		command << m_plugin->GetSvnExeName(nonInteractive) << loginString << wxT(" commit ");
 
 		for (size_t i=0; i<m_selectionInfo.m_paths.GetCount(); i++) {
 			command << wxT("\"") << m_selectionInfo.m_paths.Item(i) << wxT("\" ");
@@ -508,7 +506,7 @@ void SubversionView::OnCommit(wxCommandEvent& event)
 		command << wxT(" -m \"");
 		command << dlg.GetMesasge();
 		command << wxT("\"");
-		m_plugin->GetConsole()->Execute(command, m_textCtrlRootDir->GetValue(), new SvnCommitHandler(m_plugin, event.GetId(), this), loginString.IsEmpty());
+		m_plugin->GetConsole()->Execute(command, m_textCtrlRootDir->GetValue(), new SvnCommitHandler(m_plugin, event.GetId(), this));
 	}
 }
 
@@ -517,7 +515,7 @@ void SubversionView::OnAdd(wxCommandEvent& event)
 {
 	wxString command;
 	wxString loginString;
-	if(m_plugin->LoginIfNeeded(event, loginString) == false) {
+	if(m_plugin->LoginIfNeeded(event, m_textCtrlRootDir->GetValue(), loginString) == false) {
 		return;
 	}
 
@@ -529,14 +527,14 @@ void SubversionView::OnAdd(wxCommandEvent& event)
 		command << wxT("\"") << m_selectionInfo.m_paths.Item(i) << wxT("\" ");
 	}
 
-	m_plugin->GetConsole()->Execute(command, m_textCtrlRootDir->GetValue(), new SvnDefaultCommandHandler(m_plugin, event.GetId(), this), loginString.IsEmpty());
+	m_plugin->GetConsole()->Execute(command, m_textCtrlRootDir->GetValue(), new SvnDefaultCommandHandler(m_plugin, event.GetId(), this));
 }
 
 void SubversionView::OnRevert(wxCommandEvent& event)
 {
 	wxString command;
 	wxString loginString;
-	if(m_plugin->LoginIfNeeded(event, loginString) == false) {
+	if(m_plugin->LoginIfNeeded(event, m_textCtrlRootDir->GetValue(), loginString) == false) {
 		return;
 	}
 	command << m_plugin->GetSvnExeName(false) << loginString << wxT(" revert --recursive ");
@@ -549,7 +547,7 @@ void SubversionView::OnRevert(wxCommandEvent& event)
 	} else {
 		command << wxT(".");
 	}
-	m_plugin->GetConsole()->Execute(command, m_textCtrlRootDir->GetValue(), new SvnDefaultCommandHandler(m_plugin, event.GetId(), this), loginString.IsEmpty());
+	m_plugin->GetConsole()->Execute(command, m_textCtrlRootDir->GetValue(), new SvnDefaultCommandHandler(m_plugin, event.GetId(), this));
 }
 
 void SubversionView::OnBranch(wxCommandEvent& event)
@@ -557,7 +555,39 @@ void SubversionView::OnBranch(wxCommandEvent& event)
 	wxString command;
 	command << m_plugin->GetSvnExeName() << wxT("info --xml ");
 
-	m_simpleCommand.Execute(command, m_textCtrlRootDir->GetValue(), new SvnInfoHandler(m_plugin, SvnInfo_Branch, event.GetId(), this));
+	SvnInfo svnInfo;
+	m_plugin->DoGetSvnInfoSync(svnInfo, m_textCtrlRootDir->GetValue());
+
+	command.Clear();
+	wxString loginString;
+	if(m_plugin->LoginIfNeeded(event, m_textCtrlRootDir->GetValue(), loginString) == false) {
+		return;
+	}
+
+	// Prompt user for URLs + comment
+	SvnCopyDialog dlg(m_plugin->GetManager()->GetTheApp()->GetTopWindow());
+
+	dlg.SetTitle(wxT("Create Branch"));
+	dlg.SetSourceURL(svnInfo.m_sourceUrl);
+	dlg.SetTargetURL(svnInfo.m_sourceUrl);
+
+	if (dlg.ShowModal() == wxID_OK) {
+		command.Clear();
+		// Prepare the 'copy' command
+		bool nonInteractive = m_plugin->GetNonInteractiveMode(event);
+		command
+		<< m_plugin->GetSvnExeName(nonInteractive)
+		<< loginString
+		<< wxT(" copy ")
+		<< dlg.GetSourceURL()
+		<< wxT(" ")
+		<< dlg.GetTargetURL()
+		<< wxT(" -m \"")
+		<< dlg.GetMessage()
+		<< wxT("\"");
+
+		m_plugin->GetConsole()->Execute(command, m_textCtrlRootDir->GetValue(), new SvnDefaultCommandHandler(m_plugin, event.GetId(), this));
+	}
 }
 
 void SubversionView::OnTag(wxCommandEvent& event)
@@ -565,14 +595,47 @@ void SubversionView::OnTag(wxCommandEvent& event)
 	wxString command;
 	command << m_plugin->GetSvnExeName() << wxT("info --xml ");
 
-	m_simpleCommand.Execute(command, m_textCtrlRootDir->GetValue(), new SvnInfoHandler(m_plugin, SvnInfo_Tag, event.GetId(), this));
+	SvnInfo svnInfo;
+	m_plugin->DoGetSvnInfoSync(svnInfo, m_textCtrlRootDir->GetValue());
+
+	// Prompt the login dialog now
+	command.Clear();
+	wxString loginString;
+	if(m_plugin->LoginIfNeeded(event, m_textCtrlRootDir->GetValue(), loginString) == false) {
+		return;
+	}
+
+	// Prompt user for URLs + comment
+	SvnCopyDialog dlg(m_plugin->GetManager()->GetTheApp()->GetTopWindow());
+
+	dlg.SetTitle(wxT("Create Tag"));
+	dlg.SetSourceURL(svnInfo.m_sourceUrl);
+	dlg.SetTargetURL(svnInfo.m_sourceUrl);
+
+	if (dlg.ShowModal() == wxID_OK) {
+		// Prepare the 'copy' command
+		bool nonInteractive = m_plugin->GetNonInteractiveMode(event);
+		command.Clear();
+		command
+		<< m_plugin->GetSvnExeName(nonInteractive)
+		<< loginString
+		<< wxT(" copy ")
+		<< dlg.GetSourceURL()
+		<< wxT(" ")
+		<< dlg.GetTargetURL()
+		<< wxT(" -m \"")
+		<< dlg.GetMessage()
+		<< wxT("\"");
+
+		m_plugin->GetConsole()->Execute(command, m_textCtrlRootDir->GetValue(), new SvnDefaultCommandHandler(m_plugin, event.GetId(), this));
+	}
 }
 
 void SubversionView::OnDelete(wxCommandEvent& event)
 {
 	wxString command;
 	wxString loginString;
-	if(m_plugin->LoginIfNeeded(event, loginString) == false) {
+	if(m_plugin->LoginIfNeeded(event, m_textCtrlRootDir->GetValue(), loginString) == false) {
 		return;
 	}
 	bool nonInteractive = m_plugin->GetNonInteractiveMode(event);
@@ -583,14 +646,14 @@ void SubversionView::OnDelete(wxCommandEvent& event)
 		command << wxT("\"") << m_selectionInfo.m_paths.Item(i) << wxT("\" ");
 	}
 
-	m_plugin->GetConsole()->Execute(command, m_textCtrlRootDir->GetValue(), new SvnDefaultCommandHandler(m_plugin, event.GetId(), this), loginString.IsEmpty());
+	m_plugin->GetConsole()->Execute(command, m_textCtrlRootDir->GetValue(), new SvnDefaultCommandHandler(m_plugin, event.GetId(), this));
 }
 
 void SubversionView::OnResolve(wxCommandEvent& event)
 {
 	wxString command;
 	wxString loginString;
-	if(m_plugin->LoginIfNeeded(event, loginString) == false) {
+	if(m_plugin->LoginIfNeeded(event, m_textCtrlRootDir->GetValue(), loginString) == false) {
 		return;
 	}
 
@@ -602,11 +665,18 @@ void SubversionView::OnResolve(wxCommandEvent& event)
 		command << wxT("\"") << m_selectionInfo.m_paths.Item(i) << wxT("\" ");
 	}
 
-	m_plugin->GetConsole()->Execute(command, m_textCtrlRootDir->GetValue(), new SvnDefaultCommandHandler(m_plugin, event.GetId(), this), loginString.IsEmpty());
+	m_plugin->GetConsole()->Execute(command, m_textCtrlRootDir->GetValue(), new SvnDefaultCommandHandler(m_plugin, event.GetId(), this));
 }
 
 void SubversionView::OnDiff(wxCommandEvent& event)
 {
+	wxString loginString;
+	if(m_plugin->LoginIfNeeded(event, m_textCtrlRootDir->GetValue(), loginString) == false) {
+		return;
+	}
+
+	bool nonInteractive = m_plugin->GetNonInteractiveMode(event);
+
 	wxString diffAgainst(wxT("BASE"));
 	diffAgainst = wxGetTextFromUser(wxT("Insert base revision to diff against:"), wxT("Diff against"), wxT("BASE"), m_plugin->GetManager()->GetTheApp()->GetTopWindow());
 	if (diffAgainst.empty()) {
@@ -614,45 +684,13 @@ void SubversionView::OnDiff(wxCommandEvent& event)
 		diffAgainst = wxT("BASE");
 	}
 
-	bool     useExtDiff = m_plugin->GetSettings().GetFlags() & SvnUseExternalDiff;
-	wxString extDiff    = m_plugin->GetSettings().GetExternalDiffViewer();
-	extDiff.Trim().Trim(false);
-
-	// Only use external diff viewer when the selected file is equal to 1 and the selection is a file!
-	if ( useExtDiff && extDiff.IsEmpty() == false && m_selectionInfo.m_paths.GetCount() == 1 && m_selectionInfo.m_selectionType == SvnTreeData::SvnNodeTypeFile ) {
-		wxString extDiffCmd = m_plugin->GetSettings().GetExternalDiffViewerCommand();
-
-		// export BASE revision of file to tmp file
-		const wxString& base = wxFileName::CreateTempFileName( wxT("svnExport"), (wxFile*)NULL );
-		::wxRemoveFile( base ); // just want the name, not the file.
-		wxString exportCmd;
-		exportCmd << m_plugin->GetSvnExeName();
-		exportCmd << wxT("export -r ") << diffAgainst << wxT(" \"") << m_selectionInfo.m_paths.Item(0) << wxT("\" ") << base;
-
-		// Launch export command
-		wxArrayString output;
-		ProcUtils::ExecuteCommand(exportCmd, output);
-
-		// We now got 2 files:
-		// m_selectionInfo.m_paths.Item(0) and 'base'
-		extDiffCmd.Replace(wxT("$(MyFile)"),       wxString::Format( wxT("\"%s\""), m_selectionInfo.m_paths.Item(0).c_str()));
-		extDiffCmd.Replace(wxT("$(OriginalFile)"), wxString::Format( wxT("\"%s\""), base.c_str()));
-
-		wxString command;
-		command << wxT("\"") << extDiff << wxT("\" ") << extDiffCmd;
-
-		// Launch the external diff
-		m_plugin->GetConsole()->AppendText(command + wxT("\n"));
-		m_diffCommand.Execute(command, m_textCtrlRootDir->GetValue(), NULL);
-	} else {
-		// Simple diff
-		wxString command;
-		command << m_plugin->GetSvnExeName() << wxT("diff -r") << diffAgainst << wxT(" ");
-		for (size_t i=0; i<m_selectionInfo.m_paths.GetCount(); i++) {
-			command << wxT("\"") << m_selectionInfo.m_paths.Item(i) << wxT("\" ");
-		}
-		m_plugin->GetConsole()->Execute(command, m_textCtrlRootDir->GetValue(), new SvnDiffHandler(m_plugin, event.GetId(), this), true, false);
+	// Simple diff
+	wxString command;
+	command << m_plugin->GetSvnExeName(nonInteractive) << loginString << wxT(" diff -r") << diffAgainst << wxT(" ");
+	for (size_t i=0; i<m_selectionInfo.m_paths.GetCount(); i++) {
+		command << wxT("\"") << m_selectionInfo.m_paths.Item(i) << wxT("\" ");
 	}
+	m_plugin->GetConsole()->Execute(command, m_textCtrlRootDir->GetValue(), new SvnDiffHandler(m_plugin, event.GetId(), this), false);
 }
 
 void SubversionView::OnPatch(wxCommandEvent& event)
@@ -663,56 +701,6 @@ void SubversionView::OnPatch(wxCommandEvent& event)
 void SubversionView::OnPatchDryRun(wxCommandEvent& event)
 {
 	m_plugin->Patch(true, m_textCtrlRootDir->GetValue(), this, event.GetId());
-}
-
-void SubversionView::OnSvnInfo(const SvnInfo& svnInfo, int reason)
-{
-	if (reason == SvnInfo_Info ) {
-		SvnInfoDialog dlg(m_plugin->GetManager()->GetTheApp()->GetTopWindow());
-		dlg.m_textCtrlAuthor->SetValue( svnInfo.m_author );
-		dlg.m_textCtrlDate->SetValue( svnInfo.m_date );
-		dlg.m_textCtrlRevision->SetValue( svnInfo.m_revision );
-		dlg.m_textCtrlRootURL->SetValue( svnInfo.m_url );
-		dlg.m_textCtrlURL->SetValue( svnInfo.m_sourceUrl );
-		dlg.ShowModal();
-
-	} else {
-
-		SvnCopyDialog dlg(m_plugin->GetManager()->GetTheApp()->GetTopWindow());
-
-		wxString baseUrlNoTrunk (svnInfo.m_sourceUrl);
-		svnInfo.m_sourceUrl.EndsWith(wxT("trunk"), &baseUrlNoTrunk);
-
-		switch (reason) {
-
-		default:
-		case SvnInfo_Tag:
-			dlg.SetTitle(wxT("Create Tag"));
-			dlg.SetSourceURL(svnInfo.m_sourceUrl);
-			dlg.SetTargetURL(baseUrlNoTrunk + wxT("tags/"));
-			break;
-
-		case SvnInfo_Branch:
-			dlg.SetTitle(wxT("Create Branch"));
-			dlg.SetSourceURL(svnInfo.m_sourceUrl);
-			dlg.SetTargetURL(baseUrlNoTrunk + wxT("branches/"));
-			break;
-
-		}
-		if (dlg.ShowModal() == wxID_OK) {
-
-			wxString command;
-			command << m_plugin->GetSvnExeName()
-			<< wxT("copy ")
-			<< dlg.GetSourceURL()
-			<< wxT(" ")
-			<< dlg.GetTargetURL()
-			<< wxT(" -m \"")
-			<< dlg.GetMessage()
-			<< wxT("\"");
-			m_plugin->GetConsole()->Execute(command, m_textCtrlRootDir->GetValue(), new SvnDefaultCommandHandler(m_plugin, wxNOT_FOUND, NULL));
-		}
-	}
 }
 
 void SubversionView::OnCleanup(wxCommandEvent& event)
@@ -748,13 +736,22 @@ void SubversionView::OnFileAdded(wxCommandEvent& event)
 	if(ssd.GetFlags() & SvnAddFileToSvn) {
 		wxArrayString *files = (wxArrayString*)event.GetClientData();
 		if(files) {
+			bool     addToSvn(false);
 			wxString command;
 			command << m_plugin->GetSvnExeName() << wxT(" add ");
 			for(size_t i=0; i<files->GetCount(); i++){
-				command << wxT("\"") << files->Item(i) << wxT("\" ");
+
+				if(m_plugin->IsPathUnderSvn(files->Item(i))) {
+					command << wxT("\"") << files->Item(i) << wxT("\" ");
+					addToSvn = true;
+				}
+
 			}
-			command.RemoveLast();
-			m_plugin->GetConsole()->Execute(command, m_textCtrlRootDir->GetValue(), new SvnDefaultCommandHandler(m_plugin, event.GetId(), this));
+
+			if(addToSvn) {
+				command.RemoveLast();
+				m_plugin->GetConsole()->Execute(command, m_textCtrlRootDir->GetValue(), new SvnDefaultCommandHandler(m_plugin, event.GetId(), this));
+			}
 		}
 	}
 }
@@ -762,21 +759,39 @@ void SubversionView::OnFileAdded(wxCommandEvent& event)
 void SubversionView::OnFileRenamed(wxCommandEvent& event)
 {
 	wxArrayString *files = (wxArrayString*)event.GetClientData();
-	if(files) {
+
+	// If the Svn Client Version is set to 0.0 it means that we dont have SVN client installed
+	if( m_plugin->GetSvnClientVersion() && files && (m_plugin->GetSettings().GetFlags() & SvnRenameFileInRepo) ) {
 		wxString oldName = files->Item(0);
 		wxString newName = files->Item(1);
+
+		if(m_plugin->IsPathUnderSvn(oldName) == false){
+			event.Skip();
+			return;
+		}
+
 		wxString command;
 		command << m_plugin->GetSvnExeName() << wxT(" rename \"") << oldName << wxT("\" \"") << newName << wxT("\"");
 		m_plugin->GetConsole()->Execute(command, m_textCtrlRootDir->GetValue(), new SvnDefaultCommandHandler(m_plugin, event.GetId(), this));
-	}
+
+	} else
+		event.Skip();
 }
 
 void SubversionView::OnShowSvnInfo(wxCommandEvent& event)
 {
-	wxString command;
-	command << m_plugin->GetSvnExeName() << wxT("info --xml ");
+	wxUnusedVar(event);
 
-	m_simpleCommand.Execute(command, m_textCtrlRootDir->GetValue(), new SvnInfoHandler(m_plugin, SvnInfo_Info, event.GetId(), this));
+	SvnInfo svnInfo;
+	m_plugin->DoGetSvnInfoSync(svnInfo, m_textCtrlRootDir->GetValue());
+
+	SvnInfoDialog dlg(m_plugin->GetManager()->GetTheApp()->GetTopWindow());
+	dlg.m_textCtrlAuthor->SetValue( svnInfo.m_author );
+	dlg.m_textCtrlDate->SetValue( svnInfo.m_date );
+	dlg.m_textCtrlRevision->SetValue( svnInfo.m_revision );
+	dlg.m_textCtrlRootURL->SetValue( svnInfo.m_url );
+	dlg.m_textCtrlURL->SetValue( svnInfo.m_sourceUrl );
+	dlg.ShowModal();
 }
 
 void SubversionView::OnItemActivated(wxTreeEvent& event)
@@ -816,15 +831,17 @@ void SubversionView::OnClearOuptutUI(wxUpdateUIEvent& event)
 
 void SubversionView::OnCheckout(wxCommandEvent& event)
 {
+	wxString loginString;
+	if(!m_plugin->LoginIfNeeded(event, m_textCtrlRootDir->GetValue(), loginString))
+		return;
+		
+	wxString command;
+	bool nonInteractive = m_plugin->GetNonInteractiveMode(event);
+	
 	SvnCheckoutDialog dlg(m_plugin->GetManager()->GetTheApp()->GetTopWindow(), m_plugin);
 	if(dlg.ShowModal() == wxID_OK) {
-		wxString loginString;
-		if(!m_plugin->LoginIfNeeded(event, loginString))
-			return;
-		wxString command;
-		bool nonInteractive = m_plugin->GetNonInteractiveMode(event);
 		command << m_plugin->GetSvnExeName(nonInteractive) << loginString << wxT(" co ") << dlg.GetURL() << wxT(" \"") << dlg.GetTargetDir() << wxT("\"");
-		m_plugin->GetConsole()->Execute(command, wxT(""), new SvnCheckoutHandler(m_plugin, event.GetId(), this), loginString.IsEmpty(), true);
+		m_plugin->GetConsole()->ExecuteURL(command, dlg.GetURL(), new SvnCheckoutHandler(m_plugin, event.GetId(), this), true);
 	}
 }
 

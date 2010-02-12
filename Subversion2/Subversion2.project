@@ -11,9 +11,9 @@
     <File Name="svncommand.cpp"/>
     <File Name="svnxml.cpp"/>
     <File Name="svn_default_command_handler.cpp"/>
-    <File Name="svninfohandler.cpp"/>
     <File Name="svn_command_handlers.cpp"/>
     <File Name="svn_console.cpp"/>
+    <File Name="subversion_password_db.cpp"/>
   </VirtualDirectory>
   <VirtualDirectory Name="include">
     <File Name="subversion2.h"/>
@@ -25,13 +25,13 @@
     <File Name="svncommand.h"/>
     <File Name="svnxml.h"/>
     <File Name="svn_default_command_handler.h"/>
-    <File Name="svninfohandler.h"/>
     <File Name="svninfo.h"/>
     <File Name="svn_command_handlers.h"/>
     <File Name="svn_console.h"/>
     <File Name="svncommandhandler.cpp"/>
     <File Name="commitmessagescache.h"/>
     <File Name="commitmessagescache.cpp"/>
+    <File Name="subversion_password_db.h"/>
   </VirtualDirectory>
   <Dependencies/>
   <VirtualDirectory Name="UI">
