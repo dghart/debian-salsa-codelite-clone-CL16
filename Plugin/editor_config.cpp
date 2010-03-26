@@ -30,6 +30,7 @@
 #include "dirtraverser.h"
 #include <wx/ffile.h>
 #include "globals.h"
+#include "wx_xml_compatibility.h"
 
 //-------------------------------------------------------------------------------------------
 SimpleLongValue::SimpleLongValue()
@@ -70,9 +71,6 @@ void SimpleStringValue::DeSerialize(Archive &arch)
 }
 
 //-------------------------------------------------------------------------------------------
-
-wxString EditorConfig::m_svnRevision;
-wxString EditorConfig::m_version;
 
 EditorConfig::EditorConfig()
 		: m_transcation(false)
@@ -355,23 +353,8 @@ void EditorConfig::SetRecentItems(const wxArrayString &files, const wxString nod
 
 bool EditorConfig::WriteObject(const wxString &name, SerializedObject *obj)
 {
-	Archive arch;
-
-	wxXmlNode *child = XmlUtils::FindNodeByName(m_doc->GetRoot(), wxT("ArchiveObject"), name);
-	if (child) {
-		wxXmlNode *n = m_doc->GetRoot();
-		n->RemoveChild(child);
-		delete child;
-	}
-
-	//create new xml node for this object
-	child = new wxXmlNode(NULL, wxXML_ELEMENT_NODE, wxT("ArchiveObject"));
-	m_doc->GetRoot()->AddChild(child);
-	child->AddProperty(wxT("Name"), name);
-
-	arch.SetXmlNode(child);
-	//serialize the object into the archive
-	obj->Serialize(arch);
+	if(!XmlUtils::StaticWriteObject(m_doc->GetRoot(), name, obj))
+		return false;
 
 	//save the archive
 	bool res = DoSave();
@@ -382,14 +365,7 @@ bool EditorConfig::WriteObject(const wxString &name, SerializedObject *obj)
 bool EditorConfig::ReadObject(const wxString &name, SerializedObject *obj)
 {
 	//find the object node in the xml file
-	wxXmlNode *node = XmlUtils::FindNodeByName(m_doc->GetRoot(), wxT("ArchiveObject"), name);
-	if (node) {
-		Archive arch;
-		arch.SetXmlNode(node);
-		obj->DeSerialize(arch);
-		return true;
-	}
-	return false;
+	return XmlUtils::StaticReadObject(m_doc->GetRoot(), name, obj);
 }
 
 wxString EditorConfig::GetRevision() const

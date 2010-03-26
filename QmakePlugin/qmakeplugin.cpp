@@ -65,14 +65,13 @@ QMakePlugin::QMakePlugin(IManager *manager)
 
 QMakePlugin::~QMakePlugin()
 {
-	UnPlug();
 	delete m_conf;
 }
 
-wxToolBar *QMakePlugin::CreateToolBar(wxWindow *parent)
+clToolBar *QMakePlugin::CreateToolBar(wxWindow *parent)
 {
 	// Create the toolbar to be used by the plugin
-	wxToolBar *tb(NULL);
+	clToolBar *tb(NULL);
 
 	// You can use the below code a snippet:
 	// First, check that CodeLite allows plugin to register plugins
@@ -81,7 +80,7 @@ wxToolBar *QMakePlugin::CreateToolBar(wxWindow *parent)
 		int size = m_mgr->GetToolbarIconSize();
 
 		// Allocate new toolbar, which will be freed later by CodeLite
-		tb = new wxToolBar(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTB_FLAT | wxTB_NODIVIDER);
+		tb = new clToolBar(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, clTB_DEFAULT_STYLE);
 
 		// Set the toolbar size
 		tb->SetToolBitmapSize(wxSize(size, size));
@@ -143,6 +142,9 @@ void QMakePlugin::UnPlug()
 	app->Disconnect(wxEVT_GET_PROJECT_CLEAN_CMD,    wxCommandEventHandler(QMakePlugin::OnGetCleanCommand),     NULL, this);
 	app->Disconnect(wxEVT_GET_IS_PLUGIN_MAKEFILE,   wxCommandEventHandler(QMakePlugin::OnGetIsPluginMakefile), NULL, this);
 	app->Disconnect(wxEVT_TREE_ITEM_FILE_ACTIVATED, wxCommandEventHandler(QMakePlugin::OnOpenFile),            NULL, this);
+	
+	app->Disconnect(XRCID("new_qmake_project"), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(QMakePlugin::OnNewQmakeBasedProject), NULL, (wxEvtHandler*)this);
+	app->Disconnect(XRCID("qmake_settings"), wxEVT_COMMAND_MENU_SELECTED,    wxCommandEventHandler(QMakePlugin::OnSettings), NULL, (wxEvtHandler*)this);
 }
 
 void QMakePlugin::HookProjectSettingsTab(wxNotebook* book, const wxString &projectName, const wxString &configName)

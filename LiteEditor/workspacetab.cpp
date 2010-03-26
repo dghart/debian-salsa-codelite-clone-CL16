@@ -70,7 +70,6 @@ WorkspaceTab::~WorkspaceTab()
     wxTheApp->Disconnect(wxEVT_PROJ_REMOVED,          wxCommandEventHandler(WorkspaceTab::OnProjectRemoved),      NULL, this);
     wxTheApp->Disconnect(wxEVT_ACTIVE_EDITOR_CHANGED, wxCommandEventHandler(WorkspaceTab::OnActiveEditorChanged), NULL, this);
     wxTheApp->Disconnect(wxEVT_EDITOR_CLOSING,        wxCommandEventHandler(WorkspaceTab::OnEditorClosing),       NULL, this);
-    wxTheApp->Disconnect(wxEVT_ALL_EDITORS_CLOSED,    wxCommandEventHandler(WorkspaceTab::OnAllEditorsClosed),    NULL, this);
 }
 
 void WorkspaceTab::CreateGUIControls()
@@ -124,7 +123,6 @@ void WorkspaceTab::ConnectEvents()
     wxTheApp->Connect(wxEVT_PROJ_REMOVED,          wxCommandEventHandler(WorkspaceTab::OnProjectRemoved),      NULL, this);
     wxTheApp->Connect(wxEVT_ACTIVE_EDITOR_CHANGED, wxCommandEventHandler(WorkspaceTab::OnActiveEditorChanged), NULL, this);
     wxTheApp->Connect(wxEVT_EDITOR_CLOSING,        wxCommandEventHandler(WorkspaceTab::OnEditorClosing),       NULL, this);
-    wxTheApp->Connect(wxEVT_ALL_EDITORS_CLOSED,    wxCommandEventHandler(WorkspaceTab::OnAllEditorsClosed),    NULL, this);
 }
 
 void WorkspaceTab::OnLinkEditor(wxCommandEvent &e)
@@ -310,17 +308,6 @@ void WorkspaceTab::OnEditorClosing(wxCommandEvent& e)
     e.Skip();
 }
 
-void WorkspaceTab::OnAllEditorsClosed(wxCommandEvent& e)
-{
-    e.Skip();
-    if (m_isLinkedToEditor) {
-        Freeze();
-        OnCollapseAll(e);
-        OnGoHome(e);
-        Thaw();
-    }
-}
-
 void WorkspaceTab::OnWorkspaceClosed(wxCommandEvent& e)
 {
     e.Skip();
@@ -356,6 +343,6 @@ void WorkspaceTab::OnToggleMultiSelection(wxCommandEvent& e)
 	int answer = wxMessageBox(_("Workspace reload is required\nWould you like to reload workspace now?"), wxT("CodeLite"), wxICON_INFORMATION|wxYES_NO|wxCANCEL, this);
 	if ( answer == wxYES ) {
 		wxCommandEvent e(wxEVT_COMMAND_MENU_SELECTED, XRCID("reload_workspace"));
-		Frame::Get()->AddPendingEvent(e);
+		Frame::Get()->GetEventHandler()->AddPendingEvent(e);
 	}
 }

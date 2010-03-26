@@ -529,7 +529,7 @@ void FindResultsTab::NextMatch()
 		e.SetEventObject(this);
 		e.SetString(wxString::Format(wxT("Reached the end of 'find in files' search results list" )));
 		e.SetInt(0);
-		Frame::Get()->AddPendingEvent(e);
+		Frame::Get()->GetEventHandler()->AddPendingEvent(e);
 	}
 }
 
@@ -563,7 +563,7 @@ void FindResultsTab::PrevMatch()
 		e.SetEventObject(this);
 		e.SetString(wxString::Format(wxT("Reached the begining of 'find in files' search results list" )));
 		e.SetInt(0);
-		Frame::Get()->AddPendingEvent(e);
+		Frame::Get()->GetEventHandler()->AddPendingEvent(e);
 	}
 }
 

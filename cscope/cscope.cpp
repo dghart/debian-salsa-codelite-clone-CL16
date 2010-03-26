@@ -91,14 +91,14 @@ Cscope::~Cscope()
 {
 }
 
-wxToolBar *Cscope::CreateToolBar(wxWindow *parent)
+clToolBar *Cscope::CreateToolBar(wxWindow *parent)
 {
 	//support both toolbars icon size
 	int size = m_mgr->GetToolbarIconSize();
 
-	wxToolBar *tb = NULL;
+	clToolBar *tb = NULL;
 	if (m_mgr->AllowToolbar()) {
-		tb = new wxToolBar(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTB_FLAT | wxTB_NODIVIDER);
+		tb = new clToolBar(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, clTB_DEFAULT_STYLE);
 		tb->SetToolBitmapSize(wxSize(size, size));
 
 		// Sample code that adds single button to the toolbar
@@ -188,6 +188,12 @@ void Cscope::UnHookPopupMenu(wxMenu *menu, MenuType type)
 
 void Cscope::UnPlug()
 {
+	m_topWindow->Disconnect( XRCID("cscope_functions_called_by_this_function"), wxEVT_UPDATE_UI, wxUpdateUIEventHandler(Cscope::OnCscopeUI),        NULL, (wxEvtHandler*)this);
+	m_topWindow->Disconnect( XRCID("cscope_create_db"),                         wxEVT_UPDATE_UI, wxUpdateUIEventHandler(Cscope::OnWorkspaceOpenUI), NULL, (wxEvtHandler*)this);
+	m_topWindow->Disconnect( XRCID("cscope_functions_calling_this_function"),   wxEVT_UPDATE_UI, wxUpdateUIEventHandler(Cscope::OnCscopeUI),        NULL, (wxEvtHandler*)this);
+	m_topWindow->Disconnect( XRCID("cscope_find_global_definition"),            wxEVT_UPDATE_UI, wxUpdateUIEventHandler(Cscope::OnCscopeUI),        NULL, (wxEvtHandler*)this);
+	m_topWindow->Disconnect( XRCID("cscope_find_symbol"),                       wxEVT_UPDATE_UI, wxUpdateUIEventHandler(Cscope::OnCscopeUI),        NULL, (wxEvtHandler*)this);
+
 	// before this plugin is un-plugged we must remove the tab we added
 	for (size_t i=0; i<m_mgr->GetOutputPaneNotebook()->GetPageCount(); i++) {
 		if (m_cscopeWin == m_mgr->GetOutputPaneNotebook()->GetPage(i)) {
@@ -525,11 +531,13 @@ void Cscope::OnCScopeThreadUpdateStatus(wxCommandEvent &e)
 
 void Cscope::OnCscopeUI(wxUpdateUIEvent &e)
 {
+	CHECK_CL_SHUTDOWN();
 	bool isEditor = m_mgr->GetActiveEditor() ? true : false;
 	e.Enable(m_mgr->IsWorkspaceOpen() && isEditor);
 }
 
 void Cscope::OnWorkspaceOpenUI(wxUpdateUIEvent& e)
 {
+	CHECK_CL_SHUTDOWN();
 	e.Enable(m_mgr->IsWorkspaceOpen());
 }

@@ -363,7 +363,7 @@ void BuildTab::MarkEditor ( LEditor *editor )
 			wxString tip = GetBuildToolTip(editor->GetFileName().GetFullPath(), line_number, style_bytes);
 						
 			// Set annotations
-			if ( options.GetErrorWarningStyle() & BuildTabSettingsData::EWS_Annotations ) {
+			if ( line_number >= 0 && options.GetErrorWarningStyle() & BuildTabSettingsData::EWS_Annotations ) {
 				editor->AnnotationSetText (line_number, tip);
 				editor->AnnotationSetStyles(line_number, style_bytes );
 			}
@@ -712,31 +712,31 @@ void BuildTab::DoProcessLine(const wxString& text, int lineno)
 		// no more line info to get
 	} else {
 		
-		// Find error first
-		bool isError = false;
+		// Find *warnings* first
+		bool isWarning = false;
 		
 		CompilerPatterns cmpPatterns;
 		if(!GetCompilerPatterns(m_cmp->GetName(), cmpPatterns)) {
 			return;
 		}
 		
-		for(size_t i=0; i<cmpPatterns.errorsPatterns.size(); i++) {
-			CompiledPatternPtr cmpPatterPtr = cmpPatterns.errorsPatterns.at(i);
+		// If it is not an error, maybe it's a warning
+		for(size_t i=0; i<cmpPatterns.warningPatterns.size(); i++) {
+			CompiledPatternPtr cmpPatterPtr = cmpPatterns.warningPatterns.at(i);
 			if ( ExtractLineInfo(info, text, *(cmpPatterPtr->regex), cmpPatterPtr->fileIndex, cmpPatterPtr->lineIndex) ) {
-				info.linecolor = wxSCI_LEX_GCC_ERROR;
-				m_errorCount++;
-				isError = true;
+				info.linecolor = wxSCI_LEX_GCC_WARNING;
+				m_warnCount++;
+				isWarning = true;
 				break;
 			}
 		}
-		if (!isError) {
-			// If it is not an error, maybe it's a warning
-			for(size_t i=0; i<cmpPatterns.warningPatterns.size(); i++) {
-				CompiledPatternPtr cmpPatterPtr = cmpPatterns.warningPatterns.at(i);
+		
+		if ( !isWarning ) {
+			for(size_t i=0; i<cmpPatterns.errorsPatterns.size(); i++) {
+				CompiledPatternPtr cmpPatterPtr = cmpPatterns.errorsPatterns.at(i);
 				if ( ExtractLineInfo(info, text, *(cmpPatterPtr->regex), cmpPatterPtr->fileIndex, cmpPatterPtr->lineIndex) ) {
-					info.linecolor = wxSCI_LEX_GCC_WARNING;
-					m_warnCount++;
-					isError = true;
+					info.linecolor = wxSCI_LEX_GCC_ERROR;
+					m_errorCount++;
 					break;
 				}
 			}

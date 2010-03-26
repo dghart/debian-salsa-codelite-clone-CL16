@@ -765,6 +765,59 @@ static int addExtensionFields (const tagEntryInfo *const tag)
 		length += fprintf (TagFile.fp, "%s\tsignature:%s", sep,
 				tag->extensionFields.signature);
 
+	// ERAN IFRAH - Add support for return value
+	if(tag->kind == 'p' || tag->kind == 'f') {
+		/* tag is function (decl or impl) */
+#if defined(__WXMSW__)||defined(__APPLE__)||defined(__FreeBSD__)
+		int count = ((int)tag->tagNameFilePos - (int)tag->statementStartPos);
+#else
+		int count = (tag->tagNameFilePos.__pos - tag->statementStartPos.__pos);
+#endif
+		if(count == 0) {
+			/* entire declaration is set on a single line */
+			vString *returnValue = vStringNew();
+
+			if(readSourceLine(returnValue, tag->statementStartPos, NULL)) {
+				int  length = -1;
+				/* remove the method name part of the string */
+				char *where = strstr(returnValue->buffer, tag->name);
+				if(where) {
+					length = (int)(where - returnValue->buffer);
+				}
+
+				if(length > 0 && length < returnValue->size) {
+					returnValue->length = length;
+					returnValue->buffer[length] = 0;
+				}
+				vStringStripLeading (returnValue);
+				vStringStripTrailing(returnValue);
+				length +=  fprintf (TagFile.fp, "%s\treturns:%s", sep, returnValue->buffer);
+			}
+
+			vStringDelete(returnValue);
+		} else {
+			// read return value pattern (up to 1024 chars)
+			char *returnValue = (char*)malloc(1024);
+			memset(returnValue, 0, 1024);
+
+			if(returnValue && readChars(returnValue, 1024, tag->statementStartPos, tag->tagNameFilePos)) {
+				int i=0;
+				for(; i<strlen(returnValue); i++){
+					/* replace all whitespaces into spaces */
+					if(returnValue[i] == '\n' || returnValue[i] == '\r' || returnValue[i] == '\t' || returnValue[i] == '\v'){
+						returnValue[i] = ' ';
+					}
+				}
+
+				/* remove the virtual part of the string (if any) */
+				length +=  fprintf (TagFile.fp, "%s\treturns:%s", sep, returnValue);
+			}
+
+			if(returnValue)
+				free(returnValue);
+		}
+		// ERAN IFRAH - Add support for return value - END
+	}
 	return length;
 #undef sep
 }
@@ -777,8 +830,8 @@ static int writePatternEntry (const tagEntryInfo *const tag)
 	boolean newlineTerminated;
 
 	//Eran Ifrah [PATCH START]
-	if (tag->hasTemplate) {
-		char *const line = (char*)readSourceLines(TagFile.vLine, tag->templatefilePosition, tag->filePosition);
+	if (tag->hasTemplate || tag->kind == 't' /* typedef */) {
+		char *const line = (char*)readSourceLines(TagFile.vLine, tag->statementStartPos, tag->filePosition);
 
 		for(; i<(int)TagFile.vLine->length; i++){
 			if(TagFile.vLine->buffer[i] == '\n'){
@@ -793,8 +846,8 @@ static int writePatternEntry (const tagEntryInfo *const tag)
 		length += fprintf (TagFile.fp, "%s%c", newlineTerminated ? "$":"", searchChar);
 
 		return length;
-	//Eran Ifrah [PATCH END]
-	}else{
+		//Eran Ifrah [PATCH END]
+	} else {
 		char *const line = readSourceLine (TagFile.vLine, tag->filePosition, NULL);
 		if (tag->truncateLine)
 			truncateTagLine (line, tag->name, FALSE);

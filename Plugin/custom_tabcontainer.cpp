@@ -230,7 +230,7 @@ void wxTabContainer::InsertTab(CustomTab* tab, size_t index)
 		event.SetSelection( TabToIndex(tab) );
 		event.SetOldSelection( oldSel );
 		event.SetEventObject( GetParent() );
-		GetParent()->ProcessEvent(event);
+		GetParent()->GetEventHandler()->ProcessEvent(event);
 	}
 }
 
@@ -277,7 +277,7 @@ void wxTabContainer::SetSelection(CustomTab *tab, bool notify)
 		event.SetSelection( TabToIndex( tab ) );
 		event.SetOldSelection( oldSel );
 		event.SetEventObject( GetParent() );
-		GetParent()->ProcessEvent(event);
+		GetParent()->GetEventHandler()->ProcessEvent(event);
 
 		if ( !event.IsAllowed() ) {
 			return;
@@ -312,7 +312,7 @@ void wxTabContainer::SetSelection(CustomTab *tab, bool notify)
 		event.SetSelection( TabToIndex( tab ) );
 		event.SetOldSelection( oldSel );
 		event.SetEventObject( GetParent() );
-		GetParent()->ProcessEvent(event);
+		GetParent()->GetEventHandler()->ProcessEvent(event);
 	}
 }
 
@@ -568,7 +568,7 @@ bool wxTabContainer::DoRemoveTab(CustomTab *deleteTab, bool deleteIt, bool notif
 		NotebookEvent event(wxEVT_COMMAND_BOOK_PAGE_CLOSING, GetId());
 		event.SetSelection( pageIndex );
 		event.SetEventObject( GetParent() );
-		GetParent()->ProcessEvent(event);
+		GetParent()->GetEventHandler()->ProcessEvent(event);
 
 		if (!event.IsAllowed()) {
 			return false;
@@ -614,7 +614,7 @@ bool wxTabContainer::DoRemoveTab(CustomTab *deleteTab, bool deleteIt, bool notif
 		NotebookEvent event(wxEVT_COMMAND_BOOK_PAGE_CLOSED, GetId());
 		event.SetSelection( pageIndex );
 		event.SetEventObject( GetParent() );
-		GetParent()->ProcessEvent(event);
+		GetParent()->GetEventHandler()->ProcessEvent(event);
 	}
 
 	return true;

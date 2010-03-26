@@ -71,21 +71,17 @@ void WorkspacePane::CreateGUIControls()
 
     // selected configuration:
 
-	mainSizer->Add(new wxStaticText(this, wxID_ANY, wxT("Selected Configuration:")), 0, wxEXPAND| wxTOP|wxLEFT|wxRIGHT, 5);
+	mainSizer->Add(new wxStaticText(this, wxID_ANY, wxT("Selected Configuration:")), 0, wxALIGN_CENTER_HORIZONTAL| wxALL, 2);
 
 	wxBoxSizer *hsz = new wxBoxSizer(wxHORIZONTAL);
-	mainSizer->Add(hsz, 0, wxEXPAND|wxALL, 5);
+	mainSizer->Add(hsz, 0, wxEXPAND|wxTOP|wxBOTTOM, 5);
 
 	wxArrayString choices;
 	m_workspaceConfig = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, choices);
 	m_workspaceConfig->Enable(false);
 	m_workspaceConfig->Append(OPEN_CONFIG_MGR_STR);
 	ConnectChoice(m_workspaceConfig, WorkspacePane::OnConfigurationManagerChoice);
-	hsz->Add(m_workspaceConfig, 1, wxEXPAND);
-
-	// add static line separator
-	wxStaticLine *line = new wxStaticLine( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
-	mainSizer->Add(line, 0, wxEXPAND);
+	hsz->Add(m_workspaceConfig, 1, wxEXPAND| wxALL, 1);
 
     // add notebook for tabs
 	long bookStyle = wxVB_LEFT|wxVB_FIXED_WIDTH;
@@ -304,12 +300,12 @@ void WorkspacePane::OnConfigurationManagerChoice(wxCommandEvent &event)
 	BuildMatrixPtr matrix = ManagerST::Get()->GetWorkspaceBuildMatrix();
 	matrix->SetSelectedConfigurationName(selection);
 	ManagerST::Get()->SetWorkspaceBuildMatrix(matrix);
-	
+
 	// Set the focus to the active editor if any
 	LEditor *editor = Frame::Get()->GetMainBook()->GetActiveEditor();
 	if(editor)
 		editor->SetActive();
-	
+
 }
 
 void WorkspacePane::OnConfigurationManager(wxCommandEvent& e)

@@ -22,7 +22,9 @@
 //
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
+#include "app.h"
 #include "environmentconfig.h"
+#include "macromanager.h"
 #include "build_settings_config.h"
 #include "buildmanager.h"
 #include "jobqueue.h"
@@ -63,11 +65,13 @@ void PluginManager::UnLoad()
 		delete plugin;
 	}
 
+#if wxVERSION_NUMBER < 2900
 	std::list<clDynamicLibrary*>::iterator iter = m_dl.begin();
 	for ( ; iter != m_dl.end(); iter++ ) {
 		( *iter )->Detach();
 		delete ( *iter );
 	}
+#endif
 
 	m_dl.clear();
 	m_plugins.clear();
@@ -103,6 +107,10 @@ void PluginManager::Load()
 	LanguageST::Get()->SetTagsManager( GetTagsManager() );
 	TagsManagerST::Get()->SetLanguage( LanguageST::Get() );
 
+	// Plugin loading is disabled?
+	if (((App*) GetTheApp())->GetLoadPlugins() == false)
+		return;
+
 #ifdef __WXGTK__
 	wxString pluginsDir(PLUGINS_DIR, wxConvUTF8);
 #else
@@ -121,17 +129,18 @@ void PluginManager::Load()
 				wxLogMessage( wxT( "Failed to load plugin's dll: " ) + fileName );
 				if (!dl->GetError().IsEmpty())
 					wxLogMessage(dl->GetError());
+#if wxVERSION_NUMBER < 2900
 				delete dl;
+#endif
 				continue;
 			}
 
 			bool success( false );
 			GET_PLUGIN_INFO_FUNC pfnGetPluginInfo = ( GET_PLUGIN_INFO_FUNC )dl->GetSymbol( wxT( "GetPluginInfo" ), &success );
 			if ( !success ) {
-//				wxLogMessage(wxT("Failed to find GetPluginInfo in dll: ") + fileName);
-//				if (!dl->GetError().IsEmpty())
-//					wxLogMessage(dl->GetError());
+#if wxVERSION_NUMBER < 2900
 				delete dl;
+#endif
 				continue;
 			}
 
@@ -152,7 +161,9 @@ void PluginManager::Load()
 				                              fileName.c_str(),
 				                              interface_version,
 				                              PLUGIN_INTERFACE_VERSION));
+#if wxVERSION_NUMBER < 2900
 				delete dl;
+#endif
 				continue;
 			}
 
@@ -163,7 +174,9 @@ void PluginManager::Load()
 				//new plugin?, add it and use the default enabled/disabled for this plugin
 				actualPlugins[pluginInfo.GetName()] = pluginInfo;
 				if (pluginInfo.GetEnabled() == false) {
+#if wxVERSION_NUMBER < 2900
 					delete dl;
+#endif
 					continue;
 				}
 			} else {
@@ -175,7 +188,9 @@ void PluginManager::Load()
 
 				actualPlugins[pluginInfo.GetName()] = pluginInfo;
 				if (pluginInfo.GetEnabled() == false) {
+#if wxVERSION_NUMBER < 2900
 					delete dl;
+#endif
 					continue;
 				}
 			}
@@ -191,7 +206,9 @@ void PluginManager::Load()
 				pluginInfo.SetEnabled(false);
 				actualPlugins[pluginInfo.GetName()] = pluginInfo;
 
+#if wxVERSION_NUMBER < 2900
 				delete dl;
+#endif
 				continue;
 			}
 
@@ -200,7 +217,7 @@ void PluginManager::Load()
 			m_plugins[plugin->GetShortName()] = plugin;
 
 			//load the toolbar
-			wxToolBar *tb = plugin->CreateToolBar( AllowToolbar() ? (wxWindow*)Frame::Get()->GetMainPanel() : (wxWindow*)Frame::Get() );
+			clToolBar *tb = plugin->CreateToolBar( AllowToolbar() ? (wxWindow*)Frame::Get()->GetMainPanel() : (wxWindow*)Frame::Get() );
 			if ( tb ) {
 				Frame::Get()->GetDockingManager().AddPane( tb, wxAuiPaneInfo().Name( plugin->GetShortName() ).LeftDockable( true ).RightDockable( true ).Caption( plugin->GetShortName() ).ToolbarPane().Top() );
 
@@ -387,7 +404,7 @@ wxApp* PluginManager::GetTheApp()
 void PluginManager::ReloadWorkspace()
 {
 	wxCommandEvent evt(wxEVT_COMMAND_MENU_SELECTED, XRCID("reload_workspace"));
-	Frame::Get()->AddPendingEvent( evt );
+	Frame::Get()->GetEventHandler()->AddPendingEvent( evt );
 }
 
 IPlugin* PluginManager::GetPlugin(const wxString& pluginName)
@@ -446,16 +463,16 @@ void PluginManager::FindAndSelect(const wxString& pattern, const wxString& name)
 
 TagEntryPtr PluginManager::GetTagAtCaret(bool scoped, bool impl)
 {
-    LEditor *editor = Frame::Get()->GetMainBook()->GetActiveEditor();
-    if (!editor)
-        return NULL;
-    return editor->GetContext()->GetTagAtCaret(scoped, impl);
+	LEditor *editor = Frame::Get()->GetMainBook()->GetActiveEditor();
+	if (!editor)
+		return NULL;
+	return editor->GetContext()->GetTagAtCaret(scoped, impl);
 }
 
 bool PluginManager::AllowToolbar()
 {
 	long v;
-	if(EditorConfigST::Get()->GetLongValue(wxT("UseSingleToolbar"), v)){
+	if (EditorConfigST::Get()->GetLongValue(wxT("UseSingleToolbar"), v)) {
 		return v ? false : true;
 	} else {
 		// entry does not exist
@@ -484,7 +501,7 @@ void PluginManager::EnableToolbars()
 
 void PluginManager::SetStatusMessage(const wxString &msg, int col, int id)
 {
-    Frame::Get()->SetStatusMessage(msg, col, id);
+	Frame::Get()->SetStatusMessage(msg, col, id);
 }
 
 void PluginManager::ProcessCommandQueue()
@@ -529,22 +546,22 @@ BuildSettingsConfig* PluginManager::GetBuildSettingsConfigManager()
 
 bool PluginManager::ClosePage(const wxString &text)
 {
-    return Frame::Get()->GetMainBook()->ClosePage(text);
+	return Frame::Get()->GetMainBook()->ClosePage(text);
 }
 
 wxWindow *PluginManager::FindPage(const wxString &text)
 {
-    return Frame::Get()->GetMainBook()->FindPage(text);
+	return Frame::Get()->GetMainBook()->FindPage(text);
 }
 
 bool PluginManager::AddPage(wxWindow *win, const wxString &text, const wxBitmap &bmp, bool selected)
 {
-    return Frame::Get()->GetMainBook()->AddPage(win, text, bmp, selected);
+	return Frame::Get()->GetMainBook()->AddPage(win, text, bmp, selected);
 }
 
 bool PluginManager::SelectPage(wxWindow *win)
 {
-    return Frame::Get()->GetMainBook()->SelectPage(win);
+	return Frame::Get()->GetMainBook()->SelectPage(win);
 }
 
 bool PluginManager::OpenFile(const BrowseRecord& rec)
@@ -576,4 +593,14 @@ void PluginManager::UnHookProjectSettingsTab(wxNotebook* book, const wxString &p
 IEditor* PluginManager::NewEditor()
 {
 	return Frame::Get()->GetMainBook()->NewEditor();
+}
+
+IMacroManager* PluginManager::GetMacrosManager()
+{
+	return MacroManager::Instance();
+
+}
+bool PluginManager::IsShutdownInProgress() const
+{
+	return ManagerST::Get()->IsShutdownInProgress();
 }

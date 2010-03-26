@@ -74,6 +74,13 @@ enum NormalizeFuncFlag {
 	Normalize_Func_Name          = 0x00000001,
 	// variable default value
 	Normalize_Func_Default_value = 0x00000002,
+	// re-place back macros
+	Normalize_Func_Reverse_Macro = 0x00000004
+};
+
+enum FunctionFormatFlag {
+	FunctionFormat_WithVirtual   = 0x00000001,
+	FunctionFormat_Impl          = 0x00000002
 };
 
 class ITagsStorage;
@@ -544,6 +551,14 @@ public:
 	 * @param partName name criterion (partial)
 	 */
 	void GetTagsByKind(std::vector<TagEntryPtr> &tags, const wxArrayString &kind, const wxString &partName = wxEmptyString);
+	
+	/**
+	 * @brief return list of tags by KIND
+	 * @param tags [output]
+	 * @param kind the kind of the tags to fetch from the database
+	 * @param partName name criterion (partial)
+	 */
+	void GetTagsByKindLimit(std::vector<TagEntryPtr> &tags, const wxArrayString &kind, int limit, const wxString &partName = wxEmptyString);
 
 	/**
 	 * @brief generate function body/impl based on a tag
@@ -552,7 +567,7 @@ public:
 	 * @param scope real function scope to use
 	 * @return the function impl/decl
 	 */
-	wxString FormatFunction(TagEntryPtr tag, bool impl = false, const wxString &scope = wxEmptyString);
+	wxString FormatFunction(TagEntryPtr tag, size_t flags = FunctionFormat_WithVirtual, const wxString &scope = wxEmptyString);
 
 	/**
 	 * @brief return true of the tag contains a pure virtual function
@@ -572,15 +587,16 @@ public:
 	 * @param scope
 	 * @return
 	 */
-	bool IsTypeAndScopeExists(const wxString &typeName, wxString &scope);
+	bool IsTypeAndScopeExists(wxString &typeName, wxString &scope);
 
 	/**
-	 * @brief return true if type & scope do exist in the symbols database and is container
-	 * @param typeName
-	 * @param scope
+	 * @brief return true if type & scope do exist in the symbols database and is container. This function also modifies the
+	 * typeName & scope to match real typename and scope (according to the TagsStorage)
+	 * @param typeName [intput/output]
+	 * @param scope    [intput/output]
 	 * @return
 	 */
-	bool IsTypeAndScopeContainer(const wxString &typeName, wxString &scope);
+	bool IsTypeAndScopeContainer(wxString &typeName, wxString &scope);
 
 	/**
 	 * @brief try to process a given expression and evaluate it into type & typescope
@@ -647,7 +663,7 @@ public:
 	 * @param pattern ctags pattern of the method
 	 * @return return value of the method from the pattern of empty string
 	 */
-	wxString GetFunctionReturnValueFromPattern(const wxString &pattern);
+	wxString GetFunctionReturnValueFromPattern(TagEntryPtr tag);
 	/**
 	 * @brief fileter a recently tagged files from the strFiles array
 	 * @param strFiles
@@ -662,7 +678,12 @@ public:
 	 * @return tag tree, must be freed by caller
 	 */
 	TagTreePtr TreeFromTags(const wxString& tags, int &count);
-
+	
+	/**
+	 * @brief clear the underlying caching mechanism
+	 */
+	void ClearTagsCache();
+	
 	/**
 	 * @brief lock/unlock the TagsManager locker
 	 */

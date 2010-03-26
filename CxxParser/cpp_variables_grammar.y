@@ -9,6 +9,7 @@
 #include "stdio.h"
 #include "map"
 #include "variable.h"
+#include "cl_typedef.h"
 
 #ifdef yylex
 #undef yylex
@@ -23,12 +24,12 @@ int  cl_var_parse();
 void syncParser();
 void var_consumeDefaultValue(char c1, char c2);
 
-static VariableList *gs_vars = NULL;
-static std::vector<std::string> gs_names;
-static bool g_isUsedWithinFunc = false;
-Variable curr_var;
-static std::string s_tmpString;
-
+static  VariableList *           gs_vars = NULL;
+static  std::vector<std::string> gs_names;
+static  bool                     g_isUsedWithinFunc = false;
+static  std::string              s_tmpString;
+static  Variable                 curr_var;
+static  std::string              s_templateInitList;
 //---------------------------------------------
 // externs defined in the lexer
 //---------------------------------------------
@@ -101,6 +102,7 @@ extern void cl_scope_lex_clean();
 %start   translation_unit
 
 %%
+
 /* Costants */
 basic_type_name_inter:    LE_INT          { $$ = $1; }
                 |         LE_CHAR         { $$ = $1; }
@@ -129,15 +131,13 @@ translation_unit	:        /*empty*/
                         | translation_unit external_decl
                         ;
 
-external_decl	    :    {curr_var.Reset(); gs_names.clear(); s_tmpString.clear();} variables
-                        | 	error {
-                            	yyclearin;    //clear lookahead token
-                            	yyerrok;
-//                              printf("CodeLite: syntax error, unexpected token '%s' found at line %d \n", cl_var_lval.c_str(), cl_scope_lineno);
-                            	var_syncParser();
+external_decl	    :    {curr_var.Reset(); gs_names.clear(); s_tmpString.clear(); s_templateInitList.clear();} variables
+                        | error {
+                            yyclearin;    //clear lookahead token
+                            yyerrok;
+//                            printf("CodeLite: syntax error, unexpected token '%s' found at line %d \n", cl_var_lval.c_str(), cl_scope_lineno);
                             }
                         ;
-
 /* the following rules are for template parameters no declarations! */
 parameter_list	: /* empty */        {$$ = "";}
                             | template_parameter	{$$ = $1;}
@@ -170,11 +170,16 @@ variables	        : stmnt_starter variable_decl special_star_amp const_spec vari
                             	curr_var.m_isPtr = ($3.find("*") != (size_t)-1);
                             	curr_var.m_starAmp = $3;
                             	curr_var.m_lineno = cl_scope_lineno;
+								curr_var.m_rightSideConst = $4;
+								if(curr_var.m_templateDecl.empty())
+									curr_var.m_templateDecl = s_templateInitList;
+								s_templateInitList.clear();
+
                             	for(size_t i=0; i< gs_names.size(); i++)
                                 {
                                     //create new variable for every variable name found
                                 	var = curr_var;
-                                	var.m_pattern = "/^" + $1 + " " + $2 + " " + $3 + " " + $4 +  " " + gs_names.at(i) + " $/";
+                                	var.m_pattern = "/^" + $1 + " " + $2 + " " + $3 + " " + $4 +  " " + $5 + " $/";
                                 	var.m_name = gs_names.at(i);
                                 	gs_vars->push_back(var);
                                 }
@@ -196,7 +201,12 @@ variables	        : stmnt_starter variable_decl special_star_amp const_spec vari
                             	curr_var.m_isPtr         = ($3.find("*") != (size_t)-1);
                             	curr_var.m_starAmp       = $3;
                             	curr_var.m_arrayBrackets = $6;
+								curr_var.m_rightSideConst= $4;
                             	curr_var.m_lineno        = cl_scope_lineno;
+								if(curr_var.m_templateDecl.empty())
+									curr_var.m_templateDecl = s_templateInitList;
+								s_templateInitList.clear();	
+								
 								//create new variable for every variable name found
                                 var = curr_var;
                             	var.m_name               = $5;
@@ -211,13 +221,18 @@ variables	        : stmnt_starter variable_decl special_star_amp const_spec vari
                             {
                             	Variable var;
                             	std::string pattern;
-                            	curr_var.m_pattern       = "/^";
-                            	curr_var.m_pattern      += $1 + " " + $2 + " " + $3 + " " + $4 + " " + $5 + " " + $6 + " $/";
-                            	curr_var.m_isPtr         = ($3.find("*") != (size_t)-1);
-                            	curr_var.m_starAmp       = $3;
-                            	curr_var.m_arrayBrackets = $6;
-                            	curr_var.m_lineno        = cl_scope_lineno;
-
+                            	curr_var.m_pattern         = "/^";
+                            	curr_var.m_pattern        += $1 + " " + $2 + " " + $3 + " " + $4 + " " + $5 + " " + $6 + " $/";
+                            	curr_var.m_isPtr           = ($3.find("*") != (size_t)-1);
+                            	curr_var.m_starAmp         = $3;
+                            	curr_var.m_arrayBrackets   = $6;
+								curr_var.m_rightSideConst  = $4;
+                            	curr_var.m_lineno          = cl_scope_lineno;
+								
+								if(curr_var.m_templateDecl.empty())
+									curr_var.m_templateDecl = s_templateInitList;
+								s_templateInitList.clear();	
+								
                                 //create new variable for every variable name found
                             	var = curr_var;
                             	var.m_name = $5;
@@ -233,12 +248,16 @@ variables	        : stmnt_starter variable_decl special_star_amp const_spec vari
                             {
                             	Variable var;
                             	std::string pattern;
-                            	curr_var.m_pattern = "/^";
-                            	curr_var.m_pattern += $1 + " " + $2 + " " + $3 + " " + $4 + " $/";
-                            	curr_var.m_isPtr = ($3.find("*") != (size_t)-1);
-                            	curr_var.m_starAmp = $3;
-                            	curr_var.m_lineno = cl_scope_lineno;
-
+                            	curr_var.m_pattern       = "/^";
+                            	curr_var.m_pattern       += $1 + " " + $2 + " " + $3 + " " + $4 + " $/";
+                            	curr_var.m_isPtr         = ($3.find("*") != (size_t)-1);
+                            	curr_var.m_starAmp       = $3;
+								curr_var.m_rightSideConst= $4;
+                            	curr_var.m_lineno        = cl_scope_lineno;
+								if(curr_var.m_templateDecl.empty())
+									curr_var.m_templateDecl = s_templateInitList;
+								s_templateInitList.clear();	
+								
                                 //create new variable for every variable name found
                             	var = curr_var;
                             	var.m_name = "";
@@ -251,18 +270,22 @@ variables	        : stmnt_starter variable_decl special_star_amp const_spec vari
                             	cl_scope_less(0);
                             }
                         }
-                        | ',' variable_decl special_star_amp postfix3
+                        | ',' variable_decl special_star_amp const_spec postfix3
                         {
                         	if(gs_vars && g_isUsedWithinFunc)
                             {
                             	Variable var;
                             	std::string pattern;
                             	curr_var.m_pattern = "/^";
-                            	curr_var.m_pattern += $1 + " " + $2 + " " + $3 + " " + "$/";
+                            	curr_var.m_pattern += $1 + " " + $2 + " " + $3 + " " + $4 + "$/";
                             	curr_var.m_isPtr = ($3.find("*") != (size_t)-1);
                             	curr_var.m_starAmp = $3;
                             	curr_var.m_lineno = cl_scope_lineno;
-
+								curr_var.m_rightSideConst= $4;
+								if(curr_var.m_templateDecl.empty())
+									curr_var.m_templateDecl = s_templateInitList;
+								s_templateInitList.clear();	
+								
                                 //create new variable for every variable name found
                             	var = curr_var;
                             	var.m_name = "";
@@ -336,9 +359,9 @@ applicable for C++, for cases where a function is declared as
 void scope::foo(){ ... }
 */
 scope_specifier	:	LE_IDENTIFIER LE_CLCL {$$ = $1+ $2; }
-                |	LE_IDENTIFIER  '<' parameter_list '>' LE_CLCL {$$ = $1 + $2 + $3 + $4 + $5;}
+                |	LE_IDENTIFIER  '<' parameter_list '>' LE_CLCL {$$ = $1 ; s_templateInitList = $2 + $3 + $4;}
                 ;
-
+				
 nested_scope_specifier: /*empty*/ {$$ = "";}
                     | nested_scope_specifier scope_specifier {    $$ = $1 + $2;}
                     ;
@@ -405,7 +428,6 @@ variable_decl       :   const_spec basic_type_name
                             $3.erase($3.find_last_not_of(":")+1);
                         	curr_var.m_typeScope = $3;
                         	curr_var.m_type = $4;
-                        	curr_var.m_isTemplate = false;
                         	curr_var.m_isConst = !$1.empty();
                         	s_tmpString.clear();
                         }
@@ -415,7 +437,7 @@ variable_decl       :   const_spec basic_type_name
                             $3.erase($3.find_last_not_of(":")+1);
                         	curr_var.m_typeScope = $3;
                         	curr_var.m_type = $4;
-                        	curr_var.m_isTemplate = false;
+                        	curr_var.m_isTemplate = !curr_var.m_templateDecl.empty();
                         	curr_var.m_isConst = !$1.empty();
                         	s_tmpString.clear();
                         }
@@ -506,28 +528,16 @@ void var_consumeDefaultValue(char c1, char c2)
     }
 }
 
-void var_syncParser(){
-//	int depth = 1;
-//	bool cont(true);
-//
-//	while (depth > 0 && cont) {
-//    	int ch = cl_scope_lex();
-//    	if(ch == 0)                    { break;}
-//    	if(ch == ',' && depth == 0) { break;}
-//    	if(ch == ';' && depth == 0) { break;}
-//    	if(ch == ')' && depth == 0) { break;}
-//
-//    	if(ch == ')'){
-//        	depth--;
-//        	continue;
-//        }
-//    	else if(ch == '('){
-//        	depth ++ ;
-//        	continue;
-//        }
-//    	printf("%d ", ch);
-//    }
-//	printf("\n");
+void clean_up()
+{
+	gs_vars = NULL;
+
+    // restore settings
+	setUseIgnoreMacros(true);
+	g_isUsedWithinFunc = false;
+	
+    //do the lexer cleanup
+	cl_scope_lex_clean();
 }
 
 // return the scope name at the end of the input string
@@ -548,13 +558,5 @@ void get_variables(const std::string &in, VariableList &li, const std::map<std::
 
     //call tghe main parsing routine
 	cl_var_parse();
-	gs_vars = NULL;
-
-    // restore settings
-	setUseIgnoreMacros(true);
-	g_isUsedWithinFunc = false;
-
-    //do the lexer cleanup
-	cl_scope_lex_clean();
+	clean_up();
 }
-

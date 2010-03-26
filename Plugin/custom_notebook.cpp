@@ -313,7 +313,7 @@ void Notebook::OnNavigationKey(wxNavigationKeyEvent &e)
 		// pass to the parent
 		if ( GetParent() ) {
 			e.SetCurrentFocus(this);
-			GetParent()->ProcessEvent(e);
+			GetParent()->GetEventHandler()->ProcessEvent(e);
 		}
 	}
 }

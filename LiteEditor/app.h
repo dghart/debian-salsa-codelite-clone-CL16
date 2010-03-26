@@ -31,14 +31,14 @@ class wxSingleInstanceChecker;
 
 class App : public wxApp
 {
-	wxSplashScreen*            m_splash;
+	wxSplashScreen*          m_splash;
 	Frame *                  m_pMainFrame;
 	wxSingleInstanceChecker *m_singleInstance;
 	wxArrayString            m_parserPaths;
+	bool                     m_loadPlugins;
 
-private:	// Methods
+private: // Methods
 	bool CopySettings(const wxString &destDir, wxString& installPath);
-	bool CheckRevision(const wxString &fileName);
 	bool CheckSingularity(const wxCmdLineParser &parser, const wxString &curdir);
 
 #ifdef __WXMSW__
@@ -55,15 +55,20 @@ public:
 	const wxArrayString& GetParserPaths() const {
 		return m_parserPaths;
 	}
+	void SetLoadPlugins(bool loadPlugins) {
+		this->m_loadPlugins = loadPlugins;
+	}
+	bool GetLoadPlugins() const {
+		return m_loadPlugins;
+	}
+	void MacOpenFile(const wxString &fileName);
+
 protected:
 	virtual bool OnInit();
 	virtual int OnExit();
 	virtual void OnFatalException();
 
 private:
-	DECLARE_EVENT_TABLE()
-	void OnIdle(wxIdleEvent &e);
-	void OnHideSplash(wxCommandEvent &e);
 };
 
 #endif // LITEEDITOR_APP_H

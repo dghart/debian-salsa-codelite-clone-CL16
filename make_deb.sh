@@ -53,7 +53,7 @@ generateDebianFiles()
 {
     cat > fakeroot/DEBIAN/control <<EOF
 Package: codelite
-Version: 2.2.0.${cur_rev}
+Version: 2.3.0.${cur_rev}
 Section: devel
 Priority: optional
 Architecture: ${arch}
@@ -113,10 +113,12 @@ cp sdk/codelite_indexer/codelite_indexer   fakeroot/${PREFIX}/bin/
 cp sdk/codelite_cppcheck/codelite_cppcheck fakeroot/${PREFIX}/bin/
 cp Runtime/codelite_exec                   fakeroot/${PREFIX}/bin/
 cp Runtime/codelite_kill_children          fakeroot/${PREFIX}/bin/
+cp Runtime/codelite_xterm                  fakeroot/${PREFIX}/bin/
 cp Runtime/codelite_fix_files              fakeroot/${PREFIX}/bin/
 
 chmod +x fakeroot/${PREFIX}/bin/codelite_fix_files
 chmod +x fakeroot/${PREFIX}/bin/codelite_kill_children
+chmod +x fakeroot/${PREFIX}/bin/codelite_xterm
 chmod +x fakeroot/${PREFIX}/bin/codelite_exec
 mkdir -p fakeroot/${PREFIX}/share/codelite
 mkdir -p fakeroot/${PREFIX}/share/codelite/config
@@ -140,7 +142,6 @@ cp -pr Runtime/config/codelite.xml.default.gtk fakeroot/${PREFIX}/share/codelite
 cp -pr Runtime/rc/menu.xrc fakeroot/${PREFIX}/share/codelite/rc/
 cp -pfr Runtime/templates/* fakeroot/${PREFIX}/share/codelite/templates/
 cp -pfr Runtime/lexers/* fakeroot/${PREFIX}/share/codelite/lexers/
-#cp -pr static-symbols.tags fakeroot/${PREFIX}/share/codelite/
 cp -pr lib/Debugger.so fakeroot/${PREFIX}/lib/codelite/debuggers/
 cp -pr lib/CodeFormatter.so fakeroot/${PREFIX}/lib/codelite/
 cp -pr lib/Copyright.so fakeroot/${PREFIX}/lib/codelite/
@@ -150,7 +151,7 @@ cp -pr lib/cscope.so fakeroot/${PREFIX}/lib/codelite/
 cp -pr lib/UnitTestCPP.so fakeroot/${PREFIX}/lib/codelite/
 cp -pr lib/ExternalTools.so fakeroot/${PREFIX}/lib/codelite/
 cp -pr lib/ContinuousBuild.so fakeroot/${PREFIX}/lib/codelite/
-#cp -pr lib/SymbolView.so fakeroot/${PREFIX}/lib/codelite/
+cp -pr lib/SymbolView.so fakeroot/${PREFIX}/lib/codelite/
 cp -pr lib/SnipWiz.so fakeroot/${PREFIX}/lib/codelite/
 cp -pr lib/wxformbuilder.so fakeroot/${PREFIX}/lib/codelite/
 cp -pr lib/abbreviation.so fakeroot/${PREFIX}/lib/codelite/
@@ -160,7 +161,6 @@ cp -pr lib/libwxscintillau.so fakeroot/${PREFIX}/lib/codelite/
 cp -pr lib/libpluginu.so fakeroot/${PREFIX}/lib/codelite/
 cp -pr lib/libcodeliteu.so fakeroot/${PREFIX}/lib/codelite/
 cp -pr lib/libwxsqlite3u.so fakeroot/${PREFIX}/lib/codelite/
-cp -pr lib/libwxpropgridu.so fakeroot/${PREFIX}/lib/codelite/
 cp -pr Runtime/plugins/resources/*.* fakeroot/${PREFIX}/lib/codelite/resources/
 cp -pr Runtime/*.html fakeroot/${PREFIX}/share/codelite/
 cp -pr Runtime/astyle.sample fakeroot/${PREFIX}/share/codelite/

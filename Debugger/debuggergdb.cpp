@@ -89,6 +89,10 @@ IDebugger *CreateDebuggerGDB()
 {
 	static DbgGdb theGdbDebugger;
 	theGdbDebugger.SetName(wxT("GNU gdb debugger"));
+	
+	DebuggerInformation info;
+	info.name = theGdbDebugger.GetName();
+	theGdbDebugger.SetDebuggerInformation(info);
 	return &theGdbDebugger;
 }
 
@@ -213,7 +217,8 @@ bool DbgGdb::Start(const wxString &debuggerPath, const wxString & exeName, int p
 	if (!m_gdbProcess) {
 		return false;
 	}
-
+	m_gdbProcess->SetHardKill(true);
+	
 	DoInitializeGdb(bpList, cmds);
 	m_observer->UpdateGotControl(DBG_END_STEPPING);
 	return true;
@@ -253,7 +258,7 @@ bool DbgGdb::Start(const wxString &debuggerPath, const wxString &exeName, const 
 	if (!m_gdbProcess) {
 		return false;
 	}
-
+	m_gdbProcess->SetHardKill(true);
 	DoInitializeGdb(bpList, cmds);
 	return true;
 }
@@ -849,6 +854,7 @@ void DbgGdb::OnProcessEnd(wxCommandEvent &e)
 
 	m_observer->UpdateGotControl(DBG_EXITED_NORMALLY);
 	m_gdbOutputArr.Clear();
+	m_consoleFinder.FreeConsole();
 	SetIsRemoteDebugging(false);
 }
 

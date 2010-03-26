@@ -197,6 +197,6 @@ void SyntaxHighlightDlg::OnRestoreDefaults(wxCommandEvent& e)
 	Frame::Get()->GetMainBook()->ApplySettingsChanges();
 	
 	wxCommandEvent event(wxEVT_COMMAND_MENU_SELECTED, XRCID("syntax_highlight"));
-	Frame::Get()->AddPendingEvent(event);
+	Frame::Get()->GetEventHandler()->AddPendingEvent(event);
 	EndModal(wxID_OK);
 }

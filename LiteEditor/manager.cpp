@@ -122,7 +122,8 @@ static wxArrayString DoGetTemplateTypes(const wxString& tmplDecl)
 	tmpstr.Trim().Trim(false);
 
 	for (size_t i=0; i<tmpstr.Length(); i++) {
-		switch (tmpstr.GetChar(i)) {
+		wxChar ch = tmpstr.GetChar(i);
+		switch (ch) {
 		case wxT(','):
 						if ( depth > 0 ) {
 					type << wxT(",");
@@ -210,7 +211,6 @@ Manager::~Manager ( void )
 	BuildSettingsConfigST::Free();
 	SearchThreadST::Free();
 	MenuManager::Free();
-	EditorConfigST::Free();
 	EnvironmentConfig::Release();
 
 	if ( m_shellProcess ) {
@@ -256,7 +256,13 @@ void Manager::OpenWorkspace ( const wxString &path )
 		wxMessageBox ( errMsg, wxT ( "Error" ), wxOK | wxICON_HAND );
 		return;
 	}
-
+	
+	// OpenWorkspace returned true, but errMsg is not empty
+	// this could only mean that we removed a fauly project
+	if(errMsg.IsEmpty() == false) {
+		Frame::Get()->GetMainBook()->ShowMessage(errMsg, true, wxXmlResource::Get()->LoadBitmap(wxT("message_pane_warning")));
+	}
+	
 	DoSetupWorkspace ( path );
 }
 
@@ -296,7 +302,7 @@ void Manager::DoSetupWorkspace ( const wxString &path )
 	TagsOptionsData tagsopt = TagsManagerST::Get()->GetCtagsOptions();
 	if ( tagsopt.GetFlags() & CC_RETAG_WORKSPACE_ON_STARTUP ) {
 		wxCommandEvent e(wxEVT_COMMAND_MENU_SELECTED, XRCID("retag_workspace"));
-		Frame::Get()->AddPendingEvent(e);
+		Frame::Get()->GetEventHandler()->AddPendingEvent(e);
 	}
 }
 
@@ -469,18 +475,27 @@ void Manager::AddProject ( const wxString & path )
 	SendCmdEvent ( wxEVT_PROJ_ADDED, ( void* ) &projectName );
 }
 
-void Manager::ImportMSVSSolution ( const wxString &path )
+void Manager::ImportMSVSSolution ( const wxString &path, const wxString &defaultCompiler )
 {
 	wxFileName fn ( path );
 	if ( fn.FileExists() == false ) {
 		return;
 	}
+	
+	// Show some messages to the user
+	wxBusyCursor busyCursor;
+	wxBusyInfo info(_("Importing MS solution..."), Frame::Get());
+	
 	wxString errMsg;
-	VcImporter importer ( path );
+	VcImporter importer ( path, defaultCompiler );
 	if ( importer.Import ( errMsg ) ) {
 		wxString wspfile;
 		wspfile << fn.GetPath() << wxT ( "/" ) << fn.GetName() << wxT ( ".workspace" );
 		OpenWorkspace ( wspfile );
+		
+		// Retag workspace
+		wxCommandEvent event( wxEVT_COMMAND_MENU_SELECTED, XRCID("retag_workspace") );
+		Frame::Get()->GetEventHandler()->AddPendingEvent( event );
 	}
 }
 
@@ -733,6 +748,9 @@ void Manager::RetagWorkspace(bool quickRetag)
 	// Create a parsing request
 	ParseRequest *parsingRequest = new ParseRequest();
 	for (size_t i=0; i<projectFiles.size(); i++) {
+		// filter any non valid coding file
+		if(!TagsManagerST::Get()->IsValidCtagsFile(projectFiles.at(i)))
+			continue;
 		parsingRequest->_workspaceFiles.push_back( projectFiles.at(i).GetFullPath().mb_str(wxConvUTF8).data() );
 	}
 
@@ -2211,24 +2229,34 @@ void Manager::UpdateGotControl ( DebuggerReasons reason )
 	
 		wxString signame = wxT ( "SIGSEGV" );
 		
-		if ( reason == DBG_RECV_SIGNAL_EXC_BAD_ACCESS )
+		// show the dialog only if the signal is not sigtrap
+		// since sigtap might be triggered by user inserting a breakpoint
+		// into an already running debug session
+		bool     showDialog(true);
+		if ( reason == DBG_RECV_SIGNAL_EXC_BAD_ACCESS ) {
 			signame = wxT ( "EXC_BAD_ACCESS" );
+			showDialog = true;
 			
-		else if ( reason == DBG_RECV_SIGNAL_SIGABRT )
+		} else if ( reason == DBG_RECV_SIGNAL_SIGABRT ) {
 			signame = wxT ( "SIGABRT" );
+			showDialog = true;
 			
-		else if ( reason == DBG_RECV_SIGNAL_SIGTRAP )
+		} else if ( reason == DBG_RECV_SIGNAL_SIGTRAP ) {
 			signame = wxT ( "SIGTRAP" );
+			showDialog = false;
+		}
 		
 		DebugMessage ( _("Program Received signal ") + signame + _("\n") );
-		wxMessageDialog dlg( Frame::Get(), _("Program Received signal ") + signame + wxT("\n") +
-		                     _("Stack trace is available in the 'Call Stack' tab\n"),
-		                     wxT("CodeLite"), wxICON_ERROR|wxOK );
-		dlg.ShowModal();
-
+		if(showDialog) {
+			wxMessageDialog dlg( Frame::Get(), _("Program Received signal ") + signame + wxT("\n") +
+								 _("Stack trace is available in the 'Call Stack' tab\n"),
+								 wxT("CodeLite"), wxICON_ERROR|wxOK );
+			dlg.ShowModal();
+		}
+		
 		//Print the stack trace
 		wxAuiPaneInfo &info = Frame::Get()->GetDockingManager().GetPane ( wxT("Debugger") );
-		if ( info.IsShown() ) {
+		if ( info.IsShown() && showDialog ) {
 			Frame::Get()->GetDebuggerPane()->SelectTab ( DebuggerPane::FRAMES );
 			UpdateDebuggerPane();
 		}
@@ -2820,7 +2848,7 @@ void Manager::DbgRestoreWatches()
 			DebugMessage(wxT("Restoring watch: ") + m_dbgWatchExpressions.Item(i) + wxT("\n"));
 			wxCommandEvent e(wxEVT_COMMAND_MENU_SELECTED, XRCID("add_watch"));
 			e.SetString(m_dbgWatchExpressions.Item(i));
-			Frame::Get()->GetDebuggerPane()->GetWatchesTable()->AddPendingEvent( e );
+			Frame::Get()->GetDebuggerPane()->GetWatchesTable()->GetEventHandler()->AddPendingEvent( e );
 		}
 	}
 }
@@ -2837,7 +2865,7 @@ void Manager::DoRestartCodeLite()
 	<< wxT("\"");
 
 	wxCommandEvent event(wxEVT_COMMAND_MENU_SELECTED, XRCID("exit_app"));
-	Frame::Get()->ProcessEvent(event);
+	Frame::Get()->GetEventHandler()->ProcessEvent(event);
 
 	wxExecute(command, wxEXEC_ASYNC|wxEXEC_NOHIDE);
 
@@ -2846,7 +2874,7 @@ void Manager::DoRestartCodeLite()
 	command << wxStandardPaths::Get().GetExecutablePath();
 
 	wxCommandEvent event(wxEVT_COMMAND_MENU_SELECTED, XRCID("exit_app"));
-	Frame::Get()->AddPendingEvent(event);
+	Frame::Get()->GetEventHandler()->AddPendingEvent(event);
 
 	wxExecute(command, wxEXEC_ASYNC|wxEXEC_NOHIDE);
 #endif

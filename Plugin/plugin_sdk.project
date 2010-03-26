@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <CodeLite_Project Name="plugin_sdk">
+  <Plugins>
+    <Plugin Name="qmake">
+      <![CDATA[00020001N0011WinDebug_290000000000000001N0013WinRelease_29000000000000]]>
+    </Plugin>
+  </Plugins>
   <VirtualDirectory Name="src">
     <File Name="async_executable_cmd.cpp"/>
     <File Name="build_config.cpp"/>
@@ -154,8 +159,6 @@
       <File Name="threebuttonbasedlg.cpp"/>
       <File Name="threebuttonbasedlg.h"/>
       <File Name="threebuttondlg.cpp"/>
-      <File Name="open_type_dlg.h"/>
-      <File Name="open_type_dlg.cpp"/>
       <File Name="nameanddescdlg.h"/>
       <File Name="nameanddescbasedlg.cpp"/>
       <File Name="nameanddescbasedlg.h"/>
@@ -166,14 +169,14 @@
       <File Name="macrosbasedlg.cpp"/>
       <File Name="macrosbasedlg.h"/>
       <File Name="macrosdlg.cpp"/>
-      <File Name="quickfinder_basedlg.h"/>
-      <File Name="quickfinder_basedlg.cpp"/>
-      <File Name="quickfinder_selectsymbol.h"/>
-      <File Name="quickfinder_selectsymbol.cpp"/>
       <File Name="renamefilebasedlg.cpp"/>
       <File Name="renamefilebasedlg.h"/>
       <File Name="renamefiledlg.h"/>
       <File Name="renamefiledlg.cpp"/>
+      <File Name="openresourcedialogbase.cpp"/>
+      <File Name="openresourcedialogbase.h"/>
+      <File Name="open_resource_dialog.h"/>
+      <File Name="open_resource_dialog.cpp"/>
     </VirtualDirectory>
     <VirtualDirectory Name="Notebook">
       <File Name="custom_notebook.cpp"/>
@@ -228,9 +231,22 @@
     <File Name="overlaytool.cpp"/>
     <File Name="overlaytool.h"/>
   </VirtualDirectory>
-  <VirtualDirectory Name="QuickFinder">
-    <File Name="quickfinder.h"/>
-    <File Name="quickfinder.cpp"/>
+  <VirtualDirectory Name="formbuilder">
+    <File Name="renamefilebasedlg.fbp"/>
+    <File Name="openresourcedialogbase.fbp"/>
+  </VirtualDirectory>
+  <VirtualDirectory Name="Terminal">
+    <File Name="wxterminalbase.h"/>
+    <File Name="wxterminal.cpp"/>
+    <File Name="wxterminal.h"/>
+    <File Name="wxterminalbase.cpp"/>
+  </VirtualDirectory>
+  <VirtualDirectory Name="md5">
+    <File Name="wxmd5.cpp"/>
+    <File Name="wxmd5.h"/>
+    <File Name="md5.h"/>
+    <File Name="md5_global.h"/>
+    <File Name="md5c.c"/>
   </VirtualDirectory>
   <Settings Type="Static Library">
     <Configuration Name="DebugUnicode" CompilerType="gnu g++" DebuggerType="GNU gdb debugger" Type="" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
@@ -339,6 +355,41 @@
         <CustomPreBuild/>
       </AdditionalRules>
     </Configuration>
+    <Configuration Name="WinDebug_29" CompilerType="gnu g++" DebuggerType="GNU gdb debugger" Type="Static Library" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
+      <Compiler Options="$(shell wx-config --cxxflags --unicode=yes --debug=yes);-g" Required="yes" PreCompiledHeader="">
+        <IncludePath Value="."/>
+        <IncludePath Value="./include"/>
+        <IncludePath Value="../CodeLite"/>
+        <IncludePath Value="../sdk/wxsqlite3/include"/>
+        <IncludePath Value="../Interfaces"/>
+        <IncludePath Value="../sdk/wxflatnotebook/include"/>
+        <Preprocessor Value="__WX__"/>
+        <Preprocessor Value="WXUSINGDLL"/>
+      </Compiler>
+      <Linker Options="" Required="yes"/>
+      <ResourceCompiler Options="" Required="yes"/>
+      <General OutputFile="../lib/gcc_lib/libplugin_sdku.a" IntermediateDirectory="./WinDebug_29" Command="" CommandArguments="" WorkingDirectory="" PauseExecWhenProcTerminates="yes"/>
+      <Debugger IsRemote="no" RemoteHostName="" RemoteHostPort="" DebuggerPath="">
+        <PostConnectCommands/>
+        <StartupCommands/>
+      </Debugger>
+      <PreBuild/>
+      <PostBuild/>
+      <CustomBuild Enabled="no">
+        <RebuildCommand/>
+        <CleanCommand/>
+        <BuildCommand/>
+        <PreprocessFileCommand/>
+        <SingleFileCommand/>
+        <MakefileGenerationCommand/>
+        <ThirdPartyToolName>None</ThirdPartyToolName>
+        <WorkingDirectory/>
+      </CustomBuild>
+      <AdditionalRules>
+        <CustomPostBuild/>
+        <CustomPreBuild/>
+      </AdditionalRules>
+    </Configuration>
     <Configuration Name="WinReleaseUnicode" CompilerType="gnu g++" DebuggerType="GNU gdb debugger" Type="Static Library" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
       <Compiler Options="-Wall;$(shell wx-config --cxxflags --debug=no --unicode=yes)" Required="yes" PreCompiledHeader="">
         <IncludePath Value="."/>
@@ -384,24 +435,9 @@
       <ResourceCompiler Options=""/>
     </GlobalSettings>
   </Settings>
-  <VirtualDirectory Name="formbuilder">
-    <File Name="renamefilebasedlg.fbp"/>
-  </VirtualDirectory>
-  <VirtualDirectory Name="Terminal">
-    <File Name="wxterminalbase.h"/>
-    <File Name="wxterminal.cpp"/>
-    <File Name="wxterminal.h"/>
-    <File Name="wxterminalbase.cpp"/>
-  </VirtualDirectory>
   <Dependencies Name="DebugUnicode"/>
   <Dependencies Name="ReleaseUnicode"/>
-  <VirtualDirectory Name="md5">
-    <File Name="wxmd5.cpp"/>
-    <File Name="wxmd5.h"/>
-    <File Name="md5.h"/>
-    <File Name="md5_global.h"/>
-    <File Name="md5c.c"/>
-  </VirtualDirectory>
   <Dependencies Name="WinDebugUnicode"/>
+  <Dependencies Name="WinDebug_29"/>
   <Dependencies Name="WinReleaseUnicode"/>
 </CodeLite_Project>

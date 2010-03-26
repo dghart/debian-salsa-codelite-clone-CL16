@@ -98,14 +98,14 @@ CodeFormatter::~CodeFormatter()
 {
 }
 
-wxToolBar *CodeFormatter::CreateToolBar(wxWindow *parent)
+clToolBar *CodeFormatter::CreateToolBar(wxWindow *parent)
 {
-	wxToolBar *tb(NULL);
+	clToolBar *tb(NULL);
 	if (m_mgr->AllowToolbar()) {
 		//support both toolbars icon size
 		int size = m_mgr->GetToolbarIconSize();
 
-		tb = new wxToolBar(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTB_FLAT | wxTB_NODIVIDER);
+		tb = new clToolBar(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, clTB_DEFAULT_STYLE);
 		tb->SetToolBitmapSize(wxSize(size, size));
 
 		if (size == 24) {
@@ -145,12 +145,24 @@ void CodeFormatter::CreatePluginMenu(wxMenu *pluginsMenu)
 
 void CodeFormatter::OnFormat(wxCommandEvent &e)
 {
-	wxUnusedVar(e);
-	IEditor *editor = m_mgr->GetActiveEditor();
+	IEditor *editor(NULL);
+	wxString fileToFormat = e.GetString();
+	
+	// If we got a file name in the event, use it instead of the active editor
+	if(fileToFormat.IsEmpty() == false) {
+		if(!m_mgr->OpenFile(fileToFormat)) {
+			return;
+		}
+	}
+	
+	// get the editor that requires formatting
+	editor = m_mgr->GetActiveEditor();
 	if (!editor)
 		return;
-
+	
+	m_mgr->SetStatusMessage(wxString::Format(wxT("Formatting: %s..."), editor->GetFileName().GetFullPath().c_str()), 0);
 	DoFormatFile(editor);
+	m_mgr->SetStatusMessage(wxT("Done"), 0);
 }
 
 void CodeFormatter::DoFormatFile(IEditor *editor)
@@ -222,6 +234,7 @@ void CodeFormatter::OnFormatOptions(wxCommandEvent &e)
 
 void CodeFormatter::OnFormatUI(wxUpdateUIEvent &e)
 {
+	CHECK_CL_SHUTDOWN();
 	e.Enable(m_mgr->GetActiveEditor() != NULL);
 }
 
@@ -238,7 +251,10 @@ void CodeFormatter::HookPopupMenu(wxMenu *menu, MenuType type)
 
 void CodeFormatter::UnPlug()
 {
-	//nothing to do
+	m_mgr->GetTheApp()->Disconnect(XRCID("format_source"), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(CodeFormatter::OnFormat), NULL, (wxEvtHandler*)this);
+	m_mgr->GetTheApp()->Disconnect(XRCID("formatter_options"), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(CodeFormatter::OnFormatOptions), NULL, (wxEvtHandler*)this);
+	m_mgr->GetTheApp()->Disconnect(XRCID("format_source"), wxEVT_UPDATE_UI, wxUpdateUIEventHandler(CodeFormatter::OnFormatUI), NULL, (wxEvtHandler*)this);
+	m_mgr->GetTheApp()->Disconnect(XRCID("formatter_options"), wxEVT_UPDATE_UI, wxUpdateUIEventHandler(CodeFormatter::OnFormatOptionsUI), NULL, (wxEvtHandler*)this);
 }
 
 IManager* CodeFormatter::GetManager()

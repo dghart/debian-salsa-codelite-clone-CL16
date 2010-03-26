@@ -58,7 +58,7 @@ DockablePane::DockablePane(wxWindow* parent, Notebook* book, wxWindow* child, co
 
     wxCommandEvent event(wxEVT_CMD_NEW_DOCKPANE);
 	event.SetClientData(this);
-	parent->AddPendingEvent(event);
+	parent->GetEventHandler()->AddPendingEvent(event);
 }
 
 DockablePane::~DockablePane()
@@ -80,7 +80,7 @@ void DockablePane::ClosePane(wxCommandEvent& e)
 
 	wxCommandEvent event(wxEVT_CMD_DELETE_DOCKPANE);
 	event.SetClientData(this);
-	GetParent()->AddPendingEvent(event);
+	GetParent()->GetEventHandler()->AddPendingEvent(event);
 }
 
 void DockablePane::OnPaint(wxPaintEvent& e)

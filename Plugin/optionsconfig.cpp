@@ -27,7 +27,7 @@
 #include <wx/fontmap.h>
 #include "xmlutils.h"
 #include "macros.h"
-
+#include "wx_xml_compatibility.h"
 
 OptionsConfig::OptionsConfig(wxXmlNode *node)
 		: m_displayFoldMargin(true)
@@ -71,7 +71,6 @@ OptionsConfig::OptionsConfig(wxXmlNode *node)
 {
 	//set the default font name to be UTF8
 	SetFileFontEncoding(wxFontMapper::GetEncodingName(wxFONTENCODING_UTF8));
-
 	if ( node ) {
 		m_displayFoldMargin = XmlUtils::ReadBool(node, wxT("DisplayFoldMargin"), m_displayFoldMargin);
 		m_underlineFoldLine = XmlUtils::ReadBool(node, wxT("UnderlineFoldedLine"), m_underlineFoldLine);

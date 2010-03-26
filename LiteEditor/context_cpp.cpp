@@ -25,6 +25,8 @@
 
 
 #include "pluginmanager.h"
+#include "drawingutils.h"
+#include "buildtabsettingsdata.h"
 #include "cl_editor_tip_window.h"
 #include "implement_parent_virtual_functions.h"
 #include "debuggerasciiviewer.h"
@@ -60,18 +62,14 @@
 #include "frame.h"
 #include "debuggermanager.h"
 #include "addincludefiledlg.h"
-#include "variable.h"
-#include "function.h"
 #include "workspacetab.h"
 #include "fileview.h"
 #include "refactorindexbuildjob.h"
 #include "new_quick_watch_dlg.h"
+#include "code_completion_api.h"
 
 //#define __PERFORMANCE
 #include "performance.h"
-
-extern void get_variables(const std::string &in, VariableList &li, const std::map<std::string, std::string> &ignoreTokens, bool isUsedWithinFunc);
-extern void get_functions(const std::string &in, FunctionList &li, const std::map<std::string, std::string> &ignoreTokens);
 
 static bool IsSource(const wxString &ext)
 {
@@ -230,11 +228,17 @@ void ContextCpp::OnDwellStart(wxScintillaEvent &event)
 	if (word.IsEmpty()) {
 		return;
 	}
-
+	
+	int foundPos(wxNOT_FOUND);
+	if(rCtrl.PreviousChar(word_start, foundPos) == wxT('~'))
+		word.Prepend(wxT("~"));
+	
 	//get the expression we are hovering over
 	wxString expr = GetExpression(end, false);
+	
 	// get the full text of the current page
 	wxString text = rCtrl.GetTextRange(0, pos);
+	
 	// now we are ready to process the scope and build our tips
 	std::vector<wxString> tips;
 	int line = rCtrl.LineFromPosition(rCtrl.GetCurrentPosition())+1;
@@ -320,7 +324,7 @@ void ContextCpp::AutoIndent(const wxChar &nChar)
 	LEditor &rCtrl = GetCtrl();
 
 	if(rCtrl.GetDisableSmartIndent()) {
-		ContextBase::AutoIndent(nChar);
+		/*ContextBase::AutoIndent(nChar);*/
 		return;
 	}
 
@@ -1276,7 +1280,7 @@ void ContextCpp::OnGenerateSettersGetters(wxCommandEvent &event)
 		}
 
 		if ( s_dlg->GetFormatText() )
-			DoFormatActiveEditor();
+			DoFormatEditor( &GetCtrl() );
 	}
 }
 
@@ -1510,7 +1514,7 @@ void ContextCpp::OnMoveImpl(wxCommandEvent &e)
 		if (DoGetFunctionBody(curPos, blockStartPos, blockEndPos, content)) {
 
 			//create the functions body
-			wxString body = TagsManagerST::Get()->FormatFunction(tag, true);
+			wxString body = TagsManagerST::Get()->FormatFunction(tag, FunctionFormat_Impl);
 			//remove the empty content provided by this function
 			body = body.BeforeLast(wxT('{'));
 			body = body.Trim().Trim(false);
@@ -1653,7 +1657,7 @@ void ContextCpp::OnOverrideParentVritualFunctions(wxCommandEvent& e)
 		wxString decl     = dlg.GetDecl();
 		rCtrl.InsertText(rCtrl.GetCurrentPos(), decl);
 		if (dlg.m_checkBoxFormat->IsChecked())
-			DoFormatActiveEditor();
+			DoFormatEditor( &GetCtrl() );
 
 		// Open teh implementation file and format it if needed
 		OpenFileAppendAndFormat(implFile, impl, dlg.m_checkBoxFormat->IsChecked());
@@ -1693,8 +1697,8 @@ void ContextCpp::OnAddMultiImpl(wxCommandEvent &e)
 		TagEntryPtr tag = iter->second;
 		//use normalize function signature rather than the default one
 		//this will ensure that default values are removed
-		tag->SetSignature(TagsManagerST::Get()->NormalizeFunctionSig( tag->GetSignature(), Normalize_Func_Name ));
-		body << TagsManagerST::Get()->FormatFunction(tag, true);
+		tag->SetSignature(TagsManagerST::Get()->NormalizeFunctionSig( tag->GetSignature(), Normalize_Func_Name | Normalize_Func_Reverse_Macro ));
+		body << TagsManagerST::Get()->FormatFunction(tag, FunctionFormat_Impl);
 		body << wxT("\n");
 	}
 
@@ -1723,8 +1727,8 @@ void ContextCpp::OnAddImpl(wxCommandEvent &e)
 	VALIDATE_WORKSPACE();
 
 	//get expression
-	int pos = rCtrl.GetCurrentPos();
-	int word_end = rCtrl.WordEndPosition(pos, true);
+	int pos        = rCtrl.GetCurrentPos();
+	int word_end   = rCtrl.WordEndPosition(pos, true);
 	int word_start = rCtrl.WordStartPosition(pos, true);
 
 	// get the scope
@@ -1732,7 +1736,11 @@ void ContextCpp::OnAddImpl(wxCommandEvent &e)
 
 	if (word.IsEmpty())
 		return;
-
+	
+	int foundPos(wxNOT_FOUND);
+	if(rCtrl.PreviousChar(word_start, foundPos) == wxT('~'))
+		word.Prepend(wxT("~"));
+		
 	std::vector<TagEntryPtr> tags;
 	int line = rCtrl.LineFromPosition(rCtrl.GetCurrentPosition())+1;
 
@@ -1780,9 +1788,9 @@ void ContextCpp::OnAddImpl(wxCommandEvent &e)
 		//create the functions body
 		//replace the function signature with the normalized one, so default values
 		//will not appear in the function implementation
-		wxString newSig = TagsManagerST::Get()->NormalizeFunctionSig( tag->GetSignature(), Normalize_Func_Name );
+		wxString newSig = TagsManagerST::Get()->NormalizeFunctionSig( tag->GetSignature(), Normalize_Func_Name | Normalize_Func_Reverse_Macro);
 		tag->SetSignature( newSig );
-		wxString body = TagsManagerST::Get()->FormatFunction(tag, true);
+		wxString body = TagsManagerST::Get()->FormatFunction(tag, FunctionFormat_Impl);
 
 		wxString targetFile;
 		FindSwappedFile(rCtrl.GetFileName(), targetFile);
@@ -1803,29 +1811,30 @@ void ContextCpp::OnAddImpl(wxCommandEvent &e)
 	}
 }
 
-void ContextCpp::DoFormatActiveEditor()
+void ContextCpp::DoFormatEditor(LEditor *editor)
 {
 	IPlugin *formatter = PluginManager::Get()->GetPlugin(wxT("CodeFormatter"));
-	if (formatter) {
+	if (formatter && editor) {
 		// code formatter is available, format the current source file
 		wxCommandEvent e(wxEVT_COMMAND_MENU_SELECTED, XRCID("format_source"));
+		e.SetString(editor->GetFileName().GetFullPath());
 		Frame::Get()->GetEventHandler()->ProcessEvent(e);
 	}
 }
 
 bool ContextCpp::OpenFileAppendAndFormat(const wxString& fileName, const wxString& text, bool format)
 {
-	OpenFileAndAppend(fileName, text);
-	if (format)
-		DoFormatActiveEditor();
+	LEditor *editor = OpenFileAndAppend(fileName, text);
+	if (format && editor)
+		DoFormatEditor(editor);
 	return true;
 }
 
-bool ContextCpp::OpenFileAndAppend ( const wxString &fileName, const wxString &text )
+LEditor* ContextCpp::OpenFileAndAppend ( const wxString &fileName, const wxString &text )
 {
 	LEditor *editor = Frame::Get()->GetMainBook()->OpenFile(fileName, wxEmptyString, 0);
 	if (!editor)
-		return false;
+		return NULL;
 
 	// if needed, append EOL
 	if (editor->GetText().EndsWith(editor->GetEolString()) == false) {
@@ -1835,7 +1844,7 @@ bool ContextCpp::OpenFileAndAppend ( const wxString &fileName, const wxString &t
 	int lineNum = editor->GetLineCount();
 	editor->GotoLine ( lineNum-1 );
 	editor->AppendText ( text );
-	return true;
+	return editor;
 }
 
 void ContextCpp::OnFileSaved()
@@ -2017,7 +2026,21 @@ void ContextCpp::ApplySettings()
 	rCtrl.CmdKeyClear('/', wxSCI_SCMOD_CTRL|wxSCI_SCMOD_SHIFT);
 
 	// update word characters to allow '~' as valid word character
-	rCtrl.SetWordChars(wxT("~_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"));
+	rCtrl.SetWordChars(wxT("_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"));
+	
+	// Error
+	wxFont guiFont = wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT);
+	BuildTabSettingsData cmpColoursOptions;
+	
+	EditorConfigST::Get()->ReadObject ( wxT ( "build_tab_settings" ), &cmpColoursOptions);
+	rCtrl.StyleSetBackground(eAnnotationStyleError, DrawingUtils::LightColour(cmpColoursOptions.GetErrorColour(), 9.0));
+	rCtrl.StyleSetForeground(eAnnotationStyleError, cmpColoursOptions.GetErrorColour());
+	rCtrl.StyleSetFont(eAnnotationStyleError, guiFont);
+	
+	// Warning
+	rCtrl.StyleSetBackground(eAnnotationStyleWarning, DrawingUtils::LightColour(cmpColoursOptions.GetErrorColour(), 9.0));
+	rCtrl.StyleSetForeground(eAnnotationStyleWarning, cmpColoursOptions.GetWarnColour());
+	rCtrl.StyleSetFont(eAnnotationStyleWarning, guiFont);
 }
 
 void ContextCpp::Initialize()
@@ -2573,7 +2596,7 @@ void ContextCpp::GoHyperlink(int start, int end, int type, bool alt)
 		if (type == XRCID("find_tag")) {
 			wxCommandEvent e(wxEVT_COMMAND_MENU_SELECTED,
 			                 alt ? XRCID("find_impl") : XRCID("find_decl"));
-			Frame::Get()->AddPendingEvent(e);
+			Frame::Get()->GetEventHandler()->AddPendingEvent(e);
 		}
 	}
 }

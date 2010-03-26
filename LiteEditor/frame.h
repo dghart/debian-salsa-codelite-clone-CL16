@@ -91,7 +91,7 @@ class Frame : public wxFrame
 	DockablePaneMenuManager *             m_DPmenuMgr;
 	OutputViewControlBar *                m_controlBar;
 	wxPanel*                              m_mainPanel;
-
+	wxString                              m_codeliteDownloadPageURL;
 public:
 	static Frame* Get();
 	static void Initialize(bool loadLastSession);
@@ -291,7 +291,8 @@ private:
 	void CreateRecentlyOpenedWorkspacesMenu();
 	void CreateWelcomePage();
 	void ReloadExternallyModifiedProjectFiles();
-
+	void DoSuggestRestart();
+	
 protected:
 	//----------------------------------------------------
 	// event handlers
@@ -353,8 +354,6 @@ protected:
 	void OnExecuteNoDebugUI(wxUpdateUIEvent &event);
 	void OnTimer(wxTimerEvent &event);
 	void OnFileCloseAll(wxCommandEvent &event);
-	void OnFindResource(wxCommandEvent &event);
-	void OnFindType(wxCommandEvent &event);
 	void OnQuickOutline(wxCommandEvent &event);
 	void OnImportMSVS(wxCommandEvent &e);
 	void OnDebugAttach(wxCommandEvent &event);
@@ -385,7 +384,7 @@ protected:
 	void OnParsingThreadDone          (wxCommandEvent  &e);
 	void OnParsingThreadMessage       (wxCommandEvent  &e);
 	void OnDatabaseUpgrade            (wxCommandEvent  &e);
-
+	void OnClearTagsCache             (wxCommandEvent  &e);
 	void OnRecentFile(wxCommandEvent &event);
 	void OnRecentWorkspace(wxCommandEvent &event);
 	void OnBackwardForward(wxCommandEvent &event);
@@ -417,14 +416,16 @@ protected:
 	void OnCloseAllButThis(wxCommandEvent &e);
 	void OnWorkspaceMenuUI(wxUpdateUIEvent &e);
 	void OnUpdateBuildRefactorIndexBar(wxCommandEvent &e);
-
+	void OnUpdateNumberOfBuildProcesses(wxCommandEvent &e);
 	void OnBuildWorkspace(wxCommandEvent &e);
 	void OnBuildWorkspaceUI(wxUpdateUIEvent &e);
 	void OnCleanWorkspace(wxCommandEvent &e);
 	void OnCleanWorkspaceUI(wxUpdateUIEvent &e);
 	void OnReBuildWorkspace(wxCommandEvent &e);
 	void OnReBuildWorkspaceUI(wxUpdateUIEvent &e);
-
+	void OnUpdateParserPath(wxCommandEvent &e);
+	void OnNeverUpdateParserPath(wxCommandEvent &e);
+	
 	//EOL
 	void OnConvertEol(wxCommandEvent &e);
 	void OnViewDisplayEOL(wxCommandEvent &e);
@@ -447,6 +448,7 @@ protected:
 	void OnConfigureAccelerators(wxCommandEvent &e);
 	void OnStartPageEvent(wxCommandEvent &e);
 	void OnNewVersionAvailable(wxCommandEvent &e);
+	void OnGotoCodeLiteDownloadPage(wxCommandEvent &e);
 	void OnBatchBuild(wxCommandEvent &e);
 	void OnBatchBuildUI(wxUpdateUIEvent &e);
 	void OnSyntaxHighlight(wxCommandEvent &e);
@@ -454,11 +456,13 @@ protected:
 	void OnShowWhitespace(wxCommandEvent &e);
 	void OnShowFullScreen(wxCommandEvent &e);
 	void OnSetStatusMessage(wxCommandEvent &e);
-	void OnShowQuickFinder  (wxCommandEvent &e);
+	void OnFindResourceXXX  (wxCommandEvent &e);
 	void OnShowQuickFinderUI(wxUpdateUIEvent &e);
 	void OnShowActiveProjectSettings(wxCommandEvent &e);
 	void OnShowActiveProjectSettingsUI(wxUpdateUIEvent &e);
 	void OnLoadPerspective(wxCommandEvent &e);
+	void OnWorkspaceSettings(wxCommandEvent &e);
+	void OnWorkspaceEditorPreferences(wxCommandEvent &e);
 	DECLARE_EVENT_TABLE()
 };
 

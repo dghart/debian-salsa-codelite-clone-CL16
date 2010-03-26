@@ -131,7 +131,7 @@ void FileExplorerTree::OnSearchNode(wxCommandEvent &e)
     if (item.IsOk()) {
         wxCommandEvent ff(wxEVT_COMMAND_MENU_SELECTED, XRCID("find_in_files"));
         ff.SetString(GetFullPath(item).GetFullPath());
-        Frame::Get()->AddPendingEvent(ff);
+        Frame::Get()->GetEventHandler()->AddPendingEvent(ff);
     }
     e.Skip();
 }
@@ -196,7 +196,7 @@ void FileExplorerTree::OnTagNode(wxCommandEvent &e)
 		// send notification to the main frame to perform retag
 		if ( retagRequires ) {
 			wxCommandEvent event( wxEVT_COMMAND_MENU_SELECTED, XRCID("retag_workspace") );
-			Frame::Get()->AddPendingEvent( event );
+			Frame::Get()->GetEventHandler()->AddPendingEvent( event );
 		}
 	}
 }

@@ -183,7 +183,7 @@ public:
 	 * Import a MS Solution file and open it in the editor
 	 * \param path path to the .sln file
 	 */
-	void ImportMSVSSolution(const wxString &path);
+	void ImportMSVSSolution(const wxString &path, const wxString &defaultCompiler);
 
 	/**
 	 * Remove the a project from the workspace

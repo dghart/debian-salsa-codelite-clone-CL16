@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <CodeLite_Project Name="wxscintilla">
+  <Plugins>
+    <Plugin Name="qmake">
+      <![CDATA[00020001N0011WinDebug_290000000000000001N0013WinRelease_29000000000000]]>
+    </Plugin>
+  </Plugins>
   <VirtualDirectory Name="wxScintilla">
     <VirtualDirectory Name="src">
       <File Name="src/wxscintilla.cpp"/>
@@ -152,6 +157,8 @@
       <File Name="src/scintilla/src/LexPowerPro.cxx"/>
       <File Name="src/scintilla/src/LexSML.cxx"/>
       <File Name="src/scintilla/src/LexSorcus.cxx"/>
+      <File Name="src/scintilla/src/LexMarkdown.cxx"/>
+      <File Name="src/scintilla/src/FontQuality.h"/>
     </VirtualDirectory>
     <VirtualDirectory Name="include">
       <File Name="src/scintilla/include/Accessor.h"/>
@@ -188,6 +195,7 @@
       <PreBuild/>
       <PostBuild/>
       <CustomBuild Enabled="no">
+        <RebuildCommand/>
         <CleanCommand/>
         <BuildCommand/>
         <PreprocessFileCommand/>
@@ -222,6 +230,7 @@
       <PreBuild/>
       <PostBuild/>
       <CustomBuild Enabled="no">
+        <RebuildCommand/>
         <CleanCommand/>
         <BuildCommand/>
         <PreprocessFileCommand/>
@@ -256,6 +265,42 @@
       <PreBuild/>
       <PostBuild/>
       <CustomBuild Enabled="no">
+        <RebuildCommand/>
+        <CleanCommand/>
+        <BuildCommand/>
+        <PreprocessFileCommand/>
+        <SingleFileCommand/>
+        <MakefileGenerationCommand/>
+        <ThirdPartyToolName>None</ThirdPartyToolName>
+        <WorkingDirectory/>
+      </CustomBuild>
+      <AdditionalRules>
+        <CustomPostBuild/>
+        <CustomPreBuild/>
+      </AdditionalRules>
+    </Configuration>
+    <Configuration Name="WinDebug_29" CompilerType="gnu g++" DebuggerType="GNU gdb debugger" Type="Static Library" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
+      <Compiler Options="$(shell wx-config --cxxflags --unicode=yes --debug=yes);-g" Required="yes" PreCompiledHeader="">
+        <IncludePath Value="."/>
+        <IncludePath Value="./include"/>
+        <IncludePath Value="src/scintilla/include"/>
+        <IncludePath Value="src/scintilla/src"/>
+        <Preprocessor Value="__WX__"/>
+        <Preprocessor Value="SCI_LEXER"/>
+        <Preprocessor Value="LINK_LEXERS"/>
+        <Preprocessor Value="WXUSINGDLL"/>
+      </Compiler>
+      <Linker Options="" Required="yes"/>
+      <ResourceCompiler Options="" Required="no"/>
+      <General OutputFile="../../lib/gcc_lib/libwxscintillau.a" IntermediateDirectory="./WinDebug_29" Command="" CommandArguments="" WorkingDirectory="" PauseExecWhenProcTerminates="yes"/>
+      <Debugger IsRemote="no" RemoteHostName="" RemoteHostPort="" DebuggerPath="">
+        <PostConnectCommands/>
+        <StartupCommands/>
+      </Debugger>
+      <PreBuild/>
+      <PostBuild/>
+      <CustomBuild Enabled="no">
+        <RebuildCommand/>
         <CleanCommand/>
         <BuildCommand/>
         <PreprocessFileCommand/>
@@ -290,6 +335,7 @@
       <PreBuild/>
       <PostBuild/>
       <CustomBuild Enabled="no">
+        <RebuildCommand/>
         <CleanCommand/>
         <BuildCommand/>
         <PreprocessFileCommand/>
@@ -317,4 +363,5 @@
   <Dependencies Name="ReleaseUnicode"/>
   <Dependencies Name="WinDebugUnicode"/>
   <Dependencies Name="WinReleaseUnicode"/>
+  <Dependencies Name="WinDebug_29"/>
 </CodeLite_Project>

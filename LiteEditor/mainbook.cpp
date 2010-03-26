@@ -33,6 +33,7 @@
 #include "filechecklist.h"
 #include "editor_config.h"
 #include "mainbook.h"
+#include "message_pane.h"
 
 MainBook::MainBook(wxWindow *parent)
 		: wxPanel       (parent)
@@ -65,7 +66,10 @@ void MainBook::CreateGuiControls()
 
 	m_quickFindBar = new QuickFindBar(this);
 	sz->Add(m_quickFindBar, 0, wxTOP|wxBOTTOM|wxEXPAND);
-
+	
+	m_messagePane = new MessagePane(this);
+	sz->Insert(0, m_messagePane, 0, wxALL|wxEXPAND, 5, NULL);
+	
 	sz->Layout();
 }
 
@@ -885,4 +889,9 @@ bool MainBook::DoSelectPage(wxWindow* win)
 	}
 
 	return true;
+}
+
+void MainBook::ShowMessage(const wxString &message, bool showHideButton, const wxBitmap &bmp, const ButtonDetails &btn1, const ButtonDetails &btn2, const ButtonDetails &btn3)
+{
+	m_messagePane->ShowMessage(message, showHideButton, bmp, btn1, btn2, btn3);
 }

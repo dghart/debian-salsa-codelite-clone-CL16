@@ -15,6 +15,8 @@ protected:
 	wxFileName m_fileName;
 	int        m_singleSearchLimit;
 	int        m_maxWorkspaceTagToColour;
+	bool       m_useCache;
+
 public:
 	enum {
 		OrderNone,
@@ -23,9 +25,22 @@ public:
 	};
 
 public:
-	ITagsStorage() : m_singleSearchLimit(1000), m_maxWorkspaceTagToColour(1000) {}
+	ITagsStorage() : m_singleSearchLimit(1000), m_maxWorkspaceTagToColour(1000), m_useCache(false) {}
 	virtual ~ITagsStorage() {};
 
+	virtual void SetUseCache(bool useCache) {
+		this->m_useCache = useCache;
+	}
+	
+	virtual bool GetUseCache() const {
+		return m_useCache;
+	}
+	
+	/**
+	 * @brief clear the storage cache
+	 */
+	virtual void ClearCache() = 0;
+	
 	/**
 	 * Return the currently opened database.
 	 * @return Currently open database
@@ -86,6 +101,15 @@ public:
 	virtual void GetTagsByKind (const wxArrayString &kinds, const wxString &orderingColumn, int order, std::vector<TagEntryPtr> &tags) = 0;
 
 	/**
+	 * @brief return array of tags by kind.
+	 * @param kinds array of kinds
+	 * @param orderingColumn the column that the output should be ordered by (leave empty for no sorting)
+	 * @param order OrderAsc, OrderDesc or use OrderNone for no ordering the results
+	 * @param tags
+	 */
+	virtual void GetTagsByKindLimit (const wxArrayString &kinds, const wxString &orderingColumn, int order, int limit, const wxString &partName, std::vector<TagEntryPtr> &tags) = 0;
+
+	/**
 	 * @brief return array of items by path
 	 * @param path
 	 * @param tags
@@ -132,13 +156,13 @@ public:
 	 * @param tags
 	 */
 	virtual void GetTagsByKindAndFile(const wxArrayString& kind, const wxString &fileName, const wxString &orderingColumn, int order, std::vector<TagEntryPtr> &tags) = 0;
-	
+
 	/**
 	 * @brief return list of all global functions
 	 * @param tags  [output]
 	 */
 	virtual void GetGlobalFunctions(std::vector<TagEntryPtr> &tags) = 0;
-	
+
 	// -------------------------- Files Table -------------------------------------------
 
 	/**
@@ -200,11 +224,11 @@ public:
 	/**
 	 * @brief return true if type exist under a given scope.
 	 * Incase it exist but under the <global> scope, 'scope' will be modified
-	 * @param typeName type to search
+	 * @param typeName type to search [intput/output]
 	 * @param scope [intput/output]
 	 * @return true on success
 	 */
-	virtual bool IsTypeAndScopeContainer(const wxString& typeName, wxString& scope) = 0;
+	virtual bool IsTypeAndScopeContainer(wxString& typeName, wxString& scope) = 0;
 
 	/**
 	 * @brief return true if type exist under a given scope.
@@ -213,7 +237,15 @@ public:
 	 * @param scope [intput/output]
 	 * @return true on success
 	 */
-	virtual bool IsTypeAndScopeExist(const wxString& typeName, wxString& scope) = 0;
+	virtual bool IsTypeAndScopeExist(wxString& typeName, wxString& scope) = 0;
+
+	/**
+	 * @brief return true if typeName & scope exists in the storage (it uses LIMIT 1, hence LimitOne)
+	 * @param typeName
+	 * @param scope
+	 * @return
+	 */
+	virtual bool IsTypeAndScopeExistLimitOne(const wxString &typeName, const wxString &scope) = 0;
 
 	/**
 	 * @brief return list of given scopes of file in ascending order
@@ -337,12 +369,71 @@ public:
 	 * @param tags [output]
 	 */
 	virtual void GetTagsByScopesAndKind(const wxArrayString& scopes, const wxArrayString& kinds, std::vector<TagEntryPtr>& tags) = 0;
+	
+	/**
+	 * @brief return tags by files / scope
+	 * @param files
+	 * @param scope
+	 * @param tags
+	 */
+	virtual void GetTagsByFilesAndScope(const wxArrayString &files, const wxString &scope, std::vector<TagEntryPtr>& tags) = 0;
+	/**
+	 * @brief return tags by files / kinds / scope (the relation between the three is AND)
+	 * @param files
+	 * @param kinds
+	 * @param scope
+	 * @param tags
+	 */
+	virtual void GetTagsByFilesKindAndScope(const wxArrayString &files, const wxArrayString &kinds, const wxString &scope, std::vector<TagEntryPtr>& tags) = 0;
+	/**
+	 * @brief 
+	 * @param files
+	 * @param kinds
+	 * @param scope
+	 * @param typeref
+	 * @param tags
+	 */
+	virtual void GetTagsByFilesScopeTyperefAndKind(const wxArrayString &files, const wxArrayString &kinds, const wxString &scope, const wxString &typeref, std::vector<TagEntryPtr>& tags) = 0;
+	/**
+	 * @brief return tags by files
+	 * @param files
+	 * @param tags
+	 */
+	virtual void GetTagsByFiles(const wxArrayString &files, std::vector<TagEntryPtr>& tags) = 0;
 };
 
 enum {
 	TagOk = 0,
 	TagExist,
 	TagError
+};
+
+/**
+ * \class StorageCacheEnabler
+ * \author eran
+ * \date 02/08/10
+ * \file istorage.h
+ * \brief helper class to turn on/off storage cache flag
+ */
+class StorageCacheEnabler
+{
+	ITagsStorage *m_storage;
+	
+public:
+	StorageCacheEnabler(ITagsStorage *storage) : m_storage(storage)
+	{
+		if(m_storage) {
+			m_storage->SetUseCache(true);
+		}
+	}
+	
+	~StorageCacheEnabler()
+	{
+		if(m_storage) {
+			m_storage->SetUseCache(false);
+			m_storage = NULL;
+		}
+	}
 };
 
 #endif // ISTORAGE_H

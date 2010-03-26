@@ -114,11 +114,19 @@ bool RemoveDirectory(const wxString &path);
 bool IsValidCppIndetifier(const wxString &id);
 
 /**
+ * \brief return true of word is a C++ keyword
+ * \param word
+ * \return 
+ */
+bool IsCppKeyword(const wxString &word);
+
+/**
  * \brief return true of id is a valid cpp file
  */
 bool IsValidCppFile(const wxString &id);
 
 /**
+ * [DEPRECATED] DONT USE THIS METHOD ANYMORE - USE IMacroManager
  * Expand variables to their real value, if expanding fails
  * the return value is same as input. The variable is expanded
  * in the project context
@@ -126,6 +134,7 @@ bool IsValidCppFile(const wxString &id);
 wxString ExpandVariables(const wxString &expression, ProjectPtr proj, IEditor *editor);
 
 /**
+ * * [DEPRECATED] DONT USE THIS METHOD ANYMORE - USE IMacroManager
  * \brief accepts expression string and expand all known marcos (e.g. $(ProjectName))
  * \param expression expression
  * \param projectName project name (to be used for $(ProjectName) macro)

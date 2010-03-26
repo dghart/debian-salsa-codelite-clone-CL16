@@ -23,10 +23,10 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 #include "precompiled_header.h"
+#include "open_resource_dialog.h" // New open resource
 #include <wx/busyinfo.h>
 #include "tags_parser_search_path_dlg.h"
 #include "includepathlocator.h"
-#include "quickfinder.h"
 #include "outputviewcontrolbar.h"
 #include "clauidockart.h"
 
@@ -93,8 +93,6 @@
 #include "build_settings_config.h"
 #include "macros.h"
 #include "async_executable_cmd.h"
-#include "open_resouce_dlg.h"
-#include "open_type_dlg.h"
 #include "workspace_pane.h"
 #include "navigationmanager.h"
 #include "debuggermanager.h"
@@ -118,6 +116,7 @@
 #include "options_dlg2.h"
 #include <wx/msgdlg.h>
 #include "tabgroupdlg.h"
+#include "cl_defs.h"
 
 // from auto-generated file svninfo.cpp:
 extern wxString CODELITE_VERSION_STR;
@@ -132,6 +131,11 @@ static int FrameTimerId = wxNewId();
 const wxEventType wxEVT_UPDATE_STATUS_BAR = XRCID("update_status_bar");
 const wxEventType wxEVT_LOAD_PERSPECTIVE  = XRCID("load_perspective");
 
+#define CHECK_SHUTDOWN() {\
+	if(ManagerST::Get()->IsShutdownInProgress()){\
+		return;\
+	}\
+}
 
 //----------------------------------------------------------------
 // Our main frame
@@ -250,18 +254,16 @@ BEGIN_EVENT_TABLE(Frame, wxFrame)
 	//-------------------------------------------------------
 	EVT_MENU(wxID_FIND,                         Frame::DispatchCommandEvent)
 	EVT_MENU(wxID_REPLACE,                      Frame::DispatchCommandEvent)
-	EVT_MENU(XRCID("quickfinder_class"),        Frame::OnShowQuickFinder   )
-	EVT_MENU(XRCID("quickfinder_function"),     Frame::OnShowQuickFinder   )
-	EVT_MENU(XRCID("quickfinder_macro"),        Frame::OnShowQuickFinder   )
-	EVT_MENU(XRCID("quickfinder_typedef"),      Frame::OnShowQuickFinder   )
-	EVT_MENU(XRCID("quickfinder_file"),         Frame::OnShowQuickFinder   )
+	EVT_MENU(XRCID("find_function"),            Frame::OnFindResourceXXX   )
+	EVT_MENU(XRCID("find_macro"),               Frame::OnFindResourceXXX   )
+	EVT_MENU(XRCID("find_typedef"),             Frame::OnFindResourceXXX   )
+	EVT_MENU(XRCID("find_resource"),            Frame::OnFindResourceXXX   )
+	EVT_MENU(XRCID("find_type"),                Frame::OnFindResourceXXX   )
 	EVT_MENU(XRCID("find_next"),                Frame::DispatchCommandEvent)
 	EVT_MENU(XRCID("find_previous"),            Frame::DispatchCommandEvent)
 	EVT_MENU(XRCID("find_next_at_caret"),       Frame::DispatchCommandEvent)
 	EVT_MENU(XRCID("find_previous_at_caret"),   Frame::DispatchCommandEvent)
 	EVT_MENU(XRCID("incremental_search"),       Frame::OnIncrementalSearch )
-	EVT_MENU(XRCID("find_resource"),            Frame::OnFindResource      )
-	EVT_MENU(XRCID("find_type"),                Frame::OnFindType          )
 	EVT_MENU(XRCID("find_symbol"),              Frame::OnQuickOutline      )
 	EVT_MENU(XRCID("goto_definition"),          Frame::DispatchCommandEvent)
 	EVT_MENU(XRCID("goto_previous_definition"), Frame::DispatchCommandEvent)
@@ -282,6 +284,10 @@ BEGIN_EVENT_TABLE(Frame, wxFrame)
 	EVT_UPDATE_UI(XRCID("incremental_search"),      Frame::OnFileExistUpdateUI   )
 	EVT_UPDATE_UI(XRCID("find_resource"),           Frame::OnWorkspaceOpen       )
 	EVT_UPDATE_UI(XRCID("find_type"),               Frame::OnWorkspaceOpen       )
+	EVT_UPDATE_UI(XRCID("find_function"),           Frame::OnWorkspaceOpen       )
+	EVT_UPDATE_UI(XRCID("find_macro"),              Frame::OnWorkspaceOpen       )
+	EVT_UPDATE_UI(XRCID("find_typedef"),            Frame::OnWorkspaceOpen       )
+
 	EVT_UPDATE_UI(XRCID("find_symbol"),             Frame::OnCompleteWordUpdateUI)
 	EVT_UPDATE_UI(XRCID("goto_definition"),         Frame::DispatchUpdateUIEvent )
 	EVT_UPDATE_UI(XRCID("goto_previous_definition"),Frame::DispatchUpdateUIEvent )
@@ -292,16 +298,12 @@ BEGIN_EVENT_TABLE(Frame, wxFrame)
 	EVT_UPDATE_UI(XRCID("removeall_bookmarks"),     Frame::OnFileExistUpdateUI   )
 	EVT_UPDATE_UI(XRCID("next_fif_match"),          Frame::OnNextFiFMatchUI      )
 	EVT_UPDATE_UI(XRCID("previous_fif_match"),      Frame::OnPreviousFiFMatchUI  )
-//	EVT_UPDATE_UI(XRCID("quickfinder_class"),       Frame::OnShowQuickFinderUI )
-//	EVT_UPDATE_UI(XRCID("quickfinder_function"),    Frame::OnShowQuickFinderUI )
-//	EVT_UPDATE_UI(XRCID("quickfinder_macro"),       Frame::OnShowQuickFinderUI )
-//	EVT_UPDATE_UI(XRCID("quickfinder_typedef"),     Frame::OnShowQuickFinderUI )
-//	EVT_UPDATE_UI(XRCID("quickfinder_file"),        Frame::OnShowQuickFinderUI )
-
 
 	//-------------------------------------------------------
 	// Project menu
 	//-------------------------------------------------------
+	EVT_MENU(XRCID("local_workspace_prefs"),    Frame::OnWorkspaceEditorPreferences)
+	EVT_MENU(XRCID("local_workspace_settings"), Frame::OnWorkspaceSettings)
 	EVT_MENU(XRCID("new_workspace"),            Frame::OnProjectNewWorkspace)
 	EVT_MENU(XRCID("switch_to_workspace"),      Frame::OnSwitchWorkspace)
 	EVT_MENU(XRCID("close_workspace"),          Frame::OnCloseWorkspace)
@@ -313,12 +315,14 @@ BEGIN_EVENT_TABLE(Frame, wxFrame)
 	EVT_MENU(XRCID("full_retag_workspace"),     Frame::OnRetagWorkspace)
 	EVT_MENU(XRCID("project_properties"),       Frame::OnShowActiveProjectSettings)
 
-	EVT_UPDATE_UI(XRCID("close_workspace"),     Frame::OnWorkspaceOpen)
-	EVT_UPDATE_UI(XRCID("reload_workspace"),    Frame::OnReloadWorkspaceUI)
-	EVT_UPDATE_UI(XRCID("add_project"),         Frame::OnWorkspaceMenuUI)
-	EVT_UPDATE_UI(XRCID("retag_workspace"),     Frame::OnWorkspaceOpen)
-	EVT_UPDATE_UI(XRCID("full_retag_workspace"),Frame::OnWorkspaceOpen)
-	EVT_UPDATE_UI(XRCID("project_properties"),  Frame::OnShowActiveProjectSettingsUI)
+	EVT_UPDATE_UI(XRCID("local_workspace_prefs"),    Frame::OnWorkspaceOpen)
+	EVT_UPDATE_UI(XRCID("local_workspace_settings"), Frame::OnWorkspaceOpen)
+	EVT_UPDATE_UI(XRCID("close_workspace"),          Frame::OnWorkspaceOpen)
+	EVT_UPDATE_UI(XRCID("reload_workspace"),         Frame::OnReloadWorkspaceUI)
+	EVT_UPDATE_UI(XRCID("add_project"),              Frame::OnWorkspaceMenuUI)
+	EVT_UPDATE_UI(XRCID("retag_workspace"),          Frame::OnWorkspaceOpen)
+	EVT_UPDATE_UI(XRCID("full_retag_workspace"),     Frame::OnWorkspaceOpen)
+	EVT_UPDATE_UI(XRCID("project_properties"),       Frame::OnShowActiveProjectSettingsUI)
 
 	//-------------------------------------------------------
 	// Build menu
@@ -478,10 +482,15 @@ BEGIN_EVENT_TABLE(Frame, wxFrame)
 	//-----------------------------------------------------------------
 	EVT_COMMAND(wxID_ANY, wxEVT_PARSE_THREAD_UPDATED_FILE_SYMBOLS, Frame::OnParsingThreadDone   )
 	EVT_COMMAND(wxID_ANY, wxEVT_PARSE_THREAD_MESSAGE             , Frame::OnParsingThreadMessage)
+	EVT_COMMAND(wxID_ANY, wxEVT_PARSE_THREAD_CLEAR_TAGS_CACHE,     Frame::OnClearTagsCache)
+	EVT_COMMAND(wxID_ANY, wxEVT_UPDATE_STATUS_BAR,                 Frame::OnSetStatusMessage)
+	EVT_COMMAND(wxID_ANY, wxEVT_TAGS_DB_UPGRADE,                   Frame::OnDatabaseUpgrade )
+	EVT_COMMAND(wxID_ANY, wxEVT_SHELL_COMMAND_PROCESS_ENDED,       Frame::OnBuildEnded)
+	EVT_MENU   (XRCID("update_num_builders_count"),                Frame::OnUpdateNumberOfBuildProcesses)
+	EVT_MENU   (XRCID("goto_codelite_download_url"),               Frame::OnGotoCodeLiteDownloadPage)
 
-	EVT_COMMAND(wxID_ANY, wxEVT_UPDATE_STATUS_BAR, Frame::OnSetStatusMessage)
-	EVT_COMMAND(wxID_ANY, wxEVT_TAGS_DB_UPGRADE,   Frame::OnDatabaseUpgrade )
-	EVT_COMMAND(wxID_ANY, wxEVT_SHELL_COMMAND_PROCESS_ENDED, Frame::OnBuildEnded)
+	EVT_MENU   (XRCID("never_update_parser_paths"),                Frame::OnNeverUpdateParserPath)
+	EVT_MENU   (XRCID("update_parser_paths"),                      Frame::OnUpdateParserPath)
 
 	EVT_SYMBOLTREE_ADD_ITEM(wxID_ANY,    Frame::OnAddSymbols)
 	EVT_SYMBOLTREE_DELETE_ITEM(wxID_ANY, Frame::OnDeleteSymbols)
@@ -624,7 +633,7 @@ void Frame::Initialize(bool loadLastSession)
 
 	//time to create the file explorer
 	wxCommandEvent e(wxEVT_COMMAND_MENU_SELECTED, XRCID("go_home"));
-	m_theFrame->GetFileExplorer()->ProcessEvent(e);
+	m_theFrame->GetFileExplorer()->GetEventHandler()->ProcessEvent(e);
 
 	//load last session?
 	if (m_theFrame->m_frameGeneralInfo.GetFlags() & CL_LOAD_LAST_SESSION && loadLastSession) {
@@ -671,7 +680,7 @@ void Frame::CreateGUIControls(void)
 	m_mgr.SetFlags(m_mgr.GetFlags() | wxAUI_MGR_ALLOW_ACTIVE_PANE);
 #endif
 
-// Mac only
+// Mac / Linux
 #if defined (__WXMAC__) || defined (__WXGTK__)
 	m_mgr.GetArtProvider()->SetColor(wxAUI_DOCKART_ACTIVE_CAPTION_COLOUR,        wxSystemSettings::GetColour(wxSYS_COLOUR_ACTIVECAPTION));
 	m_mgr.GetArtProvider()->SetColor(wxAUI_DOCKART_INACTIVE_CAPTION_COLOUR,      DrawingUtils::GetPanelBgColour());
@@ -682,12 +691,16 @@ void Frame::CreateGUIControls(void)
 #endif
 
 	//initialize debugger configuration tool
-	DebuggerConfigTool::Get()->Load(wxT("config/debuggers.xml"), wxT("2.0.1"));
+	DebuggerConfigTool::Get()->Load(wxT("config/debuggers.xml"), wxT("2.0.2"));
 	WorkspaceST::Get()->SetStartupDir(ManagerST::Get()->GetStarupDirectory());
 
-	// On wx2.8.7, AUI dragging is broken but this happens only in debug build & on GTK
 #if defined (__WXGTK__) && defined (__WXDEBUG__)
 	m_mgr.SetFlags(wxAUI_MGR_ALLOW_FLOATING|wxAUI_MGR_ALLOW_ACTIVE_PANE|wxAUI_MGR_TRANSPARENT_DRAG|wxAUI_MGR_RECTANGLE_HINT);
+	
+#elif defined(__WXGTK__)
+	m_mgr.SetFlags(m_mgr.GetFlags() & ~wxAUI_MGR_TRANSPARENT_HINT);
+	m_mgr.SetFlags(m_mgr.GetFlags() |    wxAUI_MGR_VENETIAN_BLINDS_HINT);
+	
 #endif
 
 	m_mgr.GetArtProvider()->SetMetric(wxAUI_DOCKART_GRADIENT_TYPE, wxAUI_GRADIENT_NONE);
@@ -813,9 +826,6 @@ void Frame::CreateGUIControls(void)
 	DebuggerMgr::Get().Initialize(this, EnvironmentConfig::Instance(), ManagerST::Get()->GetInstallDir());
 	DebuggerMgr::Get().LoadDebuggers();
 
-	// Initialize the QuickFinder
-	QuickFinder::Initialize(PluginManager::Get());
-
 	wxString sessConfFile;
 	sessConfFile << ManagerST::Get()->GetStarupDirectory() << wxT("/config/sessions.xml");
 	SessionManager::Get().Load(sessConfFile);
@@ -870,15 +880,20 @@ wxString Frame::GetViewAsLanguageById(int id) const
 void Frame::CreateToolbars24()
 {
 	wxAuiPaneInfo info;
+
+#if !USE_AUI_TOOLBAR
 	wxWindow *toolbar_parent (this);
 	if (PluginManager::Get()->AllowToolbar()) {
 		toolbar_parent = m_mainPanel;
 	}
+#else
+	wxWindow *toolbar_parent (m_mainPanel);
+#endif
 
 	//----------------------------------------------
 	//create the standard toolbar
 	//----------------------------------------------
-	wxToolBar *tb = new wxToolBar(toolbar_parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTB_FLAT | wxTB_NODIVIDER);
+	clToolBar *tb = new clToolBar(toolbar_parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, clTB_DEFAULT_STYLE);
 	tb->SetToolBitmapSize(wxSize(24, 24));
 
 	tb->AddTool(XRCID("new_file"), wxT("New"), wxXmlResource::Get()->LoadBitmap(wxT("page_new24")), wxT("New File"));
@@ -912,7 +927,7 @@ void Frame::CreateToolbars24()
 	//----------------------------------------------
 	if (PluginManager::Get()->AllowToolbar()) {
 		info = wxAuiPaneInfo();
-		tb = new wxToolBar(toolbar_parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTB_FLAT | wxTB_NODIVIDER);
+		tb = new clToolBar(toolbar_parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, clTB_DEFAULT_STYLE);
 		tb->SetToolBitmapSize(wxSize(24, 24));
 	}
 	tb->AddTool(wxID_FIND, wxT("Find"), wxXmlResource::Get()->LoadBitmap(wxT("find_and_replace24")), wxT("Find"));
@@ -935,7 +950,7 @@ void Frame::CreateToolbars24()
 	//create the build toolbar
 	//----------------------------------------------
 	if (PluginManager::Get()->AllowToolbar()) {
-		tb = new wxToolBar(toolbar_parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTB_FLAT | wxTB_NODIVIDER);
+		tb = new clToolBar(toolbar_parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, clTB_DEFAULT_STYLE);
 		tb->SetToolBitmapSize(wxSize(24, 24));
 	}
 
@@ -955,7 +970,7 @@ void Frame::CreateToolbars24()
 	//create the debugger toolbar
 	//----------------------------------------------
 	if (PluginManager::Get()->AllowToolbar()) {
-		tb = new wxToolBar(toolbar_parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTB_FLAT | wxTB_NODIVIDER);
+		tb = new clToolBar(toolbar_parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, clTB_DEFAULT_STYLE);
 		tb->SetToolBitmapSize(wxSize(24, 24));
 	}
 
@@ -980,7 +995,11 @@ void Frame::CreateToolbars24()
 		RegisterToolbar(XRCID("show_build_toolbar"), wxT("Build Toolbar"));
 		RegisterToolbar(XRCID("show_debug_toolbar"), wxT("Debugger Toolbar"));
 	} else {
+#if !USE_AUI_TOOLBAR
 		SetToolBar(tb);
+#else
+		m_mgr.AddPane(tb, info.Name(wxT("Main Toolbar")).LeftDockable(true).RightDockable(true).Caption(wxT("Main Toolbar")).ToolbarPane().Top().Row(1));
+#endif
 	}
 }
 
@@ -989,12 +1008,16 @@ void Frame::CreateToolbars16()
 	//----------------------------------------------
 	//create the standard toolbar
 	//----------------------------------------------
+#if !USE_AUI_TOOLBAR
 	wxWindow *toolbar_parent (this);
 	if (PluginManager::Get()->AllowToolbar()) {
 		toolbar_parent = m_mainPanel;
 	}
+#else
+	wxWindow *toolbar_parent (m_mainPanel);
+#endif
 
-	wxToolBar *tb = new wxToolBar(toolbar_parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTB_FLAT | wxTB_NODIVIDER);
+	clToolBar *tb = new clToolBar(toolbar_parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, clTB_DEFAULT_STYLE);
 	wxAuiPaneInfo info;
 
 	tb->SetToolBitmapSize(wxSize(16, 16));
@@ -1031,7 +1054,7 @@ void Frame::CreateToolbars16()
 	info = wxAuiPaneInfo();
 
 	if (PluginManager::Get()->AllowToolbar()) {
-		tb = new wxToolBar(toolbar_parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTB_FLAT | wxTB_NODIVIDER);
+		tb = new clToolBar(toolbar_parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, clTB_DEFAULT_STYLE);
 		tb->SetToolBitmapSize(wxSize(16, 16));
 	}
 
@@ -1055,7 +1078,7 @@ void Frame::CreateToolbars16()
 		//----------------------------------------------
 		//create the build toolbar
 		//----------------------------------------------
-		tb = new wxToolBar(toolbar_parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTB_FLAT | wxTB_NODIVIDER);
+		tb = new clToolBar(toolbar_parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, clTB_DEFAULT_STYLE);
 		tb->SetToolBitmapSize(wxSize(16, 16));
 	}
 
@@ -1076,7 +1099,7 @@ void Frame::CreateToolbars16()
 	//create the debugger toolbar
 	//----------------------------------------------
 	if (PluginManager::Get()->AllowToolbar()) {
-		tb = new wxToolBar(toolbar_parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTB_FLAT | wxTB_NODIVIDER);
+		tb = new clToolBar(toolbar_parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, clTB_DEFAULT_STYLE);
 		tb->SetToolBitmapSize(wxSize(16, 16));
 	}
 
@@ -1100,7 +1123,11 @@ void Frame::CreateToolbars16()
 		RegisterToolbar(XRCID("show_build_toolbar"), wxT("Build Toolbar"));
 		RegisterToolbar(XRCID("show_debug_toolbar"), wxT("Debugger Toolbar"));
 	} else {
+#if !USE_AUI_TOOLBAR
 		SetToolBar(tb);
+#else
+		m_mgr.AddPane(tb, info.Name(wxT("Main Toolbar")).LeftDockable(true).RightDockable(true).Caption(wxT("Main Toolbar")).ToolbarPane().Top().Row(1));
+#endif
 	}
 }
 
@@ -1224,6 +1251,8 @@ void Frame::DispatchCommandEvent(wxCommandEvent &event)
 
 void Frame::DispatchUpdateUIEvent(wxUpdateUIEvent &event)
 {
+	CHECK_SHUTDOWN();
+
 	if ( !IsEditorEvent(event) ) {
 		event.Skip();
 		return;
@@ -1246,6 +1275,8 @@ void Frame::DispatchUpdateUIEvent(wxUpdateUIEvent &event)
 
 void Frame::OnFileExistUpdateUI(wxUpdateUIEvent &event)
 {
+	CHECK_SHUTDOWN();
+
 	LEditor* editor = GetMainBook()->GetActiveEditor();
 	if ( !editor ) {
 		event.Enable(false);
@@ -1526,6 +1557,8 @@ void Frame::OnFileSaveTabGroup(wxCommandEvent& WXUNUSED(event))
 
 void Frame::OnCompleteWordUpdateUI(wxUpdateUIEvent &event)
 {
+	CHECK_SHUTDOWN();
+
 	LEditor* editor = GetMainBook()->GetActiveEditor();
 	// This menu item is enabled only if the current editor belongs to a project
 	event.Enable(editor && ManagerST::Get()->IsWorkspaceOpen());
@@ -1533,6 +1566,7 @@ void Frame::OnCompleteWordUpdateUI(wxUpdateUIEvent &event)
 
 void Frame::OnWorkspaceOpen(wxUpdateUIEvent &event)
 {
+	CHECK_SHUTDOWN();
 	event.Enable(ManagerST::Get()->IsWorkspaceOpen());
 }
 
@@ -1687,6 +1721,7 @@ void Frame::OnViewToolbar(wxCommandEvent &event)
 
 void Frame::OnViewToolbarUI(wxUpdateUIEvent &event)
 {
+	CHECK_SHUTDOWN();
 	std::map<int, wxString>::iterator iter = m_toolbars.find(event.GetId());
 	if (iter != m_toolbars.end()) {
 		ViewPaneUI(iter->second, event);
@@ -1703,6 +1738,7 @@ void Frame::OnViewPane(wxCommandEvent &event)
 
 void Frame::OnViewPaneUI(wxUpdateUIEvent &event)
 {
+	CHECK_SHUTDOWN();
 	std::map<int, wxString>::iterator iter = m_panes.find(event.GetId());
 	if (iter != m_panes.end()) {
 		ViewPaneUI(iter->second, event);
@@ -1725,6 +1761,7 @@ void Frame::ViewPane(const wxString &paneName, wxCommandEvent &event)
 
 void Frame::ViewPaneUI(const wxString &paneName, wxUpdateUIEvent &event)
 {
+	CHECK_SHUTDOWN();
 	wxAuiPaneInfo &info = m_mgr.GetPane(paneName);
 	if (info.IsOk()) {
 		event.Check(info.IsShown());
@@ -1737,16 +1774,7 @@ void Frame::OnViewOptions(wxCommandEvent & WXUNUSED( event))
 	dlg.ShowModal();
 
 	if ( dlg.restartRquired ) {
-#ifdef __WXMAC__
-		wxMessageBox(_("Some of the changes made requires restart of CodeLite"), wxT("CodeLite"), wxICON_INFORMATION|wxOK, this);
-#else
-		// On Winodws & GTK we offer auto-restart
-		int answer = wxMessageBox(_("Some of the changes made requires restart of CodeLite\nWould you like to restart now?"), wxT("CodeLite"), wxICON_INFORMATION|wxYES_NO|wxCANCEL, this);
-		if ( answer == wxYES ) {
-			wxCommandEvent e(wxEVT_CMD_RESTART_CODELITE);
-			ManagerST::Get()->AddPendingEvent(e);
-		}
-#endif
+		DoSuggestRestart();
 	}
 }
 
@@ -1761,6 +1789,7 @@ void Frame::OnAddEnvironmentVariable(wxCommandEvent &event)
 	wxUnusedVar(event);
 	EnvVarsTableDlg dlg(this);
 	dlg.ShowModal();
+	SetEnvStatusMessage();
 
 	if (ManagerST::Get()->IsWorkspaceOpen()) {
 		//mark all the projects as dirty
@@ -1823,6 +1852,8 @@ void Frame::OnBuildProject(wxCommandEvent &event)
 	bool enable = !ManagerST::Get()->IsBuildInProgress() && !ManagerST::Get()->GetActiveProjectName().IsEmpty();
 	if (enable) {
 
+		SetStatusMessage(wxT("Build starting..."), 0);
+
 		wxString conf, projectName;
 		projectName = ManagerST::Get()->GetActiveProjectName();
 
@@ -1839,6 +1870,8 @@ void Frame::OnBuildProject(wxCommandEvent &event)
 		}
 		ManagerST::Get()->PushQueueCommand( info );
 		ManagerST::Get()->ProcessCommandQueue();
+
+		SetStatusMessage(wxT("Done"), 0);
 	}
 }
 
@@ -1918,12 +1951,14 @@ void Frame::OnRebuildProject(wxCommandEvent &event)
 
 void Frame::OnBuildProjectUI(wxUpdateUIEvent &event)
 {
+	CHECK_SHUTDOWN();
 	bool enable = !ManagerST::Get()->IsBuildInProgress() && !ManagerST::Get()->GetActiveProjectName().IsEmpty();
 	event.Enable(enable);
 }
 
 void Frame::OnStopExecutedProgramUI(wxUpdateUIEvent &event)
 {
+	CHECK_SHUTDOWN();
 	Manager *mgr = ManagerST::Get();
 	bool enable = mgr->IsProgramRunning();
 	event.Enable(enable);
@@ -1931,6 +1966,7 @@ void Frame::OnStopExecutedProgramUI(wxUpdateUIEvent &event)
 
 void Frame::OnStopBuildUI(wxUpdateUIEvent &event)
 {
+	CHECK_SHUTDOWN();
 	Manager *mgr = ManagerST::Get();
 	bool enable = mgr->IsBuildInProgress();
 	event.Enable(enable);
@@ -1978,6 +2014,7 @@ void Frame::OnCleanProject(wxCommandEvent &event)
 
 void Frame::OnCleanProjectUI(wxUpdateUIEvent &event)
 {
+	CHECK_SHUTDOWN();
 	bool enable = !ManagerST::Get()->IsBuildInProgress() && !ManagerST::Get()->GetActiveProjectName().IsEmpty();
 	event.Enable(enable);
 }
@@ -1995,6 +2032,7 @@ void Frame::OnExecuteNoDebug(wxCommandEvent &event)
 
 void Frame::OnExecuteNoDebugUI(wxUpdateUIEvent &event)
 {
+	CHECK_SHUTDOWN();
 	event.Enable(ManagerST::Get()->GetActiveProjectName().IsEmpty() == false
 	             &&
 	             !ManagerST::Get()->IsBuildInProgress()
@@ -2008,10 +2046,12 @@ void Frame::OnTimer(wxTimerEvent &event)
 	// it must be called *after* the frame constuction
 	// add new version notification updater
 	long check(1);
-	EditorConfigST::Get()->GetLongValue(wxT("CheckNewVersion"), check);
+	long updatePaths(1);
 
+	EditorConfigST::Get()->GetLongValue(wxT("CheckNewVersion"),   check);
+	EditorConfigST::Get()->GetLongValue(wxT("UpdateParserPaths"), updatePaths);
 	if ( check ) {
-		JobQueueSingleton::Instance()->PushJob(new WebUpdateJob(this));
+		JobQueueSingleton::Instance()->PushJob(new WebUpdateJob(this, false));
 	}
 
 	//update the build system to contain the number of CPUs
@@ -2025,33 +2065,12 @@ void Frame::OnTimer(wxTimerEvent &event)
 
 			if ( bs->GetToolJobs() != jobs ) {
 
-				//prompt the user
-				long val(0);
-				bool do_it(false);
-				if ( !EditorConfigST::Get()->GetLongValue(wxT("AdjustCPUNumber"), val) ) {
+				ButtonDetails btn1;
+				btn1.buttonLabel = wxT("Update Number of Build Processes");
+				btn1.commandId   = XRCID("update_num_builders_count");
+				btn1.window      = this;
 
-					//no entry was found in the configuration file, popup the dialog and ask the user
-					ThreeButtonDlg *dlg = new ThreeButtonDlg(NULL, wxT("Should CodeLite adjust the number of concurrent build jobs to match the number of CPUs?"), wxT("CodeLite"));
-					if (dlg->ShowModal() == wxID_OK) {
-						do_it = true;
-					}
-
-					if ( dlg->GetDontAskMeAgain() ) {
-						// the user wishes that his answer will be kept
-						EditorConfigST::Get()->SaveLongValue(wxT("AdjustCPUNumber"), do_it ? 1 : 0);
-					}
-					dlg->Destroy();
-
-				} else {
-					do_it = !(val == 0);
-				}
-
-				// are we allowed to update the concurrent jobs number?
-				if ( do_it ) {
-					bs->SetToolJobs( jobs );
-					BuildSettingsConfigST::Get()->SetBuildSystem(bs);
-					wxLogMessage(wxT("Info: setting number of concurrent builder jobs to ") + jobs);
-				}
+				GetMainBook()->ShowMessage(wxT("Should CodeLite adjust the number of concurrent build jobs to match the number of CPUs?"), true, wxXmlResource::Get()->LoadBitmap(wxT("message_pane_fix")), btn1);
 			}
 		}
 
@@ -2064,32 +2083,39 @@ void Frame::OnTimer(wxTimerEvent &event)
 		if ( m_tagsOptionsData.GetParserSearchPaths().IsEmpty() ) {
 			// Try to locate the paths automatically
 			wxArrayString paths;
+			wxArrayString excudePaths;
 			IncludePathLocator locator(PluginManager::Get());
-			locator.Locate( paths );
+			locator.Locate( paths, excudePaths );
 
-			if ( paths.IsEmpty() == false ) {
-				TagsParserSearchPathsDlg dlg(this, paths);
-				if(dlg.ShowModal() == wxID_OK) {
-					paths = dlg.GetSearchPaths();
-				} else {
-					paths.Empty();
-				}
-			}
-
-			if ( paths.IsEmpty() ) {
-
-				wxMessageBox(   wxT("CodeLite has detected that there are no search paths set for the parser\n")
-								wxT("This means that CodeLite will *NOT* be able to offer any code completion\n")
-								wxT("for non-workspace files (e.g. string.h).\n")
+			if ( paths.IsEmpty() && updatePaths) {
+				GetMainBook()->ShowMessage(
+								wxT("CodeLite could not find any search paths set for the code completion parser\n")
+								wxT("This means that CodeLite will *NOT* be able to offer any code completion for non-workspace files (e.g. string.h).\n")
 								wxT("To fix this, please set search paths for the parser\n")
-								wxT("This can be done from the main menu: Settings > Tags Settings > Include Files"), _("CodeLite"), wxOK|wxCENTER|wxICON_INFORMATION, this);
+								wxT("This can be done from the main menu: Settings > Tags Settings > Include Files"));
 
 			} else {
-				m_tagsOptionsData.SetParserSearchPaths( paths );
+				if(updatePaths) {
+					ButtonDetails btnYes, btnNo, btnNoNever;
 
-				// Update the parser thread
-				ParseThreadST::Get()->SetSearchPaths( paths, m_tagsOptionsData.GetParserExcludePaths() );
-				EditorConfigST::Get()->WriteObject( wxT("m_tagsOptionsData"), &m_tagsOptionsData );
+					btnYes.buttonLabel = wxT("Update paths");
+					btnYes.commandId   = XRCID("update_parser_paths");
+					btnYes.isDefault   = true;
+					btnYes.window      = this;
+
+					btnNo.buttonLabel = wxT("Not now");
+					btnNo.isDefault   = false;
+					btnNo.window      = NULL;
+
+					btnNoNever.buttonLabel = wxT("No. And dont ask me again!");
+					btnNoNever.isDefault   = false;
+					btnNoNever.window      = this;
+					btnNoNever.commandId   = XRCID("never_update_parser_paths");
+
+					GetMainBook()->ShowMessage(
+									wxT("Should CodeLite update your code completion parser search paths ? (since there are none..)"),
+									false, wxNullBitmap, btnYes, btnNo, btnNoNever);
+				}
 			}
 		}
 
@@ -2132,42 +2158,6 @@ void Frame::OnQuickOutline(wxCommandEvent &event)
 		editor->SetActive();
 	}
 #endif
-}
-
-void Frame::OnFindType(wxCommandEvent &event)
-{
-	wxUnusedVar(event);
-	if (ManagerST::Get()->IsWorkspaceOpen() == false)
-		return;
-
-	OpenTypeDlg *dlg = new OpenTypeDlg(this, TagsManagerST::Get());
-	if (dlg->ShowModal() == wxID_OK) {
-		TagEntryPtr tag = dlg->GetSelectedTag();
-		if (tag && tag->IsOk()) {
-			LEditor *editor = GetMainBook()->OpenFile(tag->GetFile(), wxEmptyString, tag->GetLine());
-			if (editor) {
-				editor->FindAndSelect(tag->GetPattern(), tag->GetName());
-			}
-		}
-	}
-	dlg->Destroy();
-}
-
-void Frame::OnFindResource(wxCommandEvent &event)
-{
-	wxUnusedVar(event);
-	if (ManagerST::Get()->IsWorkspaceOpen() == false)
-		return;
-
-	OpenResourceDlg *dlg = new OpenResourceDlg(this);
-	if (dlg->ShowModal() == wxID_OK) {
-		wxString fileName = dlg->GetFileName();
-		if (fileName.IsEmpty() == false) {
-			wxString projectName = ManagerST::Get()->GetProjectNameByFile(fileName);
-			Frame::Get()->GetMainBook()->OpenFile(fileName, projectName);
-		}
-	}
-	dlg->Destroy();
 }
 
 void Frame::OnAddSymbols(SymbolTreeEvent &event)
@@ -2370,6 +2360,7 @@ void Frame::OnBackwardForward(wxCommandEvent &event)
 
 void Frame::OnBackwardForwardUI(wxUpdateUIEvent &event)
 {
+	CHECK_SHUTDOWN();
 	if (event.GetId() == wxID_FORWARD) {
 		event.Enable(NavMgr::Get()->CanNext());
 	} else if (event.GetId() == wxID_BACKWARD) {
@@ -2422,11 +2413,21 @@ void Frame::OnImportMSVS(wxCommandEvent &e)
 	wxUnusedVar(e);
 	const wxString ALL(wxT("MS Visual Studio Solution File (*.sln)|*.sln|")
 	                   wxT("All Files (*)|*"));
-	wxFileDialog *dlg = new wxFileDialog(this, wxT("Open MS Solution File"), wxEmptyString, wxEmptyString, ALL, wxFD_OPEN | wxFD_FILE_MUST_EXIST, wxDefaultPosition);
-	if (dlg->ShowModal() == wxID_OK) {
-		ManagerST::Get()->ImportMSVSSolution(dlg->GetPath());
+	wxFileDialog dlg(this, wxT("Open MS Solution File"), wxEmptyString, wxEmptyString, ALL, wxFD_OPEN | wxFD_FILE_MUST_EXIST, wxDefaultPosition);
+	if (dlg.ShowModal() == wxID_OK) {
+		
+		wxArrayString cmps;
+		BuildSettingsConfigCookie cookie;
+		CompilerPtr cmp = BuildSettingsConfigST::Get()->GetFirstCompiler(cookie);
+		while (cmp) {
+			cmps.Add(cmp->GetName());
+			cmp = BuildSettingsConfigST::Get()->GetNextCompiler(cookie);
+		}
+
+		// Get the prefered compiler type
+		wxString compilerName = wxGetSingleChoice(wxT("Select the compiler to use:"), wxT("Choose compiler"), cmps);
+		ManagerST::Get()->ImportMSVSSolution(dlg.GetPath(), compilerName);
 	}
-	dlg->Destroy();
 }
 
 void Frame::OnDebug(wxCommandEvent &e)
@@ -2491,6 +2492,7 @@ void Frame::OnDebug(wxCommandEvent &e)
 
 void Frame::OnDebugUI(wxUpdateUIEvent &e)
 {
+	CHECK_SHUTDOWN();
 	e.Enable( !ManagerST::Get()->IsBuildInProgress() );
 }
 
@@ -2504,6 +2506,7 @@ void Frame::OnDebugRestart(wxCommandEvent &e)
 
 void Frame::OnDebugRestartUI(wxUpdateUIEvent &e)
 {
+	CHECK_SHUTDOWN();
 	IDebugger *dbgr = DebuggerMgr::Get().GetActiveDebugger();
 	e.Enable(dbgr && dbgr->IsRunning());
 }
@@ -2516,6 +2519,7 @@ void Frame::OnDebugStop(wxCommandEvent &e)
 
 void Frame::OnDebugStopUI(wxUpdateUIEvent &e)
 {
+	CHECK_SHUTDOWN();
 	IDebugger *dbgr = DebuggerMgr::Get().GetActiveDebugger();
 	e.Enable(dbgr && dbgr->IsRunning());
 }
@@ -2547,6 +2551,7 @@ void Frame::OnDebugCmd(wxCommandEvent &e)
 
 void Frame::OnDebugCmdUI(wxUpdateUIEvent &e)
 {
+	CHECK_SHUTDOWN();
 	if (e.GetId() == XRCID("pause_debugger") ||
 	        e.GetId() == XRCID("dbg_stepin") ||
 	        e.GetId() == XRCID("dbg_stepout") ||
@@ -2622,6 +2627,7 @@ void Frame::OnStartPageEvent(wxCommandEvent& e)
 
 void Frame::OnLoadLastSessionUI(wxUpdateUIEvent &event)
 {
+	CHECK_SHUTDOWN();
 	event.Check(m_frameGeneralInfo.GetFlags() & CL_LOAD_LAST_SESSION);
 }
 
@@ -2641,6 +2647,7 @@ void Frame::OnLoadLastSession(wxCommandEvent &event)
 
 void Frame::OnShowWelcomePageUI(wxUpdateUIEvent &event)
 {
+	CHECK_SHUTDOWN();
 	event.Enable(GetMainBook()->FindPage(wxT("Welcome!")) == NULL);
 }
 
@@ -2686,6 +2693,7 @@ void Frame::OnCompileFile(wxCommandEvent &e)
 
 void Frame::OnCompileFileUI(wxUpdateUIEvent &e)
 {
+	CHECK_SHUTDOWN();
 	e.Enable(false);
 	Manager *mgr = ManagerST::Get();
 	if (mgr->IsWorkspaceOpen() && !mgr->IsBuildInProgress()) {
@@ -2730,11 +2738,13 @@ void Frame::OnLoadWelcomePage(wxCommandEvent &event)
 
 void Frame::OnLoadWelcomePageUI(wxUpdateUIEvent &event)
 {
+	CHECK_SHUTDOWN();
 	event.Check(m_frameGeneralInfo.GetFlags() & CL_SHOW_WELCOME_PAGE ? true : false);
 }
 
 void Frame::OnFileCloseUI(wxUpdateUIEvent &event)
 {
+	CHECK_SHUTDOWN();
 	event.Enable(GetMainBook()->GetCurrentPage() != NULL);
 }
 
@@ -2771,6 +2781,7 @@ void Frame::OnViewDisplayEOL(wxCommandEvent &e)
 
 void Frame::OnViewDisplayEOL_UI(wxUpdateUIEvent &e)
 {
+	CHECK_SHUTDOWN();
 	LEditor *editor = GetMainBook()->GetActiveEditor();
 	bool hasEditor = editor ? true : false;
 	if (!hasEditor) {
@@ -2821,6 +2832,7 @@ void Frame::OnCopyFilePathOnly(wxCommandEvent &event)
 
 void Frame::OnWorkspaceMenuUI(wxUpdateUIEvent &e)
 {
+	CHECK_SHUTDOWN();
 	if (ManagerST::Get()->IsWorkspaceOpen() == false) {
 		e.Enable(false);
 		return;
@@ -2836,16 +2848,7 @@ void Frame::OnManagePlugins(wxCommandEvent &e)
 {
 	PluginMgrDlg dlg(this);
 	if (dlg.ShowModal() == wxID_OK) {
-#ifdef __WXMAC__
-		wxMessageBox(_("Changes will take place after restart of CodeLite"), wxT("CodeLite"), wxICON_INFORMATION|wxOK, this);
-#else
-		// On Winodws & GTK we offer auto-restart
-		int answer = wxMessageBox(_("Changes made requires restart of CodeLite\nWould you like to restart now?"), wxT("CodeLite"), wxICON_INFORMATION|wxYES_NO|wxCANCEL, this);
-		if ( answer == wxYES ) {
-			wxCommandEvent e(wxEVT_CMD_RESTART_CODELITE);
-			ManagerST::Get()->AddPendingEvent(e);
-		}
-#endif
+		DoSuggestRestart();
 	}
 }
 
@@ -2860,9 +2863,8 @@ void Frame::OnCppContextMenu(wxCommandEvent &e)
 
 void Frame::OnConfigureAccelerators(wxCommandEvent &e)
 {
-	AccelTableDlg *dlg = new AccelTableDlg(this);
-	dlg->ShowModal();
-	dlg->Destroy();
+	AccelTableDlg dlg(this);
+	dlg.ShowModal();
 }
 
 void Frame::OnUpdateBuildRefactorIndexBar(wxCommandEvent& e)
@@ -2872,7 +2874,11 @@ void Frame::OnUpdateBuildRefactorIndexBar(wxCommandEvent& e)
 
 void Frame::OnHighlightWord(wxCommandEvent& event)
 {
-	if (event.IsChecked()) {
+	long highlightWord(1);
+
+	EditorConfigST::Get()->GetLongValue(wxT("highlight_word"), highlightWord);
+
+	if ( !highlightWord ) {
 		GetMainBook()->HighlightWord(true);
 		EditorConfigST::Get()->SaveLongValue(wxT("highlight_word"), 1);
 	} else {
@@ -2888,6 +2894,7 @@ void Frame::OnShowNavBar(wxCommandEvent& e)
 
 void Frame::OnShowNavBarUI(wxUpdateUIEvent& e)
 {
+	CHECK_SHUTDOWN();
 	e.Check(GetMainBook()->IsNavBarShown());
 }
 
@@ -2941,15 +2948,24 @@ void Frame::OnNewVersionAvailable(wxCommandEvent& e)
 	WebUpdateJobData *data = reinterpret_cast<WebUpdateJobData*>(e.GetClientData());
 	if (data) {
 		if (data->IsUpToDate() == false) {
-			NewVersionDlg dlg(this);
-			dlg.SetMessage(wxString::Format(wxT("A new version is available!\nCurrent version: rev%d\nNew version: rev%d\nWould you like CodeLite to take you to the download page?"), data->GetCurrentVersion(), data->GetNewVersion()));
-			dlg.SetReleaseNotesURL(data->GetReleaseNotes());
-			if (dlg.ShowModal() == wxID_OK) {
-				wxString url = data->GetUrl();
-				wxLaunchDefaultBrowser(url);
-			}
+
+			m_codeliteDownloadPageURL = data->GetUrl();
+			ButtonDetails btn;
+			btn.buttonLabel = wxT("Download Now!");
+			btn.commandId   = XRCID("goto_codelite_download_url");
+			btn.isDefault   = true;
+			btn.window      = this;
+
+			GetMainBook()->ShowMessage(wxT("A new version of CodeLite is available. Download it?"), true, wxXmlResource::Get()->LoadBitmap(wxT("message_pane_software_update")), btn);
+
 		} else {
-			wxLogMessage(wxString::Format(wxT("Info: CodeLite is up-to-date (or newer), version used: %d, version on site:%d"), data->GetCurrentVersion(), data->GetNewVersion()));
+			if(!data->GetShowMessage()) {
+				wxLogMessage(wxString::Format(wxT("Info: CodeLite is up-to-date (or newer), version used: %d, version on site:%d"), data->GetCurrentVersion(), data->GetNewVersion()));
+
+			} else {
+				// User initiated the version check request
+				GetMainBook()->ShowMessage(wxT("CodeLite is up-to-date"));
+			}
 		}
 		delete data;
 	}
@@ -3017,7 +3033,7 @@ void Frame::OnDockablePaneClosed(wxAuiManagerEvent &e)
 	DockablePane *pane = dynamic_cast<DockablePane*>(e.GetPane()->window);
 	if (pane) {
 		wxCommandEvent evt(wxEVT_COMMAND_MENU_SELECTED, XRCID("close_pane"));
-		pane->ProcessEvent(evt);
+		pane->GetEventHandler()->ProcessEvent(evt);
 	} else {
 		e.Skip();
 	}
@@ -3031,6 +3047,7 @@ void Frame::SetStatusMessage(const wxString &msg, int col, int id)
 
 void Frame::OnFunctionCalltipUI(wxUpdateUIEvent& event)
 {
+	CHECK_SHUTDOWN();
 	LEditor* editor = GetMainBook()->GetActiveEditor();
 	event.Enable(editor ? true : false);
 }
@@ -3047,6 +3064,7 @@ void Frame::OnReloadWorkspace(wxCommandEvent& event)
 
 void Frame::OnReloadWorkspaceUI(wxUpdateUIEvent& event)
 {
+	CHECK_SHUTDOWN();
 	event.Enable(ManagerST::Get()->IsWorkspaceOpen());
 }
 
@@ -3085,6 +3103,7 @@ void Frame::RebuildProject(const wxString& projectName)
 
 void Frame::OnBatchBuildUI(wxUpdateUIEvent& e)
 {
+	CHECK_SHUTDOWN();
 	bool enable = !ManagerST::Get()->IsBuildInProgress() && ManagerST::Get()->IsWorkspaceOpen();
 	e.Enable(enable);
 }
@@ -3144,6 +3163,7 @@ void Frame::OnBuildWorkspace(wxCommandEvent& e)
 
 void Frame::OnBuildWorkspaceUI(wxUpdateUIEvent& e)
 {
+	CHECK_SHUTDOWN();
 	e.Enable(ManagerST::Get()->IsWorkspaceOpen() && !ManagerST::Get()->IsBuildInProgress());
 }
 
@@ -3171,6 +3191,7 @@ void Frame::OnCleanWorkspace(wxCommandEvent& e)
 
 void Frame::OnCleanWorkspaceUI(wxUpdateUIEvent& e)
 {
+	CHECK_SHUTDOWN();
 	e.Enable(ManagerST::Get()->IsWorkspaceOpen() && !ManagerST::Get()->IsBuildInProgress());
 }
 
@@ -3182,6 +3203,7 @@ void Frame::OnReBuildWorkspace(wxCommandEvent& e)
 
 void Frame::OnReBuildWorkspaceUI(wxUpdateUIEvent& e)
 {
+	CHECK_SHUTDOWN();
 	e.Enable(ManagerST::Get()->IsWorkspaceOpen() && !ManagerST::Get()->IsBuildInProgress());
 }
 
@@ -3193,6 +3215,7 @@ void Frame::OnDetachTab(wxCommandEvent &e)
 
 void Frame::OnDetachTabUI(wxUpdateUIEvent &e)
 {
+	CHECK_SHUTDOWN();
 	e.Enable(!GetMainBook()->IsDetached(GetMainBook()->GetCurrentPage()));
 }
 
@@ -3273,7 +3296,7 @@ void Frame::OnQuickDebug(wxCommandEvent& e)
 			if (SendCmdEvent(wxEVT_DEBUG_STARTING, &startup_info))
 				// plugin stopped debugging
 				return;
-			
+
 			dbgr->SetIsRemoteDebugging(false);
 			dbgr->Start(dbgname, exepath, wd, bpList, cmds);
 
@@ -3295,12 +3318,14 @@ void Frame::OnQuickDebug(wxCommandEvent& e)
 
 void Frame::OnQuickDebugUI(wxUpdateUIEvent& e)
 {
+	CHECK_SHUTDOWN();
 	IDebugger *dbgr =  DebuggerMgr::Get().GetActiveDebugger();
 	e.Enable(dbgr && !dbgr->IsRunning());
 }
 
 void Frame::OnShowWhitespaceUI(wxUpdateUIEvent& e)
 {
+	CHECK_SHUTDOWN();
 	OptionsConfigPtr options = EditorConfigST::Get()->GetOptions();
 	if (e.GetId() == XRCID("whitepsace_invisible")) {
 		e.Check(options->GetShowWhitspaces() == 0);
@@ -3350,9 +3375,9 @@ void Frame::OnShowFullScreen(wxCommandEvent& e)
 
 	if (IsFullScreen()) {
 		ShowFullScreen(false);
-		
+
 	} else {
-		
+
 		ShowFullScreen(true, wxFULLSCREEN_NOCAPTION|wxFULLSCREEN_NOBORDER);
 
 		// Re-apply the menu accelerators
@@ -3419,10 +3444,17 @@ void Frame::ReloadExternallyModifiedProjectFiles()
 	if (!project_modified && !workspace_modified)
 		return;
 
-	if (wxMessageBox(_("Workspace or project settings have been modified, would you like to reload the workspace and all contained projects?"), wxT("CodeLite"), wxICON_QUESTION|wxYES_NO, this) == wxYES) {
-		wxCommandEvent evt(wxEVT_COMMAND_MENU_SELECTED, XRCID("reload_workspace"));
-		AddPendingEvent( evt );
-	}
+	ButtonDetails btn, noBtn;
+	btn.buttonLabel = wxT("Reload Workspace");
+	btn.commandId   = XRCID("reload_workspace");
+	btn.isDefault   = false;
+	btn.window      = this;
+
+	noBtn.buttonLabel = wxT("&Don't reload");
+	noBtn.isDefault   = true;
+	noBtn.window      = NULL;
+
+	GetMainBook()->ShowMessage(_("Workspace or project settings have been modified, would you like to reload the workspace and all contained projects?"), false, wxXmlResource::Get()->LoadBitmap(wxT("message_pane_reload_workspace")), noBtn, btn);
 }
 
 void Frame::SaveLayoutAndSession()
@@ -3493,67 +3525,39 @@ void Frame::OnPreviousFiFMatch(wxCommandEvent& e)
 
 void Frame::OnNextFiFMatchUI(wxUpdateUIEvent& e)
 {
+	CHECK_SHUTDOWN();
 	e.Enable(GetOutputPane()->GetFindResultsTab()->GetPageCount() > 0);
 }
 
 void Frame::OnPreviousFiFMatchUI(wxUpdateUIEvent& e)
 {
+	CHECK_SHUTDOWN();
 	e.Enable(GetOutputPane()->GetFindResultsTab()->GetPageCount() > 0);
 }
 
-void Frame::OnShowQuickFinderUI(wxUpdateUIEvent& e)
+void Frame::OnFindResourceXXX(wxCommandEvent& e)
 {
-//	// Determine the search type
-//	wxString searchType;
-//	wxString currentSearchType = EditorConfigST::Get()->GetStringValue(wxT("QuickFinderSearchType"));
-//
-//	if(e.GetId() == XRCID("quickfinder_class")) {
-//		e.Check(ST_CLASS == currentSearchType);
-//
-//	} else if(e.GetId() == XRCID("quickfinder_function")) {
-//		e.Check(ST_FUNCTION == currentSearchType);
-//
-//	} else if(e.GetId() == XRCID("quickfinder_macro")) {
-//		e.Check(ST_MACRO == currentSearchType);
-//
-//	} else if(e.GetId() == XRCID("quickfinder_typedef")) {
-//		e.Check(ST_TYPEDEF == currentSearchType);
-//
-//	} else {
-//		e.Check(ST_WORKSPACE_FILE == currentSearchType);
-//
-//	}
-}
-
-void Frame::OnShowQuickFinder(wxCommandEvent& e)
-{
-	// the proper way of showing it, is by setting the configuration to true and
-	// sending an event
-	// Notify plugins about settings changed
-	OptionsConfigPtr opts = EditorConfigST::Get()->GetOptions();
-	opts->SetShowQuickFinder( true );
-	EditorConfigST::Get()->SetOptions( opts );
-
 	// Determine the search type
 	wxString searchType;
-	if(e.GetId() == XRCID("quickfinder_class")) {
-		searchType = ST_CLASS;
+	if(e.GetId() == XRCID("find_function")) {
+		searchType = OpenResourceDialog::TYPE_FUNCTION;
 
-	} else if(e.GetId() == XRCID("quickfinder_function")) {
-		searchType = ST_FUNCTION;
+	} else if(e.GetId() == XRCID("find_macro")) {
+		searchType = OpenResourceDialog::TYPE_MACRO;
 
-	} else if(e.GetId() == XRCID("quickfinder_macro")) {
-		searchType = ST_MACRO;
+	} else if(e.GetId() == XRCID("find_typedef")) {
+		searchType = OpenResourceDialog::TYPE_TYPEDEF;
 
-	} else if(e.GetId() == XRCID("quickfinder_typedef")) {
-		searchType = ST_TYPEDEF;
+	} else if(e.GetId() == XRCID("find_type")) {
+		searchType = OpenResourceDialog::TYPE_CLASS;
 	} else {
-		searchType = ST_WORKSPACE_FILE;
+		searchType = OpenResourceDialog::TYPE_WORKSPACE_FILE;
 	}
 
-	// Set the search type
-	EditorConfigST::Get()->SaveStringValue(wxT("QuickFinderSearchType"), searchType);
-	PostCmdEvent( wxEVT_EDITOR_SETTINGS_CHANGED );
+	OpenResourceDialog dlg(this, PluginManager::Get(), searchType);
+	if(dlg.ShowModal() == wxID_OK) {
+		OpenResourceDialog::OpenSelection(dlg.GetSelection(), PluginManager::Get());
+	}
 }
 
 void Frame::OnParsingThreadMessage(wxCommandEvent& e)
@@ -3569,11 +3573,12 @@ void Frame::OnParsingThreadMessage(wxCommandEvent& e)
 // TagsManager, prompt the user
 void Frame::OnDatabaseUpgrade(wxCommandEvent& e)
 {
-	int answer = wxMessageBox(wxT("Your workspace symbols file does not match the current version of CodeLite. This can be fixed by re-tagging your workspace\nWould you like to re-tag your workspace now?"),
-							  wxT("CodeLite"), wxYES_NO|wxICON_QUESTION|wxCENTER, this);
-	if ( answer == wxYES ) {
-		OnRetagWorkspace( e /* dummy */);
-	}
+	ButtonDetails btn;
+	btn.buttonLabel = wxT("Retag Workspace Now!");
+	btn.commandId   = XRCID("full_retag_workspace");
+	btn.window      = this;
+
+	GetMainBook()->ShowMessage(wxT("Your workspace symbols file does not match the current version of CodeLite. This can be fixed by re-tagging your workspace\nWould you like to re-tag your workspace now?"), true, wxNullBitmap, btn);
 }
 
 void Frame::UpdateTagsOptions(const TagsOptionsData& tod)
@@ -3586,16 +3591,17 @@ void Frame::UpdateTagsOptions(const TagsOptionsData& tod)
 
 void Frame::OnCheckForUpdate(wxCommandEvent& e)
 {
-	JobQueueSingleton::Instance()->PushJob( new WebUpdateJob(this) );
+	JobQueueSingleton::Instance()->PushJob( new WebUpdateJob(this, true) );
 }
 
 void Frame::OnShowActiveProjectSettings(wxCommandEvent& e)
 {
-	GetWorkspaceTab()->ProcessEvent( e );
+	GetWorkspaceTab()->GetEventHandler()->ProcessEvent( e );
 }
 
 void Frame::OnShowActiveProjectSettingsUI(wxUpdateUIEvent& e)
 {
+	CHECK_SHUTDOWN();
 	wxArrayString projectList;
 	WorkspaceST::Get()->GetProjectList( projectList );
 	e.Enable(ManagerST::Get()->IsWorkspaceOpen() && (projectList.IsEmpty() == false));
@@ -3658,4 +3664,85 @@ void Frame::SetEnvStatusMessage()
 	vars.SetActiveSet(activeSet);
 	EnvironmentConfig::Instance()->SetSettings(vars);
 	SetStatusMessage(wxString::Format(wxT("Env: '%s', Builder: '%s'"), activeSet.c_str(), BuildSettingsConfigST::Get()->GetSelectedBuildSystem().c_str()), 2);
+}
+
+void Frame::OnClearTagsCache(wxCommandEvent& e)
+{
+	e.Skip();
+	TagsManagerST::Get()->ClearTagsCache();
+	SetStatusMessage(wxT("Tags cache cleared"), 0);
+}
+
+void Frame::OnUpdateNumberOfBuildProcesses(wxCommandEvent& e)
+{
+	int cpus = wxThread::GetCPUCount();
+	BuilderConfigPtr bs = BuildSettingsConfigST::Get()->GetBuilderConfig(wxT("GNU makefile for g++/gcc"));
+	if(bs && cpus != wxNOT_FOUND) {
+		wxString jobs;
+		jobs << cpus;
+
+		bs->SetToolJobs( jobs );
+		BuildSettingsConfigST::Get()->SetBuildSystem(bs);
+		wxLogMessage(wxT("Info: setting number of concurrent builder jobs to ") + jobs);
+	}
+}
+
+void Frame::OnWorkspaceEditorPreferences(wxCommandEvent& e)
+{
+	GetWorkspaceTab()->GetFileView()->GetEventHandler()->ProcessEvent(e);
+}
+
+void Frame::OnWorkspaceSettings(wxCommandEvent& e)
+{
+	GetWorkspaceTab()->GetFileView()->GetEventHandler()->ProcessEvent(e);
+}
+
+void Frame::OnGotoCodeLiteDownloadPage(wxCommandEvent& e)
+{
+	wxUnusedVar(e);
+	wxLaunchDefaultBrowser(m_codeliteDownloadPageURL);
+	m_codeliteDownloadPageURL.Clear();
+}
+
+void Frame::OnUpdateParserPath(wxCommandEvent& e)
+{
+	wxUnusedVar(e);
+	wxArrayString paths;
+	wxArrayString excudePaths;
+	IncludePathLocator locator(PluginManager::Get());
+	locator.Locate( paths, excudePaths );
+
+	m_tagsOptionsData.SetParserSearchPaths ( paths       );
+	m_tagsOptionsData.SetParserExcludePaths( excudePaths );
+
+	// Update the parser thread
+	ParseThreadST::Get()->SetSearchPaths( paths, excudePaths );
+	EditorConfigST::Get()->WriteObject( wxT("m_tagsOptionsData"), &m_tagsOptionsData );
+}
+
+void Frame::OnNeverUpdateParserPath(wxCommandEvent& e)
+{
+	wxUnusedVar(e);
+	EditorConfigST::Get()->SaveLongValue(wxT("UpdateParserPaths"), 0);
+}
+
+void Frame::DoSuggestRestart()
+{
+#ifdef __WXMAC__
+	GetMainBook()->ShowMessage(_("Some of the changes made requires restart of CodeLite"));
+#else
+	// On Winodws & GTK we offer auto-restart
+	ButtonDetails btn1, btn2;
+	btn1.buttonLabel = wxT("Restart Now!");
+	btn1.commandId   = wxEVT_CMD_RESTART_CODELITE;
+	btn1.menuCommand = false;
+	btn1.isDefault   = true;
+	btn1.window      = ManagerST::Get();
+
+	// set button window to NULL
+	btn2.buttonLabel = wxT("Not now");
+	btn2.window      = NULL;
+
+	GetMainBook()->ShowMessage(_("Some of the changes made requires a restart of CodeLite, Restart now?"), false, wxXmlResource::Get()->LoadBitmap(wxT("message_pane_restart")), btn1, btn2);
+#endif
 }

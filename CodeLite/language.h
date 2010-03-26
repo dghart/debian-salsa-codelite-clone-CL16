@@ -22,7 +22,7 @@
 //
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
- #ifndef CODELITE_LANGUAGE_H
+#ifndef CODELITE_LANGUAGE_H
 #define CODELITE_LANGUAGE_H
 
 #include "tokenizer.h"
@@ -35,30 +35,72 @@
 #include "variable.h"
 #include "function.h"
 #include "comment.h"
+#include <vector>
 
-enum SearchFlags
-{
+enum SearchFlags {
 	PartialMatch        = 1,
 	ExactMatch          = 2,
 	IgnoreCaseSensitive = 4
 };
 
 class TagsManager;
-/**
- * Language, a helper class that parses (currently) C/C++ code.
- * It conatains all the parsing of small fragments of code, in places where
- * ctags chosose to ignore (for example, ctags provides us with a member name,
- * but it does not provide us with its qualifier).
- *
- * Whenever possible, it is advised to use TagsManager API instead of Language API.
- *
- * \ingroup CodeLite
- * \date 09-02-2006
- * \author Eran
- */
+
+class TemplateHelper
+{
+	std::vector<wxArrayString> templateInstantiationVector;
+	wxArrayString              templateDeclaration;
+	wxString                   typeScope;
+	wxString                   typeName;
+public:
+	TemplateHelper() {}
+	~TemplateHelper() {}
+
+	void SetTemplateDeclaration(const wxArrayString& templateDeclaration) {
+		this->templateDeclaration = templateDeclaration;
+	}
+	void SetTemplateInstantiation(const wxArrayString& templateInstantiation) ;
+
+	const wxArrayString& GetTemplateDeclaration() const {
+		return templateDeclaration;
+	}
+	bool IsTemplate() const {
+		return templateDeclaration.IsEmpty() == false;
+	}
+
+	void SetTypeScope(const wxString& typeScope) {
+		this->typeScope = typeScope;
+	}
+	const wxString& GetTypeScope() const {
+		return typeScope;
+	}
+	void SetTypeName(const wxString& typeName) {
+		this->typeName = typeName;
+	}
+	const wxString& GetTypeName() const {
+		return typeName;
+	}
+	wxString Substitute(const wxString &name) ;
+
+	void Clear() ;
+
+	wxString GetPath() const ;
+};
+
 class Language
 {
 	friend class Singleton<Language>;
+
+private:
+	std::map<char, char>    m_braces;
+	std::vector<wxString>   m_delimArr;
+	wxString                m_expression;
+	CppScannerPtr           m_scanner;
+	CppScannerPtr           m_tokenScanner;
+	TagsManager *           m_tm;
+	wxString                m_visibleScope;
+	wxString                m_lastFunctionSignature;
+	std::vector<wxString>   m_additionalScopes;     // collected by parsing 'using namespace XXX'
+	TemplateHelper          m_templateHelper;
 
 public:
 	/**
@@ -89,6 +131,26 @@ public:
 	 */
 	wxString OptimizeScope(const wxString& srcString);
 
+	void CheckForTemplateAndTypedef(wxString &typeName, wxString &typeScope);
+
+	void SetLastFunctionSignature(const wxString& lastFunctionSignature) {
+		this->m_lastFunctionSignature = lastFunctionSignature;
+	}
+	void SetVisibleScope(const wxString& visibleScope) {
+		this->m_visibleScope = visibleScope;
+	}
+	const wxString& GetLastFunctionSignature() const {
+		return m_lastFunctionSignature;
+	}
+	const wxString& GetVisibleScope() const {
+		return m_visibleScope;
+	}
+	void SetAdditionalScopes(const std::vector<wxString>& additionalScopes) {
+		this->m_additionalScopes = additionalScopes;
+	}
+	const std::vector<wxString>& GetAdditionalScopes() const {
+		return m_additionalScopes;
+	}
 	/**
 	 * Set the language specific auto completion delimeteres, for example: for C++ you should populate
 	 * the array with { . , -> , :: }
@@ -155,22 +217,17 @@ public:
 	 * get the name's type, using local scope when possible. if parsing of local scope fails to find
 	 * a match, try the symbol database
 	 * \param name name to search for
-	 * \param text the scope
-	 * \param scopeName the scope name
 	 * \param firstToken set to true if the 'name' is the first token in the chain (myClass.some_func(). --> when testing for some_func(), firstToken = false
 	 * and when testing myClass. --> first token is set to true
 	 * \param type [output] name's type, incase 'name' is matched to a function, type will contain the type of the reutrn value of the function
 	 * \param typeScope [output] type's scope
 	 * \return true on success false otherwise
 	 */
-	bool TypeFromName(	const wxString &name,
-						const wxString &text,
-						const wxString &extraScope,
-						const wxString &scopeName,
-						const std::vector<wxString> &moreScopes,
-						bool firstToken,
-						wxString &type,
-						wxString &typeScope);
+	bool TypeFromName( const wxString &name,
+	                   const wxString &scopeName,
+	                   bool firstToken,
+	                   wxString &type,
+	                   wxString &typeScope);
 
 	/**
 	 * Collect local variables from given scope text (in) and an optional symbol name
@@ -183,16 +240,17 @@ public:
 
 
 	bool VariableFromPattern(const wxString &pattern, const wxString &name, Variable &var);
-	bool FunctionFromPattern(const wxString &pattern, clFunction &foo);
+	bool FunctionFromPattern(TagEntryPtr tag, clFunction &foo);
 
-	bool ResolveTempalte(wxString &typeName, wxString &typeScope, const wxString &parentPath, const wxString &parenttempalteInitList);
+	bool ResolveTemplate(wxString &typeName, wxString &typeScope, const wxString &parentPath, const wxString &parenttempalteInitList);
 private:
 	bool DoSearchByNameAndScope(const wxString &name,
-								const wxString &scopeName,
-								std::vector<TagEntryPtr> &tags,
-								wxString &type,
-								wxString &typeScope);
-	bool CorrectUsingNamespace(wxString &type, wxString &typeScope, const std::vector<wxString> &moreScopes, const wxString &parentScope, std::vector<TagEntryPtr>& tags);
+	                            const wxString &scopeName,
+	                            std::vector<TagEntryPtr> &tags,
+	                            wxString &type,
+	                            wxString &typeScope);
+
+	bool CorrectUsingNamespace(wxString &type, wxString &typeScope, const wxString &parentScope, std::vector<TagEntryPtr>& tags);
 	/**
 	 * Private constructor
 	 */
@@ -216,14 +274,14 @@ private:
 	 * \brief Attempt to fix template results
 	 * \param typeName the type name that was detected by the parser
 	 * \param typeScope the type scope
-	 * \param moreScopes additional scopes (they are collected by parsing any 'using namespace XXX' lines in the code
 	 */
-	bool OnTemplates(wxString &typeName, wxString &typeScope, Variable &parent, const std::vector<wxString> &moreScopes);
+	bool OnTemplates(wxString &typeName, wxString &typeScope);
 
 	/**
 	 * \brief attempt to expand 'typedef' to their actual value
 	 */
-	bool OnTypedef(wxString &typeName, wxString &typeScope, wxString &templateInitList, const wxString &optionalScope, wxString &scopeTempalteInitList);
+	bool OnTypedef(wxString &typeName, wxString &typeScope);
+	void DoSimpleTypedef(wxString &typeName, wxString &typeScope);
 
 	/**
 	 * \brief expand reference operator (->) overloading
@@ -233,17 +291,14 @@ private:
 	 */
 	bool OnArrowOperatorOverloading(wxString &typeName, wxString &typeScope);
 
-	void ParseTemplateArgs(CppScanner *scanner, wxArrayString &argsList);
-	void ParseTemplateInitList(CppScanner *scanner, wxArrayString &argsList);
-	void DoRemoveTempalteInitialization(wxString &str, wxString &tmplInitList);
-private:
-	std::map<char, char>    m_braces;
-	std::vector<wxString>	m_delimArr;
-	wxString m_expression;
-	CppScannerPtr m_scanner;
-	CppScannerPtr m_tokenScanner;
-	Variable m_parentVar;
-	TagsManager *m_tm;
+	void ParseTemplateArgs             (const wxString &argListStr, wxArrayString &argsList);
+	void ParseTemplateInitList         (const wxString &argListStr, wxArrayString &argsList);
+	void DoRemoveTempalteInitialization(wxString &str, wxArrayString &tmplInitList);
+	void DoResolveTemplateInitializationList(wxArrayString &tmpInitList);
+	void DoFixFunctionUsingCtagsReturnValue(clFunction &foo, TagEntryPtr tag);
+	void DoExtractTemplateDeclarationArgs();
+	void DoExtractTemplateDeclarationArgsFromScope();
+	void DoExtractTemplateDeclarationArgs(TagEntryPtr tag);
 };
 
 typedef Singleton<Language> LanguageST;

@@ -761,7 +761,7 @@ void CustomTab::OnMouseMiddleButton(wxMouseEvent &e)
 	if (GetBookStyle() & wxVB_MOUSE_MIDDLE_CLOSE_TAB) {
 		wxCommandEvent event(wxEVT_CMD_DELETE_TAB, GetId());
 		event.SetEventObject(this);
-		GetParent()->AddPendingEvent(event);
+		GetParent()->GetEventHandler()->AddPendingEvent(event);
 	}
 }
 

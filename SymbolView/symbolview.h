@@ -32,7 +32,6 @@
 #include <wx/imaglist.h>
 #include <wx/treectrl.h>
 #include <wx/splitter.h>
-#include <wx/propgrid/propgrid.h>
 #include "plugin.h"
 #include "dockablepane.h"
 #include "windowstack.h"
@@ -121,7 +120,7 @@ public:
     //--------------------------------------------
     //Abstract methods
     //--------------------------------------------
-    virtual wxToolBar *CreateToolBar(wxWindow *parent);
+    virtual clToolBar *CreateToolBar(wxWindow *parent);
     virtual void CreatePluginMenu(wxMenu *pluginsMenu);
     virtual void HookPopupMenu(wxMenu *menu, MenuType type);
     virtual void UnHookPopupMenu(wxMenu *menu, MenuType type);
@@ -142,7 +141,6 @@ private:
     wxChoice *m_viewChoice;       ///< User can select a view mode
     wxSplitterWindow *m_splitter; ///< For hiding/showing the properties pane
     WindowStack *m_viewStack;     ///< Shows current symbols for selected view mode
-    wxPropertyGrid *m_properties; ///< Shows properties of currently selected symbol
 	wxBoxSizer* m_choiceSizer;	  ///< Sizer for the drop button & the view mode
 
     wxArrayString m_viewModeNames;      ///< User-visible names for view modes
@@ -193,12 +191,9 @@ private:
     //--------------------------------------------
     wxString GetSymbolsPath(const wxString &fileName, const wxString &projectName = wxEmptyString);
     wxString GetSymbolsPath(IEditor *editor);
-    void GetFiles(const wxFileName &path, std::multimap<wxString,wxString> &files);
+    void GetFiles(const wxFileName &path, wxArrayString &files);
     void GetPaths(const wxArrayString &files, std::multimap<wxString,wxString> &filePaths);
-    wxSQLite3ResultSet GetTags(const std::multimap<wxString,wxString> &sqlopts);
-    void InitSymbolProperties();
-    void ShowSymbolProperties();
-
+    
     //--------------------------------------------
     //Tree-related methods
     //--------------------------------------------
@@ -226,7 +221,6 @@ private:
     void OnLinkEditor(wxCommandEvent &e);
     void OnCollapseAll(wxCommandEvent &e);
     void OnGoHome(wxCommandEvent &e);
-    void OnShowProperties(wxCommandEvent &e);
     
     void OnStackChoiceUI(wxUpdateUIEvent &e);
     void OnCollapseAllUI(wxUpdateUIEvent &e);

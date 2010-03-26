@@ -52,7 +52,6 @@ fix_shared_object_depends libplugin
 fix_shared_object_depends libcodelite
 fix_shared_object_depends libwxscintilla
 fix_shared_object_depends libwxsqlite
-#fix_shared_object_depends libwxpropgrid
 
 #echo install_name_tool -change /usr/lib/libcurl.4.dylib @executable_path/libcurl.4.dylib ${exe_name}
 #install_name_tool -change /usr/lib/libcurl.4.dylib @executable_path/libcurl.4.dylib ${exe_name}
@@ -77,23 +76,8 @@ cp config/accelerators.conf.default ./CodeLite.app/Contents/SharedSupport/config
 cp config/build_settings.xml.default.mac ./CodeLite.app/Contents/SharedSupport/config/build_settings.xml.default
 cp config/plugins.xml.default ./CodeLite.app/Contents/SharedSupport/config
 
-##
-## replace the revision macro
-##
-cur_rev=`svn info | grep Revision | awk '{print $2;}'`
-file_exist=`test -f ./CodeLite.app/Contents/SharedSupport/config/liteeditor.xml`
-file_exist=$?
-if [ $file_exist -eq 1 ]
-then
-	## file does not exist, create an empty file
-	touch ./CodeLite.app/Contents/SharedSupport/config/codelite.xml
-fi
-
-## empty the file
-\cp /dev/null ./CodeLite.app/Contents/SharedSupport/config/codelite.xml
-
-## replace $(Revision) with the actual revision, and create new file
-cat config/liteeditor.xml.mac | sed s/\$\(Revision\)/${cur_rev}/g >> ./CodeLite.app/Contents/SharedSupport/config/codelite.xml.default
+## copy default Mac configuration file
+cp config/codelite.xml.default.mac ./CodeLite.app/Contents/SharedSupport/config/codelite.xml.default
 
 ## replace the executable name according to the configuration used in the build
 cat Info.plist.template | sed s/EXE_NAME/${exe_name}/g >> ./CodeLite.app/Contents/Info.plist
@@ -108,7 +92,7 @@ cp ../lib/cscope.so ./CodeLite.app/Contents/SharedSupport/plugins/
 cp ../lib/Copyright.so ./CodeLite.app/Contents/SharedSupport/plugins/
 cp ../lib/UnitTestCPP.so ./CodeLite.app/Contents/SharedSupport/plugins/
 cp ../lib/ExternalTools.so ./CodeLite.app/Contents/SharedSupport/plugins/
-#cp ../lib/SymbolView.so ./CodeLite.app/Contents/SharedSupport/plugins/
+cp ../lib/SymbolView.so ./CodeLite.app/Contents/SharedSupport/plugins/
 cp ../lib/ContinuousBuild.so ./CodeLite.app/Contents/SharedSupport/plugins/
 cp ../lib/SnipWiz.so ./CodeLite.app/Contents/SharedSupport/plugins/
 cp ../lib/wxformbuilder.so ./CodeLite.app/Contents/SharedSupport/plugins/
@@ -122,4 +106,5 @@ cp ../lib/libwxsqlite3u.so ./CodeLite.app/Contents/MacOS/
 
 cp ../sdk/codelite_indexer/codelite_indexer   ./CodeLite.app/Contents/SharedSupport/
 cp ../sdk/codelite_cppcheck/codelite_cppcheck ./CodeLite.app/Contents/SharedSupport/
+cp ./OpenTerm   ./CodeLite.app/Contents/SharedSupport/
 cp plugins/resources/*.*                      ./CodeLite.app/Contents/SharedSupport/plugins/resources/

@@ -43,6 +43,7 @@ class IPlugin;
 class BuildManager;
 class BuildSettingsConfig;
 class NavMgr;
+class IMacroManager;
 
 //--------------------------
 //Auxulary class
@@ -314,7 +315,13 @@ public:
 	 * return true if a compilation is in process (either clean or build)
 	 */
 	virtual bool IsBuildInProgress() const = 0;
-
+	
+	/**
+	 * @brief return true if a shutdown is currently in progress
+	 * @return 
+	 */
+	virtual bool IsShutdownInProgress() const = 0;
+	
 	/**
 	 * return true if the last buid ended successfully
 	 */
@@ -371,6 +378,11 @@ public:
 	 * @return pointer to the editor
 	 */
 	virtual IEditor *NewEditor() = 0;
+	
+	/**
+	 * @brief return the macro manager
+	 */
+	virtual IMacroManager *GetMacrosManager() = 0;
 };
 
 

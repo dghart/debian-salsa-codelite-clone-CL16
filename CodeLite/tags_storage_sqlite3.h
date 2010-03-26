@@ -32,7 +32,7 @@
 #include "istorage.h"
 #include <wx/wxsqlite3.h>
 
-const wxString gTagsDatabaseVersion(wxT("CodeLite Version 2.0"));
+const wxString gTagsDatabaseVersion(wxT("CodeLite Version 2.3"));
 
 /**
 TagsDatabase is a wrapper around wxSQLite3 database with tags specific functions.
@@ -70,15 +70,34 @@ Table Name: FILES
 | id           | Number | ID
 | file         | String | Full path of the file
 | last_retagged| Number | Timestamp for the last time this file was retagged
-
 *
 \date 08-22-2006
 \author Eran
 \ingroup CodeLite
 */
+
+class TagsStorageSQLiteCache
+{
+	std::map<wxString, std::vector<TagEntryPtr> > m_cache;
+protected:
+	bool DoGet  (const wxString &key, std::vector<TagEntryPtr> &tags);
+	void DoStore(const wxString &key, const std::vector<TagEntryPtr> &tags);
+
+public:
+	TagsStorageSQLiteCache();
+	virtual ~TagsStorageSQLiteCache();
+
+	bool Get  (const wxString &sql, std::vector<TagEntryPtr> &tags);
+	bool Get  (const wxString &sql, const wxArrayString &kind, std::vector<TagEntryPtr> &tags);
+	void Store(const wxString &sql, const std::vector<TagEntryPtr> &tags);
+	void Store(const wxString &sql, const wxArrayString &kind, const std::vector<TagEntryPtr> &tags);
+	void Clear();
+};
+
 class TagsStorageSQLite : public ITagsStorage
 {
-	wxSQLite3Database *m_db;
+	wxSQLite3Database *    m_db;
+	TagsStorageSQLiteCache m_cache;
 
 private:
 	/**
@@ -118,6 +137,8 @@ public:
 	 * Destructor
 	 */
 	virtual ~TagsStorageSQLite();
+
+	virtual void SetUseCache(bool useCache);
 
 	/**
 	 * Return the currently opened database.
@@ -307,6 +328,17 @@ public:
 	 */
 	virtual void GetTagsByKind (const wxArrayString &kinds, const wxString &orderingColumn, int order, std::vector<TagEntryPtr> &tags);
 
+
+	/**
+	 * \brief
+	 * \param kinds
+	 * \param orderingColumn
+	 * \param order
+	 * \param limit
+	 * \param tags
+	 */
+	virtual void GetTagsByKindLimit(const wxArrayString &kinds, const wxString &orderingColumn, int order, int limit, const wxString &partName, std::vector<TagEntryPtr> &tags);
+
 	/**
 	 * @brief return array of items by path
 	 * @param path
@@ -422,7 +454,15 @@ public:
 	 * @param scope [intput/output]
 	 * @return true on success
 	 */
-	virtual bool IsTypeAndScopeContainer(const wxString& typeName, wxString& scope);
+	virtual bool IsTypeAndScopeContainer(wxString& typeName, wxString& scope);
+
+	/**
+	 * @brief
+	 * @param typeName
+	 * @param scope
+	 * @return
+	 */
+	virtual bool IsTypeAndScopeExistLimitOne(const wxString &typeName, const wxString &scope);
 
 	/**
 	 * @brief return true if type & scope do exist in the symbols database and is container
@@ -430,7 +470,7 @@ public:
 	 * @param scope
 	 * @return
 	 */
-	virtual bool IsTypeAndScopeExist(const wxString &typeName, wxString &scope);
+	virtual bool IsTypeAndScopeExist(wxString &typeName, wxString &scope);
 
 	/**
 	 * @brief return list of scopes (classes, namespaces, structs) from a given file as a unique and ascended ordered
@@ -439,6 +479,11 @@ public:
 	 * @param scopes
 	 */
 	virtual void GetScopesFromFileAsc(const wxFileName &fileName, std::vector< wxString > &scopes);
+
+	/**
+	 * @brief
+	 */
+	virtual void ClearCache();
 
 	/**
 	 * @brief
@@ -451,5 +496,37 @@ public:
 	virtual void GetAllTagsNames(wxArrayString& names);
 
 	virtual void GetTagsNames(const wxArrayString& kind, wxArrayString& names);
+	/**
+	 * @brief
+	 * @param files
+	 * @param tags
+	 */
+	virtual void GetTagsByFiles(const wxArrayString &files, std::vector<TagEntryPtr>& tags);
+	/**
+	 * @brief
+	 * @param files
+	 * @param scope
+	 * @param tags
+	 */
+	virtual void GetTagsByFilesAndScope(const wxArrayString &files, const wxString &scope, std::vector<TagEntryPtr>& tags);
+	/**
+	 * @brief
+	 * @param files
+	 * @param kinds
+	 * @param scope
+	 * @param tags
+	 */
+	virtual void GetTagsByFilesKindAndScope(const wxArrayString &files, const wxArrayString &kinds, const wxString &scope, std::vector<TagEntryPtr>& tags);
+	/**
+	 * @brief
+	 * @param files
+	 * @param kinds
+	 * @param scope
+	 * @param typeref
+	 * @param tags
+	 */
+	virtual void GetTagsByFilesScopeTyperefAndKind(const wxArrayString &files, const wxArrayString &kinds, const wxString &scope, const wxString &typeref, std::vector<TagEntryPtr>& tags);
+
 };
+
 #endif // CODELITE_TAGS_DATABASE_H

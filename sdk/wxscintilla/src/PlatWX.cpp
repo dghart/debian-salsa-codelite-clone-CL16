@@ -135,7 +135,7 @@ Font::~Font()
 }
 
 void Font::Create (const char *faceName, int characterSet, int size,
-                   bool bold, bool italic, bool extraFontFlag)
+                   bool bold, bool italic, int extraFontFlag)
 {
 	Release();
 
@@ -371,8 +371,8 @@ void SurfaceImpl::FillRectangle(PRectangle rc, Surface &surfacePattern)
 
 void SurfaceImpl::RoundedRectangle(PRectangle rc, ColourAllocated fore, ColourAllocated back)
 {
-	PenColour(fore);
-	BrushColour(back);
+    PenColour(fore);
+    BrushColour(back);
 	wxRect rr = wxRectFromPRectangle(rc);
 	hdc->DrawRoundedRectangle(rr, 0);
 }
@@ -381,78 +381,78 @@ void SurfaceImpl::AlphaRectangle (PRectangle rc, int cornerSize, ColourAllocated
 {
 
 #ifdef wxHAVE_RAW_BITMAP
-	wxUnusedVar(cornerSize);
-	int x, y;
-	wxRect r = wxRectFromPRectangle(rc);
+    wxUnusedVar(cornerSize);
+    int x, y;
+    wxRect r = wxRectFromPRectangle(rc);
 
-	wxBitmap bmp(r.width, r.height, 32);
-	wxAlphaPixelData pixData(bmp);
-	pixData.UseAlpha();
+    wxBitmap bmp(r.width, r.height, 32);
+    wxAlphaPixelData pixData(bmp);
+    pixData.UseAlpha();
 	wxAlphaPixelData::Iterator p(pixData);
 
-	// Set the fill pixels
-	ColourDesired cdf(fill.AsLong());
-	int red   = cdf.GetRed();
-	int green = cdf.GetGreen();
-	int blue  = cdf.GetBlue();
+    // Set the fill pixels
+    ColourDesired cdf(fill.AsLong());
+    int red   = cdf.GetRed();
+    int green = cdf.GetGreen();
+    int blue  = cdf.GetBlue();
 #ifdef __WXMSW__
 	int aFill = alphaFill;
 #else
 	int aFill = 0xff;
 #endif
-	for (y=0; y<r.height; y++) {
-		p.MoveTo(pixData, 0, y);
-		for (x=0; x<r.width; x++) {
+    for (y=0; y<r.height; y++) {
+        p.MoveTo(pixData, 0, y);
+        for (x=0; x<r.width; x++) {
 			p.Red()   = red   * aFill / 0xff;
 			p.Green() = green * aFill / 0xff;
 			p.Blue()  = blue  * aFill / 0xff;
-			p.Alpha() = alphaFill;
-			++p;
-		}
-	}
+            p.Alpha() = alphaFill;
+            ++p; 
+        }
+    }
 
-	// Set the outline pixels
-	ColourDesired cdo(outline.AsLong());
-	red   = cdo.GetRed();
-	green = cdo.GetGreen();
-	blue  = cdo.GetBlue();
+    // Set the outline pixels
+    ColourDesired cdo(outline.AsLong());
+    red   = cdo.GetRed();
+    green = cdo.GetGreen();
+    blue  = cdo.GetBlue();
 #ifdef __WXMSW__
 	int aOutline = alphaOutline;
 #else
 	int aOutline = 0xff;
 #endif
 	for (x=1; x<r.width-1; x++) {
-		p.MoveTo(pixData, x, 0);
+        p.MoveTo(pixData, x, 0);
 		p.Red()   = red   * aOutline / 0xff;
 		p.Green() = green * aOutline / 0xff;
 		p.Blue()  = blue  * aOutline / 0xff;
-		p.Alpha() = alphaOutline;
-		p.MoveTo(pixData, x, r.height-1);
+        p.Alpha() = alphaOutline;        
+        p.MoveTo(pixData, x, r.height-1);
 		p.Red()   = red   * aOutline / 0xff;
 		p.Green() = green * aOutline / 0xff;
 		p.Blue()  = blue  * aOutline / 0xff;
-		p.Alpha() = alphaOutline;
-	}
+        p.Alpha() = alphaOutline;        
+    }
 	for (y=1; y<r.height-1; y++) {
-		p.MoveTo(pixData, 0, y);
+        p.MoveTo(pixData, 0, y);
 		p.Red()   = red   * aOutline / 0xff;
 		p.Green() = green * aOutline / 0xff;
 		p.Blue()  = blue  * aOutline / 0xff;
-		p.Alpha() = alphaOutline;
-		p.MoveTo(pixData, r.width-1, y);
+        p.Alpha() = alphaOutline;        
+        p.MoveTo(pixData, r.width-1, y);
 		p.Red()   = red   * aOutline / 0xff;
 		p.Green() = green * aOutline / 0xff;
 		p.Blue()  = blue  * aOutline / 0xff;
-		p.Alpha() = alphaOutline;
-	}
-
-	// Draw the bitmap
-	hdc->DrawBitmap(bmp, r.x, r.y, true);
+        p.Alpha() = alphaOutline;        
+    }
+    
+    // Draw the bitmap
+    hdc->DrawBitmap(bmp, r.x, r.y, true);
 
 #else
-	wxUnusedVar(cornerSize);
-	wxUnusedVar(alphaFill);
-	wxUnusedVar(alphaOutline);
+    wxUnusedVar(cornerSize);
+    wxUnusedVar(alphaFill);
+    wxUnusedVar(alphaOutline);
 	RoundedRectangle(rc, outline, fill);
 #endif
 }
