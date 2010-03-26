@@ -23,6 +23,7 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 #include <wx/xrc/xmlres.h>
+#include "custom_tab.h"
 #include "globals.h"
 #include "ctags_manager.h"
 #include "frame.h"
@@ -32,6 +33,7 @@
 #include "filechecklist.h"
 #include "editor_config.h"
 #include "mainbook.h"
+#include "message_pane.h"
 
 MainBook::MainBook(wxWindow *parent)
 		: wxPanel       (parent)
@@ -53,13 +55,9 @@ void MainBook::CreateGuiControls()
 	sz->Add(m_navBar, 0, wxEXPAND);
 
 	long style = wxVB_TOP|wxVB_HAS_X|wxVB_MOUSE_MIDDLE_CLOSE_TAB;
-
-#ifdef __WXGTK__
-	style |= wxVB_BORDER;
-#endif
-
 	// load the notebook style from the configuration settings
 	EditorConfigST::Get()->GetLongValue(wxT("MainBook"), style);
+	style &= ~(wxVB_BORDER);
 	m_book = new Notebook(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, style);
 
 	m_book->GetTabContainer()->Connect(wxEVT_LEFT_DCLICK, wxMouseEventHandler(MainBook::OnMouseDClick), NULL, this);
@@ -67,8 +65,11 @@ void MainBook::CreateGuiControls()
 	sz->Add(m_book, 1, wxEXPAND);
 
 	m_quickFindBar = new QuickFindBar(this);
-	sz->Add(m_quickFindBar, 0, wxTOP|wxBOTTOM|wxEXPAND, 5);
-
+	sz->Add(m_quickFindBar, 0, wxTOP|wxBOTTOM|wxEXPAND);
+	
+	m_messagePane = new MessagePane(this);
+	sz->Insert(0, m_messagePane, 0, wxALL|wxEXPAND, 5, NULL);
+	
 	sz->Layout();
 }
 
@@ -100,6 +101,7 @@ void MainBook::OnMouseDClick(wxMouseEvent& e)
 
 void MainBook::OnFocus(wxFocusEvent &e)
 {
+	// we use here DoSelectPage so the the selection wont change
 	if (!SelectPage(dynamic_cast<wxWindow*>(e.GetEventObject()))) {
 		e.Skip();
 	}
@@ -221,12 +223,12 @@ void MainBook::ClearFileHistory()
 		m_recentFiles.RemoveFileFromHistory ( 0 );
 	}
 	wxArrayString files;
-	EditorConfigST::Get()->SetRecentlyOpenedFies ( files );
+	EditorConfigST::Get()->SetRecentItems( files, wxT("RecentFiles") );
 }
 
 void MainBook::GetRecentlyOpenedFiles ( wxArrayString &files )
 {
-	EditorConfigST::Get()->GetRecentlyOpenedFies ( files );
+	EditorConfigST::Get()->GetRecentItems( files, wxT("RecentFiles") );
 }
 
 void MainBook::UpdateNavBar(LEditor *editor)
@@ -249,7 +251,7 @@ void MainBook::ShowNavBar(bool s)
 	Refresh();
 }
 
-void MainBook::SaveSession(SessionEntry &session)
+void MainBook::SaveSession(SessionEntry &session, wxArrayInt& intArr)
 {
 	std::vector<LEditor*> editors;
 	GetAllEditors(editors);
@@ -257,6 +259,10 @@ void MainBook::SaveSession(SessionEntry &session)
 	session.SetSelectedTab(0);
 	std::vector<TabInfo> vTabInfoArr;
 	for (size_t i = 0; i < editors.size(); i++) {
+		if ( (intArr.GetCount() > i) && (!intArr.Item(i)) ) {
+			// If we're saving only selected editors, and this isn't one of them...
+			continue;
+		}
 		if (editors[i] == GetActiveEditor()) {
 			session.SetSelectedTab(vTabInfoArr.size());
 		}
@@ -303,6 +309,9 @@ void MainBook::RestoreSession(SessionEntry &session)
 
 LEditor *MainBook::GetActiveEditor()
 {
+	if ( !GetCurrentPage() ) {
+		return NULL;
+	}
 	return dynamic_cast<LEditor*>(GetCurrentPage());
 }
 
@@ -325,16 +334,37 @@ void MainBook::GetAllEditors(std::vector<LEditor*> &editors)
 
 LEditor *MainBook::FindEditor(const wxString &fileName)
 {
+	wxString unixStyleFile(fileName);
+#ifdef __WXMSW__
+	unixStyleFile.Replace(wxT("\\"), wxT("/"));
+#endif
+
 	for (size_t i = 0; i < m_book->GetPageCount(); i++) {
 		LEditor *editor = dynamic_cast<LEditor*>(m_book->GetPage(i));
-		if (editor && editor->GetFileName().GetFullPath().CmpNoCase(fileName) == 0)
-			return editor;
+		if (editor) {
+			wxString unixStyleFile(editor->GetFileName().GetFullPath());
+			wxString nativeFile   (editor->GetFileName().GetFullPath());
+#ifdef __WXMSW__
+			unixStyleFile.Replace(wxT("\\"), wxT("/"));
+#endif
+			if(nativeFile.CmpNoCase(fileName) == 0 || unixStyleFile.CmpNoCase(fileName) == 0) {
+				return editor;
+			}
+		}
 	}
 
 	for (std::set<wxWindow*>::iterator i = m_detachedTabs.begin(); i != m_detachedTabs.end(); i++) {
 		LEditor *editor = dynamic_cast<LEditor*>(*i);
-		if (editor && editor->GetFileName().GetFullPath().CmpNoCase(fileName) == 0)
-			return editor;
+		if (editor) {
+			wxString unixStyleFile(editor->GetFileName().GetFullPath());
+			wxString nativeFile   (editor->GetFileName().GetFullPath());
+#ifdef __WXMSW__
+			unixStyleFile.Replace(wxT("\\"), wxT("/"));
+#endif
+			if(nativeFile.CmpNoCase(fileName) == 0 || unixStyleFile.CmpNoCase(fileName) == 0) {
+				return editor;
+			}
+		}
 	}
 	return NULL;
 }
@@ -373,10 +403,27 @@ LEditor *MainBook::NewEditor()
 	return editor;
 }
 
+static bool IsFileExists(const wxFileName &filename) {
+#ifdef __WXMSW__
+	wxString drive  = filename.GetVolume();
+	if(drive.Length()>1)
+		return false;
+
+	return filename.FileExists();
+#else
+	return filename.FileExists();
+#endif
+}
+
 LEditor *MainBook::OpenFile(const wxString &file_name, const wxString &projectName, int lineno, long position, bool addjump)
 {
 	wxFileName fileName(file_name);
 	fileName.MakeAbsolute();
+
+	if(IsFileExists(fileName) == false) {
+		wxLogMessage(wxT("Failed to open: %s: No such file or directory"), fileName.GetFullPath().c_str());
+		return NULL;
+	}
 
 	wxString projName = projectName;
 	if (projName.IsEmpty()) {
@@ -400,7 +447,8 @@ LEditor *MainBook::OpenFile(const wxString &file_name, const wxString &projectNa
 		editor = new LEditor(m_book);
 		editor->Create(projName, fileName);
 		AddPage(editor, fileName.GetFullName());
-
+		editor->SetSyntaxHighlight();
+		
 		// mark the editor as read only if needed
 		MarkEditorReadOnly(editor, IsFileReadOnly(editor->GetFileName()));
 
@@ -429,6 +477,7 @@ LEditor *MainBook::OpenFile(const wxString &file_name, const wxString &projectNa
 		editor->SetCaretAt(position);
 	} else if (lineno != wxNOT_FOUND) {
 		editor->GotoLine(lineno);
+		editor->EnsureVisible(lineno);
 	}
 	editor->EnsureCaretVisible();
 	if (GetActiveEditor() == editor) {
@@ -443,7 +492,7 @@ LEditor *MainBook::OpenFile(const wxString &file_name, const wxString &projectNa
 	m_recentFiles.AddFileToHistory ( fileName.GetFullPath() );
 	wxArrayString files;
 	m_recentFiles.GetFiles ( files );
-	EditorConfigST::Get()->SetRecentlyOpenedFies ( files );
+	EditorConfigST::Get()->SetRecentItems( files, wxT("RecentFiles") );
 
 	if (addjump) {
 		BrowseRecord jumpto = editor->CreateBrowseRecord();
@@ -456,6 +505,21 @@ bool MainBook::AddPage(wxWindow *win, const wxString &text, const wxBitmap &bmp,
 {
 	if (m_book->GetPageIndex(win) != Notebook::npos || m_detachedTabs.find(win) != m_detachedTabs.end())
 		return false;
+
+	long MaxBuffers(15);
+	EditorConfigST::Get()->GetLongValue(wxT("MaxOpenedTabs"), MaxBuffers);
+
+	if( (long)(m_book->GetPageCount() + m_detachedTabs.size()) >= MaxBuffers ) {
+		// We have reached the limit of the number of open buffers
+		// Close the last used buffer
+		const wxArrayPtrVoid &arr = m_book->GetHistory();
+		if ( arr.GetCount() ) {
+			// We got at least one page, close the last used
+			CustomTab *tab = static_cast<CustomTab*>(arr.Item(arr.GetCount()-1));
+			ClosePage(tab->GetWindow());
+		}
+	}
+
 	win->Connect(wxEVT_SET_FOCUS, wxFocusEventHandler(MainBook::OnFocus), NULL, this);
 
 	LEditor *editor = dynamic_cast<LEditor*>(win);
@@ -478,35 +542,7 @@ bool MainBook::SelectPage(wxWindow *win)
 	} else
 		return false;
 
-	m_currentPage = win;
-
-	LEditor *editor = dynamic_cast<LEditor*>(win);
-
-	// FIXME: move special context-specific menu handling to the Context classes?
-	// it could be done inside the existing ContextXXX::SetActive() method.
-	if (!editor || editor->GetContext()->GetName() != wxT("C++")) {
-		int idx = Frame::Get()->GetMenuBar()->FindMenu(wxT("C++"));
-		if ( idx != wxNOT_FOUND ) {
-			delete Frame::Get()->GetMenuBar()->Remove(idx);
-		}
-	}
-
-	if (!editor) {
-		Frame::Get()->SetFrameTitle(NULL);
-		Frame::Get()->SetStatusMessage(wxEmptyString, 2); // clear line & column indicator
-		Frame::Get()->SetStatusMessage(wxEmptyString, 3); // clear end-of-line mode indicator
-		UpdateNavBar(NULL);
-	} else {
-		editor->SetActive();
-		if (editor->GetContext()->GetName() == wxT("C++")) {
-			if (Frame::Get()->GetMenuBar()->FindMenu(wxT("C++")) == wxNOT_FOUND) {
-				Frame::Get()->GetMenuBar()->Append(wxXmlResource::Get()->LoadMenu(wxT("editor_right_click")), wxT("C++"));
-			}
-		}
-		SendCmdEvent(wxEVT_ACTIVE_EDITOR_CHANGED, (IEditor*)editor);
-	}
-
-	return true;
+	return DoSelectPage( win );
 }
 
 bool MainBook::DetachPage(wxWindow* win)
@@ -518,6 +554,7 @@ bool MainBook::DetachPage(wxWindow* win)
 		return false;
 	wxAuiPaneInfo info = wxAuiPaneInfo().Name(m_book->GetPageText(pos)).Caption(m_book->GetPageText(pos))
 	                     .BestSize(win->GetSize()).Float();
+	info.FloatingPosition(50, 100);
 	m_book->RemovePage(pos, false);
 	Frame::Get()->GetDockingManager().AddPane(win, info);
 	m_detachedTabs.insert(win);
@@ -562,6 +599,7 @@ bool MainBook::UserSelectFiles(std::vector<std::pair<wxFileName,bool> > &files, 
 
 bool MainBook::SaveAll(bool askUser, bool includeUntitled)
 {
+	// turn the 'saving all' flag on so we could 'Veto' all focus events
 	std::vector<LEditor*> editors;
 	GetAllEditors(editors);
 
@@ -589,7 +627,7 @@ bool MainBook::SaveAll(bool askUser, bool includeUntitled)
 	return res;
 }
 
-void MainBook::ReloadExternallyModified()
+void MainBook::ReloadExternallyModified(bool prompt)
 {
 	std::vector<LEditor*> editors;
 	GetAllEditors(editors);
@@ -610,8 +648,10 @@ void MainBook::ReloadExternallyModified()
 	}
 	editors.resize(n);
 
-	UserSelectFiles(files, wxT("Reload Modified Files"),
-	                wxT("Files have been modified outside the editor.\nChoose which files you would like to reload."), false);
+	if(prompt) {
+		UserSelectFiles(files, wxT("Reload Modified Files"), wxT("Files have been modified outside the editor.\nChoose which files you would like to reload."), false);
+	}
+
 	std::vector<wxFileName> filesToRetag;
 	for (size_t i = 0; i < files.size(); i++) {
 		if (files[i].second) {
@@ -619,9 +659,14 @@ void MainBook::ReloadExternallyModified()
 			filesToRetag.push_back(files[i].first);
 		}
 	}
-	if (!filesToRetag.empty()) {
-		TagsManagerST::Get()->RetagFiles(filesToRetag);
+	if (filesToRetag.size() > 1) {
+		TagsManagerST::Get()->RetagFiles(filesToRetag, true);
 		SendCmdEvent(wxEVT_FILE_RETAGGED, (void*)&filesToRetag);
+
+	} else if (filesToRetag.size() == 1) {
+		ManagerST::Get()->RetagFile(filesToRetag.at(0).GetFullPath());
+		SendCmdEvent(wxEVT_FILE_RETAGGED, (void*)&filesToRetag);
+
 	}
 }
 
@@ -808,4 +853,45 @@ void MainBook::MarkEditorReadOnly(LEditor* editor, bool ro)
 long MainBook::GetBookStyle()
 {
 	return m_book->GetBookStyle();
+}
+
+bool MainBook::DoSelectPage(wxWindow* win)
+{
+	m_currentPage = win;
+
+	LEditor *editor = dynamic_cast<LEditor*>(win);
+	if ( editor ) {
+		editor->SetActive();
+	}
+
+	// FIXME: move special context-specific menu handling to the Context classes?
+	// it could be done inside the existing ContextXXX::SetActive() method.
+	if (!editor || editor->GetContext()->GetName() != wxT("C++")) {
+		int idx = Frame::Get()->GetMenuBar()->FindMenu(wxT("C++"));
+		if ( idx != wxNOT_FOUND ) {
+			delete Frame::Get()->GetMenuBar()->Remove(idx);
+		}
+	}
+
+	if (!editor) {
+		Frame::Get()->SetFrameTitle(NULL);
+		Frame::Get()->SetStatusMessage(wxEmptyString, 1); // clear line & column indicator
+		Frame::Get()->SetStatusMessage(wxEmptyString, 2); // clear end-of-line mode indicator
+		UpdateNavBar(NULL);
+	} else {
+		editor->SetActive();
+		if (editor->GetContext()->GetName() == wxT("C++")) {
+			if (Frame::Get()->GetMenuBar()->FindMenu(wxT("C++")) == wxNOT_FOUND) {
+				Frame::Get()->GetMenuBar()->Append(wxXmlResource::Get()->LoadMenu(wxT("editor_right_click")), wxT("C++"));
+			}
+		}
+		SendCmdEvent(wxEVT_ACTIVE_EDITOR_CHANGED, (IEditor*)editor);
+	}
+
+	return true;
+}
+
+void MainBook::ShowMessage(const wxString &message, bool showHideButton, const wxBitmap &bmp, const ButtonDetails &btn1, const ButtonDetails &btn2, const ButtonDetails &btn3)
+{
+	m_messagePane->ShowMessage(message, showHideButton, bmp, btn1, btn2, btn3);
 }

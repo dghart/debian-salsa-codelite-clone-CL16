@@ -22,7 +22,7 @@
 //
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-
+#include <wx/app.h>
 #include "unittestspage.h"
 #include "macros.h"
 #include "unittestdata.h"
@@ -40,10 +40,14 @@
 #include <wx/ffile.h>
 #include <wx/msgdlg.h>
 #include "unittestpp.h"
-#include <wx/app.h>
 #include <wx/xrc/xmlres.h>
 #include <wx/menuitem.h>
 #include <wx/menu.h>
+
+#ifdef __WXMSW__
+#include <wx/msw/registry.h>
+#include "evnvarlist.h"
+#endif
 
 static UnitTestPP* thePlugin = NULL;
 
@@ -78,21 +82,40 @@ UnitTestPP::UnitTestPP(IManager *manager)
 	m_longName = wxT("A Unit test plugin based on the UnitTest++ framework");
 	m_shortName = wxT("UnitTestPP");
 	m_topWindow = m_mgr->GetTheApp();
+
+#ifdef __WXMSW__
+	wxRegKey rk(wxT("HKEY_CURRENT_USER\\Software\\CodeLite"));
+	if(rk.Exists()) {
+		wxString strUnitTestPP;
+		if(rk.HasValue(wxT("unittestpp"))){
+			rk.QueryValue(wxT("unittestpp"), strUnitTestPP);
+		}
+
+		if(strUnitTestPP.IsEmpty() == false) {
+			// Add the UnitTestPP environment variable to codelite's
+			// environment variables
+			EvnVarList vars;
+			m_mgr->GetEnv()->ReadObject(wxT("Variables"), &vars);
+			vars.AddVariable(wxT("Default"), wxT("UNIT_TEST_PP_SRC_DIR"), strUnitTestPP);
+			m_mgr->GetEnv()->WriteObject(wxT("Variables"), &vars);
+		}
+	}
+#endif
 }
 
 UnitTestPP::~UnitTestPP()
 {
 }
 
-wxToolBar *UnitTestPP::CreateToolBar(wxWindow *parent)
+clToolBar *UnitTestPP::CreateToolBar(wxWindow *parent)
 {
 	//support both toolbars icon size
-	wxToolBar *tb(NULL);
+	clToolBar *tb(NULL);
 
 	if (m_mgr->AllowToolbar()) {
 		int size = m_mgr->GetToolbarIconSize();
 
-		tb = new wxToolBar(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTB_FLAT | wxTB_NODIVIDER);
+		tb = new clToolBar(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, clTB_DEFAULT_STYLE);
 		tb->SetToolBitmapSize(wxSize(size, size));
 
 		if (size == 24) {
@@ -181,7 +204,7 @@ void UnitTestPP::OnNewClassTest(wxCommandEvent& e)
 		if (wxMessageBox(wxString::Format(wxT("There are currently no UnitTest project in your workspace\nWould you like to create one now?")), wxT("CodeLite"), wxYES_NO|wxCANCEL) == wxYES) {
 			// add new UnitTest project
 			wxCommandEvent event(wxEVT_COMMAND_MENU_SELECTED, XRCID("new_project"));
-			m_mgr->GetTheApp()->GetTopWindow()->AddPendingEvent(event);
+			m_mgr->GetTheApp()->GetTopWindow()->GetEventHandler()->AddPendingEvent(event);
 		}
 		return;
 	}
@@ -247,7 +270,7 @@ void UnitTestPP::OnNewSimpleTest(wxCommandEvent& e)
 		if (wxMessageBox(wxString::Format(wxT("There are currently no UnitTest project in your workspace\nWould you like to create one now?")), wxT("CodeLite"), wxYES_NO|wxCANCEL) == wxYES) {
 			// add new UnitTest project
 			wxCommandEvent event(wxEVT_COMMAND_MENU_SELECTED, XRCID("new_project"));
-			m_mgr->GetTheApp()->GetTopWindow()->AddPendingEvent(event);
+			m_mgr->GetTheApp()->GetTopWindow()->GetEventHandler()->AddPendingEvent(event);
 		}
 		return;
 	}
@@ -335,25 +358,22 @@ void UnitTestPP::OnRunUnitTests(wxCommandEvent& e)
 	if (m_proc) {
 
 		//set the environment variables
-		m_mgr->GetEnv()->ApplyEnv(NULL);
+		EnvSetter env(m_mgr->GetEnv());
 
 		if (m_proc->Start() == 0) {
-
-			//set the environment variables
-			m_mgr->GetEnv()->UnApplyEnv();
 
 			//failed to start the process
 			delete m_proc;
 			m_proc = NULL;
 			return;
 		}
-		m_mgr->GetEnv()->UnApplyEnv();
 		m_proc->Connect(wxEVT_END_PROCESS, wxProcessEventHandler(UnitTestPP::OnProcessTerminated), NULL, this);
 	}
 }
 
 void UnitTestPP::OnRunUnitTestsUI(wxUpdateUIEvent& e)
 {
+	CHECK_CL_SHUTDOWN();
 	bool activeProjIsUT(false);
 	if(m_mgr->GetWorkspace()) {
 		wxString errMsg;

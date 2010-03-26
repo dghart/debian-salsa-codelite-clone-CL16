@@ -32,6 +32,7 @@
 class CustomTab;
 class wxMenu;
 
+const wxEventType wxEVT_CMD_ENSURE_SEL_TAB_VISIBILE = 8093472;
 class wxTabContainer : public wxPanel
 {
 	int            m_orientation;
@@ -75,12 +76,15 @@ protected:
 	 * @brief show maximum tabs as possible.
 	 */
 	void DoShowMaxTabs();
-
+protected:
+	void OnEnsureVisible(wxCommandEvent &e);
+	
 public:
 	wxTabContainer(wxWindow *win, wxWindowID id = wxID_ANY, int orientation = wxLEFT, long style = 0);
 	virtual ~wxTabContainer();
 
 	void AddTab(CustomTab *tab);
+	void InsertTab(CustomTab *tab, size_t index);
 	CustomTab *GetSelection();
 
 	void SetSelection(CustomTab *tab, bool notify = false);

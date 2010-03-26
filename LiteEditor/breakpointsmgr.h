@@ -41,7 +41,9 @@ class myDragImage;
 
 class BreakptMgr
 {
-	std::vector<BreakpointInfo> m_bps;
+	std::vector<BreakpointInfo> m_bps;        // The vector of breakpoints
+	std::vector<BreakpointInfo> m_pendingBreakpointsList; // These are any breakpoints that the debugger won't (yet) accept (often because they're in a plugin)
+
 	int NextInternalID;		// Used to give each bp a unique internal ID. Start at 10k to avoid confusion with gdb's IDs
 
 	myDragImage* m_dragImage;
@@ -55,7 +57,11 @@ class BreakptMgr
 	void DeleteAllBreakpointMarkers();
 	std::set<wxString> GetFilesWithBreakpointMarkers();
 
-	int FindBreakpointById(const int id);
+	/**
+	 * Return the index of the bp with the passed id, in the vector that will normally be m_bps
+	 */
+	int FindBreakpointById(const int id, const std::vector<BreakpointInfo>& li);
+
 	/**
 	 * Can gdb accept this alteration, or will be bp have to be replaced?
 	 */
@@ -108,6 +114,11 @@ public:
 		Clear();
 	}
 
+	/**
+	 * @brief refresh the breakpoints marker for a given editor
+	 * @param editor
+	 */
+	void RefreshBreakpointsForEditor(LEditor* editor);
 
 	/**
 	 * Refresh all line-type breakpoint markers in all editors
@@ -119,6 +130,27 @@ public:
 	 * @param bps
 	 */
 	void SetBreakpoints(const std::vector<BreakpointInfo>& bps);
+
+	/**
+	 * @brief Store list of breakpoints in the pending-breakpoints list
+	 * @param bps
+	 */
+	void SetPendingBreakpoints(const std::vector<BreakpointInfo>& bps) {
+		m_pendingBreakpointsList.clear(); m_pendingBreakpointsList = bps;
+	}
+
+	/**
+	 * @brief Returns true if there are pending breakpoints
+	 */
+	bool PendingBreakpointsExist() {
+		return ! m_pendingBreakpointsList.empty();
+	}
+
+	/**
+	 * Send again to the debugger any breakpoints that weren't accepted by the debugger the first time
+	 *  (e.g. because they're inside a plugin)
+	 */
+	void ApplyPendingBreakpoints();
 
 	/**
 	 * @brief delete all stored breakpoints related to file. this method should does not update the
@@ -192,7 +224,7 @@ public:
 	 * return whether this line has a breakpoint of type bp_type
 	 * Any matches found are returned in li
 	 */
-	bool GetMatchingBreakpoints(std::vector<BreakpointInfo>& li, const wxString &fileName, const int lineno, enum BP_type bp_type);
+	bool GetMatchingBreakpoints(std::vector<BreakpointInfo>& li, const wxString &fileName, const int lineno, enum BreakpointType bp_type);
 
 	/**
 	 * Returns a string containing details of any breakpoints on this line
@@ -203,13 +235,19 @@ public:
 	 * Update the m_bps with what the debugger really contains
 	 * from vector of breakpoints acquired from -break-list
 	 */
-	void ReconcileBreakpoints(std::vector<BreakpointInfo>& li);
+	void ReconcileBreakpoints(const std::vector<BreakpointInfo>& li);
 
 	/**
 	 * Clears the debugger_ids of all breakpoints.
 	 * Called when the debugger has stopped, so they're  no longer valid
 	 */
-	void ClearBP_debugger_ids();
+	void DebuggerStopped();
+
+	/**
+	 * Since a bp can't be created disabled, enable them all here when the debugger stops
+	 * That way they're guaranteed all to be enabled when it starts again
+	 */
+	void UnDisableAllBreakpoints();
 
 	/**
 	 * remove all breakpoints
@@ -231,17 +269,17 @@ public:
 	 * Notification from the debugger that breakpoint id was just hit
 	 */
 	void BreakpointHit(int id);
-	
+
 	/**
 	 * Starts 'drag'n'drop' for breakpoints
 	 */
 	void DragBreakpoint(LEditor* editor, int line, wxBitmap bitmap);
-	
+
 	/**
 	 * The 'drop' bit of breakpoints 'drag'n'drop'
 	 */
 	void DropBreakpoint(std::vector<BreakpointInfo>& BPs, int newline);
-	
+
 	/**
 	 * Getter for the myDragImage pointer
 	 */
@@ -272,7 +310,7 @@ class myDragImage  :  public wxDragImage, public wxEvtHandler
 	std::vector<BreakpointInfo> lineBPs;
 	int m_startx; // The initial x position
 	wxCursor oldcursor;
-	
+
 public:
 	myDragImage(LEditor* ed, wxBitmap bitmap, std::vector<BreakpointInfo>& BPs);
 	bool StartDrag();

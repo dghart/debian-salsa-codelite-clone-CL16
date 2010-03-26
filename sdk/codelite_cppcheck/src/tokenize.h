@@ -13,7 +13,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 
@@ -44,7 +44,7 @@ private:
 public:
     Tokenizer();
     Tokenizer(const Settings * settings, ErrorLogger *errorLogger);
-    ~Tokenizer();
+    virtual ~Tokenizer();
 
     /**
      * Tokenize code
@@ -77,16 +77,25 @@ public:
     /** Set variable id */
     void setVarId();
 
-    /** Simplify tokenlist */
-    void simplifyTokenList();
+    /**
+     * Simplify tokenlist
+     *
+     * @return false if there is an error that requires aborting
+     * the checking of this file.
+     */
+    bool simplifyTokenList();
 
     static void deleteTokens(Token *tok);
     static const char *getParameterName(const Token *ftok, int par);
 
     std::string fileLine(const Token *tok) const;
 
-    // Return size.
-    int sizeOfType(const char type[]) const;
+    /**
+     * Calculates sizeof value for given type.
+     * @param type Token which will contain e.g. "int", "*", or string.
+     * @return sizeof for given type, or 0 if it can't be calculated.
+     */
+    unsigned int sizeOfType(const Token *type) const;
 
     const std::vector<std::string> *getFiles() const;
 
@@ -107,12 +116,24 @@ public:
     static const Token *findClassFunction(const Token *tok, const char classname[], const char funcname[], int &indentlevel);
 
     /**
+     * get error messages
+     */
+    virtual void getErrorMessages();
+
+    /**
      * List of classes in currently checked source code and
      * their member functions and member variables.
      */
     std::map<std::string, ClassInfo> _classInfoList;
 
-#ifndef UNIT_TESTING
+    /**
+     * Simplify constant calculations such as "1+2" => "3"
+     * @return true if modifications to token-list are done.
+     *         false if no modifications are done.
+     */
+    bool simplifyCalculations();
+
+#ifndef _MSC_VER
 private:
 #endif
 
@@ -129,6 +150,8 @@ private:
     /**
      * insert an "int" after "unsigned" if needed:
      * "unsigned i" => "unsigned int i"
+     * "signed int i" => "int i"
+     * "signed i" => "int i"
      */
     void unsignedint();
 
@@ -185,6 +208,16 @@ private:
     void simplifyDoWhileAddBraces();
 
     /**
+     * typedef A mytype;
+     * mytype c;
+     *
+     * Becomes:
+     * typedef A mytype;
+     * A c;
+     */
+    void simplifyTypedef();
+
+    /**
      * Simplify casts
      */
     void simplifyCasts();
@@ -208,15 +241,6 @@ private:
     void elseif();
 
     std::vector<const Token *> _functionList;
-
-    /**
-     * Finds matching "end" for "start".
-     * @param tok The start tag
-     * @param start e.g. "{"
-     * @param end e.g. "}"
-     * @return The end tag that matches given parameter or 0 if not found.
-     */
-    static const Token *findClosing(const Token *tok, const char *start, const char *end);
 
     void addtoken(const char str[], const unsigned int lineno, const unsigned int fileno);
 
@@ -256,13 +280,6 @@ private:
     bool simplifyRedundantParanthesis();
 
     /**
-     * Simplify constant calculations such as "1+2" => "3"
-     * @return true if modifications to token-list are done.
-     *         false if no modifications are done.
-     */
-    bool simplifyCalculations();
-
-    /**
      * Simplify functions like "void f(x) int x; {"
      * into "void f(int x) {"
      */
@@ -284,7 +301,38 @@ private:
      */
     void simplifyMathFunctions();
 
+    /**
+     * Modify strings in the token list by replacing hex and oct
+     * values. E.g. "\x61" -> "a" and "\000" -> "\0"
+     * @param source The string to be modified, e.g. "\x61"
+     * @return Modified string, e.g. "a"
+     */
+    std::string simplifyString(const std::string &source);
+
+    /**
+     * Use "<" comparison instead of ">"
+     * Use "<=" comparison instead of ">="
+     */
+    void simplifyComparisonOrder();
+
+    /**
+     * Change "int const x;" into "const int x;"
+     */
+    void simplifyConst();
+
+    /**
+     * Remove exception specifications. This function calls itself recursively.
+     * @param tok First token in scope to cleanup
+     */
+    void removeExceptionSpecifications(Token *tok) const;
+
     void insertTokens(Token *dest, const Token *src, unsigned int n);
+
+    /**
+     * Send error message to error logger about internal bug.
+     * @param tok, the token that this bug concerns.
+     */
+    void cppcheckError(const Token *tok) const;
 
     /**
      * Setup links for tokens so that one can call Token::link().
@@ -311,6 +359,13 @@ private:
      * @return always true.
      */
     bool validate() const;
+
+    /**
+     * Helper function for simplifyDoWhileAddBraces()
+     * @param tok This must be a "do" token, which is
+     * not followed by "{".
+     */
+    bool simplifyDoWhileAddBracesHelper(Token *tok);
 
     /** Disable assignment operator */
     void operator=(const Tokenizer &);

@@ -24,6 +24,8 @@
 //////////////////////////////////////////////////////////////////////////////
 
 #include <wx/socket.h>
+#include "fileextmanager.h"
+#include <wx/splash.h>
 #include "evnvarlist.h"
 #include "environmentconfig.h"
 #include "conffilelocator.h"
@@ -32,6 +34,7 @@
 #include <wx/image.h>
 #include <wx/filefn.h>
 #include "dirsaver.h"
+
 
 #include "xmlutils.h"
 #include "editor_config.h"
@@ -47,11 +50,17 @@
 #include "globals.h"
 #include "wx/tokenzr.h"
 #include "wx/dir.h"
-#include "splashscreen.h"
 #include <wx/stdpaths.h>
+#include "frame.h"
 
 #define __PERFORMANCE
 #include "performance.h"
+
+//////////////////////////////////////////////
+// Define the version string for this codelite
+//////////////////////////////////////////////
+extern wxChar *SvnRevision;
+wxString CODELITE_VERSION_STR = wxString::Format(wxT("v2.3.0.%s"), SvnRevision);
 
 #if defined(__WXMAC__)||defined(__WXGTK__)
 #include <signal.h> // sigprocmask
@@ -60,8 +69,6 @@
 #ifdef __WXMSW__
 #include <wx/msw/registry.h> //registry keys
 #endif
-
-extern wxChar *SvnRevision;
 
 #ifdef __WXMAC__
 #include <mach-o/dyld.h>
@@ -87,11 +94,53 @@ wxString MacGetBasePath()
 	return rest;
 }
 #endif
+//-------------------------------------------------
+// helper method to draw the revision + version
+// on our splash screen
+//-------------------------------------------------
+static wxBitmap clDrawSplashBitmap(const wxBitmap& bitmap, const wxString &mainTitle)
+{
+	wxBitmap bmp ( bitmap.GetWidth(), bitmap.GetHeight()  );
+    wxMemoryDC dcMem;
+	
+    dcMem.SelectObject( bmp );
+	dcMem.DrawBitmap  ( bitmap, 0, 0, true);
+
+	//write the main title & subtitle
+	wxCoord w, h;
+	wxFont font = wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT);
+	wxFont smallfont = wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT);
+	font.SetPointSize(12);
+	smallfont.SetPointSize(10);
+	dcMem.SetFont(font);
+	dcMem.GetMultiLineTextExtent(mainTitle, &w, &h);
+	wxCoord bmpW = bitmap.GetWidth();
+
+	//draw shadow
+	dcMem.SetTextForeground(wxT("WHITE"));
+	
+	wxCoord textX = (bmpW - w)/2;
+	dcMem.DrawText(mainTitle, textX, 11);
+	dcMem.SelectObject(wxNullBitmap);
+	return bmp;
+}
+
+//-----------------------------------------------------
+// Splashscreen
+//-----------------------------------------------------
+class clSplashScreen : public wxSplashScreen
+{
+public:
+	clSplashScreen(const wxBitmap& bmp) : wxSplashScreen(bmp, wxSPLASH_CENTRE_ON_SCREEN|wxSPLASH_TIMEOUT, 5000, NULL, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxBORDER_SIMPLE| wxFRAME_NO_TASKBAR| wxSTAY_ON_TOP)
+	{
+	}
+};
 
 #if wxVERSION_NUMBER < 2900
 static const wxCmdLineEntryDesc cmdLineDesc[] = {
 	{wxCMD_LINE_SWITCH, wxT("v"), wxT("version"), wxT("Print current version"), wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL },
 	{wxCMD_LINE_SWITCH, wxT("h"), wxT("help"), wxT("Print usage"), wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL },
+	{wxCMD_LINE_SWITCH, wxT("p"), wxT("no-plugins"), wxT("Start codelite without any plugins"), wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL },
 	{wxCMD_LINE_OPTION, wxT("l"), wxT("line"), wxT("Open the file at a given line number"), wxCMD_LINE_VAL_NUMBER, wxCMD_LINE_PARAM_OPTIONAL },
 	{wxCMD_LINE_OPTION, wxT("b"), wxT("basedir"),  wxT("Use this path as CodeLite installation path"), wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL },
 	{wxCMD_LINE_PARAM,  NULL, NULL, wxT("Input file"), wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_MULTIPLE|wxCMD_LINE_PARAM_OPTIONAL },
@@ -101,6 +150,7 @@ static const wxCmdLineEntryDesc cmdLineDesc[] = {
 static const wxCmdLineEntryDesc cmdLineDesc[] = {
 	{wxCMD_LINE_SWITCH, "v", "version", "Print current version", wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL },
 	{wxCMD_LINE_SWITCH, "h", "help", "Print usage", wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL },
+	{wxCMD_LINE_SWITCH, "p", "no-plugins", "Start codelite without any plugins", wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL },
 	{wxCMD_LINE_OPTION, "l", "line", "Open the file at a given line number", wxCMD_LINE_VAL_NUMBER, wxCMD_LINE_PARAM_OPTIONAL },
 	{wxCMD_LINE_OPTION, "b", "basedir",  "The base directory of CodeLite", wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL },
 	{wxCMD_LINE_PARAM,  NULL, NULL, "Input file", wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_MULTIPLE|wxCMD_LINE_PARAM_OPTIONAL },
@@ -119,14 +169,12 @@ static void massCopy(const wxString &sourceDir, const wxString &spec, const wxSt
 }
 
 IMPLEMENT_APP(App)
-BEGIN_EVENT_TABLE(App, wxApp)
-	//EVT_COMMAND(wxID_ANY, HIDE_SPLASH_EVENT_ID, App::OnHideSplash)
-END_EVENT_TABLE()
 
 extern void InitXmlResource();
 App::App(void)
 		: m_pMainFrame(NULL)
 		, m_singleInstance(NULL)
+		, m_loadPlugins(true)
 #ifdef __WXMSW__
 		, m_handler(NULL)
 #endif
@@ -196,6 +244,11 @@ bool App::OnInit()
 		parser.Usage();
 		return false;
 	}
+	
+	if(parser.Found(wxT("p"))){
+		// Load codelite without plugins
+		SetLoadPlugins(false);
+	}
 
 	wxString newBaseDir(wxEmptyString);
 	if (parser.Found(wxT("b"), &newBaseDir)) {
@@ -208,14 +261,15 @@ bool App::OnInit()
 		homeDir = wxStandardPaths::Get().GetUserDataDir(); // ~/Library/Application Support/codelite or ~/.codelite
 
 		//Create the directory structure
-		wxMkDir(homeDir.ToAscii(), 0777);
-		wxMkDir((homeDir + wxT("/lexers/")).ToAscii(), 0777);
-		wxMkDir((homeDir + wxT("/lexers/Default")).ToAscii(), 0777);
-		wxMkDir((homeDir + wxT("/lexers/BlackTheme")).ToAscii(), 0777);
-		wxMkDir((homeDir + wxT("/rc/")).ToAscii(), 0777);
-		wxMkDir((homeDir + wxT("/images/")).ToAscii(), 0777);
-		wxMkDir((homeDir + wxT("/templates/")).ToAscii(), 0777);
-		wxMkDir((homeDir + wxT("/config/")).ToAscii(), 0777);
+		wxLogNull noLog;
+		wxMkdir(homeDir);
+		wxMkdir(homeDir + wxT("/lexers/"));
+		wxMkdir(homeDir + wxT("/lexers/Default"));
+		wxMkdir(homeDir + wxT("/lexers/BlackTheme"));
+		wxMkdir(homeDir + wxT("/rc/"));
+		wxMkdir(homeDir + wxT("/images/"));
+		wxMkdir(homeDir + wxT("/templates/"));
+		wxMkdir(homeDir + wxT("/config/"));
 
 		//copy the settings from the global location if needed
 		wxString installPath( INSTALL_DIR, wxConvUTF8 );
@@ -230,16 +284,21 @@ bool App::OnInit()
 
 #elif defined (__WXMAC__)
 	SetAppName(wxT("codelite"));
-	homeDir = wxGetHomeDir() + wxT("/.codelite/");
-	//Create the directory structure
-	wxMkDir(homeDir.ToAscii(), 0777);
-	wxMkDir((homeDir + wxT("/lexers/")).ToAscii(), 0777);
-	wxMkDir((homeDir + wxT("/lexers/Default")).ToAscii(), 0777);
-	wxMkDir((homeDir + wxT("/lexers/BlackTheme")).ToAscii(), 0777);
-	wxMkDir((homeDir + wxT("/rc/")).ToAscii(), 0777);
-	wxMkDir((homeDir + wxT("/images/")).ToAscii(), 0777);
-	wxMkDir((homeDir + wxT("/templates/")).ToAscii(), 0777);
-	wxMkDir((homeDir + wxT("/config/")).ToAscii(), 0777);
+	homeDir = wxStandardPaths::Get().GetUserDataDir();
+	
+	{
+		wxLogNull noLog;
+		
+		//Create the directory structure
+		wxMkdir(homeDir);
+		wxMkdir(homeDir + wxT("/lexers/"));
+		wxMkdir(homeDir + wxT("/lexers/Default"));
+		wxMkdir(homeDir + wxT("/lexers/BlackTheme"));
+		wxMkdir(homeDir + wxT("/rc/"));
+		wxMkdir(homeDir + wxT("/images/"));
+		wxMkdir(homeDir + wxT("/templates/"));
+		wxMkdir(homeDir + wxT("/config/"));	
+	}
 
 	wxString installPath( MacGetBasePath() );
 	ManagerST::Get()->SetInstallDir( installPath );
@@ -266,8 +325,10 @@ bool App::OnInit()
 	}
 
 	ManagerST::Get()->SetInstallDir( homeDir );
-	EditorConfig::Init( SvnRevision );
 #endif
+
+	// Update codelite revision and Version
+	EditorConfigST::Get()->Init(SvnRevision, wxT("2.0.2") );
 
 	wxString curdir = wxGetCwd();
 	::wxSetWorkingDirectory(homeDir);
@@ -323,6 +384,7 @@ bool App::OnInit()
 		// read the installation path of MinGW & WX
 		wxRegKey rk(wxT("HKEY_CURRENT_USER\\Software\\CodeLite"));
 		if(rk.Exists()) {
+			m_parserPaths.Clear();
 			wxString strWx, strMingw;
 			if(rk.HasValue(wxT("wx"))){
 				rk.QueryValue(wxT("wx"), strWx);
@@ -332,27 +394,27 @@ bool App::OnInit()
 				rk.QueryValue(wxT("mingw"), strMingw);
 			}
 
-			long up;
-			if( !cfg->GetLongValue(wxT("UpdateWxPaths"), up) ){
-				if(strWx.IsEmpty() == false) {
-					// we have WX installed on this machine, set the path of WXWIN & WXCFG to point to it
-					EvnVarList vars;
-					EnvironmentConfig::Instance()->Load();
+			EvnVarList vars;
+			EnvironmentConfig::Instance()->Load();
+			EnvironmentConfig::Instance()->ReadObject(wxT("Variables"), &vars);
 
-					EnvironmentConfig::Instance()->ReadObject(wxT("Variables"), &vars);
-					StringMap varMap = vars.GetVariables();
-					varMap[wxT("WXWIN")] = strWx;
-					varMap[wxT("WXCFG")] = wxT("gcc_dll\\mswu");
+			if(strWx.IsEmpty() == false) {
+				// we have WX installed on this machine, set the path of WXWIN & WXCFG to point to it
+				std::map<wxString, wxString> envs = vars.GetVariables(wxT("Default"));
+				if(envs.find(wxT("WXWIN")) == envs.end())
+					vars.AddVariable(wxT("Default"), wxT("WXWIN"), strWx);
 
-					vars.SetVariables(varMap);
+				if(envs.find(wxT("WXCFG")) == envs.end())
+					vars.AddVariable(wxT("Default"), wxT("WXCFG"), wxT("gcc_dll\\mswu"));
 
-					EnvironmentConfig::Instance()->WriteObject(wxT("Variables"), &vars);
-					cfg->SaveLongValue(wxT("UpdateWxPaths"), 1);
-				}
+				EnvironmentConfig::Instance()->WriteObject(wxT("Variables"), &vars);
+				wxSetEnv(wxT("WX_INCL_HOME"), strWx + wxT("\\include"));
 			}
 
 			if(strMingw.IsEmpty() == false) {
+				// Add the installation include paths
 				pathEnv << wxT(";") << strMingw << wxT("\\bin");
+				wxSetEnv(wxT("MINGW_INCL_HOME"), strMingw);
 			}
 		}
 
@@ -366,20 +428,18 @@ bool App::OnInit()
 	cfg->ReadObject(wxT("GeneralInfo"), &inf);
 
 	bool showSplash = inf.GetFlags() & CL_SHOW_SPLASH ? true : false;
+	
+	m_splash = NULL;
 	if (showSplash) {
 		wxBitmap bitmap;
 		wxString splashName(mgr->GetStarupDirectory() + wxT("/images/splashscreen.png"));
 		if (bitmap.LoadFile(splashName, wxBITMAP_TYPE_PNG)) {
-			wxString mainTitle;
-			mainTitle << wxT("v1.0.") << SvnRevision;
-			m_splash = new SplashScreen(bitmap, mainTitle, wxEmptyString,
-			                            wxSPLASH_CENTRE_ON_SCREEN|wxSPLASH_TIMEOUT,
-			                            3000, NULL, -1, wxDefaultPosition, wxDefaultSize,
-			                            style);
-			wxTheApp->Yield();
+			wxString mainTitle = CODELITE_VERSION_STR;
+			wxBitmap splash = clDrawSplashBitmap(bitmap, mainTitle);
+			m_splash = new clSplashScreen(splash);
 		}
 	}
-
+	
 	// Create the main application window (a dialog in this case)
 	// NOTE: Vertical dimension comprises the caption bar.
 	//       Horizontal dimension has to take into account the thin
@@ -390,14 +450,8 @@ bool App::OnInit()
 
 	// update the accelerators table
 	ManagerST::Get()->UpdateMenuAccelerators();
-
 	m_pMainFrame->Show(TRUE);
 	SetTopWindow(m_pMainFrame);
-
-	if ( showSplash ) {
-		m_splash->Close(true);
-		m_splash->Destroy();
-	}
 
 	long lineNumber(0);
 	parser.Found(wxT("l"), &lineNumber);
@@ -428,38 +482,28 @@ bool App::OnInit()
 
 int App::OnExit()
 {
+	EditorConfigST::Free();
 	ConfFileLocator::Release();
 	return 0;
 }
 
 bool App::CopySettings(const wxString &destDir, wxString& installPath)
 {
-	bool fileExist = wxFileName::FileExists( destDir + wxT("/config/codelite.xml") );
-	bool copyAnyways(true);
-
-	if (fileExist) {
-		if (CheckRevision(destDir + wxT("/config/codelite.xml")) == true) {
-			//revision is ok
-			copyAnyways = false;
-		}
-	}
-
-	if ( !fileExist || copyAnyways ) {
-		///////////////////////////////////////////////////////////////////////////////////////////
-		// copy new settings from the global installation location which is currently located at
-		// /usr/local/share/codelite/ (Linux) or at codelite.app/Contents/SharedSupport
-		///////////////////////////////////////////////////////////////////////////////////////////
-		CopyDir(installPath + wxT("/templates/"), destDir + wxT("/templates/"));
-		CopyDir(installPath + wxT("/lexers/"), destDir + wxT("/lexers/"));
-		massCopy  (installPath + wxT("/images/"), wxT("*.png"), destDir + wxT("/images/"));
-		massCopy  (installPath + wxT("/"), wxT("*.tags"), destDir + wxT("/"));
-		wxCopyFile(installPath + wxT("/config/codelite.xml.default"), destDir + wxT("/config/codelite.xml.default"));
-		wxCopyFile(installPath + wxT("/rc/menu.xrc"), destDir + wxT("/rc/menu.xrc"));
-		wxCopyFile(installPath + wxT("/index.html"), destDir + wxT("/index.html"));
-		wxCopyFile(installPath + wxT("/svnreport.html"), destDir + wxT("/svnreport.html"));
-		wxCopyFile(installPath + wxT("/astyle.sample"), destDir + wxT("/astyle.sample"));
-		wxCopyFile(installPath + wxT("/config/accelerators.conf.default"), destDir + wxT("/config/accelerators.conf.default"));
-	}
+	wxLogNull noLog;
+	
+	///////////////////////////////////////////////////////////////////////////////////////////
+	// copy new settings from the global installation location which is currently located at
+	// /usr/local/share/codelite/ (Linux) or at codelite.app/Contents/SharedSupport
+	///////////////////////////////////////////////////////////////////////////////////////////
+	CopyDir(installPath + wxT("/templates/"), destDir + wxT("/templates/"));
+	CopyDir(installPath + wxT("/lexers/"), destDir + wxT("/lexers/"));
+	massCopy  (installPath + wxT("/images/"), wxT("*.png"), destDir + wxT("/images/"));
+	wxCopyFile(installPath + wxT("/config/codelite.xml.default"), destDir + wxT("/config/codelite.xml.default"));
+	wxCopyFile(installPath + wxT("/rc/menu.xrc"), destDir + wxT("/rc/menu.xrc"));
+	wxCopyFile(installPath + wxT("/index.html"), destDir + wxT("/index.html"));
+	wxCopyFile(installPath + wxT("/svnreport.html"), destDir + wxT("/svnreport.html"));
+	wxCopyFile(installPath + wxT("/astyle.sample"), destDir + wxT("/astyle.sample"));
+	wxCopyFile(installPath + wxT("/config/accelerators.conf.default"), destDir + wxT("/config/accelerators.conf.default"));
 	return true;
 }
 
@@ -477,37 +521,6 @@ void App::OnFatalException()
 	walker.Walk();
 	wxAppBase::ExitMainLoop();
 #endif
-}
-
-void App::OnIdle(wxIdleEvent &e)
-{
-	//delegate the event to the manager class
-	Frame::Get()->ProcessEvent(e);
-	e.Skip();
-}
-
-void App::OnHideSplash(wxCommandEvent &e)
-{
-	m_splash->Close(true);
-	m_splash->Destroy();
-	e.Skip();
-}
-
-bool App::CheckRevision(const wxString &fileName)
-{
-	wxXmlDocument doc;
-	doc.Load(fileName);
-	if (doc.IsOk()) {
-		wxXmlNode *root = doc.GetRoot();
-		if (root) {
-			wxString configRevision = XmlUtils::ReadString(root, wxT("Revision"));
-			wxString curRevision(SvnRevision);
-			if (configRevision.Trim().Trim(false) == curRevision.Trim().Trim(false)) {
-				return true;
-			}
-		}
-	}
-	return false;
 }
 
 bool App::CheckSingularity(const wxCmdLineParser &parser, const wxString &curdir)
@@ -550,4 +563,16 @@ bool App::CheckSingularity(const wxCmdLineParser &parser, const wxString &curdir
 		}
 	}
 	return true;
+}
+
+void App::MacOpenFile(const wxString& fileName)
+{
+	switch (FileExtManager::GetType(fileName)) {
+	case FileExtManager::TypeWorkspace:
+		ManagerST::Get()->OpenWorkspace(fileName);
+		break;
+	default:
+		Frame::Get()->GetMainBook()->OpenFile(fileName);
+		break;
+	}
 }

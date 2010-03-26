@@ -1,4 +1,9 @@
 #include "continuousbuild.h"
+#include "buildmanager.h"
+#include "globals.h"
+#include "builder.h"
+#include "processreaderthread.h"
+#include "fileextmanager.h"
 #include "build_settings_config.h"
 #include "workspace.h"
 #include "custombuildrequest.h"
@@ -7,6 +12,13 @@
 #include "continousbuildpane.h"
 #include <wx/xrc/xmlres.h>
 #include "continousbuildconf.h"
+#include <wx/log.h>
+
+#if 0
+#define PRINT_MESSAGE(x) wxPrintf(x);
+#else
+#define PRINT_MESSAGE(x) (void)x;
+#endif
 
 static ContinuousBuild* thePlugin = NULL;
 //Define the plugin entry point
@@ -34,15 +46,13 @@ extern "C" EXPORT int GetPluginInterfaceVersion()
 }
 
 BEGIN_EVENT_TABLE(ContinuousBuild, IPlugin)
-	EVT_COMMAND(wxID_ANY, wxEVT_SHELL_COMMAND_ADDLINE, ContinuousBuild::OnShellAddLine)
-	EVT_COMMAND(wxID_ANY, wxEVT_SHELL_COMMAND_STARTED, ContinuousBuild::OnShellBuildStarted)
-	EVT_COMMAND(wxID_ANY, wxEVT_SHELL_COMMAND_PROCESS_ENDED, ContinuousBuild::OnShellProcessEnded)
-	EVT_COMMAND(wxID_ANY, wxEVT_SHELL_COMMAND_STARTED_NOCLEAN, ContinuousBuild::OnShellBuildStarted)
+EVT_COMMAND(wxID_ANY, wxEVT_PROC_DATA_READ,  ContinuousBuild::OnBuildProcessOutput)
+EVT_COMMAND(wxID_ANY, wxEVT_PROC_TERMINATED, ContinuousBuild::OnBuildProcessEnded)
 END_EVENT_TABLE()
 
 ContinuousBuild::ContinuousBuild(IManager *manager)
 		: IPlugin(manager)
-		, m_shellProcess(NULL)
+		, m_buildInProgress(false)
 {
 	m_longName = wxT("Continuous build plugin which compiles files on save and report errors");
 	m_shortName = wxT("ContinuousBuild");
@@ -52,21 +62,19 @@ ContinuousBuild::ContinuousBuild(IManager *manager)
 	m_mgr->GetOutputPaneNotebook()->AddPage(m_view, wxT("Continuous Build"), wxT("Continuous Build"), LoadBitmapFile(wxT("compfile.png")), false);
 
 	m_topWin = m_mgr->GetTheApp();
-	m_topWin->Connect(wxEVT_FILE_SAVED, wxCommandEventHandler(ContinuousBuild::OnFileSaved), NULL, this);
+	m_topWin->Connect(wxEVT_FILE_SAVED,               wxCommandEventHandler(ContinuousBuild::OnFileSaved),           NULL, this);
+	m_topWin->Connect(wxEVT_FILE_SAVE_BY_BUILD_START, wxCommandEventHandler(ContinuousBuild::OnIgnoreFileSaved),     NULL, this);
+	m_topWin->Connect(wxEVT_FILE_SAVE_BY_BUILD_END,   wxCommandEventHandler(ContinuousBuild::OnStopIgnoreFileSaved), NULL, this);
 }
 
 ContinuousBuild::~ContinuousBuild()
 {
-	if (m_shellProcess) {
-		delete m_shellProcess;
-		m_shellProcess = NULL;
-	}
 }
 
-wxToolBar *ContinuousBuild::CreateToolBar(wxWindow *parent)
+clToolBar *ContinuousBuild::CreateToolBar(wxWindow *parent)
 {
 	// Create the toolbar to be used by the plugin
-	wxToolBar *tb(NULL);
+	clToolBar *tb(NULL);
 	return tb;
 }
 
@@ -97,107 +105,133 @@ void ContinuousBuild::UnPlug()
 			break;
 		}
 	}
-	m_topWin->Disconnect(wxEVT_FILE_SAVED, wxCommandEventHandler(ContinuousBuild::OnFileSaved), NULL, this);
+	m_topWin->Disconnect(wxEVT_FILE_SAVED,               wxCommandEventHandler(ContinuousBuild::OnFileSaved),           NULL, this);
+	m_topWin->Disconnect(wxEVT_FILE_SAVE_BY_BUILD_START, wxCommandEventHandler(ContinuousBuild::OnIgnoreFileSaved),     NULL, this);
+	m_topWin->Disconnect(wxEVT_FILE_SAVE_BY_BUILD_END,   wxCommandEventHandler(ContinuousBuild::OnStopIgnoreFileSaved), NULL, this);
 }
 
 void ContinuousBuild::OnFileSaved(wxCommandEvent& e)
 {
+	e.Skip();
+	PRINT_MESSAGE(wxT("ContinuousBuild::OnFileSaved\n"));
+	// Dont build while the main build is in progress
+	if (m_buildInProgress) {
+		PRINT_MESSAGE(wxT("Build already in progress, skipping\n"));
+		return;
+	}
+
 	ContinousBuildConf conf;
 	m_mgr->GetConfigTool()->ReadObject(wxT("ContinousBuildConf"), &conf);
 
 	if (conf.GetEnabled()) {
 		wxString *fileName = (wxString*) e.GetClientData();
-		if (fileName) {
+		if(fileName)
 			DoBuild(*fileName);
-		}
+	} else {
+		PRINT_MESSAGE(wxT("ContinuousBuild is disabled\n"));
 	}
 }
 
 void ContinuousBuild::DoBuild(const wxString& fileName)
 {
-	if(m_mgr->IsWorkspaceOpen() == false) {
+	PRINT_MESSAGE(wxT("DoBuild\n"));
+	// Make sure a workspace is opened
+	if (!m_mgr->IsWorkspaceOpen()) {
+		PRINT_MESSAGE(wxT("No workspace opened!\n"));
+		return;
+	}
+		
+
+	// Filter non source files
+	FileExtManager::FileType type = FileExtManager::GetType(fileName);
+	switch(type) {
+		case FileExtManager::TypeSourceC:
+		case FileExtManager::TypeSourceCpp:
+		case FileExtManager::TypeResource:
+			break;
+
+		default: {
+			PRINT_MESSAGE(wxT("Non source file\n"));
+			return;
+		}
+	}
+
+	wxString projectName = m_mgr->GetProjectNameByFile(fileName);
+	if(projectName.IsEmpty()) {
+		PRINT_MESSAGE(wxT("Project name is empty\n"));
+		return;
+	}
+	
+	wxString errMsg;
+	ProjectPtr project = m_mgr->GetWorkspace()->FindProjectByName(projectName, errMsg);
+	if(!project){
+		PRINT_MESSAGE(wxT("Could not find project for file\n"));
 		return;
 	}
 
-	if ( m_shellProcess && m_shellProcess->IsBusy() ) {
+	// get the selected configuration to be build
+	BuildConfigPtr bldConf = m_mgr->GetWorkspace()->GetProjBuildConf( project->GetName(), wxEmptyString );
+	if ( !bldConf ) {
+		PRINT_MESSAGE(wxT("Failed to locate build configuration\n"));
+		return;
+	}
+
+	BuilderPtr builder = m_mgr->GetBuildManager()->GetBuilder( wxT( "GNU makefile for g++/gcc" ) );
+	if(!builder){
+		PRINT_MESSAGE(wxT("Failed to located builder\n"));
+		return;
+	}
+
+	// Only normal file builds are supported
+	if(bldConf->IsCustomBuild()){
+		PRINT_MESSAGE(wxT("Build is custom. Skipping\n"));
+		return;
+	}
+
+	// get the single file command to use
+	wxString cmd      = builder->GetSingleFileCmd(projectName, bldConf->GetName(), fileName);
+	WrapInShell(cmd);
+
+	if( m_buildProcess.IsBusy() ) {
 		// add the build to the queue
 		if (m_files.Index(fileName) == wxNOT_FOUND) {
 			m_files.Add(fileName);
+
 			// update the UI
 			m_view->AddFile(fileName);
 		}
 		return;
 	}
-
-	if ( m_shellProcess ) {
-		delete m_shellProcess;
-		m_shellProcess = NULL;
-	}
-
-	// get the file's project name
-	wxString projectName = m_mgr->GetProjectNameByFile(fileName);
-	if (projectName.IsEmpty()) {
+	
+	PRINT_MESSAGE(wxString::Format(wxT("cmd:%s\n"), cmd.c_str()));
+	if(!m_buildProcess.Execute(cmd, fileName, project->GetFileName().GetPath(), this))
 		return;
-	}
 
-	// get the selected configuration to be built
-	BuildConfigPtr bldConf = m_mgr->GetWorkspace()->GetProjBuildConf ( projectName, wxEmptyString );
-	if ( !bldConf ) {
-		return;
-	}
-	wxString conf = bldConf->GetName();
+	// Set some messages
+	m_mgr->SetStatusMessage(wxString::Format(wxT("Compiling %s..."), wxFileName(fileName).GetFullName().c_str()), 0);
 
-	m_currentBuildInfo.project = projectName;
-    m_currentBuildInfo.config = conf;
-	m_currentBuildInfo.file = fileName;
-
-	if( !IsCompilable(fileName) ) {
-		return;
-	}
-
+	// Add this file to the UI queue
 	m_view->AddFile(fileName);
-
-	// construct a build command
-	QueueCommand info ( projectName, conf, false, QueueCommand::Build );
-	if ( bldConf && bldConf->IsCustomBuild() ) {
-		info.SetCustomBuildTarget ( wxT ( "Compile Single File" ) );
-		info.SetKind ( QueueCommand::CustomBuild );
-	}
-
-	switch ( info.GetKind() ) {
-	case QueueCommand::Build:
-		m_shellProcess = new CompileRequest ( this, info, fileName, false );
-		break;
-	case  QueueCommand::CustomBuild:
-		m_shellProcess = new CustomBuildRequest ( this, info, fileName );
-		break;
-	}
-	m_shellProcess->Process(m_mgr);
 }
 
-void ContinuousBuild::OnShellAddLine(wxCommandEvent& e)
-{
-	// add line to the output pane
-	m_currentBuildInfo.output.Add(e.GetString());
-}
-
-void ContinuousBuild::OnShellBuildStarted(wxCommandEvent& e)
-{
-	m_view->SetStatusMessage(_("Compiling file: ") + m_currentBuildInfo.file);
-    m_mgr->SetStatusMessage(wxString::Format(wxT("Compiling %s..."),
-                            wxFileName(m_currentBuildInfo.file).GetFullName().c_str()), 4, XRCID("continuous"));
-}
-
-void ContinuousBuild::OnShellProcessEnded(wxCommandEvent& e)
+void ContinuousBuild::OnBuildProcessEnded(wxCommandEvent& e)
 {
 	// remove the file from the UI
-	m_view->RemoveFile(m_currentBuildInfo.file);
-	m_view->SetStatusMessage(wxEmptyString);
+	ProcessEventData *ped = (ProcessEventData*)e.GetClientData();
+	int exitCode = ped->GetExitCode();
+	delete ped;
 
-    m_mgr->SetStatusMessage(wxEmptyString, 4, XRCID("continuous"));
+	m_view->RemoveFile(m_buildProcess.GetFileName());
+	wxLogMessage(wxT("Process terminated with exit code %d"), exitCode);
+	if(exitCode != 0) {
 
-	DoReportErrors();
-	m_currentBuildInfo.Clear();
+		m_view->AddFailedFile(m_buildProcess.GetFileName());
+	}
+
+	m_mgr->SetStatusMessage(wxEmptyString, 0);
+
+	// Release the resources allocted for this build
+	m_buildProcess.Stop();
 
 	// if the queue is not empty, start another build
 	if (m_files.IsEmpty() == false) {
@@ -213,52 +247,32 @@ void ContinuousBuild::StopAll()
 {
 	// empty the queue
 	m_files.Clear();
-
-	if ( m_shellProcess && m_shellProcess->IsBusy() ) {
-		m_shellProcess->Stop();
-	}
+	m_buildProcess.Stop();
 }
 
-void ContinuousBuild::DoReportErrors()
+void ContinuousBuild::OnIgnoreFileSaved(wxCommandEvent& e)
 {
-    wxCommandEvent start(wxEVT_SHELL_COMMAND_STARTED);
-    m_mgr->GetTheApp()->ProcessEvent(start);
+	e.Skip();
 
-	for (size_t i=0; i<m_currentBuildInfo.output.GetCount(); i++){
-        wxCommandEvent line(wxEVT_SHELL_COMMAND_ADDLINE);
-        line.SetString(m_currentBuildInfo.output.Item(i));
-        m_mgr->GetTheApp()->ProcessEvent(line);
-	}
+	m_buildInProgress = true;
 
-    wxCommandEvent stop(wxEVT_SHELL_COMMAND_PROCESS_ENDED);
-    m_mgr->GetTheApp()->ProcessEvent(stop);
+	// Clear the queue
+	m_files.Clear();
+
+	// Clear the view
+	m_view->ClearAll();
 }
 
-bool ContinuousBuild::IsCompilable(const wxString& fileName)
+void ContinuousBuild::OnStopIgnoreFileSaved(wxCommandEvent& e)
 {
-	CompilerPtr cmp = DoGetCompiler();
-	if(cmp) {
-		Compiler::CmpFileTypeInfo ft;
-		bool res = cmp->GetCmpFileType(fileName.AfterLast(wxT('.')), ft);
-		return res && ft.kind == Compiler::CmpFileKindSource;
-	}
-	return false;
+	e.Skip();
+	m_buildInProgress = false;
 }
 
-CompilerPtr ContinuousBuild::DoGetCompiler()
+void ContinuousBuild::OnBuildProcessOutput(wxCommandEvent& e)
 {
-	wxString err_msg;
-	ProjectPtr proj = m_mgr->GetWorkspace()->FindProjectByName(m_currentBuildInfo.project, err_msg);
-	if(proj) {
-		ProjectSettingsPtr settings = proj->GetSettings();
-		if(settings) {
-			BuildConfigPtr bldConf = settings->GetBuildConfiguration(m_currentBuildInfo.config);
-			if(bldConf){
-				wxString type = bldConf->GetCompilerType();
-//				wxLogMessage(wxString::Format(wxT("Compiler type=%s, for configuration=%s"), type.c_str(), projConf.c_str()));
-				return m_mgr->GetBuildSettingsConfigManager()->GetCompiler(type);
-			}
-		}
-	}
-	return NULL;
+	ProcessEventData *ped = (ProcessEventData*)e.GetClientData();
+	wxLogMessage(ped->GetData());
+	delete ped;
 }
+

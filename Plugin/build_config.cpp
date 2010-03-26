@@ -31,7 +31,7 @@
 #include "build_settings_config.h"
 #include "debuggermanager.h"
 #include "globals.h"
-
+#include "wx_xml_compatibility.h"
 
 const wxString BuildConfig::OVERWRITE_GLOBAL_SETTINGS = wxT("overwrite");
 const wxString BuildConfig::APPEND_TO_GLOBAL_SETTINGS = wxT("append");
@@ -52,18 +52,19 @@ BuildConfig::BuildConfig(wxXmlNode *node)
 		wxXmlNode *compile = XmlUtils::FindFirstByTagName(node, wxT("Compiler"));
 		if (compile) {
 			m_compilerRequired = XmlUtils::ReadBool(compile, wxT("Required"), true);
+			m_precompiledHeader = XmlUtils::ReadString(compile, wxT("PreCompiledHeader"));
 		}
 
 		wxXmlNode *linker = XmlUtils::FindFirstByTagName(node, wxT("Linker"));
 		if (linker) {
 			m_linkerRequired = XmlUtils::ReadBool(linker, wxT("Required"), true);
 		}
-		
+
 		wxXmlNode *resCmp = XmlUtils::FindFirstByTagName(node, wxT("ResourceCompiler"));
 		if (resCmp) {
 			m_isResCmpNeeded = XmlUtils::ReadBool(resCmp, wxT("Required"), true);
 		}
-		
+
 		// read the postbuild commands
 		wxXmlNode *debugger = XmlUtils::FindFirstByTagName(node, wxT("Debugger"));
 		m_isDbgRemoteTarget = false;
@@ -122,6 +123,8 @@ BuildConfig::BuildConfig(wxXmlNode *node)
 					m_customBuildCmd = child->GetNodeContent();
 				} else if (child->GetName() == wxT("CleanCommand")) {
 					m_customCleanCmd = child->GetNodeContent();
+				} else if (child->GetName() == wxT("RebuildCommand")) {
+					m_customRebuildCmd = child->GetNodeContent();
 				} else if (child->GetName() == wxT("SingleFileCommand")) {
 					m_singleFileBuildCommand = child->GetNodeContent();
 				} else if (child->GetName() == wxT("PreprocessFileCommand")) {
@@ -151,8 +154,12 @@ BuildConfig::BuildConfig(wxXmlNode *node)
 			while (child) {
 				if (child->GetName() == wxT("CustomPreBuild")) {
 					m_customPreBuildRule = child->GetNodeContent();
+					m_customPreBuildRule.Trim().Trim(false);
+
 				} else if (child->GetName() == wxT("CustomPostBuild")) {
 					m_customPostBuildRule = child->GetNodeContent();
+					m_customPostBuildRule.Trim().Trim(false);
+
 				}
 				child = child->GetNext();
 			}
@@ -173,7 +180,7 @@ BuildConfig::BuildConfig(wxXmlNode *node)
 		m_commonConfig.SetCompileOptions(wxT("-g"));
 		m_commonConfig.SetLinkOptions(wxT("-O0"));
 		m_commonConfig.SetLibPath(wxT(".;Debug"));
-		
+
 		m_name = wxT("Debug");
 		m_compilerRequired = true;
 		m_linkerRequired = true;
@@ -236,7 +243,8 @@ wxXmlNode *BuildConfig::ToXml() const
 
 	wxXmlNode *compile = XmlUtils::FindFirstByTagName(node, wxT("Compiler"));
 	if (compile) {
-		compile->AddProperty(wxT("Required"), BoolToString(m_compilerRequired));
+		compile->AddProperty(wxT("Required"),          BoolToString(m_compilerRequired));
+		compile->AddProperty(wxT("PreCompiledHeader"), m_precompiledHeader);
 	}
 
 	wxXmlNode *link = XmlUtils::FindFirstByTagName(node, wxT("Linker"));
@@ -248,7 +256,7 @@ wxXmlNode *BuildConfig::ToXml() const
 	if (resCmp) {
 		resCmp->AddProperty(wxT("Required"), BoolToString(m_isResCmpNeeded));
 	}
-	
+
 	wxXmlNode *general = new wxXmlNode(NULL, wxXML_ELEMENT_NODE, wxT("General"));
 	general->AddProperty(wxT("OutputFile"), m_outputFile);
 	general->AddProperty(wxT("IntermediateDirectory"), m_intermediateDirectory);
@@ -326,6 +334,9 @@ wxXmlNode *BuildConfig::ToXml() const
 
 	wxXmlNode *clnCmd = new wxXmlNode(customBuild, wxXML_ELEMENT_NODE, wxT("CleanCommand"));
 	XmlUtils::SetNodeContent(clnCmd, m_customCleanCmd);
+
+	wxXmlNode *rebldCmd = new wxXmlNode(customBuild, wxXML_ELEMENT_NODE, wxT("RebuildCommand"));
+	XmlUtils::SetNodeContent(rebldCmd, m_customRebuildCmd);
 
 	// add all 'Targets'
 	std::map<wxString, wxString>::const_iterator ir = m_customTargets.begin();

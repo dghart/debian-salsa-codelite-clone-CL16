@@ -42,8 +42,9 @@
 #include "wx/tokenzr.h"
 #include "addoptioncheckdlg.h"
 
-static const wxString CUSTOM_TARGET_BUILD = wxT("Build");
-static const wxString CUSTOM_TARGET_CLEAN = wxT("Clean");
+static const wxString CUSTOM_TARGET_BUILD   = wxT("Build");
+static const wxString CUSTOM_TARGET_CLEAN   = wxT("Clean");
+static const wxString CUSTOM_TARGET_REBUILD = wxT("Rebuild");
 static const wxString CUSTOM_TARGET_COMPILE_SINGLE_FILE = wxT("Compile Single File");
 static const wxString CUSTOM_TARGET_PREPROCESS_FILE = wxT("Preprocess File");
 static const wxString GLOBAL_SETTINGS_LABEL = wxT("Global settings");
@@ -257,6 +258,10 @@ void ProjectConfigurationPanel::CopyValues(const wxString &confName)
 	SetColumnText(m_listCtrlTargets, item, 1, buildConf->GetCustomCleanCmd());
 
 	item = AppendListCtrlRow(m_listCtrlTargets);
+	SetColumnText(m_listCtrlTargets, item, 0, CUSTOM_TARGET_REBUILD);
+	SetColumnText(m_listCtrlTargets, item, 1, buildConf->GetCustomRebuildCmd());
+
+	item = AppendListCtrlRow(m_listCtrlTargets);
 	SetColumnText(m_listCtrlTargets, item, 0, CUSTOM_TARGET_COMPILE_SINGLE_FILE);
 	SetColumnText(m_listCtrlTargets, item, 1, buildConf->GetSingleFileBuildCommand());
 
@@ -269,7 +274,11 @@ void ProjectConfigurationPanel::CopyValues(const wxString &confName)
 	std::map<wxString, wxString>::iterator titer = targets.begin();
 	for (; titer != targets.end(); titer++) {
 
-		if (titer->first == CUSTOM_TARGET_BUILD || titer->first == CUSTOM_TARGET_CLEAN || titer->first == CUSTOM_TARGET_COMPILE_SINGLE_FILE || titer->first == CUSTOM_TARGET_PREPROCESS_FILE) {
+		if (titer->first == CUSTOM_TARGET_BUILD               ||
+			titer->first == CUSTOM_TARGET_CLEAN               ||
+			titer->first == CUSTOM_TARGET_REBUILD             ||
+			titer->first == CUSTOM_TARGET_COMPILE_SINGLE_FILE ||
+			titer->first == CUSTOM_TARGET_PREPROCESS_FILE) {
 			continue;
 		}
 
@@ -298,7 +307,7 @@ void ProjectConfigurationPanel::CopyValues(const wxString &confName)
 	m_textCtrlDbgPort->SetValue(buildConf->GetDbgHostPort());
 
 	m_textCtrlDebuggerPath->SetValue(buildConf->GetDebuggerPath());
-
+	m_textCtrlPreCompiledHeader->SetValue(buildConf->GetPrecompiledHeader());
 	//set the custom pre-prebuild step
 	wxString customPreBuild = buildConf->GetPreBuildCustom();
 
@@ -393,7 +402,11 @@ void ProjectConfigurationPanel::SaveValues(const wxString &confName)
 	std::map<wxString, wxString> targets;
 	for (int i=0; i<(int)m_listCtrlTargets->GetItemCount(); i++) {
 		wxString colText = GetColumnText(m_listCtrlTargets, i, 0);
-		if (colText == CUSTOM_TARGET_BUILD || colText == CUSTOM_TARGET_CLEAN || colText == CUSTOM_TARGET_COMPILE_SINGLE_FILE || colText == CUSTOM_TARGET_PREPROCESS_FILE) {
+		if (colText == CUSTOM_TARGET_BUILD               ||
+			colText == CUSTOM_TARGET_CLEAN               ||
+			colText == CUSTOM_TARGET_REBUILD             ||
+			colText == CUSTOM_TARGET_COMPILE_SINGLE_FILE ||
+			colText == CUSTOM_TARGET_PREPROCESS_FILE) {
 			continue;
 		}
 		targets[GetColumnText(m_listCtrlTargets, i, 0)] = GetColumnText(m_listCtrlTargets, i, 1);
@@ -418,6 +431,7 @@ void ProjectConfigurationPanel::SaveValues(const wxString &confName)
 
 	buildConf->SetCustomBuildCmd(GetTargetCommand(CUSTOM_TARGET_BUILD));
 	buildConf->SetCustomCleanCmd(GetTargetCommand(CUSTOM_TARGET_CLEAN));
+	buildConf->SetCustomRebuildCmd(GetTargetCommand(CUSTOM_TARGET_REBUILD));
 	buildConf->SetSingleFileBuildCommand(GetTargetCommand(CUSTOM_TARGET_COMPILE_SINGLE_FILE));
 	buildConf->SetPreprocessFileCommand(GetTargetCommand(CUSTOM_TARGET_PREPROCESS_FILE));
 
@@ -436,6 +450,7 @@ void ProjectConfigurationPanel::SaveValues(const wxString &confName)
 	buildConf->SetDbgHostName(m_textCtrl1DbgHost->GetValue());
 	buildConf->SetDbgHostPort(m_textCtrlDbgPort->GetValue());
 	buildConf->SetDebuggerPath(m_textCtrlDebuggerPath->GetValue());
+	buildConf->SetPrecompiledHeader(m_textCtrlPreCompiledHeader->GetValue());
 
 	//set the pre-build step
 	wxString rules = m_textPreBuildRule->GetValue();
@@ -450,7 +465,15 @@ void ProjectConfigurationPanel::SaveValues(const wxString &confName)
 	prebuilstep << deps << wxT("\n");
 	prebuilstep << rules;
 	prebuilstep << wxT("\n");
-	buildConf->SetPreBuildCustom(prebuilstep);
+
+	// Set the content only if there is real content to add
+	wxString tmpPreBuildStep(prebuilstep);
+	tmpPreBuildStep.Trim().Trim(false);
+	if(tmpPreBuildStep.IsEmpty() == false){
+		buildConf->SetPreBuildCustom(prebuilstep);
+	} else {
+		buildConf->SetPreBuildCustom(wxT(""));
+	}
 
 	BuildCommandList cmds;
 	cmds.clear();
@@ -538,7 +561,7 @@ void ProjectConfigurationPanel::SetSettingsModified()
 {
 	wxCommandEvent event(wxEVT_CL_PROJECT_SETTINGS_MODIFIED, GetId());
 	event.SetEventObject(this);
-	GetParent()->ProcessEvent(event);
+	GetParent()->GetEventHandler()->ProcessEvent(event);
 }
 
 void ProjectConfigurationPanel::DisableCustomBuildPage(bool disable)
@@ -619,6 +642,9 @@ void ProjectConfigurationPanel::DisableCompilerPage(bool disable)
 	m_textPreprocessor->Enable(!disable);
 	m_buttonAddPreprocessor->Enable(!disable);
 	m_buttonCompilerOptions->Enable(!disable);
+	m_textCtrlPreCompiledHeader->Enable(!disable);
+	m_staticTextPreCompiledHeader->Enable(!disable);
+	m_buttonBrowsePreCompiledHeader->Enable(!disable);
 }
 
 void ProjectConfigurationPanel::DisableLinkerPage(bool disable)
@@ -917,7 +943,11 @@ void ProjectConfigurationPanel::OnDeleteTargetUI(wxUpdateUIEvent& e)
 {
 	if (m_selecteCustomTaregt != wxNOT_FOUND) {
 		wxString name = GetColumnText(m_listCtrlTargets, m_selecteCustomTaregt, 0);
-		e.Enable(name != CUSTOM_TARGET_BUILD && name != CUSTOM_TARGET_CLEAN && name != CUSTOM_TARGET_COMPILE_SINGLE_FILE && m_checkEnableCustomBuild->IsChecked());
+		e.Enable(name != CUSTOM_TARGET_BUILD               &&
+				 name != CUSTOM_TARGET_CLEAN               &&
+				 name != CUSTOM_TARGET_REBUILD             &&
+				 name != CUSTOM_TARGET_COMPILE_SINGLE_FILE &&
+				 m_checkEnableCustomBuild->IsChecked());
 	} else {
 		e.Enable(false);
 	}
@@ -941,7 +971,10 @@ void ProjectConfigurationPanel::DoEditItem(long item)
 		dlg.SetValue(cmd);
 
 		// dont allow user to modify the common targets
-		if (target == CUSTOM_TARGET_BUILD || target == CUSTOM_TARGET_CLEAN || target == CUSTOM_TARGET_COMPILE_SINGLE_FILE) {
+		if (target == CUSTOM_TARGET_BUILD              ||
+			target == CUSTOM_TARGET_CLEAN              ||
+			target == CUSTOM_TARGET_REBUILD            ||
+			target == CUSTOM_TARGET_COMPILE_SINGLE_FILE) {
 			dlg.DisableName();
 		}
 
@@ -1147,7 +1180,7 @@ void GlobalSettingsPanel::SetSettingsModified()
 {
 	wxCommandEvent event(wxEVT_CL_PROJECT_SETTINGS_MODIFIED, GetId());
 	event.SetEventObject(this);
-	GetParent()->ProcessEvent(event);
+	GetParent()->GetEventHandler()->ProcessEvent(event);
 }
 
 void GlobalSettingsPanel::ClearValues()
@@ -1281,4 +1314,27 @@ void GlobalSettingsPanel::OnResourceCmpAddPath(wxCommandEvent &event)
 ProjectConfigurationPanel::~ProjectConfigurationPanel()
 {
 	PluginManager::Get()->UnHookProjectSettingsTab(m_notebook, m_projectName, wxEmptyString /* all tabs */);
+}
+
+void ProjectConfigurationPanel::OnBrowsePreCmpHeader(wxCommandEvent& e)
+{
+	wxUnusedVar(e);
+	wxString projectPath;
+	ProjectPtr p = ManagerST::Get()->GetProject(m_projectName);
+	if (p) {
+		projectPath = p->GetFileName().GetPath();
+	}
+	wxString preCmpHeader = wxFileSelector(wxT("Select file:"), projectPath, wxT(""));
+	if (preCmpHeader.IsEmpty() == false) {
+		m_textCtrlPreCompiledHeader->SetValue( preCmpHeader );
+	}
+}
+
+void ProjectConfigurationPanel::OnBrowseProgram(wxCommandEvent& e)
+{
+	wxUnusedVar(e);
+	wxString program = wxFileSelector(wxT("Select Program to Run / Debug:"));
+	if (program.IsEmpty() == false) {
+		m_textCommand->SetValue( program );
+	}
 }

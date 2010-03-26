@@ -23,11 +23,16 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 #include <wx/tokenzr.h>
+#include "build_settings_config.h"
+#include "environmentconfig.h"
+#include "evnvarlist.h"
+#include "pluginmanager.h"
+#include "workspacesettingsdlg.h"
+#include "importfilesdialog.h"
 #include "fileview.h"
 #include "frame.h"
 #include "nameanddescdlg.h"
 #include "globals.h"
-#include "importfilesdlg.h"
 #include "manager.h"
 #include "tree.h"
 #include <wx/xrc/xmlres.h>
@@ -44,6 +49,10 @@
 #include "ctags_manager.h"
 #include <wx/progdlg.h>
 #include "editor_config.h"
+#include "yestoalldlg.h"
+#include "editorsettingslocal.h"
+#include "localworkspace.h"
+
 
 IMPLEMENT_DYNAMIC_CLASS(FileViewTree, wxTreeCtrl)
 
@@ -59,12 +68,16 @@ FileViewTree::FileViewTree()
 
 void FileViewTree::ConnectEvents()
 {
+	Connect( XRCID( "local_workspace_prefs" ), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( FileViewTree::OnLocalPrefs ), NULL, this );
+	Connect( XRCID( "local_workspace_settings" ), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( FileViewTree::OnLocalWorkspaceSettings ), NULL, this );
+
 	Connect( XRCID( "remove_project" ), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( FileViewTree::OnRemoveProject ), NULL, this );
 	Connect( XRCID( "set_as_active" ), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( FileViewTree::OnSetActive ), NULL, this );
 	Connect( XRCID( "new_item" ), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( FileViewTree::OnNewItem ), NULL, this );
 	Connect( XRCID( "add_existing_item" ), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( FileViewTree::OnAddExistingItem ), NULL, this );
 	Connect( XRCID( "new_virtual_folder" ), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( FileViewTree::OnNewVirtualFolder ), NULL, this );
 	Connect( XRCID( "remove_virtual_folder" ), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( FileViewTree::OnRemoveVirtualFolder ), NULL, this );
+	Connect( XRCID( "local_project_prefs" ), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( FileViewTree::OnLocalPrefs ), NULL, this );
 	Connect( XRCID( "project_properties" ), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( FileViewTree::OnProjectProperties ), NULL, this );
 	Connect( XRCID( "sort_item" ), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( FileViewTree::OnSortItem ), NULL, this );
 	Connect( XRCID( "remove_item" ), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( FileViewTree::OnRemoveItem ), NULL, this );
@@ -77,9 +90,9 @@ void FileViewTree::ConnectEvents()
 	Connect( XRCID( "generate_makefile" ), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( FileViewTree::OnRunPremakeStep ), NULL, this );
 	Connect( XRCID( "stop_build" ), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( FileViewTree::OnStopBuild ), NULL, this );
 	Connect( XRCID( "retag_project" ), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( FileViewTree::OnRetagProject ), NULL, this );
-//	Connect( XRCID( "retag_workspace" ), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( FileViewTree::OnRetagWorkspace ), NULL, this );
 	Connect( XRCID( "build_project_only" ), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( FileViewTree::OnBuildProjectOnly ), NULL, this );
 	Connect( XRCID( "clean_project_only" ), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( FileViewTree::OnCleanProjectOnly ), NULL, this );
+	Connect( XRCID( "rebuild_project_only" ), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( FileViewTree::OnRebuildProjectOnly), NULL, this );
 	Connect( XRCID( "import_directory" ), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( FileViewTree::OnImportDirectory ), NULL, this );
 	Connect( XRCID( "compile_item" ), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( FileViewTree::OnCompileItem ), NULL, this );
 	Connect( XRCID( "preprocess_item" ), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( FileViewTree::OnPreprocessItem ), NULL, this );
@@ -105,11 +118,13 @@ void FileViewTree::ConnectEvents()
 	Connect( XRCID( "retag_workspace" ), wxEVT_UPDATE_UI, wxUpdateUIEventHandler( FileViewTree::OnBuildInProgress ), NULL, this );
 	Connect( XRCID( "build_project_only" ), wxEVT_UPDATE_UI, wxUpdateUIEventHandler( FileViewTree::OnBuildInProgress ), NULL, this );
 	Connect( XRCID( "clean_project_only" ), wxEVT_UPDATE_UI, wxUpdateUIEventHandler( FileViewTree::OnBuildInProgress ), NULL, this );
+	Connect( XRCID( "rebuild_project_only" ), wxEVT_UPDATE_UI, wxUpdateUIEventHandler( FileViewTree::OnBuildInProgress ), NULL, this );
 	Connect( XRCID( "import_directory" ), wxEVT_UPDATE_UI, wxUpdateUIEventHandler( FileViewTree::OnBuildInProgress ), NULL, this );
 	Connect( XRCID( "compile_item" ), wxEVT_UPDATE_UI, wxUpdateUIEventHandler( FileViewTree::OnBuildInProgress ), NULL, this );
 	Connect( XRCID( "preprocess_item" ), wxEVT_UPDATE_UI, wxUpdateUIEventHandler( FileViewTree::OnBuildInProgress ), NULL, this );
 	Connect( XRCID( "rename_item" ), wxEVT_UPDATE_UI, wxUpdateUIEventHandler( FileViewTree::OnBuildInProgress ), NULL, this );
 	Connect( XRCID( "generate_makefile" ), wxEVT_UPDATE_UI, wxUpdateUIEventHandler( FileViewTree::OnBuildInProgress ), NULL, this );
+	Connect( XRCID( "local_workspace_settings" ), wxEVT_UPDATE_UI, wxUpdateUIEventHandler( FileViewTree::OnBuildInProgress ), NULL, this );
 }
 
 void FileViewTree::OnBuildInProgress( wxUpdateUIEvent &event )
@@ -148,11 +163,18 @@ FileViewTree::~FileViewTree()
 
 void FileViewTree::Create( wxWindow *parent, const wxWindowID id, const wxPoint& pos, const wxSize& size, long style )
 {
+	bool multi (false);
+	long val   (0);
+	if(EditorConfigST::Get()->GetLongValue(wxT("WspTreeMultipleSelection"), val) == false) {val = 0;}
+	val ? multi = true : multi = false;
+
 #ifndef __WXGTK__
 	style |= ( wxTR_HAS_BUTTONS | wxTR_LINES_AT_ROOT );
 #else
 	style |= ( wxTR_HAS_BUTTONS );
 #endif
+	if (multi) style |= wxTR_MULTIPLE;
+
 	wxTreeCtrl::Create( parent, id, pos, size, style );
 
 	BuildTree();
@@ -167,8 +189,20 @@ void FileViewTree::Create( wxWindow *parent, const wxWindowID id, const wxPoint&
 
 void FileViewTree::BuildTree()
 {
+	bool multi (false);
+	long val   (0);
+	if(EditorConfigST::Get()->GetLongValue(wxT("WspTreeMultipleSelection"), val) == false) {val = 0;}
+	val ? multi = true : multi = false;
+
 	DeleteAllItems();
+	long flags = GetWindowStyle();
+	if ( multi ) {
+		SetWindowStyle( flags | wxTR_MULTIPLE );
+	} else {
+		SetWindowStyle( flags & ~(wxTR_MULTIPLE) );
+	}
 	m_itemsToSort.clear();
+
 
 	if ( ManagerST::Get()->IsWorkspaceOpen() ) {
 		// Add an invisible tree root
@@ -191,7 +225,7 @@ void FileViewTree::BuildTree()
 		Thaw();
 
 		//set selection to first item
-		SelectItem( root );
+		SelectItem( root, HasFlag(wxTR_MULTIPLE) ? false : true );
 	}
 }
 
@@ -215,7 +249,20 @@ void FileViewTree::SortTree()
 
 wxTreeItemId FileViewTree::GetSingleSelection()
 {
-	return GetSelection();
+#if wxVERSION_NUMBER > 2900
+	return GetFocusedItem();
+#else
+	if ( HasFlag(wxTR_MULTIPLE) ) {
+		wxTreeItemId invalid;
+		wxArrayTreeItemIds arr;
+		size_t count = GetMultiSelection( arr );
+		return (count > 0) ? arr.Item(0) : invalid;
+
+	} else {
+		// Single selection tree
+		return GetSelection();
+	}
+#endif
 }
 
 int FileViewTree::GetIconIndex( const ProjectItem &item )
@@ -262,7 +309,7 @@ void FileViewTree::BuildProjectNode( const wxString &projectName )
 {
 	wxString err_msg;
 	ProjectPtr prj = WorkspaceST::Get()->FindProjectByName ( projectName, err_msg );
-    ProjectTreePtr tree = prj->AsTree();
+	ProjectTreePtr tree = prj->AsTree();
 	TreeWalker<wxString, ProjectItem> walker( tree->GetRoot() );
 
 	std::map<wxString, wxTreeItemId> items;
@@ -387,11 +434,14 @@ void FileViewTree::PopupContextMenu( wxMenu *menu, MenuType type, const wxString
 
 void FileViewTree::OnPopupMenu( wxTreeEvent &event )
 {
-	if ( GetSingleSelection().IsOk() ) {
+	if ( event.GetItem().IsOk() ) {
+		if ( IsSelected(event.GetItem()) == false ) {
+			// Don't call SelectItem() if it's already selected: in <wx2.9 it toggles!
+			SelectItem(event.GetItem());
+		}
 		wxTreeItemId item = event.GetItem();
-		if ( item.IsOk() ) {
-			SelectItem( item, true );
 
+		if ( item.IsOk() ) {
 			FilewViewTreeItemData *data = static_cast<FilewViewTreeItemData*>( GetItemData( item ) );
 			switch ( data->GetData().GetKind() ) {
 			case ProjectItem::TypeProject:
@@ -487,7 +537,6 @@ void FileViewTree::DoItemActivated( wxTreeItemId &item, wxEvent &event )
 		if (SendCmdEvent(wxEVT_TREE_ITEM_FILE_ACTIVATED, &file_path)) {
 			return;
 		}
-
 		Frame::Get()->GetMainBook()->OpenFile( fn.GetFullPath(), project, -1 );
 
 	} else if ( itemData->GetData().GetKind() == ProjectItem::TypeProject ) {
@@ -504,8 +553,7 @@ void FileViewTree::OnExportMakefile( wxCommandEvent &event )
 	wxTreeItemId item = GetSingleSelection();
 	if ( item.IsOk() ) {
 		wxString projectName, errMsg;
-		//TODO:: make the builder name configurable
-		BuilderPtr builder = BuildManagerST::Get()->GetBuilder( wxT( "GNU makefile for g++/gcc" ) );
+		BuilderPtr builder = BuildManagerST::Get()->GetSelectedBuilder(); // use current builder 
 		projectName = GetItemText( item );
 		if ( !builder->Export( projectName, wxEmptyString, false, true, errMsg ) ) {
 			wxMessageBox( errMsg, wxT( "CodeLite" ), wxICON_HAND );
@@ -551,8 +599,8 @@ bool FileViewTree::AddFilesToVirtualFolder(const wxString& vdFullPath, wxArraySt
 
 			wxTreeItemId hti = AppendItem(	item,						// parent
 			                               projItem.GetDisplayName(),	// display name
-			                               GetIconIndex( projItem ),		// item image index
-			                               GetIconIndex( projItem ),		// selected item image
+			                               GetIconIndex( projItem ),	// item image index
+			                               GetIconIndex( projItem ),	// selected item image
 			                               new FilewViewTreeItemData( projItem ) );
 			wxUnusedVar( hti );
 		}
@@ -563,6 +611,53 @@ bool FileViewTree::AddFilesToVirtualFolder(const wxString& vdFullPath, wxArraySt
 		return true;
 	}
 	return false;
+}
+
+bool FileViewTree::AddFilesToVirtualFolderIntelligently(const wxString& vdFullPath, wxArrayString& paths)
+{
+	// Note: This is only used atm to place a pair of cpp/h files, so I'm not checking paths.
+	// If you use the function for anything else in the future...
+
+	// The files passed in 'paths' may be a .cpp and an .h. See if there's a :src and :include folder to put them in
+	wxString srcname, includename;
+	size_t basenamelen = vdFullPath.rfind(wxT(":src"));
+	if (basenamelen == wxString::npos) {
+		basenamelen = vdFullPath.rfind(wxT(":include"));
+		if (basenamelen == wxString::npos) {
+			// The selected folder name ends neither in :src nor in :include, so we can't be intelligent this time
+			return false;
+		}
+	}
+	// OK, the selected folder is suitable; but check there's a matching pair
+	wxString basename = vdFullPath.Left(basenamelen);
+	srcname = basename + wxT(":src");
+	includename = basename + wxT(":include");
+	wxTreeItemId srcitem = ItemByFullPath(srcname);
+	wxTreeItemId includeitem = ItemByFullPath(includename);
+	if (!srcitem.IsOk() || !includeitem.IsOk()) {
+		return false;
+	}
+	// We're winning. Now it's just a matter of putting the cpp file into :src, etc
+	wxArrayString cppfiles, hfiles;
+	for (int c = (int)paths.GetCount()-1; c >= 0 ; --c) {
+		wxString file = paths.Item(c);
+		if (file.Right(4) == wxT(".cpp")) {
+			cppfiles.Add(file);
+			paths.RemoveAt(c);
+		} else if (file.Right(2) == wxT(".h")) {
+			hfiles.Add(file);
+			paths.RemoveAt(c);
+		}
+	}
+	// Finally do the Adds
+	AddFilesToVirtualFolder(srcname, cppfiles);
+	AddFilesToVirtualFolder(includename, hfiles);
+	// There shouldn't have been any other files passed; but if there were, add them to the selected folder
+	if (paths.GetCount()) {
+		AddFilesToVirtualFolder(vdFullPath, paths);
+	}
+
+	return true;
 }
 
 bool FileViewTree::AddFilesToVirtualFolder(wxTreeItemId &item, wxArrayString &paths)
@@ -683,7 +778,7 @@ void FileViewTree::DoSetProjectActive( wxTreeItemId &item )
 			wxTreeItemId child = GetFirstChild( GetRootItem(), cookie );
 			while ( child.IsOk() ) {
 				FilewViewTreeItemData *childData = static_cast<FilewViewTreeItemData*>( GetItemData( child ) );
-				if ( childData->GetData().GetDisplayName() == curActiveProj ) {
+				if ( childData &&  childData->GetData().GetDisplayName() == curActiveProj ) {
 					SetItemBold( child, false );
 					break;
 				}
@@ -705,39 +800,74 @@ void FileViewTree::OnRemoveVirtualFolder( wxCommandEvent & WXUNUSED( event ) )
 
 void FileViewTree::OnRemoveItem( wxCommandEvent &WXUNUSED( event ) )
 {
-	wxTreeItemId item = GetSingleSelection();
-	DoRemoveItem( item );
+	DoRemoveItems();
 }
 
-void FileViewTree::DoRemoveItem( wxTreeItemId &item )
+void FileViewTree::DoRemoveItems()
 {
-	wxString name = GetItemText( item );
-	FilewViewTreeItemData *data = static_cast<FilewViewTreeItemData*>( GetItemData( item ) );
-	switch (data->GetData().GetKind()) {
-	case ProjectItem::TypeFile: {
-		wxString message;
-		message << wxT( "Are you sure you want remove '" ) << name << wxT( "' ?" );
-		if ( wxMessageBox( message, wxT( "CodeLite" ), wxYES_NO | wxICON_QUESTION ) == wxYES ) {
-			wxTreeItemId parent = GetItemParent( item );
-			if ( parent.IsOk() ) {
-				wxString path = GetItemPath( parent );
-				ManagerST::Get()->RemoveFile( data->GetData().GetFile(), path );
-
-				wxString file_name(data->GetData().GetFile());
-				Delete( item );
-				SendCmdEvent(wxEVT_FILE_VIEW_REFRESHED);
-			}
-		}
+	wxArrayTreeItemIds items;
+	size_t num = GetMultiSelection( items );
+	if ( !num ) {
+		return;
 	}
-	break;
-	case ProjectItem::TypeVirtualDirectory:
-		DoRemoveVirtualFolder(item);
-		break;
-	case ProjectItem::TypeProject:
-		DoRemoveProject(name);
-		break;
-	default:
-		break;
+
+	bool ApplyToEachFile = false;
+
+	for ( size_t i=0; i<num; i++ ) {
+		wxTreeItemId item = items.Item( i );
+		wxString name = GetItemText( item );
+
+		if( !item.IsOk() ) {
+			continue;
+		}
+
+		FilewViewTreeItemData *data = static_cast<FilewViewTreeItemData*>( GetItemData( item ) );
+
+		if ( data ) {
+			switch (data->GetData().GetKind()) {
+			case ProjectItem::TypeFile: {
+				int result = wxID_YES;
+				if ( ApplyToEachFile==false ) {
+					wxString message;
+					message << wxT( "Are you sure you want remove '" ) << name << wxT( "' ?" );
+					if (num > 1) {
+						// For multiple selections, use a YesToAll dialog
+						YesToAllDlg dlg(this, message);
+						dlg.SetCheckboxText(wxString(wxT("Apply to all Files")));
+						result = dlg.ShowModal();
+						ApplyToEachFile = dlg.GetIsChecked();
+					} else {
+						result = wxMessageBox( message, wxT("Are you sure?"), wxYES_NO | wxICON_QUESTION, this );
+					}
+				}
+				if ( result==wxID_CANCEL || (result==wxID_NO && ApplyToEachFile==true) ) {
+					return;	// Assume Cancel or No+ApplyToEachFile means for folders etc too, not just files
+				}
+				if ( result==wxID_YES || result==wxYES ) {
+					wxTreeItemId parent = GetItemParent( item );
+					if ( parent.IsOk() ) {
+						wxString path = GetItemPath( parent );
+						ManagerST::Get()->RemoveFile( data->GetData().GetFile(), path );
+
+						wxString file_name(data->GetData().GetFile());
+						Delete( item );
+						SendCmdEvent(wxEVT_FILE_VIEW_REFRESHED);
+					}
+				}
+			}
+			break;
+			case ProjectItem::TypeVirtualDirectory:
+				DoRemoveVirtualFolder(item);
+				break;
+			case ProjectItem::TypeProject:
+				DoRemoveProject(name);
+				break;
+			default:
+				break;
+			}
+
+
+		}
 	}
 }
 
@@ -820,9 +950,56 @@ wxString FileViewTree::GetItemPath( wxTreeItemId &item )
 	return path;
 }
 
+void FileViewTree::OnLocalPrefs( wxCommandEvent& event )
+{
+	if (!ManagerST::Get()->IsWorkspaceOpen()) {
+		return; // Probably not possible, but...
+	}
+
+	wxXmlNode* lwsnode = LocalWorkspaceST::Get()->GetLocalWorkspaceOptionsNode();
+    // Don't check lwsnode: it'll be NULL if there are currently no local workspace options
+
+	// Start by getting the global settings
+	OptionsConfigPtr higherOptions = EditorConfigST::Get()->GetOptions();
+
+	// If we're setting workspace options, run the dialog and return
+	if (event.GetId() == XRCID("local_workspace_prefs")) {
+		EditorSettingsLocal dlg(higherOptions, lwsnode, pLevel_workspace, this);
+		if (dlg.ShowModal() == wxID_OK &&
+					LocalWorkspaceST::Get()->SetWorkspaceOptions(dlg.GetLocalOpts()) ) {
+			Frame::Get()->GetMainBook()->ApplySettingsChanges();
+			// Notify plugins that some settings have changed
+			PostCmdEvent( wxEVT_EDITOR_SETTINGS_CHANGED );
+		}
+		return;
+	}
+
+	// Otherwise we're getting project prefs
+	wxTreeItemId item = GetSingleSelection();
+	if ( !item.IsOk() ) {
+		return;
+	}
+
+	wxXmlNode* lpnode = LocalWorkspaceST::Get()->GetLocalProjectOptionsNode(GetItemText(item));
+	// Don't check lpnode: it'll be NULL if there are currently no local project options
+	// Merge any local workspace options with the global ones inside 'higherOptions'
+	LocalOptionsConfig wsOC(higherOptions, lwsnode);
+
+	EditorSettingsLocal dlg(higherOptions, lpnode, pLevel_project, this);
+	if (dlg.ShowModal() == wxID_OK &&
+			LocalWorkspaceST::Get()->SetProjectOptions(dlg.GetLocalOpts(), GetItemText(item)) ) {
+			Frame::Get()->GetMainBook()->ApplySettingsChanges();
+			// Notify plugins that some settings have changed
+			PostCmdEvent( wxEVT_EDITOR_SETTINGS_CHANGED );
+		}
+	}
+
 void FileViewTree::OnProjectProperties( wxCommandEvent & WXUNUSED( event ) )
 {
 	wxTreeItemId item = GetSingleSelection();
+	if (!item.IsOk()) {
+		return;
+	}
 
 	wxString projectName( GetItemText( item ) );
 	wxString title( projectName );
@@ -888,25 +1065,24 @@ void FileViewTree::OnSaveAsTemplate( wxCommandEvent & WXUNUSED( event ) )
 		wxString name = GetItemText( item );
 		ProjectPtr proj = ManagerST::Get()->GetProject( name );
 		if ( proj ) {
-			NameAndDescDlg *dlg = new NameAndDescDlg(NULL, name);
-			if ( dlg->ShowModal() == wxID_OK ) {
-				wxString newName = dlg->GetName();
-				wxString desc  	 = dlg->GetDescription();
-				wxString type    = dlg->GetType();
+			NameAndDescDlg dlg(Frame::Get(), PluginManager::Get(), name);
+			if ( dlg.ShowModal() == wxID_OK ) {
+				wxString newName = dlg.GetName();
+				wxString desc  	 = dlg.GetDescription();
+				wxString type    = dlg.GetType();
 
 				newName = newName.Trim().Trim(false);
 				desc = desc.Trim().Trim(false);
 
 				if ( newName.IsEmpty() == false ) {
-                    wxString tmplateDir = ManagerST::Get()->GetStarupDirectory() + wxT ( "/templates/projects/" ) + newName + wxT ( "/" );
-                    Mkdir ( tmplateDir );
+					wxString tmplateDir = ManagerST::Get()->GetStarupDirectory() + wxT ( "/templates/projects/" ) + newName + wxT ( "/" );
+					Mkdir ( tmplateDir );
 
 					Project newProj( *proj );
 					newProj.SetProjectInternalType( type );
 					newProj.CopyTo ( tmplateDir, newName, desc );
 				}
 			}
-			dlg->Destroy();
 		}
 	}
 }
@@ -916,8 +1092,8 @@ void FileViewTree::OnBuildOrder( wxCommandEvent &event )
 	wxUnusedVar( event );
 	wxTreeItemId item = GetSingleSelection();
 	if ( item.IsOk() ) {
-        DependenciesDlg dlg ( Frame::Get(), GetItemText( item ) );
-        dlg.ShowModal();
+		DependenciesDlg dlg ( Frame::Get(), GetItemText( item ) );
+		dlg.ShowModal();
 	}
 }
 
@@ -1028,14 +1204,7 @@ void FileViewTree::OnItemActivated( wxTreeEvent &event )
 			}
 		}
 	} else if (event.GetKeyCode() == WXK_DELETE ||  event.GetKeyCode() == WXK_NUMPAD_DELETE ) {
-		wxArrayTreeItemIds items;
-		size_t num = GetMultiSelection( items );
-		if ( num > 0 ) {
-			for ( size_t i=0; i<num; i++ ) {
-				wxTreeItemId item = items.Item( i );
-				DoRemoveItem( item );
-			}
-		}
+		DoRemoveItems();
 	} else {
 		event.Skip();
 	}
@@ -1043,11 +1212,17 @@ void FileViewTree::OnItemActivated( wxTreeEvent &event )
 
 size_t FileViewTree::GetMultiSelection( wxArrayTreeItemIds &arr )
 {
-	if ( GetWindowStyleFlag() & wxTR_MULTIPLE ) {
+	if ( HasFlag(wxTR_MULTIPLE) ) {
+		// we are using multiple selection tree
 		return GetSelections( arr );
 	} else {
-		arr.Add( GetSelection() );
-		return 1;
+		wxTreeItemId sel = GetSelection();
+		if(sel.IsOk()) {
+			arr.Add( sel );
+			return 1;
+		}
+		arr.Clear();
+		return 0;
 	}
 }
 
@@ -1057,71 +1232,102 @@ void FileViewTree::OnRetagProject( wxCommandEvent &event )
 	wxTreeItemId item = GetSingleSelection();
 	if ( item.IsOk() ) {
 		wxString projectName = GetItemText( item );
-		ManagerST::Get()->RetagProject( projectName );
+		ManagerST::Get()->RetagProject( projectName, true );
 	}
 }
 
 void FileViewTree::OnRetagWorkspace( wxCommandEvent &event )
 {
 	wxUnusedVar( event );
-	ManagerST::Get()->RetagWorkspace();
+	ManagerST::Get()->RetagWorkspace(true);
 }
 
 void FileViewTree::OnItemBeginDrag( wxTreeEvent &event )
 {
-	if ( event.GetItem() != GetRootItem() ) {
-		m_draggedItem = event.GetItem();
-		FilewViewTreeItemData *data = static_cast<FilewViewTreeItemData*>( GetItemData( m_draggedItem ) );
-		if ( data->GetData().GetKind() == ProjectItem::TypeFile ) {
-			event.Allow();
-			return;
+	wxArrayTreeItemIds selections;
+	size_t num = GetMultiSelection( selections );
+
+	m_draggedItems.Clear();
+	for (size_t n=0; n < num; ++n) {
+		wxTreeItemId item = selections[n];
+		if ( item.IsOk() && item != GetRootItem() ) {
+			// If it's a file, add it to the array
+			FilewViewTreeItemData *data = static_cast<FilewViewTreeItemData*>( GetItemData( item ) );
+			if ( data && data->GetData().GetKind() == ProjectItem::TypeFile ) {
+				m_draggedItems.Add(item);
+			}
 		}
+	}
+
+	// Allow the event only if there were any valid selections
+	if (m_draggedItems.GetCount() > 0) {
+		event.Allow();
 	}
 }
 
 void FileViewTree::OnItemEndDrag( wxTreeEvent &event )
 {
-	wxTreeItemId itemSrc = m_draggedItem,
-	                       itemDst = event.GetItem();
+	wxTreeItemId itemDst = event.GetItem();
+	if (!itemDst.IsOk()) {
+		return;
+	}
 
 	wxString targetVD, fromVD;
-	if ( itemDst.IsOk() ) {
+	while ( true ) {
+		if (!itemDst.IsOk()) {
+			return;
+		}
 		FilewViewTreeItemData *data = static_cast<FilewViewTreeItemData*>( GetItemData( itemDst ) );
-		if ( data->GetData().GetKind() == ProjectItem::TypeVirtualDirectory ) {
-			//we are only allowed items between virtual folders
-			wxTreeItemId target  = itemDst;
-			if ( target.IsOk() ) {
-				targetVD = GetItemPath( target );
-			} else {
-				return;
-			}
+		if ( data && data->GetData().GetKind() == ProjectItem::TypeVirtualDirectory ) {
+			break;	// Found a vd, so break out of the while loop
+		}
+		// We're only allowed to drag items between virtual folders, so find the parent folder
+		itemDst = GetItemParent( itemDst );
+	}
 
-			wxTreeItemId fromItem  = GetItemParent( itemSrc );
-			if ( fromItem.IsOk() ) {
-				fromVD = GetItemPath( fromItem );
-			} else {
-				return;
-			}
+	wxTreeItemId target  = itemDst;
+	if ( target.IsOk() ) {
+		targetVD = GetItemPath( target );
+	} else {
+		return;
+	}
 
-			//the file name to remove
-			FilewViewTreeItemData *srcData = static_cast<FilewViewTreeItemData*>( GetItemData( itemSrc ) );
-			wxString filename = srcData->GetData().GetFile();
+	for (size_t n=0; n < m_draggedItems.GetCount(); ++n) {
+		wxTreeItemId itemSrc = m_draggedItems.Item(n);
+		wxTreeItemId fromItem  = GetItemParent( itemSrc );
+		if ( fromItem.IsOk() ) {
+			fromVD = GetItemPath( fromItem );
+		} else {
+			continue;
+		}
 
-			ProjectItem itemData = srcData->GetData();
+		if ( fromVD == targetVD ) {
+			// Not much point dropping onto the same virtual dir
+			continue;
+		}
 
-			//call the manager to remove them in the underlying project
-			if ( ManagerST::Get()->MoveFileToVD( filename, fromVD, targetVD ) ) {
-				//remove the item from its current node, and place it under the
-				//new parent node
-				AppendItem(	target,						// parent
-				            itemData.GetDisplayName(),	// display name
-				            GetIconIndex( itemData ),		// item image index
-				            GetIconIndex( itemData ),		// selected item image
-				            new FilewViewTreeItemData( itemData ) );
-				Delete( itemSrc );
-				Expand( target );
-				SendCmdEvent(wxEVT_FILE_VIEW_REFRESHED);
-			}
+		//the file name to remove
+		FilewViewTreeItemData *srcData = static_cast<FilewViewTreeItemData*>( GetItemData( itemSrc ) );
+
+		// no tree-item-data? skip this one
+		if ( !srcData ) continue;
+
+		wxString filename = srcData->GetData().GetFile();
+
+		ProjectItem itemData = srcData->GetData();
+
+		//call the manager to remove them in the underlying project
+		if ( ManagerST::Get()->MoveFileToVD( filename, fromVD, targetVD ) ) {
+			//remove the item from its current node, and place it under the
+			//new parent node
+			AppendItem(	target,						// parent
+			            itemData.GetDisplayName(),	// display name
+			            GetIconIndex( itemData ),		// item image index
+			            GetIconIndex( itemData ),		// selected item image
+			            new FilewViewTreeItemData( itemData ) );
+			Delete( itemSrc );
+			Expand( target );
+			SendCmdEvent(wxEVT_FILE_VIEW_REFRESHED);
 		}
 	}
 }
@@ -1187,7 +1393,17 @@ void FileViewTree::ExpandToPath(const wxString &project, const wxFileName &fileN
 		if (childData->GetData().GetDisplayName() == project) {
 			wxTreeItemId fileItem = fileName.GetName().IsEmpty() ? child : FindItemByPath(child, ManagerST::Get()->GetProjectCwd( project ), fileName.GetFullPath());
 			if (fileItem.IsOk()) {
+				// Now we're using a wxTR_MULTIPLE tree, we need to unselect here, otherwise all project files get selected
+				// And,no, SelectItem(fileItem, false) isn't the answer: in 2.8 it toggles (a wx bug) and the 'selected' tab ends up unselected
+				if ( HasFlag( wxTR_MULTIPLE ) ) {
+					UnselectAll();
+				}
+
 				SelectItem(fileItem);
+
+				if ( IsVisible( fileItem ) == false ) {
+					EnsureVisible( fileItem );
+				}
 			} else {
 				wxString message;
 				message << wxT("Failed to find file: ") << fileName.GetFullPath() << wxT(" in FileView.");
@@ -1253,49 +1469,76 @@ void FileViewTree::OnImportDirectory(wxCommandEvent &e)
 		return;
 	}
 
-	wxString message;
-	message << wxT("Select Directory to import:");
-
 	wxString vdPath = GetItemPath( item );
 	wxString project;
 	project = vdPath.BeforeFirst(wxT(':'));
-
 	ProjectPtr proj = ManagerST::Get()->GetProject( project );
 
-	ImportFilesDlg *dlg = new ImportFilesDlg(NULL, proj->GetFileName().GetPath());
-	if (dlg->ShowModal() != wxID_OK) {
-		dlg->Destroy();
+	bool              extlessFiles(false);
+	wxArrayString     dirs;
+	wxArrayString     files;
+	wxArrayString     all_files;
+	wxString          filespec;
+	ImportFilesDialog dlg(Frame::Get());
+
+	if(dlg.ShowModal() != wxID_OK) {
 		return;
 	}
 
-	wxString path = dlg->GetBaseDir();
-	bool noExtFiles = dlg->GetIncludeFilesWoExt();
+	extlessFiles = dlg.ExtlessFiles();
+	dlg.GetDirectories( dirs );
+	filespec = dlg.GetFileMask();
 
-	wxString mask = dlg->GetFileMask();
-	dlg->Destroy();
+	wxDir::GetAllFiles(dlg.GetBaseDir(), &all_files);
 
+	wxStringTokenizer tok(filespec, wxT(";"));
+	std::set<wxString> specMap;
+	while ( tok.HasMoreTokens() ) {
+		wxString v = tok.GetNextToken().AfterLast(wxT('*'));
+		v = v.AfterLast(wxT('.')).MakeLower();
+		specMap.insert( v );
+	}
+
+	//filter non interesting files
+	for (size_t i=0; i<all_files.GetCount(); i++) {
+		wxFileName fn(all_files.Item(i));
+
+		if (dirs.Index(fn.GetPath()) == wxNOT_FOUND) {
+			continue;
+		}
+
+		/* always excluded by default */
+		wxString filepath = fn.GetPath();
+		if( filepath.Contains(wxT(".svn"))           || filepath.Contains(wxT(".cvs"))           ||
+			filepath.Contains(wxT(".arch-ids"))      || filepath.Contains(wxT("arch-inventory")) ||
+			filepath.Contains(wxT("autom4te.cache")) || filepath.Contains(wxT("BitKeeper"))      ||
+			filepath.Contains(wxT(".bzr"))           || filepath.Contains(wxT(".bzrignore"))     ||
+			filepath.Contains(wxT("CVS"))            || filepath.Contains(wxT(".cvsignore"))     ||
+			filepath.Contains(wxT("_darcs"))         || filepath.Contains(wxT(".deps"))          ||
+			filepath.Contains(wxT("EIFGEN"))         || filepath.Contains(wxT(".git"))           ||
+			filepath.Contains(wxT(".hg"))            || filepath.Contains(wxT("PENDING"))        ||
+			filepath.Contains(wxT("RCS"))            || filepath.Contains(wxT("RESYNC"))         ||
+			filepath.Contains(wxT("SCCS"))           || filepath.Contains(wxT("{arch}")))
+		{
+			continue;
+		}
+
+		if ( specMap.empty() ) {
+			files.Add(all_files.Item(i));
+		} else if (fn.GetExt().IsEmpty() & extlessFiles) {
+			files.Add(all_files.Item(i));
+		} else if (specMap.find(fn.GetExt().MakeLower()) != specMap.end()) {
+			files.Add(all_files.Item(i));
+		}
+	}
+
+	wxString   path = dlg.GetBaseDir();
 	//{ Fixe bug 2847625
 	if (path.EndsWith(wxT("/")) || path.EndsWith(wxT("\\"))) {
 		path.RemoveLast();
-	}
-	//} bug 2847625
-	
+	}//} Fixe bug 2847625
+
 	wxFileName rootPath(path);
-
-	//Collect all candidates files
-	wxArrayString files;
-	DirTraverser trv(mask, noExtFiles);
-
-	//ignore .svn & .cvs files
-	wxArrayString excludeDirs;
-	excludeDirs.Add(wxT(".svn"));
-	excludeDirs.Add(wxT(".cvs"));
-
-	trv.SetExcludeDirs(excludeDirs);
-	wxDir dir(path);
-
-	dir.Traverse(trv);
-	files = trv.GetFiles();
 
 	// loop over the files and construct for each file a record with
 	// the following information:
@@ -1366,7 +1609,7 @@ void FileViewTree::OnImportDirectory(wxCommandEvent &e)
 	ManagerST::Get()->AddProject(proj->GetFileName().GetFullPath());
 
 	// restore the active project
-	if( was_active ) {
+	if ( was_active ) {
 		MarkActive( curr_proj_name );
 	}
 }
@@ -1420,7 +1663,7 @@ void FileViewTree::OnRenameItem(wxCommandEvent& e)
 						tmp.SetFullName(newName);
 
 						if (tmp.FileExists()) {
-							wxMessageBox(_("File with that name already exist!"), wxT("CodeLite"), wxICON_WARNING|wxOK);
+							wxMessageBox(_("A File with that name already exists!"), wxT("CodeLite"), wxICON_WARNING|wxOK);
 							return;
 						}
 
@@ -1545,7 +1788,7 @@ bool FileViewTree::CreateAndAddFile(const wxString& filename, const wxString& vd
 
 bool FileViewTree::DoAddNewItem(wxTreeItemId& item, const wxString& filename, const wxString& vdFullpath)
 {
-	if(item.IsOk() == false){
+	if (item.IsOk() == false) {
 		return false;
 	}
 
@@ -1569,4 +1812,47 @@ bool FileViewTree::DoAddNewItem(wxTreeItemId& item, const wxString& filename, co
 	Expand( item );
 	SendCmdEvent(wxEVT_FILE_VIEW_REFRESHED);
 	return true;
+}
+
+void FileViewTree::OnRebuildProjectOnly(wxCommandEvent& event)
+{
+	wxUnusedVar( event );
+	wxTreeItemId item = GetSingleSelection();
+	if ( item.IsOk() ) {
+		wxString projectName = GetItemText( item );
+
+		wxString conf;
+		// get the selected configuration to be built
+		BuildConfigPtr bldConf = WorkspaceST::Get()->GetProjBuildConf(projectName, wxEmptyString);
+		if (bldConf) {
+			conf = bldConf->GetName();
+		}
+
+		QueueCommand info(projectName, conf, true, QueueCommand::ReBuild);
+		if (bldConf && bldConf->IsCustomBuild()) {
+			info.SetKind(QueueCommand::CustomBuild);
+			info.SetCustomBuildTarget(wxT("Rebuild"));
+		}
+
+		ManagerST::Get()->PushQueueCommand(info);
+		ManagerST::Get()->ProcessCommandQueue();
+	}
+}
+
+void FileViewTree::OnLocalWorkspaceSettings(wxCommandEvent& e)
+{
+	bool retagRequires;
+	WorkspaceSettingsDlg dlg(Frame::Get(), LocalWorkspaceST::Get());
+	if(dlg.ShowModal() == wxID_OK) {
+		
+		Frame::Get()->SetEnvStatusMessage();
+		// Update the new paths
+		retagRequires = ManagerST::Get()->UpdateParserPaths();
+
+		// send notification to the main frame to perform retag
+		if ( retagRequires ) {
+			wxCommandEvent event( wxEVT_COMMAND_MENU_SELECTED, XRCID("retag_workspace") );
+			Frame::Get()->GetEventHandler()->AddPendingEvent( event );
+		}
+	}
 }

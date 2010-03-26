@@ -25,7 +25,7 @@ public:
 	//--------------------------------------------
 	//Abstract methods
 	//--------------------------------------------
-	virtual wxToolBar *CreateToolBar     (wxWindow *parent);
+	virtual clToolBar *CreateToolBar     (wxWindow *parent);
 	virtual void CreatePluginMenu        (wxMenu *pluginsMenu);
 	virtual void HookPopupMenu           (wxMenu *menu, MenuType type);
 	virtual void UnHookPopupMenu         (wxMenu *menu, MenuType type);
@@ -41,6 +41,8 @@ public:
 	void OnGetBuildCommand     (wxCommandEvent &event);
 	void OnGetIsPluginMakefile (wxCommandEvent &event);
 	void OnNewQmakeBasedProject(wxCommandEvent &event);
+	void OnOpenFile            (wxCommandEvent &event);
+	void OnExportMakefile      (wxCommandEvent &event);
 };
 
 #endif //QMakePlugin

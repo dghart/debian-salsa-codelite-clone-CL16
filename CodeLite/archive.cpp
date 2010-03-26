@@ -28,6 +28,7 @@
 #include "serialized_object.h"
 
 #include <memory>
+#include "wx_xml_compatibility.h"
 
 namespace
 {
@@ -74,8 +75,11 @@ static void SetNodeContent(wxXmlNode *node, const wxString &text)
 		delete contentNode;
 	}
 
-	contentNode = new wxXmlNode(wxXML_TEXT_NODE, wxEmptyString, text);
-	node->AddChild( contentNode );
+	if(!text.IsEmpty()){
+		contentNode = new wxXmlNode(wxXML_TEXT_NODE, wxEmptyString, text);
+		node->AddChild( contentNode );
+
+	}
 }
 
 static void SetCDATANodeContent(wxXmlNode* node, const wxString& text)
@@ -97,8 +101,10 @@ static void SetCDATANodeContent(wxXmlNode* node, const wxString& text)
 		delete contentNode;
 	}
 
-	contentNode = new wxXmlNode(wxXML_CDATA_SECTION_NODE, wxEmptyString, text);
-	node->AddChild( contentNode );
+	if(!text.IsEmpty()){
+		contentNode = new wxXmlNode(wxXML_CDATA_SECTION_NODE, wxEmptyString, text);
+		node->AddChild( contentNode );
+	}
 }
 
 // class Tab info
@@ -396,7 +402,9 @@ bool Archive::Read(const wxString &name, int &value)
 
 	long v;
 	bool res = ReadSimple(v, wxT("int"), name);
-	value = v;
+	if ( res ) {
+		value = v;
+	}
 	return res;
 }
 
@@ -419,7 +427,9 @@ bool Archive::Read(const wxString &name, bool &value)
 {
 	long v;
 	bool res = ReadSimple(v, wxT("bool"), name);
-	v  == 0 ? value = false : value = true;
+	if( res ) {
+		v  == 0 ? value = false : value = true;
+	}
 	return res;
 }
 
@@ -459,6 +469,7 @@ bool Archive::ReadCData(const wxString &name, wxString &value)
 	if (node) {
 		// get the content node
 		value = node->GetNodeContent();
+		value.Trim().Trim(false);
 		return true;
 	}
 	return false;
@@ -471,7 +482,7 @@ bool Archive::Read(const wxString &name, wxString &value)
 	}
 	wxXmlNode *node = FindNodeByName(m_root, wxT("wxString"), name);
 	if (node) {
-		value = node->GetPropVal(wxT("Value"), wxEmptyString);
+		value = node->GetPropVal(wxT("Value"), value);
 		return true;
 	}
 	return false;

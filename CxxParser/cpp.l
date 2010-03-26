@@ -18,6 +18,7 @@
 extern std::string cl_scope_lval;
 extern std::string cl_var_lval;
 extern std::string cl_func_lval;
+extern std::string cl_typedef_lval;
 
 std::vector<std::string> currentScope;
 
@@ -70,9 +71,10 @@ static bool defineFound = false;
 #define LITERAL_RETURN(x)   RETURN_VAL(x)            /* a string literal */
 #define C_COMMENT_RETURN(x) RETURN_VAL(x)	     /* C Style comment  */
 #define RETURN_VAL(x) {\
-								cl_scope_lval = yytext;\
-								cl_var_lval = yytext;\
-								cl_func_lval = yytext;\
+								cl_scope_lval   = yytext;\
+								cl_var_lval     = yytext;\
+								cl_func_lval    = yytext;\
+								cl_typedef_lval = yytext;\
 								return(x);}
 
 %}
@@ -160,6 +162,7 @@ include            {PP_KEYWORD_RETURN(LE_INCLUDE); }
 int                 {PA_KEYWORD_RETURN(LE_INT);}
 line               {PP_KEYWORD_RETURN(LE_LINE);}
 long                {PA_KEYWORD_RETURN(LE_LONG);}
+bool                {PA_KEYWORD_RETURN(LE_BOOL);}
 pragma             {PP_KEYWORD_RETURN(LE_PRAGMA);}
 register            {PA_KEYWORD_RETURN(LE_REGISTER);}
 return              {PA_KEYWORD_RETURN(LE_RETURN);}

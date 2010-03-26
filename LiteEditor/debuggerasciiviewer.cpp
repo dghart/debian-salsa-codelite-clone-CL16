@@ -1,4 +1,6 @@
 #include "debuggerasciiviewer.h"
+#include "frame.h"
+#include "debuggerpane.h"
 #include "manager.h"
 #include "debugger.h"
 
@@ -11,8 +13,6 @@ static void sDefineMarker(wxScintilla *s, int marker, int markerType, wxColor fo
 
 DebuggerAsciiViewer::DebuggerAsciiViewer( wxWindow* parent )
 		: DebuggerAsciiViewerBase( parent )
-		, m_debugger(NULL)
-		, m_dbgCommand(wxT("print"))
 {
 	wxFont font(8, wxFONTFAMILY_TELETYPE, wxNORMAL, wxNORMAL);
 
@@ -48,67 +48,79 @@ DebuggerAsciiViewer::DebuggerAsciiViewer( wxWindow* parent )
 
 	// Set TELETYPE font (monospace)
 	m_textView->StyleSetFont(wxSCI_STYLE_DEFAULT, font);
-	m_textView->StyleSetSize(wxSCI_STYLE_DEFAULT, 8   );
+	m_textView->StyleSetSize(wxSCI_STYLE_DEFAULT, 12  );
 
 	m_textView->SetReadOnly(true);
+
+	wxTheApp->Connect(wxID_COPY,      wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(DebuggerAsciiViewer::OnEdit),   NULL, this);
+	wxTheApp->Connect(wxID_SELECTALL, wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(DebuggerAsciiViewer::OnEdit),   NULL, this);
+	wxTheApp->Connect(wxID_COPY,      wxEVT_UPDATE_UI, wxUpdateUIEventHandler(DebuggerAsciiViewer::OnEditUI), NULL, this);
+	wxTheApp->Connect(wxID_SELECTALL, wxEVT_UPDATE_UI, wxUpdateUIEventHandler(DebuggerAsciiViewer::OnEditUI), NULL, this);
 }
 
-void DebuggerAsciiViewer::OnEnter( wxCommandEvent& event )
+bool DebuggerAsciiViewer::IsFocused()
 {
-	if ( m_textCtrlExpression->GetValue().IsEmpty() ) {
-
-		m_textView->SetReadOnly(false);
-		m_textView->ClearAll();
-		m_textView->SetReadOnly(true);
-
-	} else if ( m_debugger && m_debugger->IsRunning() && ManagerST::Get()->DbgCanInteract() ) {
-		DoUpdateView();
-
-	}
+	wxWindow *win = wxWindow::FindFocus();
+	return (win && win == m_textView);
 }
 
-void DebuggerAsciiViewer::SetExpression(const wxString& expr)
+void DebuggerAsciiViewer::UpdateView(const wxString &expr, const wxString &value)
 {
 	m_textCtrlExpression->SetValue(expr);
-	DoUpdateView();
-}
 
-void DebuggerAsciiViewer::SetDebugger(IDebugger* debugger)
-{
-	m_debugger = debugger;
-}
-
-void DebuggerAsciiViewer::DoUpdateView()
-{
-	// Evaluate the tip
-	wxString evaluated;
-	wxString expression ( m_textCtrlExpression->GetValue() );
-	expression.Trim().Trim(false);
-
-	if ( expression.IsEmpty() ) {
-		evaluated = wxT("");
-	} else {
-		m_debugger->GetTip(m_dbgCommand, m_textCtrlExpression->GetValue(), evaluated );
-	}
-
+	wxString evaluated (value);
 	evaluated.Replace(wxT("\r\n"), wxT("\n"));
 	evaluated.Replace(wxT("\n,"), wxT(",\n"));
 	evaluated.Replace(wxT("\n\n"), wxT("\n"));
 
-	// update the view
 	m_textView->SetReadOnly(false);
 	m_textView->ClearAll();
 	m_textView->SetText(evaluated);
 	m_textView->SetReadOnly(true);
+
 }
 
-void DebuggerAsciiViewer::UpdateView()
+void DebuggerAsciiViewer::OnClearView(wxCommandEvent& e)
 {
-	DoUpdateView();
+	wxUnusedVar(e);
+	UpdateView(wxT(""), wxT(""));
 }
 
-void DebuggerAsciiViewer::SetDbgCommand(const wxString& dbgCmd)
+
+void DebuggerAsciiViewer::OnEditUI(wxUpdateUIEvent& e)
 {
-	m_textCtrlDbgCommand->SetValue(dbgCmd);
-	m_dbgCommand = dbgCmd;
+	if ( !IsFocused() ) {
+		e.Skip();
+		return;
+	}
+	switch ( e.GetId() ) {
+	case wxID_SELECTALL:
+		e.Enable(true);
+		break;
+	case wxID_COPY:
+		e.Enable( m_textView->GetSelectedText().IsEmpty() == false );
+		break;
+	default:
+		e.Enable(false);
+		break;
+	}
+}
+
+void DebuggerAsciiViewer::OnEdit(wxCommandEvent& e)
+{
+	if ( !IsFocused() ) {
+		e.Skip();
+		return;
+	}
+
+	switch ( e.GetId() ) {
+	case wxID_SELECTALL:
+		m_textView->SelectAll();
+		break;
+	case wxID_COPY:
+		m_textView->Copy();
+		break;
+	default:
+		break;
+	}
 }

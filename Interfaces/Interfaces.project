@@ -9,6 +9,8 @@
     <File Name="imanager.h"/>
     <File Name="plugin_version.h"/>
     <File Name="ikeyboard.h"/>
+    <File Name="imacromanager.h"/>
+    <File Name="cl_defs.h"/>
   </VirtualDirectory>
   <Dependencies/>
   <Settings Type="Static Library">
@@ -65,6 +67,6 @@
       </AdditionalRules>
     </Configuration>
   </Settings>
-  <Dependencies Name="Debug"/>
   <Dependencies Name="Common"/>
+  <Dependencies Name="Debug"/>
 </CodeLite_Project>

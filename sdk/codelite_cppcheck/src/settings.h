@@ -13,7 +13,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #ifndef SETTINGS_H
@@ -22,6 +22,8 @@
 #include <list>
 #include <string>
 #include <istream>
+#include <map>
+#include <set>
 
 /// @addtogroup Core
 /// @{
@@ -36,11 +38,16 @@ class Settings
 {
 private:
     /** classes that are automaticly deallocated */
-    std::list<std::string> _autoDealloc;
+    std::set<std::string> _autoDealloc;
 
     /** Code to append in the checks */
     std::string _append;
 
+    /** List of error which the user doesn't want to see. */
+    std::map<std::string, std::map<std::string, std::list<int> > > _suppressions;
+
+    /** enable extra checks by id */
+    std::map<std::string, bool> _enabled;
 public:
     Settings();
     virtual ~Settings();
@@ -57,9 +64,6 @@ public:
     /** write xml results */
     bool _xml;
 
-    /** Checking if there are unused functions */
-    bool _unusedFunctions;
-
     /** How many processes/threads should do checking at the same
         time. Default is 1. */
     unsigned int _jobs;
@@ -72,10 +76,8 @@ public:
         e.g. "{severity} {file}:{line} {message} {id}" */
     std::string _outputFormat;
 
-#ifdef __GNUC__
     /** show timing information */
     bool _showtime;
-#endif
 
     /** List of include paths, e.g. "my/includes/" which should be used
         for finding include files inside source files. */
@@ -87,6 +89,28 @@ public:
     /** Add class to list of automatically deallocated classes */
     void addAutoAllocClass(const std::string &name);
 
+    /**
+     * Don't show errors listed in the file.
+     * @param istr Open file stream where errors can be read.
+     * @return true on success, false in syntax error is noticed.
+     */
+    bool suppressions(std::istream &istr);
+
+    /**
+     * Don't show this error. If file and/or line are optional. In which case
+     * the errorId alone is used for filtering.
+     * @param errorId, the id for the error, e.g. "arrayIndexOutOfBounds"
+     * @param file File name with the path, e.g. "src/main.cpp"
+     * @param line number, e.g. "123"
+     */
+    void addSuppression(const std::string &errorId, const std::string &file = "", unsigned int line = 0);
+
+    /**
+     * Returns true if this message should not be shown to the user.
+     * @return true if this error is suppressed.
+     */
+    bool isSuppressed(const std::string &errorId, const std::string &file, unsigned int line);
+
     /** is a class automaticly deallocated? */
     bool isAutoDealloc(const char classname[]) const;
 
@@ -95,6 +119,24 @@ public:
 
     /** get append code */
     std::string append() const;
+
+    /** enable extra checks by id */
+    //std::string enableId;
+
+    /**
+     * Returns true if given id is in the list of
+     * enabled extra checks. See addEnabled()
+     * @param str id for the extra check, e.g. "style"
+     * @return true if the check is enabled.
+     */
+    bool isEnabled(const std::string &str) const;
+
+    /**
+     * Enable extra checks by id. See isEnabled()
+     * @param str single id or list of id values to be enabled
+     * or empty string to enable all. e.g. "style,possibleError"
+     */
+    void addEnabled(const std::string &str);
 };
 
 /// @}

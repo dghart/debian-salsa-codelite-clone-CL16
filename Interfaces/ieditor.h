@@ -137,6 +137,16 @@ public:
 	virtual void ReplaceSelection (const wxString& text) = 0;
 
 	/**
+	 * \brief return the selected text start position in bytes.
+	 */
+	virtual int GetSelectionStart() = 0;
+	
+	/**
+	 * \brief return the selected text end position in bytes.
+	 */
+	virtual int GetSelectionEnd() = 0;
+	
+	/**
 	 * \brief return the selected text.
 	 * \return the selected text, or wxEmptyString if no selection exist in the document
 	 */
@@ -252,6 +262,22 @@ public:
 	 * @return browsing record
 	 */
 	virtual BrowseRecord CreateBrowseRecord() = 0;
+
+	/**
+	 * @brief search the editor for pattern. If pattern is found, the editor will then search for 'what'
+	 * inside the pattern and will select it
+	 * @param pattern pattern to search in the editor
+	 * @param what    sub string of pattern to select
+	 * @param navmgr  Navigation manager to place browsing recrods
+	 * @return return true if a match was found, false otherwise
+	 */
+	virtual bool FindAndSelect(const wxString &pattern, const wxString &what, int from_pos, NavMgr *navmgr) = 0;
+
+	/**
+	 * @brief set a lexer to the editor
+	 * @param lexerName
+	 */
+	virtual void SetLexerName(const wxString &lexerName) = 0;
 };
 
 #endif //IEDITOR_H

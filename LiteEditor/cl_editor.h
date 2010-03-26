@@ -41,8 +41,14 @@
 #include "breakpointsmgr.h"
 #include "plugin.h"
 
+#define DEBUGGER_INDICATOR          11
+#define MATCH_INDICATOR             10
+#define USER_INDICATOR              3
+#define HYPERLINK_INDICATOR         4
+
 class wxFindReplaceDialog;
 class CCBox;
+class clEditorTipWindow;
 
 enum sci_annotation_styles {
 	eAnnotationStyleError = 128, eAnnotationStyleWarning
@@ -71,23 +77,14 @@ enum calltip_type { ct_function_hover, ct_debugger, ct_function_proto, ct_breakp
 * Holds which marker and mask are associated with each breakpoint type
 */
 typedef struct _BPtoMarker {
-	enum BP_type bp_type;	// An enum of possible break/watchpoint types. In debugger.h
+	enum BreakpointType bp_type;	// An enum of possible break/watchpoint types. In debugger.h
 	sci_marker_types marker;
 	marker_mask_type mask;
 	sci_marker_types marker_disabled;
 	marker_mask_type mask_disabled;
 } BPtoMarker;
 
-/**
- * @class LEditorState
- * a container for the editor state (breakpoints, bookmarks and current position)
- */
-struct LEditorState {
-	std::vector<int> breakpoints;
-	std::vector<int> markers;
-	int caretPosition;
-};
-
+extern const wxEventType wxCMD_EVENT_REMOVE_MATCH_INDICATOR;
 /**
  * \ingroup LiteEditor
  * LEditor CodeLite editing component based on Scintilla
@@ -134,6 +131,9 @@ class LEditor : public wxScintilla, public IEditor
 	bool                                        m_autoAdjustHScrollbarWidth;
 	calltip_type                                m_calltipType;
 	bool                                        m_reloadingFile;
+	bool                                        m_disableSmartIndent;
+	bool                                        m_disableSemicolonShift;
+	clEditorTipWindow*                        m_functionTip;
 
 public:
 	static FindReplaceData &GetFindReplaceData() {
@@ -147,6 +147,9 @@ public:
 		return m_reloadingFile;
 	}
 
+	clEditorTipWindow* GetFunctionTip() {
+		return m_functionTip;
+	}
 public:
 	/// Construct a LEditor object
 	LEditor(wxWindow* parent);
@@ -161,6 +164,13 @@ public:
 	// this function prompts the user for selecting file name
 	bool SaveFileAs();
 
+	void SetDisableSmartIndent(bool disableSmartIndent) {
+		this->m_disableSmartIndent = disableSmartIndent;
+	}
+
+	bool GetDisableSmartIndent() const {
+		return m_disableSmartIndent;
+	}
 	/**
 	 * @brief set the EOL mode of the file by applying this logic:
 	 * - if the file has content, use the current cotext EOL
@@ -168,18 +178,6 @@ public:
 	 * - Use the setting provided by the user
 	 */
 	void SetEOL();
-
-	/**
-	 * @brief save the editor current state (in terms of breakpoints, bookmarks & current position)
-	 * @param s state structure
-	 */
-	void GetEditorState(LEditorState &s);
-
-	/**
-	 * @brief set the editor current state (in terms of breakpoints, bookmarks & current position)
-	 * @param s state structure
-	 */
-	void SetEditorState(const LEditorState &s);
 
 	void CompleteWord();
 
@@ -275,8 +273,10 @@ public:
 	void FindNextMarker();
 	// Find previous marker and move cursor to that line
 	void FindPrevMarker();
+
 	// Replace all
 	bool ReplaceAll();
+	bool ReplaceAllExactMatch(const wxString &what, const wxString &replaceWith);
 	// mark all occurances
 	bool MarkAll();
 
@@ -289,8 +289,10 @@ public:
 
 	// Util function
 	int SafeGetChar(int pos);
-	wxChar PreviousChar(const int& pos, int &foundPos, bool wantWhitespace = false);
-	wxChar NextChar(const int& pos, int &foundPos);
+	wxChar   PreviousChar(const int& pos, int &foundPos, bool wantWhitespace = false);
+	wxString PreviousWord(int pos, int &foundPos);
+	wxChar   NextChar    (const int& pos, int &foundPos);
+
 	int  FindString (const wxString &str, int flags, const bool down, long pos);
 
 	bool FindAndSelect();
@@ -381,12 +383,23 @@ public:
 	 */
 	void DelBreakpoint(int lineno = -1);
 
+	/**
+	 * @brief search the editor for pattern. If pattern is found, the editor will then search for 'what'
+	 * inside the pattern and will select it
+	 * @param pattern pattern to search in the editor
+	 * @param what    sub string of pattern to select
+	 * @param pos     start the search from 'pos'
+	 * @param navmgr  Navigation manager to place browsing recrods
+	 * @return return true if a match was found, false otherwise
+	 */
+	virtual bool FindAndSelect(const wxString &pattern, const wxString &what, int pos, NavMgr *navmgr);
+
 	virtual void UpdateBreakpoints();
 
 	//--------------------------------
 	// breakpoint visualisation
 	//--------------------------------
-	virtual void SetBreakpointMarker(int lineno, BP_type bptype, bool is_disabled, const std::vector<BreakpointInfo>& li);
+	virtual void SetBreakpointMarker(int lineno, BreakpointType bptype, bool is_disabled, const std::vector<BreakpointInfo>& li);
 	virtual void DelAllBreakpointMarkers();
 
 	virtual void HighlightLine(int lineno);
@@ -509,7 +522,11 @@ public:
 	virtual int GetCurrentLine();
 	virtual void ReplaceSelection(const wxString &text);
 	virtual wxString GetSelection();
+	virtual int GetSelectionStart();
+	virtual int GetSelectionEnd();
 	virtual void SelectText(int startPos, int len);
+
+	virtual void SetLexerName(const wxString &lexerName);
 
 	// User Indicators API
 	virtual void SetUserIndicatorStyleAndColour(int style, const wxColour &colour);
@@ -544,6 +561,11 @@ public:
 	//----------------------------------------------------------------------------
 	//----------------------------------------------------------------------------
 
+	/**
+	 * Get editor options. Takes any workspace/project overrides into account
+	 */
+	OptionsConfigPtr GetOptions();
+
 	void SetIsVisible(const bool& isVisible) {
 		this->m_isVisible = isVisible;
 	}
@@ -555,7 +577,7 @@ public:
 
 private:
 	void FillBPtoMarkerArray();
-	BPtoMarker GetMarkerForBreakpt(enum BP_type bp_type);
+	BPtoMarker GetMarkerForBreakpt(enum BreakpointType bp_type);
 	void SetProperties();
 	void DefineMarker(int marker, int markerType, wxColor fore, wxColor back);
 	void SetLineNumberWidth();
@@ -568,13 +590,16 @@ private:
 	// Conevert FindReplaceDialog flags to wxSD flags
 	size_t SearchFlags(const FindReplaceData &data);
 
-	void AddDebuggerContextMenu(wxMenu *menu);
-	void RemoveDebuggerContextMenu(wxMenu *menu);
-	void DoBreakptContextMenu(wxPoint clientPt);
-	void DoMarkHyperlink(wxMouseEvent &event, bool isMiddle);
-	void DoQuickJump(wxMouseEvent &event, bool isMiddle);
+	void    AddDebuggerContextMenu(wxMenu *menu);
+	void    RemoveDebuggerContextMenu(wxMenu *menu);
+	void    DoBreakptContextMenu(wxPoint clientPt);
+	void    DoMarkHyperlink(wxMouseEvent &event, bool isMiddle);
+	void    DoQuickJump(wxMouseEvent &event, bool isMiddle);
+	bool    DoFindAndSelect(const wxString &pattern, const wxString &what, int start_pos, NavMgr *navmgr);
+	wxMenu* DoCreateDebuggerWatchMenu(const wxString &word);
 
 	DECLARE_EVENT_TABLE()
+	void OnRemoveMatchInidicator(wxCommandEvent &e);
 	void OnSavePoint(wxScintillaEvent &event);
 	void OnCharAdded(wxScintillaEvent& event);
 	void OnMarginClick(wxScintillaEvent& event);
@@ -594,7 +619,6 @@ private:
 	void OnFocusLost(wxFocusEvent &event);
 	void OnLeftDClick(wxScintillaEvent &event);
 	void OnPopupMenuUpdateUI(wxUpdateUIEvent &event);
-	void OnDbgQuickWatch(wxCommandEvent &event);
 	void OnDbgAddWatch(wxCommandEvent &event);
 	void OnDbgRunToCursor(wxCommandEvent &event);
 	void OnDbgCustomWatch(wxCommandEvent &event);

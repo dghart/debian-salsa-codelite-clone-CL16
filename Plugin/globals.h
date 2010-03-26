@@ -33,6 +33,7 @@
 
 class wxListCtrl;
 class IEditor;
+class IManager;
 
 /**
  * \brief send command event to the application (wxTheApp),
@@ -113,11 +114,19 @@ bool RemoveDirectory(const wxString &path);
 bool IsValidCppIndetifier(const wxString &id);
 
 /**
+ * \brief return true of word is a C++ keyword
+ * \param word
+ * \return 
+ */
+bool IsCppKeyword(const wxString &word);
+
+/**
  * \brief return true of id is a valid cpp file
  */
 bool IsValidCppFile(const wxString &id);
 
 /**
+ * [DEPRECATED] DONT USE THIS METHOD ANYMORE - USE IMacroManager
  * Expand variables to their real value, if expanding fails
  * the return value is same as input. The variable is expanded
  * in the project context
@@ -125,6 +134,7 @@ bool IsValidCppFile(const wxString &id);
 wxString ExpandVariables(const wxString &expression, ProjectPtr proj, IEditor *editor);
 
 /**
+ * * [DEPRECATED] DONT USE THIS METHOD ANYMORE - USE IMacroManager
  * \brief accepts expression string and expand all known marcos (e.g. $(ProjectName))
  * \param expression expression
  * \param projectName project name (to be used for $(ProjectName) macro)
@@ -202,6 +212,25 @@ wxString NormalizePath(const wxString &path);
  */
 time_t GetFileModificationTime(const wxString &filename);
 time_t GetFileModificationTime(const wxFileName &filename);
+
+/**
+ * @brief wrap a given command in the shell command (e.g. cmd /c "command")
+ */
+void WrapInShell(wxString &cmd);
+
+/**
+ * @brief return the current user name without any special characters
+ * @return
+ */
+wxString clGetUserName();
+
+/**
+ * @brief return list of projects available based on the installed tempaltes
+ * @param list list of projects
+ * @param imageMap when provided, returns the image index (set in the lstImages) mapped to the project type
+ * @param lstImages wxImageList allocated on the heap for the projects
+ */
+void GetProjectTemplateList( IManager *manager, std::list<ProjectPtr> &list, std::map<wxString,int> *imageMap = NULL, wxImageList **lstImages = NULL);
 
 #endif //GLOBALS_H
 

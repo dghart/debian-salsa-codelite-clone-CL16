@@ -30,6 +30,7 @@
 #include "dirtraverser.h"
 #include <wx/ffile.h>
 #include "globals.h"
+#include "wx_xml_compatibility.h"
 
 //-------------------------------------------------------------------------------------------
 SimpleLongValue::SimpleLongValue()
@@ -71,8 +72,6 @@ void SimpleStringValue::DeSerialize(Archive &arch)
 
 //-------------------------------------------------------------------------------------------
 
-wxString EditorConfig::m_svnRevision;
-
 EditorConfig::EditorConfig()
 		: m_transcation(false)
 {
@@ -84,37 +83,62 @@ EditorConfig::~EditorConfig()
 	delete m_doc;
 }
 
+bool EditorConfig::DoLoadDefaultSettings()
+{
+	//try to load the default settings
+	m_fileName = wxFileName(wxT("config/codelite.xml.default"));
+	m_fileName.MakeAbsolute();
+
+	if ( !m_fileName.FileExists() ) {
+		//create a new empty file with this name so the load function will not
+		//fail
+		wxFFile file(m_fileName.GetFullPath(), wxT("a"));
+		wxString content;
+		content << wxT("<CodeLite Revision=\"")
+		<< m_svnRevision
+		<< wxT("\"")
+		<< wxT(" Version=\"")
+		<< m_version
+		<< wxT("\">")
+		<< wxT("</CodeLite>");
+
+		if (file.IsOpened()) {
+			file.Write(content);
+			file.Close();
+		}
+	}
+	return m_doc->Load(m_fileName.GetFullPath());
+}
+
 bool EditorConfig::Load()
 {
 	//first try to load the user's settings
 	m_fileName = wxFileName(wxT("config/codelite.xml"));
 	m_fileName.MakeAbsolute();
+	bool userSettingsLoaded(false);
+	bool loadSuccess       (false);
 
 	if (!m_fileName.FileExists()) {
-		//try to load the default settings
-		m_fileName = wxFileName(wxT("config/codelite.xml.default"));
-		m_fileName.MakeAbsolute();
+		loadSuccess = DoLoadDefaultSettings();
 
-		if ( !m_fileName.FileExists() ) {
-			//create a new empty file with this name so the load function will not
-			//fail
-			wxFFile file(m_fileName.GetFullPath(), wxT("a"));
-			wxString content;
-			content << wxT("<LiteEditor Revision=\"")
-			<< m_svnRevision
-			<< wxT("\">")
-			<< wxT("</LiteEditor>");
-
-			if (file.IsOpened()) {
-				file.Write(content);
-				file.Close();
-			}
-		}
+	} else {
+		userSettingsLoaded = true;
+		loadSuccess = m_doc->Load(m_fileName.GetFullPath());
 	}
 
-	// load the main configuration file
-	if (!m_doc->Load(m_fileName.GetFullPath())) {
+	if ( !loadSuccess ) {
 		return false;
+	}
+
+	// Check the codelite-version for this file
+	wxString version;
+	bool found = m_doc->GetRoot()->GetPropVal(wxT("Version"), &version);
+	if ( userSettingsLoaded ) {
+		if(!found || (found && version != this->m_version)) {
+			if(DoLoadDefaultSettings() == false) {
+				return false;
+			}
+		}
 	}
 
 	// load CodeLite lexers
@@ -151,30 +175,6 @@ LexerConfPtr EditorConfig::GetLexer(const wxString &lexerName)
 	}
 
 	return m_lexers.find(lexerName)->second;
-}
-
-wxString EditorConfig::LoadPerspective(const wxString &Name) const
-{
-	wxXmlNode *layoutNode = XmlUtils::FindFirstByTagName(m_doc->GetRoot(), wxT("Layout"));
-	if ( !layoutNode ) {
-		//add an Layout node
-		wxXmlNode *newChild = new wxXmlNode(NULL, wxXML_ELEMENT_NODE, wxT("Layout"));
-		m_doc->GetRoot()->AddChild(newChild);
-		DoSave();
-		layoutNode = newChild;
-	}
-
-	wxXmlNode *child = layoutNode->GetChildren();
-	while ( child ) {
-		if ( child->GetName() == wxT("Perspective") ) {
-			if (child->GetPropVal(wxT("Name"), wxEmptyString) == Name) {
-				return child->GetPropVal(wxT("Value"), wxEmptyString);
-			}
-		}
-		child = child->GetNext();
-	}
-
-	return wxEmptyString;
 }
 
 //long EditorConfig::LoadNotebookStyle(const wxString &nbName)
@@ -305,26 +305,32 @@ wxString EditorConfig::GetTagsDatabase() const
 	}
 }
 
-void EditorConfig::GetRecentlyOpenedFies(wxArrayString &files)
+void EditorConfig::GetRecentItems(wxArrayString &files, const wxString nodeName)
 {
-	//find the root node of the recent files
-	wxXmlNode *node = XmlUtils::FindFirstByTagName(m_doc->GetRoot(), wxT("RecentFiles"));
+	if (nodeName.IsEmpty()) {
+		return;
+}
+	//find the root node
+	wxXmlNode *node = XmlUtils::FindFirstByTagName(m_doc->GetRoot(), nodeName);
 	if (node) {
 		wxXmlNode *child = node->GetChildren();
 		while (child) {
 			if (child->GetName() == wxT("File")) {
 				wxString fileName = XmlUtils::ReadString(child, wxT("Name"));
 				// wxXmlDocument Saves/Loads items in reverse order, so prepend, not add.
-				if( wxFileExists( fileName) ) files.Insert(fileName, 0);
+				if( wxFileExists( fileName ) ) files.Insert(fileName, 0);
 			}
 			child = child->GetNext();
 		}
 	}
 }
 
-void EditorConfig::SetRecentlyOpenedFies(const wxArrayString &files)
+void EditorConfig::SetRecentItems(const wxArrayString &files, const wxString nodeName)
 {
-	wxString nodeName = wxT("RecentFiles");
+	if (nodeName.IsEmpty()) {
+		return;
+	}
+	//find the root node
 	wxXmlNode *node = XmlUtils::FindFirstByTagName(m_doc->GetRoot(), nodeName);
 	if (node) {
 		wxXmlNode *root = m_doc->GetRoot();
@@ -345,65 +351,10 @@ void EditorConfig::SetRecentlyOpenedFies(const wxArrayString &files)
 	SendCmdEvent(wxEVT_EDITOR_CONFIG_CHANGED, (void*) &nodeName);
 }
 
-
-void EditorConfig::GetRecentlyOpenedWorkspaces(wxArrayString &files)
-{
-	//find the root node of the recent files
-	wxXmlNode *node = XmlUtils::FindFirstByTagName(m_doc->GetRoot(), wxT("RecentWorkspaces"));
-	if (node) {
-		wxXmlNode *child = node->GetChildren();
-		while (child) {
-			if (child->GetName() == wxT("File")) {
-				wxString fileName = XmlUtils::ReadString(child, wxT("Name"));
-				// wxXmlDocument Saves/Loads items in reverse order, so prepend, not add.
-				if( wxFileExists( fileName ) ) files.Insert(fileName, 0);
-			}
-			child = child->GetNext();
-		}
-	}
-}
-
-void EditorConfig::SetRecentlyOpenedWorkspaces(const wxArrayString &files)
-{
-	wxString nodeName = wxT("RecentWorkspaces");
-	wxXmlNode *node = XmlUtils::FindFirstByTagName(m_doc->GetRoot(), nodeName);
-	if (node) {
-		wxXmlNode *root = m_doc->GetRoot();
-		root->RemoveChild(node);
-		delete node;
-	}
-	node = new wxXmlNode(NULL, wxXML_ELEMENT_NODE, nodeName);
-	m_doc->GetRoot()->AddChild(node);
-	for (size_t i=0; i<files.GetCount(); i++) {
-		wxXmlNode *child = new wxXmlNode(NULL, wxXML_ELEMENT_NODE, wxT("File"));
-		child->AddProperty(wxT("Name"), files.Item(i));
-		node->AddChild(child);
-	}
-
-	//save the data to disk
-	DoSave();
-	SendCmdEvent(wxEVT_EDITOR_CONFIG_CHANGED, (void*) &nodeName);
-}
-
 bool EditorConfig::WriteObject(const wxString &name, SerializedObject *obj)
 {
-	Archive arch;
-
-	wxXmlNode *child = XmlUtils::FindNodeByName(m_doc->GetRoot(), wxT("ArchiveObject"), name);
-	if (child) {
-		wxXmlNode *n = m_doc->GetRoot();
-		n->RemoveChild(child);
-		delete child;
-	}
-
-	//create new xml node for this object
-	child = new wxXmlNode(NULL, wxXML_ELEMENT_NODE, wxT("ArchiveObject"));
-	m_doc->GetRoot()->AddChild(child);
-	child->AddProperty(wxT("Name"), name);
-
-	arch.SetXmlNode(child);
-	//serialize the object into the archive
-	obj->Serialize(arch);
+	if(!XmlUtils::StaticWriteObject(m_doc->GetRoot(), name, obj))
+		return false;
 
 	//save the archive
 	bool res = DoSave();
@@ -414,14 +365,7 @@ bool EditorConfig::WriteObject(const wxString &name, SerializedObject *obj)
 bool EditorConfig::ReadObject(const wxString &name, SerializedObject *obj)
 {
 	//find the object node in the xml file
-	wxXmlNode *node = XmlUtils::FindNodeByName(m_doc->GetRoot(), wxT("ArchiveObject"), name);
-	if (node) {
-		Archive arch;
-		arch.SetXmlNode(node);
-		obj->DeSerialize(arch);
-		return true;
-	}
-	return false;
+	return XmlUtils::StaticReadObject(m_doc->GetRoot(), name, obj);
 }
 
 wxString EditorConfig::GetRevision() const
@@ -512,7 +456,7 @@ void EditorConfig::LoadLexers(bool loadDefault)
 
 		//try to locate a file with the same name but with the user extension
 		wxFileName fn(files.Item(i));
-		wxString userLexer( fn.GetPath(wxPATH_GET_VOLUME|wxPATH_GET_SEPARATOR) + fn.GetName() +  wxT(".") + wxGetUserName() + wxT("_xml"));
+		wxString userLexer( fn.GetPath(wxPATH_GET_VOLUME|wxPATH_GET_SEPARATOR) + fn.GetName() +  wxT(".") + clGetUserName() + wxT("_xml"));
 		if ( wxFileName::FileExists( userLexer ) ) {
 			if (!loadDefault) {
 				fileToLoad = userLexer;
@@ -574,3 +518,4 @@ void SimpleRectValue::Serialize(Archive& arch)
 	arch.Write(wxT("TopLeft"), m_rect.GetTopLeft());
 	arch.Write(wxT("Size"), m_rect.GetSize());
 }
+

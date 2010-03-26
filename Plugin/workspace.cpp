@@ -23,6 +23,10 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 #include "workspace.h"
+#include <wx/log.h>
+#include <wx/app.h>
+#include <wx/msgdlg.h>
+#include <wx/log.h>
 #include "environmentconfig.h"
 #include "evnvarlist.h"
 #include "ctags_manager.h"
@@ -32,6 +36,8 @@
 #include "macros.h"
 #include "wx/regex.h"
 #include "globals.h"
+#include "macros.h"
+#include "wx_xml_compatibility.h"
 
 Workspace::Workspace()
 {
@@ -77,7 +83,7 @@ bool Workspace::OpenWorkspace(const wxString &fileName, wxString &errMsg)
 	CloseWorkspace();
 	wxFileName workSpaceFile(fileName);
 	if (workSpaceFile.FileExists() == false) {
-		errMsg = wxString::Format(wxT("Workspace file no longer exist: '%s'"), fileName.c_str());
+		errMsg = wxString::Format(wxT("Could not open workspace file: '%s'"), fileName.c_str());
 		return false;
 	}
 
@@ -95,29 +101,36 @@ bool Workspace::OpenWorkspace(const wxString &fileName, wxString &errMsg)
 
 	// Load all projects
 	wxXmlNode *child = m_doc.GetRoot()->GetChildren();
+	std::vector<wxXmlNode*> removedChildren;
+	wxString tmperr;
 	while (child) {
 		if (child->GetName() == wxT("Project")) {
 			wxString projectPath = child->GetPropVal(wxT("Path"), wxEmptyString);
 
 			if ( !DoAddProject(projectPath, errMsg) ) {
-				if (wxMessageBox(wxString::Format(wxT("Error occured while loading project, error was:\n%s\nDo you want to skip it and continue loading the workspace?"), errMsg.c_str()),
-				                 wxT("CodeLite"), wxYES_NO|wxICON_QUESTION|wxCENTER) == wxNO) {
-					return false;
-				} else {
-					wxLogMessage(wxString::Format(wxT("WARNING: Project '%s' was not loaded"), projectPath.c_str()));
-				}
+				tmperr << wxString::Format(wxT("Error occured while loading project: \"%s\"\nCodeLite has removed the faulty project from the workspace\n"), projectPath.c_str());
+				removedChildren.push_back(child);
 			}
 		}
 		child = child->GetNext();
 	}
-
+	
+	// Delete the faulty projects
+	for(size_t i=0; i<removedChildren.size(); i++) {
+		wxXmlNode *ch = removedChildren.at(i);
+		ch->GetParent()->RemoveChild(ch);
+		delete ch;
+	}
+	
 	// Load the database
 	wxString dbfile = GetStringProperty(wxT("Database"), errMsg);
 	if ( dbfile.IsEmpty() ) {
 		errMsg = wxT("Missing 'Database' value in workspace '");
 		return false;
 	}
-
+	
+	errMsg = tmperr;
+	
 	// the database file names are relative to the workspace,
 	// convert them to absolute path
 	wxFileName fn(dbfile);
@@ -130,6 +143,23 @@ bool Workspace::OpenWorkspace(const wxString &fileName, wxString &errMsg)
 BuildMatrixPtr Workspace::GetBuildMatrix() const
 {
 	return new BuildMatrix( XmlUtils::FindFirstByTagName(m_doc.GetRoot(), wxT("BuildMatrix")) );
+}
+
+wxXmlNode* Workspace::GetWorkspaceEditorOptions() const
+{
+	return XmlUtils::FindFirstByTagName(m_doc.GetRoot(), wxT("Options"));
+}
+
+void Workspace::SetWorkspaceEditorOptions(LocalOptionsConfigPtr opts)
+{
+	wxXmlNode *parent = m_doc.GetRoot();
+	wxXmlNode *oldOptions = XmlUtils::FindFirstByTagName(parent, wxT("Options"));
+	if (oldOptions) {
+		oldOptions->GetParent()->RemoveChild(oldOptions);
+		delete oldOptions;
+	}
+	parent->AddChild(opts->ToXml());
+	SaveXmlFile();
 }
 
 void Workspace::SetBuildMatrix(BuildMatrixPtr mapping)
@@ -177,7 +207,7 @@ bool Workspace::CreateWorkspace(const wxString &name, const wxString &path, wxSt
 	wxXmlNode *root = new wxXmlNode(NULL, wxXML_ELEMENT_NODE, wxT("CodeLite_Workspace"));
 	m_doc.SetRoot(root);
 	m_doc.GetRoot()->AddProperty(wxT("Name"), name);
-	m_doc.GetRoot()->AddProperty(wxT("Database"), dbFileName.GetFullPath());
+	m_doc.GetRoot()->AddProperty(wxT("Database"), dbFileName.GetFullPath(wxPATH_UNIX));
 
 	SaveXmlFile();
 	//create an empty build matrix
@@ -249,12 +279,12 @@ void Workspace::AddProjectToBuildMatrix(ProjectPtr prj)
 				prjBldConf = settings->GetNextBuildConfiguration(cookie);
 			}
 		}
-
+		
 		ConfigMappingEntry entry(prj->GetName(), matchConf->GetName());
-		prjList.push_back(entry);
-		(*iter)->SetConfigMappingList(prjList);
-		matrix->SetConfiguration((*iter));
-	}
+			prjList.push_back(entry);
+			(*iter)->SetConfigMappingList(prjList);
+			matrix->SetConfiguration((*iter));
+		}
 
 	// and set the configuration name
 	matrix->SetSelectedConfigurationName(selConfName);
@@ -307,7 +337,7 @@ bool Workspace::CreateProject(const wxString &name, const wxString &path, const 
 	// Add an entry to the workspace file
 	wxXmlNode *node = new wxXmlNode(NULL, wxXML_ELEMENT_NODE, wxT("Project"));
 	node->AddProperty(wxT("Name"), name);
-	node->AddProperty(wxT("Path"), tmp.GetFullPath());
+	node->AddProperty(wxT("Path"), tmp.GetFullPath(wxPATH_UNIX));
 
 	m_doc.GetRoot()->AddChild(node);
 
@@ -375,7 +405,7 @@ bool Workspace::AddProject(const wxString & path, wxString &errMsg)
 
 		wxXmlNode *node = new wxXmlNode(NULL, wxXML_ELEMENT_NODE, wxT("Project"));
 		node->AddProperty(wxT("Name"), fn.GetName());
-		node->AddProperty(wxT("Path"), fn.GetFullPath());
+		node->AddProperty(wxT("Path"), fn.GetFullPath(wxPATH_UNIX));
 		node->AddProperty(wxT("Active"), m_projects.size() == 1 ? wxT("Yes") : wxT("No"));
 		m_doc.GetRoot()->AddChild(node);
 		if (!SaveXmlFile()) {
@@ -573,6 +603,12 @@ void Workspace::Save()
 bool Workspace::AddNewFile(const wxString &vdFullPath, const wxString &fileName, wxString &errMsg)
 {
 	wxStringTokenizer tkz(vdFullPath, wxT(":"));
+
+	// We should have at least 2 tokens:
+	// project:virtual directory
+	if(tkz.CountTokens() < 2)
+		return false;
+
 	wxString projName = tkz.GetNextToken();
 	wxString fixedPath;
 	// Construct new path excluding the first token
@@ -602,7 +638,7 @@ bool Workspace::RemoveFile(const wxString &vdFullPath, const wxString &fileName,
 	// Construct new path excluding the first token
 	size_t count = tkz.CountTokens();
 	if (!count) {
-		errMsg = wxT("Malformed project name");
+		errMsg = _("Malformed project name");
 		return false;
 	}
 
@@ -614,11 +650,15 @@ bool Workspace::RemoveFile(const wxString &vdFullPath, const wxString &fileName,
 
 	ProjectPtr proj = FindProjectByName(projName, errMsg);
 	if ( !proj ) {
-		errMsg = wxT("No such project");
+		errMsg = _("No such project");
 		return false;
 	}
 
-	return proj->RemoveFile(fileName, fixedPath);
+	bool result = proj->RemoveFile(fileName, fixedPath);
+	if ( !result ) {
+		errMsg = _("File removal failed");
+	}
+	return result;
 }
 
 BuildConfigPtr Workspace::GetProjBuildConf(const wxString &projectName, const wxString &confName) const
@@ -647,6 +687,7 @@ void Workspace::ReloadWorkspace()
 {
 	m_doc = wxXmlDocument();
 
+	wxLogNull noLog;
 	// reset the internal cache objects
 	m_projects.clear();
 

@@ -23,6 +23,7 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 #include <wx/xrc/xmlres.h>
+#include <wx/wupdlock.h>
 #include "drawingutils.h"
 #include "custom_tabcontainer.h"
 #include "custom_tab.h"
@@ -35,6 +36,7 @@
 #include "editor_config.h"
 #include "globals.h"
 #include "findresultstab.h"
+#include "search_thread.h"
 
 
 BEGIN_EVENT_TABLE(FindResultsTab, OutputTabWindow)
@@ -91,6 +93,11 @@ FindResultsTab::FindResultsTab(wxWindow *parent, wxWindowID id, const wxString &
 	}
 
 	wxTheApp->Connect(XRCID("find_in_files"), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(FindResultsTab::OnFindInFiles), NULL, this);
+	m_tb->AddTool ( XRCID ( "stop_search" ), wxT ( "Stop current search" ), wxXmlResource::Get()->LoadBitmap ( wxT ( "stop_build16" ) ), wxT ( "Stop current search" ) );
+	Connect( XRCID ( "stop_search" ), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler ( FindResultsTab::OnStopSearch  ), NULL, this );
+	Connect( XRCID ( "stop_search" ), wxEVT_UPDATE_UI,             wxUpdateUIEventHandler( FindResultsTab::OnStopSearchUI), NULL, this );
+	m_tb->Realize();
+
 }
 
 FindResultsTab::~FindResultsTab()
@@ -134,19 +141,19 @@ void FindResultsTab::SetStyles(wxScintilla *sci)
 {
 	InitStyle(sci, wxSCI_LEX_FIF, true);
 
-	sci->StyleSetForeground(wxSCI_LEX_FIF_DEFAULT, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
+	sci->StyleSetForeground(wxSCI_LEX_FIF_DEFAULT, wxT("BLACK"));
 	sci->StyleSetBackground(wxSCI_LEX_FIF_DEFAULT, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
 
-	sci->StyleSetForeground(wxSCI_LEX_FIF_PROJECT, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
+	sci->StyleSetForeground(wxSCI_LEX_FIF_PROJECT, wxT("BLACK"));
 	sci->StyleSetBackground(wxSCI_LEX_FIF_PROJECT, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
 
 	sci->StyleSetForeground(wxSCI_LEX_FIF_FILE, wxT("BLUE"));
 	sci->StyleSetBackground(wxSCI_LEX_FIF_FILE, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
 
-	sci->StyleSetForeground(wxSCI_LEX_FIF_FILE_SHORT, wxSystemSettings::GetColour(wxSYS_COLOUR_3DDKSHADOW));
+	sci->StyleSetForeground(wxSCI_LEX_FIF_FILE_SHORT, wxSystemSettings::GetColour(wxSYS_COLOUR_GRAYTEXT));
 	sci->StyleSetBackground(wxSCI_LEX_FIF_FILE_SHORT, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
 
-	sci->StyleSetForeground(wxSCI_LEX_FIF_MATCH, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
+	sci->StyleSetForeground(wxSCI_LEX_FIF_MATCH, wxT("BLACK"));
 	sci->StyleSetBackground(wxSCI_LEX_FIF_MATCH, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
 
 	sci->StyleSetForeground(wxSCI_LEX_FIF_SCOPE, wxT("PURPLE"));
@@ -242,10 +249,26 @@ void FindResultsTab::OnSearchStart(wxCommandEvent& e)
 
 	if (e.GetInt() != 0 || m_sci == NULL) {
 		if (m_book) {
+			wxWindowUpdateLocker locker(this);
 			wxScintilla *sci = new wxScintilla(m_book);
 			SetStyles(sci);
 
-			// add new page
+			// Make sure we can add more tabs, if not delete the last used tab and then add
+			// a new tab
+
+			long MaxBuffers(15);
+			EditorConfigST::Get()->GetLongValue(wxT("MaxOpenedTabs"), MaxBuffers);
+
+			if( (long)m_book->GetPageCount() >= MaxBuffers ) {
+				// We have reached the limit of the number of open buffers
+				// Close the last used buffer
+				const wxArrayPtrVoid &arr = m_book->GetHistory();
+				if ( arr.GetCount() ) {
+					CustomTab *tab = static_cast<CustomTab*>(arr.Item(arr.GetCount()-1));
+					m_book->DeletePage( m_book->GetTabContainer()->TabToIndex(tab) );
+				}
+			}
+
 			m_book->AddPage(sci, label, label, wxNullBitmap, true);
 			size_t where = m_book->GetPageCount() - 1;
 
@@ -506,7 +529,7 @@ void FindResultsTab::NextMatch()
 		e.SetEventObject(this);
 		e.SetString(wxString::Format(wxT("Reached the end of 'find in files' search results list" )));
 		e.SetInt(0);
-		Frame::Get()->AddPendingEvent(e);
+		Frame::Get()->GetEventHandler()->AddPendingEvent(e);
 	}
 }
 
@@ -540,7 +563,7 @@ void FindResultsTab::PrevMatch()
 		e.SetEventObject(this);
 		e.SetString(wxString::Format(wxT("Reached the begining of 'find in files' search results list" )));
 		e.SetInt(0);
-		Frame::Get()->AddPendingEvent(e);
+		Frame::Get()->GetEventHandler()->AddPendingEvent(e);
 	}
 }
 
@@ -567,4 +590,15 @@ void FindResultsTab::DoOpenSearchResult(const SearchResult &result, wxScintilla 
 			}
 		}
 	}
+}
+
+void FindResultsTab::OnStopSearch(wxCommandEvent& e)
+{
+	// stop the search thread
+	SearchThreadST::Get()->StopSearch();
+}
+
+void FindResultsTab::OnStopSearchUI(wxUpdateUIEvent& e)
+{
+	e.Enable(m_searchInProgress);
 }

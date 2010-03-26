@@ -23,6 +23,17 @@ createVariables()
 	exe_name1="codelite"
 	is_so_lib=$1
 	additional_include_path=$2
+	additional_links=$3
+	
+	if [ "$os_name" = "Darwin" ]; then
+		if [ "$is_64bit" = "yes" ]; then
+			compiler_name=${compiler_name}" -m64 "
+			c_compiler_name=${c_compiler_name}" -m64 "
+		else
+			compiler_name=${compiler_name}" -m32 "
+			c_compiler_name=${c_compiler_name}" -m32 "
+		fi
+	fi
 
 	if [ "$is_64bit" = "yes" ]; then
 		compiler_name=${compiler_name}" -DON_64_BIT "
@@ -65,14 +76,8 @@ createVariables()
 	echo "DESTDIR=" >> Makefile
 	echo "" >> Makefile
 	echo "CCFLAGS= -Wall \$(shell wx-config --cxxflags \$(WXCFG)) -fno-strict-aliasing -DASTYLE_LIB -DYY_NEVER_INTERACTIVE=1 -DGTK -DSCI_LEXER -DLINK_LEXERS -D__WX__ -DINSTALL_DIR=\\\"${prefix}/share/codelite\\\" -DPLUGINS_DIR=\\\"${plugins_dir}\\\"" >> Makefile
-	echo "LINK_FLAGS =  -L${base_dir}/\$(OUTPUT_DIR) ${rpaths} -lplugin\$(EXT) -lcodelite\$(EXT) -lwxsqlite3\$(EXT) \\" >> Makefile
-	echo "	-lwxscintilla\$(EXT) -lwxpropgrid\$(EXT) -L${base_dir}/sdk/sqlite3/lib \$(shell wx-config --libs \$(WXCFG))" >> Makefile
-	echo "PLUGIN_LINK_FLAGS =  -L${base_dir}/\$(OUTPUT_DIR) \$(shell wx-config --libs \$(WXCFG))" >> Makefile
-
-
-	if [ "$is_so_lib" = "no" ]; then
-		echo "INCLUDES := \$(INCLUDES) -ILiteEditor " >> Makefile
-	fi
+	echo "LINK_FLAGS =  -L${base_dir}/\$(OUTPUT_DIR) ${rpaths} -lplugin\$(EXT) -lcodelite\$(EXT) -lwxsqlite3\$(EXT) -lwxscintilla\$(EXT) -L${base_dir}/sdk/sqlite3/lib \$(shell ${wxconfiglibs} \$(WXCFG))" >> Makefile
+	echo "PLUGIN_LINK_FLAGS =  -L${base_dir}/\$(OUTPUT_DIR) \$(shell ${wxconfiglibs} \$(WXCFG)) ${additional_links} " >> Makefile
 	echo "INCLUDES := \$(INCLUDES) ${additional_include_path} " >> Makefile
 	echo "" >> Makefile
 	if [ "$os_name" != "Darwin" ] ; then
@@ -82,7 +87,10 @@ createVariables()
 	else
 		echo "CCFLAGS := \$(CCFLAGS) -D__APPLE__ -DMACOSX" >> Makefile
 	fi
-	echo "INCLUDES := \$(INCLUDES) -I. -I${base_dir}/sdk/codelite_indexer/network -I${base_dir}/sdk/wxsqlite3/include -I${base_dir}/sdk/wxsqlite3/sqlite3/include -I${base_dir}/sdk/wxscintilla/include -I${base_dir}/sdk/wxscintilla/src/scintilla/include -I${base_dir}/sdk/wxpropgrid/include	 -I${base_dir}/sdk/wxscintilla/src/scintilla/src -I${base_dir}/Interfaces -I${base_dir}/Debugger -I${base_dir}/Plugin -I${base_dir}/CodeLite " >> Makefile
+	if [ "$os_name" = "FreeBSD" ]; then
+		echo "LINK_FLAGS += -lkvm" >> Makefile
+	fi
+	echo "INCLUDES := \$(INCLUDES) -I. -I${base_dir}/sdk/codelite_indexer/network -I${base_dir}/sdk/wxsqlite3/include -I${base_dir}/sdk/wxsqlite3/sqlite3/include -I${base_dir}/sdk/wxscintilla/include -I${base_dir}/sdk/wxscintilla/src/scintilla/include -I${base_dir}/sdk/wxscintilla/src/scintilla/src -I${base_dir}/Interfaces -I${base_dir}/Debugger -I${base_dir}/Plugin -I${base_dir}/CodeLite " >> Makefile
 	echo "" >> Makefile
 	echo "" >> Makefile
 }
@@ -92,11 +100,11 @@ createMainTargets()
 	echo "## build targets" >> Makefile
 
 	## default
-	target_all="all :  pre_build SQLite Scintilla PropGrid CodeLite SDK LiteEditor codelite_indexer codelite_cppcheck Plugins "
+	target_all="all :  pre_build SQLite Scintilla CodeLite SDK codelite_indexer codelite_cppcheck Plugins LiteEditor "
 
 	## if we are on Linux, print the post message
 	if [ "$os_name" = "Linux" ]; then
-		target_all="$target_all post_build_msg"
+		target_all="$target_all"
 	fi
 
 	if [ "$os_name" = "Darwin" ]; then
@@ -124,8 +132,8 @@ createMainTargets()
 	echo "" >> Makefile
 
 	echo "clean: clean_plugins" >> Makefile
-	echo "	@cd sdk/codelite_indexer && make clean" >> Makefile
-	echo "	@cd sdk/codelite_cppcheck && make clean" >> Makefile
+	echo "	@cd sdk/codelite_indexer && \$(MAKE) clean" >> Makefile
+	echo "	@cd sdk/codelite_cppcheck && \$(MAKE) clean" >> Makefile
 	echo "	\$(RM) \$(OUTPUT_DIR)/*.a \$(OUTPUT_DIR)/*.so" >> Makefile
 	echo "	\$(RM) -fr \$(OBJ_DIR)" >> Makefile
 	echo "" >> Makefile
@@ -190,7 +198,7 @@ createCodeLiteCppcheckMakefile ()
 	echo "" >> Makefile
 	echo "all: codelite_cppcheck" >> Makefile
 
-	createObjectList "network/*.cpp src/*.cpp " "codelite_cppcheck_objects"
+	createObjectList "network/*.cpp src/*.cpp utils/*.cpp" "codelite_cppcheck_objects"
 
 	for a_file in $files_list
 	do
@@ -212,8 +220,8 @@ createCodeLiteCppcheckMakefile ()
 			echo "	\$(CMP) -I. -MT${configuration}/${a_file_no_ext}.o -MF${configuration}/${a_file_no_ext}.o.d  -MM ${a_file}" >> Makefile
 		fi
 
-		echo "-include ${configuration}/*.d" >> Makefile
 	done
+	echo "-include ${configuration}/*.d" >> Makefile
 	echo >> Makefile
 
 	echo "codelite_cppcheck: make_dirs \$(codelite_cppcheck_objects)" >> Makefile
@@ -300,8 +308,8 @@ createCodeLiteIndexerMakefile ()
 			echo "	\$(CMP) -DHAVE_CONFIG_H -I. -Ilibctags  -MT${configuration}/${a_file_no_ext}.o -MF${configuration}/${a_file_no_ext}.o.d  -MM ${a_file}" >> Makefile
 		fi
 
-		echo "-include ${configuration}/*.d" >> Makefile
 	done
+	echo "-include ${configuration}/*.d" >> Makefile
 	echo >> Makefile
 
 	echo "codelite_indexer: make_dirs \$(codelite_indexer_objects)" >> Makefile
@@ -380,8 +388,13 @@ createRules_sharedObject ()
 	if [ "$os_name" = "Darwin" ]; then
 		shared_obj_switch=" -dynamiclib "
 	fi
-
-	echo "${rule_name}: \$(${object_list_name})" >> Makefile
+	
+	if [ "$rule_name" = "SDK" ]; then
+		echo "${rule_name}: \$(${object_list_name}) CodeLite " >> Makefile
+	else 
+		echo "${rule_name}: \$(${object_list_name})" >> Makefile
+	fi
+	
 	echo "	\$(CMP) -fPIC ${shared_obj_switch} -o ${base_dir}/\$(OUTPUT_DIR)/${libname}.so \$(${object_list_name}) \$(PLUGIN_LINK_FLAGS) ${additional_link_libs}" >> Makefile
 	if [ $dont_copy != "dont_copy" ]; then
 		echo "	cp -f ${base_dir}/\$(OUTPUT_DIR)/${libname}.so ${runtime_path}/." >> Makefile
@@ -424,10 +437,11 @@ createRules_exe ()
 	done
 	echo >> Makefile
 
-	echo "${rule_name}: \$(${object_list_name})" >> Makefile
-	# Hack to make -j2 work. Without it, one job tries to make the CodeLite exe before the other has finished creating libpluginu.so
-	echo "	@sleep 1" >> Makefile
+	echo "${rule_name}: \$(${object_list_name}) SDK" >> Makefile
 	echo "	\$(CMP) -o ${exename} \$(${object_list_name}) \$(LINK_FLAGS)" >> Makefile
+	echo "	@echo ==========================================================" >> Makefile
+	echo "	@echo Done, please run \"sudo \$(MAKE) install\"." >> Makefile
+	echo "	@echo ==========================================================" >> Makefile
 	echo >> Makefile
 }
 
@@ -452,25 +466,22 @@ createPluginMakefile()
 	if [ "$plugin_name" = "CppCheck" ] ; then
 	  createVariables "yes" "-I../sdk/codelite_cppcheck/"
 	else
-	  createVariables "yes" 
+	  createVariables "yes"
 	fi
 
-	## Hack to include the md5c.c file in the makefile for the qmake plugin
-	if [ "$plugin_name" = "QmakePlugin" ] ; then
-	  createObjectList "*.cpp md5c.c" "${plugin_name}Objects"
-	elif [ "$plugin_name" = "CppCheck" ] ; then
+	if [ "$plugin_name" = "CppCheck" ] ; then
 	  createObjectList "*.cpp ../sdk/codelite_cppcheck/network/*.cpp" "${plugin_name}Objects"
 	else
 	  createObjectList "*.cpp" "${plugin_name}Objects"
 	fi
 
 	createPluginTargets "${plugin_name}" "${post_install_path}"
-	if [ "$plugin_name" = "QmakePlugin" ] ; then
-	  createRules_sharedObject "*.cpp md5c.c" "${plugin_name}Objects" "${plugin_name}" "${plugin_name}" "copy" "-L../lib -lplugin\$(EXT) -lcodelite\$(EXT) -lwxscintilla\$(EXT) -lwxsqlite3\$(EXT) -lwxpropgrid\$(EXT)"
-	elif [ "$plugin_name" = "CppCheck" ] ; then
-	  createRules_sharedObject "*.cpp ../sdk/codelite_cppcheck/network/*.cpp" "${plugin_name}Objects" "${plugin_name}" "${plugin_name}" "copy" "-L../lib -lplugin\$(EXT) -lcodelite\$(EXT) -lwxscintilla\$(EXT) -lwxsqlite3\$(EXT) -lwxpropgrid\$(EXT)"
-	else
-	 createRules_sharedObject "*.cpp" "${plugin_name}Objects" "${plugin_name}" "${plugin_name}" "copy" "-L../lib -lplugin\$(EXT) -lcodelite\$(EXT) -lwxscintilla\$(EXT) -l    wxsqlite3\$(EXT) -lwxpropgrid\$(EXT)"
+	if [ "$plugin_name" = "CppCheck" ] ; then
+	  createRules_sharedObject "*.cpp ../sdk/codelite_cppcheck/network/*.cpp" "${plugin_name}Objects" "${plugin_name}" "${plugin_name}" "copy" "-L../lib -lplugin\$(EXT) -lcodelite\$(EXT) -lwxscintilla\$(EXT) -lwxsqlite3\$(EXT)"
+	elif [ "$plugin_name" = "Subversion2" ] ; then
+	  createRules_sharedObject "*.cpp" "${plugin_name}Objects" "${plugin_name}" "${plugin_name}" "copy" "-L../lib -lplugin\$(EXT) -lcodelite\$(EXT) -lwxscintilla\$(EXT)"
+	else 
+	  createRules_sharedObject "*.cpp" "${plugin_name}Objects" "${plugin_name}" "${plugin_name}" "copy" "-L../lib -lplugin\$(EXT) -lcodelite\$(EXT) -lwxscintilla\$(EXT) -lwxsqlite3\$(EXT)"
 	fi
 
 	## restore the path
@@ -486,6 +497,7 @@ createPluginMakefile()
 	echo "" >> Makefile
 
 	echo "${plugin_name}_install:" >> Makefile
+	echo "	@mkdir -p ${install_path}" >> Makefile
 	echo "	cp \$(OUTPUT_DIR)/${plugin_name}.so ${install_path}" >> Makefile
 	echo "" >> Makefile
 }
@@ -495,7 +507,7 @@ createPluginTargets()
 	plugin_name=$1
 	runtime_path=$2
 
-	echo "## build tagrets" >> Makefile
+	echo "## build targets" >> Makefile
 	echo "all :  pre_build ${plugin_name} post_build" >> Makefile
 	echo "" >> Makefile
 	echo "pre_build:" >> Makefile
@@ -519,7 +531,7 @@ createPluginTargets()
 
 createInstallTarget()
 {
-	echo "install: core_install plugins_install" >> Makefile
+	echo "install: uninstall core_install plugins_install" >> Makefile
 	echo "" >> Makefile
 
 	echo "core_install:" >> Makefile
@@ -535,9 +547,11 @@ createInstallTarget()
 	echo "	@cp Runtime/codelite_fix_files \$(DESTDIR)$prefix/bin/" >> Makefile
 	echo "	@cp Runtime/codelite_exec \$(DESTDIR)$prefix/bin/" >> Makefile
 	echo "	@cp Runtime/codelite_kill_children \$(DESTDIR)$prefix/bin/" >> Makefile
+	echo "	@cp Runtime/codelite_xterm \$(DESTDIR)$prefix/bin/" >> Makefile
 	echo "	@chmod +x \$(DESTDIR)$prefix/bin/codelite_fix_files" >> Makefile
 	echo "	@chmod +x \$(DESTDIR)$prefix/bin/codelite_exec" >> Makefile
 	echo "	@chmod +x \$(DESTDIR)$prefix/bin/codelite_kill_children" >> Makefile
+	echo "	@chmod +x \$(DESTDIR)$prefix/bin/codelite_xterm" >> Makefile
 	echo "	@cp sdk/codelite_indexer/codelite_indexer \$(DESTDIR)$prefix/bin/" >> Makefile
 	echo "	@cp sdk/codelite_cppcheck/codelite_cppcheck \$(DESTDIR)$prefix/bin/" >> Makefile
 	echo "	@mkdir -p \$(DESTDIR)$prefix/share/applications" >> Makefile
@@ -579,6 +593,7 @@ createInstallTarget()
 	if [ "$add_desktop_icon" = "yes" ] ; then
 	  if test -d $HOME/Desktop/ ; then
 	    echo "	@cp -fpr Runtime/codelite.desktop $HOME/Desktop/" >> Makefile
+		echo "	@chmod +x $HOME/Desktop/codelite.desktop" >> Makefile
 	  fi
 	fi
 	echo "" >> Makefile
@@ -591,10 +606,10 @@ createUnInstallTarget()
 	if [ "$make_symlink" = "yes" ] ; then
 	  echo "	@\$(RM) -fr  \$(DESTDIR)$prefix/bin/CodeLite" >> Makefile
 	fi
-#	echo "	@\$(RM) -fr  /usr/lib/libsqlite3-cl.so" >> Makefile
 	echo "	@\$(RM) -fr  \$(DESTDIR)$prefix/bin/codelite_fix_files" >> Makefile
 	echo "	@\$(RM) -fr  \$(DESTDIR)$prefix/bin/codelite_exec" >> Makefile
 	echo "	@\$(RM) -fr  \$(DESTDIR)$prefix/bin/codelite_kill_children" >> Makefile
+	echo "	@\$(RM) -fr  \$(DESTDIR)$prefix/bin/codelite_xterm" >> Makefile
 	echo "	@\$(RM) -fr  \$(DESTDIR)$prefix/bin/codelite_indexer" >> Makefile
 	echo "	@\$(RM) -fr  \$(DESTDIR)$prefix/bin/codelite_cppcheck" >> Makefile
 	echo "	@\$(RM) -fr  \$(DESTDIR)$prefix/bin/CodeLiteUR" >> Makefile
@@ -607,24 +622,10 @@ createUnInstallTarget()
 	echo "	@\$(RM) -fr  \$(DESTDIR)$plugins_dir/" >> Makefile
     # Check write permission for /usr/share/applications, in case we're using a 'local' prefix and not doing sudo
 	echo "	@if test -w \$(DESTDIR)$prefix/share/applications ; then \\" >> Makefile
-	if [ "$add_desktop_icon" = "yes" ] ; then
-	  if test -d $HOME/Desktop/ ; then
 	    echo "	  \$(RM) -fr \$(DESTDIR)$prefix/share/applications/codelite.desktop; \\" >> Makefile
-	  fi
-	fi
 	echo "	fi" >> Makefile
 	echo "	@\$(RM) -fr ~/Desktop/codelite.desktop" >> Makefile
 	echo "" >> Makefile
-}
-
-createEndMessage()
-{
-	if [ "$os_name" = "Linux" ]; then
-		echo "post_build_msg:" >> Makefile
-		echo "	@echo ==========================================================" >> Makefile
-		echo "	@echo Done, please run \"sudo make install\"." >> Makefile
-		echo "	@echo ==========================================================" >> Makefile
-	fi
 }
 
 Show_Help_and_Exit()
@@ -651,6 +652,25 @@ make_symlink="no"
 os_name=`uname -s`
 arch=`uname -m`
 
+## Which wx version is being used for this build?
+wxversionnumber=`wx-config --version 2>/dev/null`
+if [ -z "$wxversionnumber" ]; then
+	# No wx-config, so why continue?
+	echo "No functional wx-config script was found in your PATH"
+	echo "Is the wxWidgets development package installed?"
+	exit
+fi
+ 
+wxMAJOR_VERSION=`echo $wxversionnumber | awk -F. '{print $1}'`
+wxMINOR_VERSION=`echo $wxversionnumber | awk -F. '{print $2}'`
+# Should we ever need it: wxRELEASE_NUMBER=`echo $wxversionnumber | awk -F. '{print $3}'`
+
+## wx versions 2.9 and greater need an extra 'std,aui' in wx-config --libs
+ # NB this logic will fail for wx versions < 2 ;)
+wxconfiglibs="wx-config --libs std,aui"
+if [ "$wxMAJOR_VERSION" -eq 2 ] && [ "$wxMINOR_VERSION" -lt 9 ]; then
+	wxconfiglibs="wx-config --libs"
+fi
 
 ## Replace place holders in the desktop file
 rm -fr Runtime/codelite.desktop
@@ -694,7 +714,7 @@ do
 done
 
 ## To where shall we install the .so libs which used to be static e.g. libwxscintillau.so
-# I'm using plugins_dir for simplicity, but creating its own name make this easy to change
+# I'm using plugins_dir for simplicity, but creating its own name makes this easy to change
 non_plugins_dir=$plugins_dir
 
 ## remove old makefile
@@ -712,33 +732,29 @@ createObjectList "sdk/wxscintilla/src/scintilla/src/*.cxx sdk/wxscintilla/src/*.
 createObjectList "sdk/codelite_indexer/network/*.cpp CodeLite/*.cpp" "CodeLiteObjects"
 createObjectList "LiteEditor/*.cpp" "LiteEditorObjects"
 createObjectList "sdk/wxsqlite3/src/*.cpp sqlite3/*.c" "wxSqlite3Objects"
-createObjectList "sdk/wxpropgrid/src/*.cpp" "wxPropGridObjects"
-createObjectList "Plugin/*.cpp" "SDKObjects"
+createObjectList "Plugin/*.cpp Plugin/*.c" "SDKObjects"
 
 createMainTargets
 echo >> Makefile
 
 ## Create the rules
 # First the non-plugin .so libs:
-createRules_sharedObject  "Plugin/*.cpp " "SDKObjects" "SDK" "libplugin\$(EXT)" "dont_copy" "-L./lib -lwxscintilla\$(EXT) -lcodelite\$(EXT)"
+createRules_sharedObject  "Plugin/*.cpp Plugin/*.c" "SDKObjects" "SDK" "libplugin\$(EXT)" "dont_copy" "-L./lib -lwxscintilla\$(EXT) -lcodelite\$(EXT)"
 createRules_sharedObject  "sdk/wxscintilla/src/scintilla/src/*.cxx sdk/wxscintilla/src/*.cpp" "ScintillaObjects" "Scintilla" "libwxscintilla\$(EXT)" "dont_copy"
 createRules_sharedObject  "sdk/codelite_indexer/network/*.cpp CodeLite/*.cpp" "CodeLiteObjects" "CodeLite" "libcodelite\$(EXT)" "dont_copy" "-L./lib -lwxsqlite3\$(EXT)"
 createRules_sharedObject  "sdk/wxsqlite3/src/*.cpp sqlite3/*.c" "wxSqlite3Objects" "SQLite" "libwxsqlite3\$(EXT)" "dont_copy" ""
-createRules_sharedObject  "sdk/wxpropgrid/src/*.cpp" "wxPropGridObjects" "PropGrid" "libwxpropgrid\$(EXT)" "dont_copy" ""
 
 # Then the binary, and indexer
 createRules_exe "LiteEditor/*.cpp" "LiteEditorObjects" "LiteEditor" ${exe_name}
 createCodeLiteIndexerMakefile "sdk/codelite_indexer/*.cpp sdk/codelite_indexer/network/*.cpp sdk/codelite_indexer/libctags/*.c sdk/codelite_indexer/libctags/*.cpp"
-createCodeLiteCppcheckMakefile "sdk/codelite_cppcheck/network/*.cpp sdk/codelite_cppcheck/src/*.cpp"
+createCodeLiteCppcheckMakefile "sdk/codelite_cppcheck/network/*.cpp sdk/codelite_cppcheck/src/*.cpp sdk/codelite_cppcheck/utils/*.cpp"
 createInstallTarget
 createUnInstallTarget
 
 echo "-include \$(OBJ_DIR)/*.d" >> Makefile
 echo "" >> Makefile
 
-createEndMessage
-
-echo "Plugins:\\" >> Makefile
+echo "Plugins: SDK \\" >> Makefile
 
 ########################################################
 ##
@@ -749,7 +765,7 @@ echo "Plugins:\\" >> Makefile
 echo "Debugger\\" >> Makefile
 echo "Gizmos\\" >> Makefile
 echo "cscope\\" >> Makefile
-echo "Subversion\\" >> Makefile
+echo "Subversion2\\" >> Makefile
 echo "CodeFormatter\\" >> Makefile
 echo "Copyright\\" >> Makefile
 echo "UnitTestCPP\\" >> Makefile
@@ -772,7 +788,7 @@ echo "plugins_install:\\" >> Makefile
 echo "Debugger_install\\" >> Makefile
 echo "Gizmos_install\\" >> Makefile
 echo "cscope_install\\" >> Makefile
-echo "Subversion_install\\" >> Makefile
+echo "Subversion2_install\\" >> Makefile
 echo "CodeFormatter_install\\" >> Makefile
 echo "Copyright_install\\" >> Makefile
 echo "UnitTestCPP_install\\" >> Makefile
@@ -796,7 +812,7 @@ echo "clean_plugins:\\" >> Makefile
 echo "Debugger_clean\\" >> Makefile
 echo "Gizmos_clean\\" >> Makefile
 echo "cscope_clean\\" >> Makefile
-echo "Subversion_clean\\" >> Makefile
+echo "Subversion2_clean\\" >> Makefile
 echo "CodeFormatter_clean\\" >> Makefile
 echo "Copyright_clean\\" >> Makefile
 echo "UnitTestCPP_clean\\" >> Makefile
@@ -820,7 +836,7 @@ echo "" >> Makefile
 createPluginMakefile "Debugger" "Debugger" "\$(DESTDIR)$plugins_dir/debuggers/" "../Runtime/debuggers"
 createPluginMakefile "Gizmos" "Gizmos"  "\$(DESTDIR)$plugins_dir/" "../Runtime/plugins"
 createPluginMakefile "cscope" "cscope" "\$(DESTDIR)$plugins_dir/" "../Runtime/plugins"
-createPluginMakefile "Subversion" "Subversion" "\$(DESTDIR)$plugins_dir/" "../Runtime/plugins"
+createPluginMakefile "Subversion2" "Subversion2" "\$(DESTDIR)$plugins_dir/" "../Runtime/plugins"
 createPluginMakefile "CodeFormatter" "CodeFormatter" "\$(DESTDIR)$plugins_dir/" "../Runtime/plugins"
 createPluginMakefile "Copyright" "Copyright" "\$(DESTDIR)$plugins_dir/" "../Runtime/plugins"
 createPluginMakefile "UnitTestCPP" "UnitTestCPP" "\$(DESTDIR)$plugins_dir/" "../Runtime/plugins"

@@ -22,6 +22,13 @@
 //
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
+#include "precompiled_header.h"
+#include <wx/log.h>
+#include <wx/imaglist.h>
+#include <wx/xrc/xmlres.h>
+#include "dirtraverser.h"
+#include "imanager.h"
+#include <wx/dataobj.h>
 #include <wx/stdpaths.h>
 #include "drawingutils.h"
 #include <wx/dir.h>
@@ -38,6 +45,7 @@
 #include <wx/clipbrd.h>
 #include "ieditor.h"
 #include <wx/tokenzr.h>
+#include <set>
 
 static wxString DoExpandAllVariables(const wxString &expression, Workspace *workspace, const wxString &projectName, const wxString &confToBuild, const wxString &fileName);
 
@@ -137,6 +145,7 @@ wxString GetColumnText(wxListCtrl *list, long index, long column)
 
 bool ReadFileWithConversion(const wxString &fileName, wxString &content)
 {
+	wxLogNull noLog;
 	content.Clear();
 	wxFFile file(fileName, wxT("rb"));
 	if (file.IsOpened()) {
@@ -194,14 +203,13 @@ bool IsValidCppIndetifier(const wxString &id)
 long AppendListCtrlRow(wxListCtrl *list)
 {
 	long item;
+	list->GetItemCount() ? item = list->GetItemCount() : item = 0;
+
 	wxListItem info;
 	// Set the item display name
 	info.SetColumn(0);
+	info.SetId(item);
 	item = list->InsertItem(info);
-
-#ifdef __WXMAC__
-	item = list->GetItemCount()-1;
-#endif
 	return item;
 }
 
@@ -284,6 +292,7 @@ wxString DoExpandAllVariables(const wxString &expression, Workspace *workspace, 
 	wxString errMsg;
 	wxString output(expression);
 	if ( workspace ) {
+		output.Replace(wxT("$(WorkspaceName)"), workspace->GetName());
 		ProjectPtr proj = workspace->FindProjectByName(projectName, errMsg);
 		if (proj) {
 			wxString project_name(proj->GetName());
@@ -300,8 +309,14 @@ wxString DoExpandAllVariables(const wxString &expression, Workspace *workspace, 
 				output.Replace(wxT("$(ConfigurationName)"), bldConf->GetName());
 				output.Replace(wxT("$(OutDir)"), bldConf->GetIntermediateDirectory());
 			}
+			if(output.Find(wxT("$(ProjectFiles)")) != wxNOT_FOUND)
+				output.Replace(wxT("$(ProjectFiles)"),   proj->GetFiles());
+
+			if(output.Find(wxT("$(ProjectFilesAbs)")) != wxNOT_FOUND)
+				output.Replace(wxT("$(ProjectFilesAbs)"),proj->GetFiles(true));
 		}
 	}
+
 	if (fileName.IsEmpty() == false) {
 		wxFileName fn(fileName);
 
@@ -515,4 +530,176 @@ time_t GetFileModificationTime(const wxString &filename)
 		return 0;
 	}
 	return buff.st_mtime;
+}
+
+void WrapInShell(wxString& cmd)
+{
+	wxString command;
+#ifdef __WXMSW__
+    wxChar *shell = wxGetenv(wxT("COMSPEC"));
+    if ( !shell )
+       shell = (wxChar*) wxT("\\COMMAND.COM");
+
+	command << shell << wxT(" /c \"");
+	command << cmd << wxT("\"");
+	cmd = command;
+#else
+	command << wxT("/bin/sh -c '");
+	command << cmd << wxT("'");
+	cmd = command;
+#endif
+}
+
+
+wxString clGetUserName()
+{
+    wxString squashedname, name = wxGetUserName();
+
+    // The wx doc says that 'name' may now be e.g. "Mr. John Smith"
+    // So try to make it more suitable to be an extension
+    name.MakeLower();
+	name.Replace(wxT(" "), wxT("_"));
+	for (size_t i=0; i<name.Len(); ++i) {
+		wxChar ch = name.GetChar(i);
+		if( (ch < wxT('a') || ch > wxT('z')) && ch != wxT('_')){
+			// Non [a-z_] character: skip it
+		} else {
+			squashedname << ch;
+		}
+	}
+
+	return (squashedname.IsEmpty() ? wxString(wxT("someone")) : squashedname);
+}
+
+void GetProjectTemplateList ( IManager *manager, std::list<ProjectPtr> &list, std::map<wxString,int> *imageMap, wxImageList **lstImages )
+{
+	wxString tmplateDir = manager->GetStartupDirectory() + wxFileName::GetPathSeparator() + wxT ( "templates/projects" );
+
+	//read all files under this directory
+	DirTraverser dt ( wxT ( "*.project" ) );
+
+	wxDir dir ( tmplateDir );
+	dir.Traverse ( dt );
+
+	wxArrayString &files = dt.GetFiles();
+
+	if ( files.GetCount() > 0 ) {
+
+		// Allocate image list
+		if(imageMap) {
+			// add the default icon at position 0
+			*lstImages = new wxImageList(24, 24, true);
+			//(*lstImages)->Add( wxXmlResource::Get()->LoadBitmap(wxT("plugin24")) );
+		}
+
+		for ( size_t i=0; i<files.GetCount(); i++ ) {
+			ProjectPtr proj ( new Project() );
+			if ( !proj->Load ( files.Item ( i ) ) ) {
+				//corrupted xml file?
+				wxLogMessage ( wxT ( "Failed to load template project: " ) + files.Item ( i ) + wxT ( " (corrupted XML?)" ) );
+				continue;
+			}
+			list.push_back ( proj );
+
+			// load template icon
+			if ( imageMap ) {
+
+				wxFileName fn( files.Item( i ) );
+				wxString imageFileName(fn.GetPath( wxPATH_GET_SEPARATOR ) + wxT("icon.png") );
+				if( wxFileExists( imageFileName )) {
+					int img_id = (*lstImages)->Add( wxBitmap( fn.GetPath( wxPATH_GET_SEPARATOR ) + wxT("icon.png"), wxBITMAP_TYPE_PNG ) );;
+					(*imageMap)[proj->GetName()] = img_id;
+				}
+			}
+		}
+	} else {
+		//if we ended up here, it means the installation got screwed up since
+		//there should be at least 8 project templates !
+		//create 3 default empty projects
+		ProjectPtr exeProj ( new Project() );
+		ProjectPtr libProj ( new Project() );
+		ProjectPtr dllProj ( new Project() );
+		libProj->Create ( wxT ( "Static Library" ), wxEmptyString, tmplateDir, Project::STATIC_LIBRARY );
+		dllProj->Create ( wxT ( "Dynamic Library" ), wxEmptyString, tmplateDir, Project::DYNAMIC_LIBRARY );
+		exeProj->Create ( wxT ( "Executable" ), wxEmptyString, tmplateDir, Project::EXECUTABLE );
+		list.push_back ( libProj );
+		list.push_back ( dllProj );
+		list.push_back ( exeProj );
+	}
+}
+
+bool IsCppKeyword(const wxString& word)
+{
+	static std::set<wxString> words;
+
+	if(words.empty()) {
+		words.insert(wxT("auto"));
+		words.insert(wxT("break"));
+		words.insert(wxT("case"));
+		words.insert(wxT("char"));
+		words.insert(wxT("const"));
+		words.insert(wxT("continue"));
+		words.insert(wxT("default"));
+		words.insert(wxT("define"));
+		words.insert(wxT("defined"));
+		words.insert(wxT("do"));
+		words.insert(wxT("double"));
+		words.insert(wxT("elif"));
+		words.insert(wxT("else"));
+		words.insert(wxT("endif"));
+		words.insert(wxT("enum"));
+		words.insert(wxT("error"));
+		words.insert(wxT("extern"));
+		words.insert(wxT("float"));
+		words.insert(wxT("for"));
+		words.insert(wxT("goto"));
+		words.insert(wxT("if"));
+		words.insert(wxT("ifdef"));
+		words.insert(wxT("ifndef"));
+		words.insert(wxT("include"));
+		words.insert(wxT("int"));
+		words.insert(wxT("line"));
+		words.insert(wxT("long"));
+		words.insert(wxT("bool"));
+		words.insert(wxT("pragma"));
+		words.insert(wxT("register"));
+		words.insert(wxT("return"));
+		words.insert(wxT("short"));
+		words.insert(wxT("signed"));
+		words.insert(wxT("sizeof"));
+		words.insert(wxT("static"));
+		words.insert(wxT("struct"));
+		words.insert(wxT("switch"));
+		words.insert(wxT("typedef"));
+		words.insert(wxT("undef"));
+		words.insert(wxT("union"));
+		words.insert(wxT("unsigned"));
+		words.insert(wxT("void"));
+		words.insert(wxT("volatile"));
+		words.insert(wxT("while"));
+		words.insert(wxT("class"));
+		words.insert(wxT("namespace"));
+		words.insert(wxT("delete"));
+		words.insert(wxT("friend"));
+		words.insert(wxT("inline"));
+		words.insert(wxT("new"));
+		words.insert(wxT("operator"));
+		words.insert(wxT("overload"));
+		words.insert(wxT("protected"));
+		words.insert(wxT("private"));
+		words.insert(wxT("public"));
+		words.insert(wxT("this"));
+		words.insert(wxT("virtual"));
+		words.insert(wxT("template"));
+		words.insert(wxT("typename"));
+		words.insert(wxT("dynamic_cast"));
+		words.insert(wxT("static_cast"));
+		words.insert(wxT("const_cast"));
+		words.insert(wxT("reinterpret_cast"));
+		words.insert(wxT("using"));
+		words.insert(wxT("throw"));
+		words.insert(wxT("catch"));
+	}
+
+	return words.find(word) != words.end();
 }

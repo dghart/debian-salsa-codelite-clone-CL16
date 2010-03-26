@@ -13,14 +13,14 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 
 /**
  *
  * @mainpage Cppcheck
- * @version 1.36
+ * @version 1.38
  *
  * @section overview_sec Overview
  * Cppcheck is a simple tool for static analysis of C/C++ code.
@@ -82,16 +82,14 @@ void CheckOther::checkZeroDivision()
  */
 
 #ifdef __WXMSW__
-#ifdef __DEBUG
-#define PIPE_NAME "\\\\.\\pipe\\cppchecker_%s_dbg"
-#else
 #define PIPE_NAME "\\\\.\\pipe\\cppchecker_%s"
-#endif
 #else
 #define PIPE_NAME "/tmp/cppchecker.%s.sock"
 #endif
 
 #include "network/cppchecker_protocol.h"
+#include "utils/ethread.h"
+#include "utils/utils.h"
 #include "cppcheckexecutor.h"
 #include "network/cppchecker_net_reply.h"
 #include "cppcheckexecutornetwork.h"
@@ -127,6 +125,51 @@ bool isDaemonMode(int argc, char *argv[], std::string &str)
 }
 
 /**
+ * @brief return true if the cppchecker was invoked with the --pid switch. If --pid was passed, the --daemon=<PID> must exist
+ * @param argc main's argc
+ * @param argv main's argv
+ */
+bool isWatchForParent(int argc, char *argv[])
+{
+	for (size_t i=1; i<argc; i++) {
+		if ( strncmp(argv[i], "--pid", 5) == 0 ) {
+			return true;
+		}
+	}
+	return false;
+}
+
+// ---------------------------------------------
+// is alive thread
+// ---------------------------------------------
+class IsAliveThread : public eThread
+{
+	int m_pid;
+public:
+	IsAliveThread(int pid) : m_pid(pid) {}
+	~IsAliveThread() {}
+
+public:
+	/**
+	 * @brief thread main loop: check every 1 seconds if the parent process
+	 * is still alive.
+	 */
+	virtual void start() {
+		while ( !testDestroy() ) {
+#ifdef __WXMSW__
+			Sleep(1000);
+#else
+			sleep(1);
+#endif
+			if ( !is_process_alive(m_pid) ) {
+				fprintf(stderr, "INFO: parent process died, going down\n");
+				exit(0);
+			}
+		}
+	}
+};
+
+/**
  * Main function of cppcheck
  *
  * @param argc Passed to CppCheck::parseFromArgs()
@@ -136,14 +179,30 @@ bool isDaemonMode(int argc, char *argv[], std::string &str)
 int main(int argc, char* argv[])
 {
 	// Check if daemon mode was requested
-	std::string daemon_name;
-	if (isDaemonMode(argc, argv, daemon_name)) {
+	std::string          daemon_name;
+	bool isDaemon      = isDaemonMode(argc, argv, daemon_name);
+	bool isWatchParent = isWatchForParent(argc, argv);
+
+	if ( isWatchParent && !isDaemon ) {
+		printf("--pid can only be used with the --deamon option\n");
+		return 1;
+	}
+
+	if ( isDaemon ) {
 
 		// create channel and listen on it
 		char channel_name[1024];
 		int  max_requests(1500);
 		int  requests    (0);
+		long ppid        (0);
 
+		ppid = atol(daemon_name.c_str());
+		IsAliveThread    isAliveThr(ppid);
+
+		// if the --pid swtich was ON, start the watch for parent thread
+		if ( isWatchParent ) {
+			isAliveThr.run();
+		}
 		sprintf(channel_name, PIPE_NAME, daemon_name.c_str());
 		clNamedPipeConnectionsServer npServer(channel_name);
 
@@ -169,6 +228,13 @@ int main(int argc, char* argv[])
 
 			if (requests == max_requests) {
 				std::cout << "INFO: Max requests reached, going down" << std::endl;
+
+				if ( isWatchParent ) {
+					// Stop the watcher thread
+					isAliveThr.requestStop();
+					isAliveThr.wait(-1);
+				}
+
 				break;
 			}
 		}

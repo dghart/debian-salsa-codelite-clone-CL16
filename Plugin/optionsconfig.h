@@ -34,6 +34,7 @@
 
 class OptionsConfig : public ConfObject
 {
+protected:
 	bool           m_displayFoldMargin;
 	bool           m_underlineFoldLine;
 	wxString       m_foldStyle;
@@ -66,8 +67,16 @@ class OptionsConfig : public ConfObject
 	wxString       m_programConsoleCommand;
 	wxString       m_eolMode;
 	bool           m_hideChangeMarkerMargin;
+	bool           m_hideOutpuPaneOnUserClick;
+	bool           m_hideOutputPaneNotIfDebug;
+	bool           m_showQuickFinder;
+	bool           m_TrimLine;
+	bool           m_AppendLF;
+	bool           m_disableSmartIndent;
+	bool           m_disableSemicolonShift;
 
 public:
+	OptionsConfig() {}
 	OptionsConfig(wxXmlNode *node);
 	virtual ~OptionsConfig(void);
 
@@ -75,6 +84,48 @@ public:
 	// Setters/Getters
 	//-------------------------------------
 
+	bool GetDisableSemicolonShift() const {
+		return m_disableSemicolonShift;
+	}
+	void SetDisableSemicolonShift(bool disableSemicolonShift) {
+		this->m_disableSemicolonShift = disableSemicolonShift;
+	}
+	void SetDisableSmartIndent(bool disableSmartIndent) {
+		this->m_disableSmartIndent = disableSmartIndent;
+	}
+	bool GetDisableSmartIndent() const {
+		return m_disableSmartIndent;
+	}
+	void SetTrimLine(const bool& trimLine) {
+		this->m_TrimLine = trimLine;
+	}
+	const bool& GetTrimLine() const {
+		return m_TrimLine;
+	}
+	void SetAppendLF(const bool& appendLF) {
+		this->m_AppendLF = appendLF;
+	}
+	const bool& GetAppendLF() const {
+		return m_AppendLF;
+	}
+	void SetShowQuickFinder(const bool& showQuickFinder) {
+		this->m_showQuickFinder = showQuickFinder;
+	}
+	const bool& GetShowQuickFinder() const {
+		return m_showQuickFinder;
+	}
+	void SetHideOutpuPaneOnUserClick(const bool& hideOutpuPaneOnUserClick) {
+		this->m_hideOutpuPaneOnUserClick = hideOutpuPaneOnUserClick;
+	}
+	const bool& GetHideOutpuPaneOnUserClick() const {
+		return m_hideOutpuPaneOnUserClick;
+	}
+	void SetHideOutputPaneNotIfDebug(const bool& HideOutpuPaneNotIfDebug) {
+		this->m_hideOutputPaneNotIfDebug = HideOutpuPaneNotIfDebug;
+	}
+	const bool& GetHideOutputPaneNotIfDebug() const {
+		return m_hideOutputPaneNotIfDebug;
+	}
 	void SetHideChangeMarkerMargin(bool hideChangeMarkerMargin) {
 		this->m_hideChangeMarkerMargin = hideChangeMarkerMargin;
 	}
@@ -289,5 +340,6 @@ public:
 };
 
 typedef SmartPtr<OptionsConfig> OptionsConfigPtr;
+
 
 #endif // OPTIONS_CONFIG_H

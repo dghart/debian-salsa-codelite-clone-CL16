@@ -76,7 +76,7 @@ public:
 	virtual TreeItemInfo           GetSelectedTreeItemInfo(TreeType type);
 	virtual wxTreeCtrl *           GetTree(TreeType type);
 	virtual Notebook *             GetOutputPaneNotebook();
-    virtual Notebook *             GetWorkspacePaneNotebook();
+	virtual Notebook *             GetWorkspacePaneNotebook();
 	virtual bool                   OpenFile(const wxString &fileName, const wxString &projectName = wxEmptyString, int lineno = wxNOT_FOUND);
 	virtual bool                   OpenFile(const BrowseRecord &rec);
 	virtual wxString               GetStartupDirectory() const;
@@ -86,6 +86,7 @@ public:
 	virtual Workspace *            GetWorkspace();
 	virtual bool                   AddFilesToVirtualFolder(wxTreeItemId &item, wxArrayString &paths);
 	virtual bool                   AddFilesToVirtualFolder(const wxString &vdFullPath, wxArrayString &paths);
+	virtual bool                   AddFilesToVirtualFolderIntelligently(const wxString &vdFullPath, wxArrayString &paths);
 	virtual int                    GetToolbarIconSize();
 	virtual wxAuiManager*          GetDockingManager();
 	virtual EnvironmentConfig*     GetEnv();
@@ -100,8 +101,8 @@ public:
 	virtual IKeyboard *            GetKeyboardManager();
 	virtual bool                   CreateVirtualDirectory(const wxString& parentPath, const wxString& vdName);
 	virtual OptionsConfigPtr       GetEditorSettings();
-    virtual void                   FindAndSelect(const wxString& pattern, const wxString& name);
-    virtual TagEntryPtr            GetTagAtCaret(bool scoped, bool impl);
+	virtual void                   FindAndSelect(const wxString& pattern, const wxString& name);
+	virtual TagEntryPtr            GetTagAtCaret(bool scoped, bool impl);
 	virtual bool                   AllowToolbar();
 	virtual void                   SetStatusMessage(const wxString &msg, int col, int id);
 	virtual void                   PushQueueCommand(const QueueCommand &cmd);
@@ -112,11 +113,14 @@ public:
 	virtual wxString               GetProjectNameByFile( const wxString &fullPathFileName );
 	virtual BuildManager *         GetBuildManager();
 	virtual BuildSettingsConfig *  GetBuildSettingsConfigManager();
-    virtual bool                   ClosePage(const wxString &text);
-    virtual wxWindow *             FindPage(const wxString &text);
-    virtual bool                   AddPage(wxWindow *win, const wxString &text, const wxBitmap &bmp = wxNullBitmap, bool selected = false);
-    virtual bool                   SelectPage(wxWindow *win);
+	virtual bool                   ClosePage(const wxString &text);
+	virtual wxWindow *             FindPage(const wxString &text);
+	virtual bool                   AddPage(wxWindow *win, const wxString &text, const wxBitmap &bmp = wxNullBitmap, bool selected = false);
+	virtual bool                   SelectPage(wxWindow *win);
 	virtual NavMgr *               GetNavigationMgr();
+	virtual IEditor*               NewEditor();
+	virtual IMacroManager*         GetMacrosManager();
+	virtual bool                   IsShutdownInProgress() const;
 
 	//------------------------------------
 	//End of IManager interface

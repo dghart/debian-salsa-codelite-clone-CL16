@@ -1,3 +1,4 @@
+#include <wx/app.h>
 #include "imanager.h"
 #include "procutils.h"
 #include "cppcheckreportpage.h"
@@ -7,7 +8,6 @@
 #include "custom_notebook.h"
 #include "workspace.h"
 #include "project.h"
-#include <wx/app.h>
 #include "fileextmanager.h"
 #include "jobqueue.h"
 #include "cppchecker.h"
@@ -80,6 +80,7 @@ CppCheckPlugin::CppCheckPlugin(IManager *manager)
 	m_mgr->GetTheApp()->Connect(wxEVT_CPPCHECKJOB_CHECK_COMPLETED, wxCommandEventHandler(CppCheckPlugin::OnCheckCompleted), NULL, this);
 	m_mgr->GetTheApp()->Connect(wxEVT_CPPCHECKJOB_REPORT,          wxCommandEventHandler(CppCheckPlugin::OnReport),         NULL, this);
 	m_mgr->GetTheApp()->Connect(wxEVT_INIT_DONE,                   wxCommandEventHandler(CppCheckPlugin::OnStartDaemon),    NULL, this);
+	m_mgr->GetTheApp()->Connect(wxEVT_WORKSPACE_CLOSED,            wxCommandEventHandler(CppCheckPlugin::OnWorkspaceClosed),NULL, this);
 
 	m_view = new CppCheckReportPage(m_mgr->GetOutputPaneNotebook(), m_mgr, this);
 	m_mgr->GetOutputPaneNotebook()->AddPage(m_view, wxT("CppCheck"), wxT("CppCheck"), LoadBitmapFile(wxT("cppcheck.png")), false);
@@ -96,12 +97,13 @@ CppCheckPlugin::~CppCheckPlugin()
 	m_mgr->GetTheApp()->Disconnect(wxEVT_CPPCHECKJOB_CHECK_COMPLETED, wxCommandEventHandler(CppCheckPlugin::OnCheckCompleted), NULL, this);
 	m_mgr->GetTheApp()->Disconnect(wxEVT_CPPCHECKJOB_REPORT,          wxCommandEventHandler(CppCheckPlugin::OnReport),         NULL, this);
 	m_mgr->GetTheApp()->Disconnect(wxEVT_INIT_DONE,                   wxCommandEventHandler(CppCheckPlugin::OnStartDaemon),    NULL, this);
+	m_mgr->GetTheApp()->Disconnect(wxEVT_WORKSPACE_CLOSED,            wxCommandEventHandler(CppCheckPlugin::OnWorkspaceClosed),NULL, this);
 }
 
-wxToolBar *CppCheckPlugin::CreateToolBar(wxWindow *parent)
+clToolBar *CppCheckPlugin::CreateToolBar(wxWindow *parent)
 {
 	// Create the toolbar to be used by the plugin
-	wxToolBar *tb(NULL);
+	clToolBar *tb(NULL);
 	return tb;
 }
 
@@ -111,18 +113,6 @@ void CppCheckPlugin::CreatePluginMenu(wxMenu *pluginsMenu)
 	wxMenuItem* item = new wxMenuItem(menu, XRCID("cppcheck_settings_item"), _("Settings"), wxEmptyString, wxITEM_NORMAL);
 	menu->Append(item);
 	pluginsMenu->Append(wxID_ANY, _("CppCheck"), menu);
-	/*
-		// You can use the below code a snippet:
-	 	wxMenu *menu = new wxMenu();
-		wxMenuItem *item(NULL);
-		item = new wxMenuItem(menu, XRCID("new_plugin"), _("New CodeLite Plugin Wizard..."), wxEmptyString, wxITEM_NORMAL);
-		menu->Append(item);
-		item = new wxMenuItem(menu, XRCID("new_class"), _("New Class Wizard..."), wxEmptyString, wxITEM_NORMAL);
-		menu->Append(item);
-		item = new wxMenuItem(menu, XRCID("new_wx_project"), _("New wxWidgets Project Wizard..."), wxEmptyString, wxITEM_NORMAL);
-		menu->Append(item);
-		pluginsMenu->Append(wxID_ANY, _("Gizmos"), menu);
-	*/
 }
 
 void CppCheckPlugin::HookPopupMenu(wxMenu *menu, MenuType type)
@@ -171,13 +161,23 @@ void CppCheckPlugin::UnHookPopupMenu(wxMenu *menu, MenuType type)
 		}
 
 	} else if (type == MenuTypeFileView_Workspace) {
-		//TODO::Unhook  items for the file view / workspace context menu
+
+		wxMenuItem *item = menu->FindItem(XRCID("CPPCHECK_WORKSPACE_POPUP"));
+		if (item) {
+			menu->Destroy(item);
+			menu->Destroy(m_workspaceSepItem);
+			m_workspaceSepItem = NULL;
+		}
+
 	} else if (type == MenuTypeFileView_Project) {
-		//TODO::Unhook  items for the file view/Project context menu
-	} else if (type == MenuTypeFileView_Folder) {
-		//TODO::Unhook  items for the file view/Virtual folder context menu
-	} else if (type == MenuTypeFileView_File) {
-		//TODO::Unhook  items for the file view/file context menu
+
+		wxMenuItem *item = menu->FindItem(XRCID("CPPCHECK_PROJECT_POPUP"));
+		if (item) {
+			menu->Destroy(item);
+			menu->Destroy(m_projectSepItem);
+			m_projectSepItem = NULL;
+		}
+
 	}
 }
 
@@ -195,7 +195,10 @@ void CppCheckPlugin::UnPlug()
 	// terminate the cppcheck daemon
 	if ( m_cppcheckProcess ) {
 		wxLogMessage(wxT("CppCheckPlugin: Terminating cppcheck daemon..."));
-		SetCanRestart( false );
+		m_canRestart = false;
+
+		// detach the process from the plugin and terminate it
+		m_cppcheckProcess->Disconnect(m_cppcheckProcess->GetUid(), wxEVT_END_PROCESS, wxProcessEventHandler(CppCheckPlugin::OnCppCheckTerminated), NULL, this);
 		m_cppcheckProcess->Terminate();
 	}
 }
@@ -249,9 +252,7 @@ void CppCheckPlugin::OnCheckFileExplorerItem(wxCommandEvent& e)
 	} else {
 		m_filelist.Add( item.m_fileName.GetFullPath() );
 	}
-	RemoveExcludedFiles();
-	SetTabVisible(true);
-	ProcessNextFromList();
+	DoStartTest();
 }
 
 void CppCheckPlugin::OnCheckWorkspaceItem(wxCommandEvent& e)
@@ -283,14 +284,13 @@ void CppCheckPlugin::OnCheckWorkspaceItem(wxCommandEvent& e)
 
 		// only C/C++ files
 		for (size_t i=0; i< tmpfiles.size(); i++ ) {
-			if ( FileExtManager::GetType( tmpfiles.at(i).GetFullPath() ) == FileExtManager::TypeSource ) {
+			if (FileExtManager::GetType( tmpfiles.at(i).GetFullPath() ) == FileExtManager::TypeSourceC ||
+				FileExtManager::GetType( tmpfiles.at(i).GetFullPath() ) == FileExtManager::TypeSourceCpp) {
 				m_filelist.Add( tmpfiles.at(i).GetFullPath() );
 			}
 		}
 	}
-	RemoveExcludedFiles();
-	SetTabVisible(true);
-	ProcessNextFromList();
+	DoStartTest();
 }
 
 void CppCheckPlugin::OnCheckProjectItem(wxCommandEvent& e)
@@ -320,14 +320,13 @@ void CppCheckPlugin::OnCheckProjectItem(wxCommandEvent& e)
 
 		// only C/C++ files
 		for (size_t i=0; i< tmpfiles.size(); i++ ) {
-			if ( FileExtManager::GetType( tmpfiles.at(i).GetFullPath() ) == FileExtManager::TypeSource ) {
+			if ( FileExtManager::GetType( tmpfiles.at(i).GetFullPath() ) == FileExtManager::TypeSourceC ||
+			     FileExtManager::GetType( tmpfiles.at(i).GetFullPath() ) == FileExtManager::TypeSourceCpp ) {
 				m_filelist.Add( tmpfiles.at(i).GetFullPath() );
 			}
 		}
 	}
-	RemoveExcludedFiles();
-	SetTabVisible(true);
-	ProcessNextFromList();
+	DoStartTest();
 }
 
 bool CppCheckPlugin::StartCppCheckDaemon()
@@ -343,7 +342,7 @@ bool CppCheckPlugin::StartCppCheckDaemon()
 	wxString cmd;
 	cmd << wxT("\"") << m_cppcheckPath << wxT("\" ");
 	cmd << m_settings.GetOptions();
-	cmd << wxT("--daemon=") << wxGetProcessId() << wxT(" --xml");
+	cmd << wxT("--daemon=") << wxGetProcessId() << wxT(" --pid ") << wxT(" --xml");
 	m_cppcheckProcess = new clProcess(wxNewId(), cmd, false);
 
 	// Launch it!
@@ -364,7 +363,7 @@ bool CppCheckPlugin::StartCppCheckDaemon()
 void CppCheckPlugin::OnCppCheckTerminated(wxProcessEvent& e)
 {
 #ifdef __WXMSW__
-	if ( GetCanRestart() ) {
+	if ( m_canRestart ) {
 		wxUnusedVar(e);
 		m_cppcheckProcess->Disconnect(m_cppcheckProcess->GetUid(), wxEVT_END_PROCESS, wxProcessEventHandler(CppCheckPlugin::OnCppCheckTerminated), NULL, this);
 		StartCppCheckDaemon();
@@ -392,10 +391,7 @@ void CppCheckPlugin::OnCheckCompleted(wxCommandEvent& e)
  */
 void CppCheckPlugin::OnReport(wxCommandEvent& e)
 {
-	CppCheckResults* results = ParseResults(e.GetString());
-	if (results) {
-		m_view->AddResults(results);
-	}
+	m_view->AddResults(e.GetString());
 }
 
 /**
@@ -429,8 +425,8 @@ void CppCheckPlugin::GetFileListFromDir(const wxString& root)
 
 	for (size_t i=0; i<tmparr.GetCount(); i++) {
 		switch (FileExtManager::GetType( tmparr.Item(i) ) ) {
-
-		case FileExtManager::TypeSource: {
+		case FileExtManager::TypeSourceC:
+		case FileExtManager::TypeSourceCpp: {
 			m_filelist.Add( tmparr.Item(i) );
 			break;
 		}
@@ -444,17 +440,23 @@ void CppCheckPlugin::GetFileListFromDir(const wxString& root)
 void CppCheckPlugin::ProcessNextFromList()
 {
 	m_analysisInProgress = !m_filelist.IsEmpty();
+	if ( !m_analysisInProgress ) {
+		// no more files to process
+		m_view->SetStatus(wxT("Done"));
+
+		if ( m_view->GetErrorCount() == 0 ) {
+			wxMessageBox(_("No errors were found"), _("cppcheck"));
+		}
+	}
+
 #ifdef __WXMSW__
 	// Restart codelite_cppcheck because we changed settings
 	if (m_restartRequired) {
 		m_cppcheckProcess->Terminate();
 		m_restartRequired = false;
 	}
-	DoProcess(1);
-#else // __WXMSW__
-
-	DoProcess(1);
 #endif
+	DoProcess(1);
 }
 
 void CppCheckPlugin::DoProcess(size_t count)
@@ -469,7 +471,7 @@ void CppCheckPlugin::DoProcess(size_t count)
 			j->SetFilename( next_file );
 			m_view->SetStatus(wxString::Format(_("Processing %s"), next_file.c_str()));
 			m_mgr->GetJobQueue()->PushJob( j );
-			
+
 		}
 	}
 }
@@ -482,42 +484,6 @@ void CppCheckPlugin::OnStartDaemon(wxCommandEvent& e)
 	StartCppCheckDaemon();
 #endif
 	e.Skip();
-}
-
-/**
- * Parse the CppCheck string result
- *
- * \param res xml string
- */
-CppCheckResults* CppCheckPlugin::ParseResults(const wxString& res)
-{
-	// Create XML parser
-	wxStringInputStream xmlStream(res);
-	wxXmlDocument xmlDoc(xmlStream);
-	if (!xmlDoc.IsOk()) {
-		return NULL;
-	}
-	wxXmlNode* root = xmlDoc.GetRoot();
-	if (!root || root->GetName() != wxT("results")) {
-		return NULL;
-	}
-
-	CppCheckResults* results = new CppCheckResults;
-
-	for (wxXmlNode* child = root->GetChildren(); child; child = child->GetNext()) {
-		if (child->GetName() == wxT("error")) {
-			CppCheckResult res;
-			child->GetPropVal(wxT("id"), &res.id);
-			child->GetPropVal(wxT("file"), &res.filename);
-			wxString sLine;
-			child->GetPropVal(wxT("line"), &sLine);
-			sLine.ToLong(&res.lineno);
-			child->GetPropVal(wxT("severity"), &res.severity);
-			child->GetPropVal(wxT("msg"), &res.msg);
-			(*results)[res.filename].push_back(res);
-		}
-	}
-	return results;
 }
 
 /**
@@ -622,4 +588,19 @@ void CppCheckPlugin::SkipCurrentFile()
 		}
 #endif
 	}
+}
+
+void CppCheckPlugin::OnWorkspaceClosed(wxCommandEvent& e)
+{
+	m_view->Clear();
+	e.Skip();
+}
+
+
+void CppCheckPlugin::DoStartTest()
+{
+	RemoveExcludedFiles();
+	SetTabVisible(true);
+	m_view->Clear();
+	ProcessNextFromList();
 }

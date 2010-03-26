@@ -70,7 +70,6 @@ WorkspaceTab::~WorkspaceTab()
     wxTheApp->Disconnect(wxEVT_PROJ_REMOVED,          wxCommandEventHandler(WorkspaceTab::OnProjectRemoved),      NULL, this);
     wxTheApp->Disconnect(wxEVT_ACTIVE_EDITOR_CHANGED, wxCommandEventHandler(WorkspaceTab::OnActiveEditorChanged), NULL, this);
     wxTheApp->Disconnect(wxEVT_EDITOR_CLOSING,        wxCommandEventHandler(WorkspaceTab::OnEditorClosing),       NULL, this);
-    wxTheApp->Disconnect(wxEVT_ALL_EDITORS_CLOSED,    wxCommandEventHandler(WorkspaceTab::OnAllEditorsClosed),    NULL, this);
 }
 
 void WorkspaceTab::CreateGUIControls()
@@ -86,6 +85,14 @@ void WorkspaceTab::CreateGUIControls()
 	tb->AddSeparator();
 	tb->AddTool(XRCID("project_properties"), wxEmptyString, wxXmlResource::Get()->LoadBitmap(wxT("project_settings")), wxT("Open Active Project Settings..."), wxITEM_NORMAL);
 	tb->AddTool(XRCID("set_project_active"), wxEmptyString, wxXmlResource::Get()->LoadBitmap(wxT("set_active")), wxT("Select Active Project"), wxITEM_NORMAL);
+	tb->AddSeparator();
+
+	// add the 'multiple/single' tree style
+	long val (0);
+	if(EditorConfigST::Get()->GetLongValue(wxT("WspTreeMultipleSelection"), val) == false) {val = 0;}
+
+	tb->AddTool(XRCID("set_multi_selection"), wxEmptyString, wxXmlResource::Get()->LoadBitmap(wxT("outline16")), wxT("Toggle Multiple / Single Selection"), wxITEM_CHECK);
+	tb->ToggleTool(XRCID("set_multi_selection"), val ? true : false);
 	tb->Realize();
 	sz->Add(tb, 0, wxEXPAND, 0);
 
@@ -96,6 +103,8 @@ void WorkspaceTab::CreateGUIControls()
 void WorkspaceTab::ConnectEvents()
 {
 	Connect( XRCID("link_editor"),        wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler (WorkspaceTab::OnLinkEditor));
+	Connect( XRCID("set_multi_selection"),wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler (WorkspaceTab::OnToggleMultiSelection));
+	Connect( XRCID("set_multi_selection"),wxEVT_UPDATE_UI,             wxUpdateUIEventHandler(WorkspaceTab::OnCollapseAllUI));
 	Connect( XRCID("collapse_all"),       wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler (WorkspaceTab::OnCollapseAll));
 	Connect( XRCID("collapse_all"),       wxEVT_UPDATE_UI,             wxUpdateUIEventHandler(WorkspaceTab::OnCollapseAllUI));
 	Connect( XRCID("go_home"),            wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler (WorkspaceTab::OnGoHome));
@@ -114,7 +123,6 @@ void WorkspaceTab::ConnectEvents()
     wxTheApp->Connect(wxEVT_PROJ_REMOVED,          wxCommandEventHandler(WorkspaceTab::OnProjectRemoved),      NULL, this);
     wxTheApp->Connect(wxEVT_ACTIVE_EDITOR_CHANGED, wxCommandEventHandler(WorkspaceTab::OnActiveEditorChanged), NULL, this);
     wxTheApp->Connect(wxEVT_EDITOR_CLOSING,        wxCommandEventHandler(WorkspaceTab::OnEditorClosing),       NULL, this);
-    wxTheApp->Connect(wxEVT_ALL_EDITORS_CLOSED,    wxCommandEventHandler(WorkspaceTab::OnAllEditorsClosed),    NULL, this);
 }
 
 void WorkspaceTab::OnLinkEditor(wxCommandEvent &e)
@@ -134,11 +142,19 @@ void WorkspaceTab::OnCollapseAll(wxCommandEvent &e)
     m_fileView->Freeze();
     m_fileView->CollapseAll();
     m_fileView->Expand(m_fileView->GetRootItem());
+	// count will probably be 0 below, so ensure we can at least see the root item
+	m_fileView->EnsureVisible(m_fileView->GetRootItem());
     m_fileView->Thaw();
-	wxTreeItemId sel = m_fileView->GetSelection();
-	if (sel.IsOk()) {
-		m_fileView->EnsureVisible(sel);
-    }
+
+	wxArrayTreeItemIds arr;
+	size_t count = m_fileView->GetSelections( arr );
+
+	if ( count == 1 ) {
+		wxTreeItemId sel = arr.Item(0);
+		if (sel.IsOk()) {
+			m_fileView->EnsureVisible(sel);
+		}
+	}
 }
 
 void WorkspaceTab::OnCollapseAllUI(wxUpdateUIEvent &e)
@@ -153,9 +169,15 @@ void WorkspaceTab::OnGoHome(wxCommandEvent &e)
 	if (activeProject.IsEmpty())
 		return;
 	m_fileView->ExpandToPath(activeProject, wxFileName());
-	wxTreeItemId sel = m_fileView->GetSelection();
-	if (sel.IsOk() && m_fileView->ItemHasChildren(sel))
-		m_fileView->Expand(sel);
+
+	wxArrayTreeItemIds arr;
+	size_t count = m_fileView->GetSelections( arr );
+
+	if ( count == 1 ) {
+		wxTreeItemId sel = arr.Item(0);
+		if (sel.IsOk() && m_fileView->ItemHasChildren(sel))
+			m_fileView->Expand(sel);
+	}
 	ManagerST::Get()->ShowWorkspacePane(m_caption);
 }
 
@@ -286,17 +308,6 @@ void WorkspaceTab::OnEditorClosing(wxCommandEvent& e)
     e.Skip();
 }
 
-void WorkspaceTab::OnAllEditorsClosed(wxCommandEvent& e)
-{
-    e.Skip();
-    if (m_isLinkedToEditor) {
-        Freeze();
-        OnCollapseAll(e);
-        OnGoHome(e);
-        Thaw();
-    }
-}
-
 void WorkspaceTab::OnWorkspaceClosed(wxCommandEvent& e)
 {
     e.Skip();
@@ -323,4 +334,15 @@ void WorkspaceTab::OnProjectRemoved(wxCommandEvent& e)
     OnGoHome(e);
     Thaw();
     SendCmdEvent(wxEVT_FILE_VIEW_REFRESHED);
+}
+
+void WorkspaceTab::OnToggleMultiSelection(wxCommandEvent& e)
+{
+	EditorConfigST::Get()->SaveLongValue(wxT("WspTreeMultipleSelection"), e.IsChecked() ? 1 : 0);
+	// Reload the tree
+	int answer = wxMessageBox(_("Workspace reload is required\nWould you like to reload workspace now?"), wxT("CodeLite"), wxICON_INFORMATION|wxYES_NO|wxCANCEL, this);
+	if ( answer == wxYES ) {
+		wxCommandEvent e(wxEVT_COMMAND_MENU_SELECTED, XRCID("reload_workspace"));
+		Frame::Get()->GetEventHandler()->AddPendingEvent(e);
+	}
 }

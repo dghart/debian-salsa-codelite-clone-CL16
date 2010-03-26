@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version Mar 19 2008)
+// C++ code generated with wxFormBuilder (version Aug 25 2009)
 // http://www.wxformbuilder.org/
 //
 // PLEASE DO "NOT" EDIT THIS FILE!
@@ -59,8 +59,16 @@ NewProjectBaseDlg::NewProjectBaseDlg( wxWindow* parent, wxWindowID id, const wxS
 	m_staticText5->Wrap( -1 );
 	detailsSizer->Add( m_staticText5, 0, wxTOP|wxRIGHT|wxLEFT, 5 );
 	
-	m_dpProjPath = new wxDirPickerCtrl( this, wxID_ANY, wxEmptyString, _("Select a folder"), wxDefaultPosition, wxDefaultSize, wxDIRP_DEFAULT_STYLE|wxDIRP_DIR_MUST_EXIST );
-	detailsSizer->Add( m_dpProjPath, 0, wxALL|wxEXPAND, 5 );
+	wxBoxSizer* bSizer5;
+	bSizer5 = new wxBoxSizer( wxHORIZONTAL );
+	
+	m_textCtrlProjectPath = new wxTextCtrl( this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0 );
+	bSizer5->Add( m_textCtrlProjectPath, 1, wxALL|wxEXPAND, 5 );
+	
+	m_button1 = new wxButton( this, wxID_ANY, _("Browse"), wxDefaultPosition, wxDefaultSize, 0 );
+	bSizer5->Add( m_button1, 0, wxALL, 5 );
+	
+	detailsSizer->Add( bSizer5, 0, wxEXPAND, 5 );
 	
 	m_staticText6 = new wxStaticText( this, wxID_ANY, _("Compiler type:"), wxDefaultPosition, wxDefaultSize, 0 );
 	m_staticText6->Wrap( -1 );
@@ -72,7 +80,6 @@ NewProjectBaseDlg::NewProjectBaseDlg( wxWindow* parent, wxWindowID id, const wxS
 	detailsSizer->Add( m_chCompiler, 0, wxALL|wxEXPAND, 5 );
 	
 	m_cbSeparateDir = new wxCheckBox( this, wxID_ANY, _("Create the project under a separate directory"), wxDefaultPosition, wxDefaultSize, 0 );
-	
 	detailsSizer->Add( m_cbSeparateDir, 0, wxALL, 5 );
 	
 	wxStaticBoxSizer* labelSizer;
@@ -97,13 +104,17 @@ NewProjectBaseDlg::NewProjectBaseDlg( wxWindow* parent, wxWindowID id, const wxS
 	m_staticline = new wxStaticLine( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
 	mainSizer->Add( m_staticline, 0, wxEXPAND | wxALL, 5 );
 	
-	m_sdbSizer = new wxStdDialogButtonSizer();
-	m_sdbSizerOK = new wxButton( this, wxID_OK );
-	m_sdbSizer->AddButton( m_sdbSizerOK );
-	m_sdbSizerCancel = new wxButton( this, wxID_CANCEL );
-	m_sdbSizer->AddButton( m_sdbSizerCancel );
-	m_sdbSizer->Realize();
-	mainSizer->Add( m_sdbSizer, 0, wxALIGN_CENTER_HORIZONTAL|wxBOTTOM, 5 );
+	wxBoxSizer* bSizer6;
+	bSizer6 = new wxBoxSizer( wxHORIZONTAL );
+	
+	m_button2 = new wxButton( this, wxID_OK, _("&OK"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_button2->SetDefault(); 
+	bSizer6->Add( m_button2, 0, wxALL, 5 );
+	
+	m_button3 = new wxButton( this, wxID_CANCEL, _("Cancel"), wxDefaultPosition, wxDefaultSize, 0 );
+	bSizer6->Add( m_button3, 0, wxALL, 5 );
+	
+	mainSizer->Add( bSizer6, 0, wxALIGN_CENTER_HORIZONTAL, 5 );
 	
 	this->SetSizer( mainSizer );
 	this->Layout();
@@ -115,9 +126,10 @@ NewProjectBaseDlg::NewProjectBaseDlg( wxWindow* parent, wxWindowID id, const wxS
 	m_chCategories->Connect( wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler( NewProjectBaseDlg::OnCategorySelected ), NULL, this );
 	m_listTemplates->Connect( wxEVT_COMMAND_LIST_ITEM_SELECTED, wxListEventHandler( NewProjectBaseDlg::OnTemplateSelected ), NULL, this );
 	m_txtProjName->Connect( wxEVT_COMMAND_TEXT_UPDATED, wxCommandEventHandler( NewProjectBaseDlg::OnProjectNameChanged ), NULL, this );
-	m_dpProjPath->Connect( wxEVT_COMMAND_DIRPICKER_CHANGED, wxFileDirPickerEventHandler( NewProjectBaseDlg::OnProjectPathChanged ), NULL, this );
+	m_textCtrlProjectPath->Connect( wxEVT_COMMAND_TEXT_UPDATED, wxCommandEventHandler( NewProjectBaseDlg::OnProjectPathUpdated ), NULL, this );
+	m_button1->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( NewProjectBaseDlg::OnBrowseProjectPath ), NULL, this );
 	m_cbSeparateDir->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( NewProjectBaseDlg::OnProjectNameChanged ), NULL, this );
-	m_sdbSizerOK->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( NewProjectBaseDlg::OnCreate ), NULL, this );
+	m_button2->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( NewProjectBaseDlg::OnCreate ), NULL, this );
 }
 
 NewProjectBaseDlg::~NewProjectBaseDlg()
@@ -126,7 +138,8 @@ NewProjectBaseDlg::~NewProjectBaseDlg()
 	m_chCategories->Disconnect( wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler( NewProjectBaseDlg::OnCategorySelected ), NULL, this );
 	m_listTemplates->Disconnect( wxEVT_COMMAND_LIST_ITEM_SELECTED, wxListEventHandler( NewProjectBaseDlg::OnTemplateSelected ), NULL, this );
 	m_txtProjName->Disconnect( wxEVT_COMMAND_TEXT_UPDATED, wxCommandEventHandler( NewProjectBaseDlg::OnProjectNameChanged ), NULL, this );
-	m_dpProjPath->Disconnect( wxEVT_COMMAND_DIRPICKER_CHANGED, wxFileDirPickerEventHandler( NewProjectBaseDlg::OnProjectPathChanged ), NULL, this );
+	m_textCtrlProjectPath->Disconnect( wxEVT_COMMAND_TEXT_UPDATED, wxCommandEventHandler( NewProjectBaseDlg::OnProjectPathUpdated ), NULL, this );
+	m_button1->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( NewProjectBaseDlg::OnBrowseProjectPath ), NULL, this );
 	m_cbSeparateDir->Disconnect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( NewProjectBaseDlg::OnProjectNameChanged ), NULL, this );
-	m_sdbSizerOK->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( NewProjectBaseDlg::OnCreate ), NULL, this );
+	m_button2->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( NewProjectBaseDlg::OnCreate ), NULL, this );
 }

@@ -37,6 +37,8 @@
 
 #include <wx/arrimpl.cpp> // this is a magic incantation which must be done!
 
+#define PNAEL_BG_COLOUR DrawingUtils::GetPanelBgColour()
+
 BEGIN_EVENT_TABLE(wxTabContainer, wxPanel)
 	EVT_PAINT(wxTabContainer::OnPaint)
 	EVT_ERASE_BACKGROUND(wxTabContainer::OnEraseBg)
@@ -53,11 +55,11 @@ void wxTabContainer::DoDrawBackground(wxDC &dc, bool gradient, int orientation, 
 {
 
 	// set the gradient colours, by default we use the same colours
-	wxColour col1 = wxSystemSettings::GetColour(wxSYS_COLOUR_3DFACE);
-	wxColour col2 = wxSystemSettings::GetColour(wxSYS_COLOUR_3DFACE);
+	wxColour col1 = PNAEL_BG_COLOUR;
+	wxColour col2 = PNAEL_BG_COLOUR;
 
 	if (gradient) {
-		col1 = wxSystemSettings::GetColour(wxSYS_COLOUR_3DFACE);
+		col1 = PNAEL_BG_COLOUR;
 		col2 = DrawingUtils::LightColour(wxSystemSettings::GetColour(wxSYS_COLOUR_3DSHADOW), 3.0);
 
 		//paint gradient background
@@ -85,7 +87,7 @@ void wxTabContainer::DoDrawBackground(wxDC &dc, bool gradient, int orientation, 
 
 void wxTabContainer::DoDrawMargin(wxDC &dc, int orientation, const wxRect &rr)
 {
-	wxPen _3dFace(wxSystemSettings::GetColour(wxSYS_COLOUR_3DFACE));
+	wxPen _3dFace(PNAEL_BG_COLOUR);
 	wxPen borderPen(DrawingUtils::LightColour(wxSystemSettings::GetColour(wxSYS_COLOUR_3DDKSHADOW), DrawingUtils::GetDdkShadowLightFactor2()));
 
 	for (int i=0; i<3; i++) {
@@ -143,7 +145,11 @@ wxTabContainer::wxTabContainer(wxWindow *win, wxWindowID id, int orientation, lo
 		, m_bmpHeight     (14)
 		, m_fixedTabWidth (120)
 {
+	if ( style & wxVB_NO_TABS ) {
+		Hide();
+	}
 	Initialize();
+	Connect(wxEVT_CMD_ENSURE_SEL_TAB_VISIBILE, wxCommandEventHandler(wxTabContainer::OnEnsureVisible), NULL, this);
 }
 
 wxTabContainer::~wxTabContainer()
@@ -180,7 +186,7 @@ void wxTabContainer::Initialize()
 	sz->Layout();
 }
 
-void wxTabContainer::AddTab(CustomTab *tab)
+void wxTabContainer::InsertTab(CustomTab* tab, size_t index)
 {
 	size_t oldSel(0);
 
@@ -189,10 +195,18 @@ void wxTabContainer::AddTab(CustomTab *tab)
 		PushPageHistory(tab);
 	}
 
-	if (m_orientation == wxLEFT || m_orientation == wxRIGHT) {
-		m_tabsSizer->Add(tab, 0, wxLEFT | wxRIGHT, 3);
+	if(index >= GetTabsCount()) {
+		if (m_orientation == wxLEFT || m_orientation == wxRIGHT) {
+			m_tabsSizer->Add(tab, 0, wxLEFT | wxRIGHT, 3);
+		} else {
+			m_tabsSizer->Add(tab, 0, wxTOP | wxBOTTOM, 3);
+		}
 	} else {
-		m_tabsSizer->Add(tab, 0, wxTOP | wxBOTTOM, 3);
+		if (m_orientation == wxLEFT || m_orientation == wxRIGHT) {
+			m_tabsSizer->Insert(index, tab, 0, wxLEFT | wxRIGHT, 3);
+		} else {
+			m_tabsSizer->Insert(index, tab, 0, wxTOP | wxBOTTOM, 3);
+		}
 	}
 
 	if (tab->GetSelected()) {
@@ -216,8 +230,13 @@ void wxTabContainer::AddTab(CustomTab *tab)
 		event.SetSelection( TabToIndex(tab) );
 		event.SetOldSelection( oldSel );
 		event.SetEventObject( GetParent() );
-		GetParent()->ProcessEvent(event);
+		GetParent()->GetEventHandler()->ProcessEvent(event);
 	}
+}
+
+void wxTabContainer::AddTab(CustomTab *tab)
+{
+	InsertTab(tab, GetTabsCount());
 }
 
 CustomTab* wxTabContainer::GetSelection()
@@ -258,7 +277,7 @@ void wxTabContainer::SetSelection(CustomTab *tab, bool notify)
 		event.SetSelection( TabToIndex( tab ) );
 		event.SetOldSelection( oldSel );
 		event.SetEventObject( GetParent() );
-		GetParent()->ProcessEvent(event);
+		GetParent()->GetEventHandler()->ProcessEvent(event);
 
 		if ( !event.IsAllowed() ) {
 			return;
@@ -293,7 +312,7 @@ void wxTabContainer::SetSelection(CustomTab *tab, bool notify)
 		event.SetSelection( TabToIndex( tab ) );
 		event.SetOldSelection( oldSel );
 		event.SetEventObject( GetParent() );
-		GetParent()->ProcessEvent(event);
+		GetParent()->GetEventHandler()->ProcessEvent(event);
 	}
 }
 
@@ -350,8 +369,8 @@ void wxTabContainer::OnPaint(wxPaintEvent &e)
 	wxRect rr = GetClientSize();
 
 	if (GetTabsCount() == 0) {
-		dc.SetPen(wxSystemSettings::GetColour(wxSYS_COLOUR_3DFACE));
-		dc.SetBrush(wxSystemSettings::GetColour(wxSYS_COLOUR_3DFACE));
+		dc.SetPen(PNAEL_BG_COLOUR);
+		dc.SetBrush(PNAEL_BG_COLOUR);
 		dc.DrawRectangle(rr);
 		return;
 	}
@@ -376,7 +395,9 @@ void wxTabContainer::OnEraseBg(wxEraseEvent &)
 
 void wxTabContainer::OnSizeEvent(wxSizeEvent &e)
 {
-	DoShowMaxTabs();
+	wxCommandEvent evt(wxEVT_CMD_ENSURE_SEL_TAB_VISIBILE);
+	AddPendingEvent(evt);
+	
 	Refresh();
 	e.Skip();
 }
@@ -547,7 +568,7 @@ bool wxTabContainer::DoRemoveTab(CustomTab *deleteTab, bool deleteIt, bool notif
 		NotebookEvent event(wxEVT_COMMAND_BOOK_PAGE_CLOSING, GetId());
 		event.SetSelection( pageIndex );
 		event.SetEventObject( GetParent() );
-		GetParent()->ProcessEvent(event);
+		GetParent()->GetEventHandler()->ProcessEvent(event);
 
 		if (!event.IsAllowed()) {
 			return false;
@@ -581,6 +602,10 @@ bool wxTabContainer::DoRemoveTab(CustomTab *deleteTab, bool deleteIt, bool notif
 		//you can now safely destroy the visual tab button
 		deleteTab->Destroy();
 	}
+	if ( GetTabsCount() == 0 ) {
+		Hide();
+	}
+
 	m_tabsSizer->Layout();
 	GetParent()->GetSizer()->Layout();
 
@@ -589,7 +614,7 @@ bool wxTabContainer::DoRemoveTab(CustomTab *deleteTab, bool deleteIt, bool notif
 		NotebookEvent event(wxEVT_COMMAND_BOOK_PAGE_CLOSED, GetId());
 		event.SetSelection( pageIndex );
 		event.SetEventObject( GetParent() );
-		GetParent()->ProcessEvent(event);
+		GetParent()->GetEventHandler()->ProcessEvent(event);
 	}
 
 	return true;
@@ -597,6 +622,9 @@ bool wxTabContainer::DoRemoveTab(CustomTab *deleteTab, bool deleteIt, bool notif
 
 void wxTabContainer::EnsureVisible(CustomTab *tab)
 {
+	if(!tab)
+		return;
+	
 	if (!IsVisible(tab)) {
 		Freeze();
 		//make sure all tabs are visible
@@ -632,12 +660,15 @@ bool wxTabContainer::IsVisible(CustomTab *tab, bool fullShown)
 	wxPoint pos = tab->GetPosition();
 	wxSize tabSize = tab->GetSize();
 	wxRect rr = GetSize();
-
+	
+	// get the tab's width + 10 pixels spare
+	int tabWidth = tabSize.GetWidth();
+	
 	bool cond0(true);
-	if (rr.width > tabSize.x && fullShown) {
+	if (rr.width > tabWidth && fullShown) {
 		//the visible area has enough space to show the entire
 		//tab, force it
-		cond0 = !(pos.x + tabSize.x > rr.x + rr.width);
+		cond0 = !(pos.x + tabWidth > rr.x + rr.width);
 	}
 	bool cond1 = !(pos.x > rr.x + rr.width);
 	bool cond2 = m_tabsSizer->IsShown(tab);
@@ -721,12 +752,12 @@ void wxTabContainer::DoShowMaxTabs()
 
 	Freeze();
 
-	size_t first = GetFirstVisibleTab();
-	size_t last  = GetLastVisibleTab();
+	size_t     first = GetFirstVisibleTab();
+	size_t      last = GetLastVisibleTab();
+	//size_t  selIndex = TabToIndex(GetSelection());
+	CustomTab *t2    = IndexToTab(last);
 
-	CustomTab *t2 = IndexToTab(last);
-
-	if (first != Notebook::npos && last != Notebook::npos && last != first) {
+	if (first != Notebook::npos && last != Notebook::npos) {
 		int i = (int) first;
 		for (; i>=0; i--) {
 			m_tabsSizer->Show((size_t)i);
@@ -737,15 +768,27 @@ void wxTabContainer::DoShowMaxTabs()
 				// continue;
 				continue;
 			} else {
-				i++;
-				m_tabsSizer->Show((size_t)i);
-				m_tabsSizer->Layout();
+				if( (i + 1) < (int)GetTabsCount() ) {
+					i++;
+					m_tabsSizer->Show((size_t)i);
+					m_tabsSizer->Layout();
+				}
 				break;
 			}
 		}
 	}
 	Thaw();
 	Refresh();
+}
+
+void wxTabContainer::OnEnsureVisible(wxCommandEvent& e)
+{
+	wxUnusedVar(e);
+	CustomTab *tab = GetSelection();
+	if(tab) {
+		EnsureVisible( tab );
+	}
+	DoShowMaxTabs();
 }
 
 //--------------------------------------------------------------------
@@ -797,8 +840,8 @@ void DropButton::OnPaint(wxPaintEvent& e)
 	wxBufferedPaintDC dc(this);
 
 	if (GetItemCount() == 0) {
-		dc.SetPen(wxSystemSettings::GetColour(wxSYS_COLOUR_3DFACE));
-		dc.SetBrush(wxSystemSettings::GetColour(wxSYS_COLOUR_3DFACE));
+		dc.SetPen(PNAEL_BG_COLOUR);
+		dc.SetBrush(PNAEL_BG_COLOUR);
 		dc.DrawRectangle(rr);
 		return;
 	}

@@ -34,6 +34,8 @@
 #include <list>
 #include "serialized_object.h"
 #include "project_settings.h"
+#include "optionsconfig.h"
+#include "localworkspace.h"
 
 //incase we are using DLL build of wxWdigets, we need to make this class to export its
 //classes
@@ -317,11 +319,27 @@ public:
 	void GetFiles(std::vector<wxFileName> &files, bool absPath = false);
 
 	/**
+	 * Return list of files in this project as a wxString in blank separated format.
+	 * \param files
+	 */
+	wxString GetFiles(bool absPath = false);	
+
+	/**
 	 * Return list of files in this project - in both absolute and relative path
 	 * \param files relative paths
 	 * \param absFiles absolute paths
 	 */
 	void GetFiles(std::vector<wxFileName> &files, std::vector<wxFileName> &absFiles);
+
+	/**
+	 * Return a node pointing to any project-wide editor preferences
+	 */
+	wxXmlNode* GetProjectEditorOptions() const;
+
+	/**
+	 * Add or update local project options
+	 */
+	void SetProjectEditorOptions(LocalOptionsConfigPtr opts);
 
 	/**
 	 * Return the project build settings object by name
@@ -442,7 +460,7 @@ public:
 	 * @brief set all plugins data as map of plugin=value pair
 	 * @param pluginsDataMap
 	 */
-	void SetAllPluginsData(const std::map<wxString, wxString> &pluginsDataMap);
+	void SetAllPluginsData(const std::map<wxString, wxString> &pluginsDataMap, bool saveToFile = true);
 
 	//----------------------------------
 	//File modifications
@@ -484,7 +502,13 @@ private:
 	 * Return list of projects that this projects depends on
 	 */
 	wxArrayString GetDependencies() const;
-
+	
+	/**
+	 * @brief convert all the files paths to Unix format
+	 * @param parent
+	 */
+	void ConvertToUnixFormat(wxXmlNode *parent);
+	
 	bool SaveXmlFile();
 };
 

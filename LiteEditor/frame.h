@@ -54,11 +54,13 @@ class WorkspaceTab;
 class FileExplorer;
 class OutputTabWindow;
 class DockablePaneMenuManager;
+class OutputViewControlBar;
 
 //--------------------------------
 // Helper class
 //--------------------------------
 extern const wxEventType wxEVT_UPDATE_STATUS_BAR;
+extern const wxEventType wxEVT_LOAD_PERSPECTIVE ;
 
 struct StartPageData {
 	wxString name;
@@ -87,7 +89,9 @@ class Frame : public wxFrame
 	wxMenu *                              m_cppMenu;
 	bool                                  m_highlightWord;
 	DockablePaneMenuManager *             m_DPmenuMgr;
-
+	OutputViewControlBar *                m_controlBar;
+	wxPanel*                              m_mainPanel;
+	wxString                              m_codeliteDownloadPageURL;
 public:
 	static Frame* Get();
 	static void Initialize(bool loadLastSession);
@@ -96,6 +100,14 @@ public:
 		return m_DPmenuMgr;
 	}
 
+	wxPanel *GetMainPanel() {return m_mainPanel;}
+	
+	/**
+	 * @brief update the environment status message:
+	 * which displays to the user the current environment set used + the active builder
+	 */
+	void SetEnvStatusMessage();
+	
 	virtual ~Frame(void);
 	/**
 	 * @brief set frame option flag
@@ -103,6 +115,19 @@ public:
 	 * @param flag
 	 */
 	void SetFrameFlag(bool set, int flag);
+
+	/**
+	 * @brief update the tags options data on the disc as well as
+	 * the parser thread
+	 * @param tod
+	 */
+	void UpdateTagsOptions(const TagsOptionsData &tod);
+
+	/**
+	 * @brief return the current tags options data
+	 * @return
+	 */
+	TagsOptionsData& GetTagsOptions() {return m_tagsOptionsData;}
 
 	/**
 	 * @brief return true if the word under the caret should be highlighted
@@ -173,6 +198,10 @@ public:
 		return m_mgr;
 	}
 
+	wxAuiManager* GetDockingManagerPtr() {
+		return &m_mgr;
+	}
+
 	/**
 	 * Return the debugger toolbar
 	 */
@@ -186,9 +215,11 @@ public:
 	void LoadSession(const wxString &sessionName);
 
 	/**
-	 * load all available plugins
+	 * Compelete the main frame initialization
+	 * this method is called immediatly after the
+	 * main frame construction is over.
 	 */
-	void LoadPlugins();
+	void CompleteInitialization();
 
 	void RegisterToolbar(int menuItemId, const wxString &name);
 	void RegisterDockWindow(int menuItemId, const wxString &name);
@@ -231,6 +262,7 @@ private:
 	Frame(wxWindow *pParent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style = wxMINIMIZE_BOX | wxMAXIMIZE_BOX | wxCLOSE_BOX | wxCAPTION | wxSYSTEM_MENU | wxRESIZE_BORDER | wxCLIP_CHILDREN);
 	wxString CreateWorkspaceTable();
 	wxString CreateFilesTable();
+	void     StartTimer();
 
 private:
 	/**
@@ -258,13 +290,9 @@ private:
 	void CreateRecentlyOpenedFilesMenu();
 	void CreateRecentlyOpenedWorkspacesMenu();
 	void CreateWelcomePage();
-	void CreateMenuBar();
-	void UpgradeExternalDbExt();
-	void AutoLoadExternalDb();
-	void DoBuildExternalDatabase(const wxString &dir = wxEmptyString);
-
 	void ReloadExternallyModifiedProjectFiles();
-
+	void DoSuggestRestart();
+	
 protected:
 	//----------------------------------------------------
 	// event handlers
@@ -278,18 +306,18 @@ protected:
 	void OnSave(wxCommandEvent& event);
 	void OnSaveAs(wxCommandEvent& event);
 	void OnFileReload(wxCommandEvent& event);
+	void OnFileLoadTabGroup(wxCommandEvent& event);
 	void OnCompleteWord(wxCommandEvent& event);
 	void OnFunctionCalltip(wxCommandEvent& event);
 	void OnDeleteProject(wxCommandEvent& event);
-	void OnBuildExternalDatabase(wxCommandEvent& event);
-	void OnUseExternalDatabase(wxCommandEvent& event);
-	void OnCloseExternalDatabase(wxCommandEvent& event);
 	void OnAbout(wxCommandEvent& event);
+	void OnCheckForUpdate(wxCommandEvent &e);
 	void OnFileNew(wxCommandEvent &event);
 	void OnFileOpen(wxCommandEvent &event);
 	void OnFileClose(wxCommandEvent &event);
 	void OnFileCloseUI(wxUpdateUIEvent &event);
 	void OnFileSaveAll(wxCommandEvent &event);
+	void OnFileSaveTabGroup(wxCommandEvent &event);
 	void OnFileFindAndReplace(wxCommandEvent &event);
 	void OnFileExistUpdateUI(wxUpdateUIEvent &event);
 	void OnCompleteWordUpdateUI(wxUpdateUIEvent &event);
@@ -326,8 +354,6 @@ protected:
 	void OnExecuteNoDebugUI(wxUpdateUIEvent &event);
 	void OnTimer(wxTimerEvent &event);
 	void OnFileCloseAll(wxCommandEvent &event);
-	void OnFindResource(wxCommandEvent &event);
-	void OnFindType(wxCommandEvent &event);
 	void OnQuickOutline(wxCommandEvent &event);
 	void OnImportMSVS(wxCommandEvent &e);
 	void OnDebugAttach(wxCommandEvent &event);
@@ -352,11 +378,13 @@ protected:
 	void OnPageClosed(NotebookEvent &event);
 
 	//handle symbol tree events
-	void OnAddSymbols(SymbolTreeEvent &event);
-	void OnDeleteSymbols(SymbolTreeEvent &event);
-	void OnUpdateSymbols(SymbolTreeEvent &event);
-	void OnParsingThreadDone(wxCommandEvent &e);
-
+	void OnAddSymbols                 (SymbolTreeEvent &event);
+	void OnDeleteSymbols              (SymbolTreeEvent &event);
+	void OnUpdateSymbols              (SymbolTreeEvent &event);
+	void OnParsingThreadDone          (wxCommandEvent  &e);
+	void OnParsingThreadMessage       (wxCommandEvent  &e);
+	void OnDatabaseUpgrade            (wxCommandEvent  &e);
+	void OnClearTagsCache             (wxCommandEvent  &e);
 	void OnRecentFile(wxCommandEvent &event);
 	void OnRecentWorkspace(wxCommandEvent &event);
 	void OnBackwardForward(wxCommandEvent &event);
@@ -382,19 +410,22 @@ protected:
 	void OnLoadWelcomePageUI(wxUpdateUIEvent &event);
 	void OnAppActivated(wxActivateEvent &event);
 	void OnReloadExternallModified(wxCommandEvent &e);
+	void OnReloadExternallModifiedNoPrompt(wxCommandEvent &e);
 	void OnCompileFile(wxCommandEvent &e);
 	void OnCompileFileUI(wxUpdateUIEvent &e);
 	void OnCloseAllButThis(wxCommandEvent &e);
 	void OnWorkspaceMenuUI(wxUpdateUIEvent &e);
 	void OnUpdateBuildRefactorIndexBar(wxCommandEvent &e);
-
+	void OnUpdateNumberOfBuildProcesses(wxCommandEvent &e);
 	void OnBuildWorkspace(wxCommandEvent &e);
 	void OnBuildWorkspaceUI(wxUpdateUIEvent &e);
 	void OnCleanWorkspace(wxCommandEvent &e);
 	void OnCleanWorkspaceUI(wxUpdateUIEvent &e);
 	void OnReBuildWorkspace(wxCommandEvent &e);
 	void OnReBuildWorkspaceUI(wxUpdateUIEvent &e);
-
+	void OnUpdateParserPath(wxCommandEvent &e);
+	void OnNeverUpdateParserPath(wxCommandEvent &e);
+	
 	//EOL
 	void OnConvertEol(wxCommandEvent &e);
 	void OnViewDisplayEOL(wxCommandEvent &e);
@@ -417,6 +448,7 @@ protected:
 	void OnConfigureAccelerators(wxCommandEvent &e);
 	void OnStartPageEvent(wxCommandEvent &e);
 	void OnNewVersionAvailable(wxCommandEvent &e);
+	void OnGotoCodeLiteDownloadPage(wxCommandEvent &e);
 	void OnBatchBuild(wxCommandEvent &e);
 	void OnBatchBuildUI(wxUpdateUIEvent &e);
 	void OnSyntaxHighlight(wxCommandEvent &e);
@@ -424,8 +456,13 @@ protected:
 	void OnShowWhitespace(wxCommandEvent &e);
 	void OnShowFullScreen(wxCommandEvent &e);
 	void OnSetStatusMessage(wxCommandEvent &e);
-
-// Any class wishing to process wxWindows events must use this macro
+	void OnFindResourceXXX  (wxCommandEvent &e);
+	void OnShowQuickFinderUI(wxUpdateUIEvent &e);
+	void OnShowActiveProjectSettings(wxCommandEvent &e);
+	void OnShowActiveProjectSettingsUI(wxUpdateUIEvent &e);
+	void OnLoadPerspective(wxCommandEvent &e);
+	void OnWorkspaceSettings(wxCommandEvent &e);
+	void OnWorkspaceEditorPreferences(wxCommandEvent &e);
 	DECLARE_EVENT_TABLE()
 };
 

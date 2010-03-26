@@ -2,8 +2,7 @@
 <CodeLite_Project Name="Parser">
   <Plugins>
     <Plugin Name="qmake">
-      <![CDATA[00010001N0007Release000000000000
-    ]]>
+      <![CDATA[00010001N0007Release000000000000]]>
     </Plugin>
   </Plugins>
   <VirtualDirectory Name="src">
@@ -17,12 +16,14 @@
     <File Name="expression_result.cpp"/>
     <File Name="function.cpp"/>
     <File Name="cpp_func_parser.cpp"/>
+    <File Name="typedef_parser.cpp"/>
   </VirtualDirectory>
   <VirtualDirectory Name="incldue">
     <File Name="cpp_lexer.h"/>
     <File Name="variable.h"/>
     <File Name="expression_result.h"/>
     <File Name="function.h"/>
+    <File Name="cl_typedef.h"/>
   </VirtualDirectory>
   <VirtualDirectory Name="grammar">
     <File Name="cpp.l"/>
@@ -31,6 +32,7 @@
     <File Name="expr_grammar.y"/>
     <File Name="expr_lexer.l"/>
     <File Name="cpp_func_parser.y"/>
+    <File Name="typedef_grammar.y"/>
   </VirtualDirectory>
   <Dependencies/>
   <VirtualDirectory Name="test_suite">
@@ -38,7 +40,7 @@
   </VirtualDirectory>
   <Settings Type="Executable">
     <Configuration Name="Release" CompilerType="gnu g++" DebuggerType="GNU gdb debugger" Type="Executable" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
-      <Compiler Options="-g;" Required="yes">
+      <Compiler Options="-g;" Required="yes" PreCompiledHeader="">
         <IncludePath Value="."/>
       </Compiler>
       <Linker Options="-O2" Required="yes">
@@ -53,10 +55,11 @@
       </Debugger>
       <PreBuild/>
       <PostBuild>
-        <Command Enabled="yes">copy *.h ../CodeLite/.</Command>
-        <Command Enabled="yes">copy *.cpp ../CodeLite/.</Command>
+        <Command Enabled="yes">copy *.h ..\CodeLite\.</Command>
+        <Command Enabled="yes">copy *.cpp ..\CodeLite\.</Command>
       </PostBuild>
       <CustomBuild Enabled="no">
+        <RebuildCommand/>
         <CleanCommand/>
         <BuildCommand/>
         <PreprocessFileCommand/>
@@ -67,7 +70,7 @@
       </CustomBuild>
       <AdditionalRules>
         <CustomPostBuild/>
-        <CustomPreBuild>scope_parser.cpp cpp_lexer.cpp var_parser.cpp cpp_expr_lexer.cpp cpp_expr_parser.cpp cpp_func_parser.cpp
+        <CustomPreBuild>scope_parser.cpp cpp_lexer.cpp var_parser.cpp cpp_expr_lexer.cpp cpp_expr_parser.cpp cpp_func_parser.cpp typedef_parser.cpp
 scope_parser.cpp: cpp_scope_grammar.y
 	yacc -dl  -t -v -pcl_scope_ cpp_scope_grammar.y
 	mv y.tab.c scope_parser.cpp
@@ -76,6 +79,10 @@ scope_parser.cpp: cpp_scope_grammar.y
 cpp_lexer.cpp: cpp.l
 	flex -L  -Pcl_scope_ cpp.l
 	mv lex.cl_scope_.c cpp_lexer.cpp
+
+typedef_parser.cpp: typedef_grammar.y
+	yacc -l  -t -v -pcl_typedef_  typedef_grammar.y
+	mv y.tab.c typedef_parser.cpp
 
 var_parser.cpp: cpp_variables_grammar.y
 	yacc -l  -t -v -pcl_var_ cpp_variables_grammar.y

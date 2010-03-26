@@ -70,7 +70,7 @@ wxString clCallTip::TipAt(int at)
 {
 	wxString tip;
 	if ( m_tips.size() > 1 ) {
-		tip << _T("\001 ") << static_cast<int>(m_curr)+1 << _T(" of ") << static_cast<int>(m_tips.size()) << _T(" \002 ") << m_tips.at(at).str ;
+		tip << m_tips.at(at).str ;
 	} else {
 		tip << m_tips.at( 0 ).str;
 	}
@@ -80,7 +80,6 @@ wxString clCallTip::TipAt(int at)
 wxString clCallTip::Next()
 {
 	// format a tip string and return it
-	wxString tip;
 	if ( m_tips.empty() )
 		return wxEmptyString;
 
@@ -95,7 +94,6 @@ wxString clCallTip::Next()
 wxString clCallTip::Prev()
 {
 	// format a tip string and return it
-	wxString tip;
 	if ( m_tips.empty() )
 		return wxEmptyString;
 
@@ -127,22 +125,22 @@ void clCallTip::Initialize(const std::vector<TagEntryPtr> &tips)
 	for (size_t i=0; i< tips.size(); i++) {
 		tagCallTipInfo cti;
 		TagEntryPtr t = tips.at(i);
-		if (t->GetKind() == wxT("function") || t->GetKind() == wxT("prototype")) {
+		if ( t->IsMethod() ) {
 
 			wxString raw_sig ( t->GetSignature().Trim().Trim(false) );
 
 			// evaluate the return value of the tag
-			cti.retValue = TagsManagerST::Get()->GetFunctionReturnValueFromPattern(t->GetPattern());
-
+			cti.retValue = TagsManagerST::Get()->GetFunctionReturnValueFromPattern(t);
+			
 			bool hasDefaultValues = (raw_sig.Find(wxT("=")) != wxNOT_FOUND);
 
 			// the key for unique entries is the function prototype without the variables names and
 			// any default values
-			wxString  key           = TagsManagerST::Get()->NormalizeFunctionSig(raw_sig, 0);
+			wxString  key           = TagsManagerST::Get()->NormalizeFunctionSig(raw_sig, Normalize_Func_Reverse_Macro);
 
 			// the signature that we want to keep is one with name & default values, so try and get the maximum out of the
 			// function signature
-			wxString  full_signature = TagsManagerST::Get()->NormalizeFunctionSig(raw_sig, Normalize_Func_Name | Normalize_Func_Default_value, &cti.paramLen);
+			wxString  full_signature = TagsManagerST::Get()->NormalizeFunctionSig(raw_sig, Normalize_Func_Name | Normalize_Func_Default_value | Normalize_Func_Reverse_Macro, &cti.paramLen);
 			cti.sig                  = full_signature;
 
 			if (hasDefaultValues) {
@@ -196,22 +194,27 @@ void clCallTip::Initialize(const std::vector<TagEntryPtr> &tips)
 void clCallTip::GetHighlightPos(int index, int& start, int& len)
 {
 	start = wxNOT_FOUND;
-	len = wxNOT_FOUND;
+	len   = wxNOT_FOUND;
 	if (m_curr >= 0 && m_curr < (int)m_tips.size()) {
 		clTipInfo ti = m_tips.at(m_curr);
 		int base = ti.str.Find(wxT("("));
-
-		if (m_tips.size() > 1) {
-			// multiple tooltips exists, make sure we calculate the up and down arrows
-			wxString arrowsStr;
-			arrowsStr << _T("\001 ") << static_cast<int>(m_curr)+1 << _T(" of ") << static_cast<int>(m_tips.size()) << _T(" \002 ");
-			base += arrowsStr.Length();
-		}
-
+		
 		// sanity
 		if (base != wxNOT_FOUND && index < (int)ti.paramLen.size() && index >= 0) {
 			start = ti.paramLen.at(index).first + base;
 			len =  ti.paramLen.at(index).second;
 		}
 	}
+}
+
+wxString clCallTip::Current()
+{
+	// format a tip string and return it
+	if ( m_tips.empty() )
+		return wxEmptyString;
+	
+	if ( m_curr >= (int)m_tips.size() || m_curr < 0) {
+		m_curr = 0;
+	}
+	return TipAt(m_curr);
 }

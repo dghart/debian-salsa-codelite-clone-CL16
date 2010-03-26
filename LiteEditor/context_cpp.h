@@ -27,7 +27,7 @@
 
 #include "context_base.h"
 #include "cpptoken.h"
-#include "cl_calltip.h"
+#include "ctags_manager.h"
 #include <map>
 #include "entry.h"
 
@@ -35,7 +35,6 @@ class RefactorSource;
 
 class ContextCpp : public ContextBase
 {
-	clCallTipPtr m_ct;
 	std::map<wxString, int> m_propertyInt;
 	wxMenu *m_rclickMenu;
 
@@ -68,6 +67,7 @@ private:
 	void DoCreateFile(const wxFileName &fn);
 	int  DoGetCalltipParamterIndex();
 	void DoUpdateCalltipHighlight();
+
 public:
 	ContextCpp(LEditor *container);
 	virtual ~ContextCpp();
@@ -87,6 +87,8 @@ public:
 	virtual void RetagFile();
 	virtual wxString CallTipContent();
 	virtual void SetActive();
+
+	virtual void SemicolonShift();
 
 	// ctrl-click style navigation support
 	virtual int GetHyperlinkRange(int pos, int &start, int &end);
@@ -125,24 +127,30 @@ public:
 	virtual void OnMoveImpl(wxCommandEvent &e);
 	virtual void OnAddImpl(wxCommandEvent &e);
 	virtual void OnAddMultiImpl(wxCommandEvent &e);
+	virtual void OnOverrideParentVritualFunctions(wxCommandEvent &e);
 	virtual void OnRenameFunction(wxCommandEvent &e);
 	virtual void OnRetagFile(wxCommandEvent &e);
 	virtual void OnUserTypedXChars(const wxString &word);
 	virtual void OnCallTipClick(wxScintillaEvent &e);
 	virtual void OnCalltipCancel();
 	DECLARE_EVENT_TABLE();
+
 private:
 	wxString      GetWordUnderCaret();
 	wxString      GetFileImageString(const wxString &ext);
 	wxString      GetImageString(const TagEntry &entry);
-	wxString      GetExpression(long pos, bool onlyWord, LEditor *editor = NULL);
+	wxString      GetExpression(long pos, bool onlyWord, LEditor *editor = NULL, bool forCC = true);
 	void          DoGotoSymbol(TagEntryPtr tag);
 	bool          IsIncludeStatement(const wxString &line, wxString *fileName = NULL);
 	void          RemoveDuplicates(std::vector<TagEntryPtr>& src, std::vector<TagEntryPtr>& target);
 	int           FindLineToAddInclude();
 	void          MakeCppKeywordsTags(const wxString &word, std::vector<TagEntryPtr> &tags);
 	void          DoOpenWorkspaceFile();
-	wxArrayString DoGetTemplateTypes(const wxString &tmplDecl);
+
+public:
+	void          DoMakeDoxyCommentString(DoxygenComment &dc);
+
+private:
 	/**
 	 * \brief try to find a swapped file for this rhs. The logic is based on the C++ coding conventions
 	 * a swapped file for a.cpp will be a.h or a.hpp
@@ -176,14 +184,30 @@ private:
 	 */
 	bool ResolveWord(LEditor *ctrl, int pos, const wxString &word, RefactorSource *rs);
 
- 	/**
-	 * \brief open file specified by the 'fileName' parameter and append 'text'
+	/**
+	* \brief open file specified by the 'fileName' parameter and append 'text'
+	* to its content
+	* \param fileName file to open. Must be in full path
+	* \param text string text to append
+	* \return true on success, false otherwise
+	*/
+	LEditor* OpenFileAndAppend(const wxString &fileName, const wxString &text);
+
+	/**
+	 * @brief open file specified by the 'fileName' parameter and append 'text'
 	 * to its content
-	 * \param fileName file to open. Must be in full path
-	 * \param text string text to append
-	 * \return true on success, false otherwise
+	 * @param fileName file to open. Must be in full path
+	 * @param text string text to append
+	 * @param format set to true of formatting should take place after text insertion
+	 * @return true on success, false otherwise
 	 */
-	bool OpenFileAndAppend(const wxString &fileName, const wxString &text);
+	bool OpenFileAppendAndFormat(const wxString &fileName, const wxString &text, bool format);
+
+	/**
+	 * @brief format editor
+	 * @param editor
+	 */
+	void DoFormatEditor(LEditor *editor);
 };
 
 #endif // CONTEXT_CPP_H

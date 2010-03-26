@@ -10,14 +10,21 @@ CppCheckFileListCtrl::CppCheckFileListCtrl(wxWindow * window)
 		: wxScintilla(window)
 		, m_report(NULL)
 {
-	wxFont font(8, wxFONTFAMILY_TELETYPE, wxNORMAL, wxNORMAL);
+	
+#ifdef __WXMAC__
+	StyleSetSize(wxSCI_STYLE_DEFAULT, 12  );
+	wxFont font(12, wxFONTFAMILY_TELETYPE, wxNORMAL, wxNORMAL);
+#else
+	StyleSetSize(wxSCI_STYLE_DEFAULT, 8   );
+	wxFont font(8 , wxFONTFAMILY_TELETYPE, wxNORMAL, wxNORMAL);
+#endif
 
 	SetReadOnly( true );
 	SetLexer(wxSCI_LEX_NULL);
 
 	// Set TELETYPE font (monospace)
 	StyleSetFont(wxSCI_STYLE_DEFAULT, font);
-	StyleSetSize(wxSCI_STYLE_DEFAULT, 8   );
+	
 
 	SetMarginWidth(0, 0);
 	SetMarginWidth(1, 0);

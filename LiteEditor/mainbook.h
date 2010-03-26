@@ -32,7 +32,9 @@
 #include "quickfindbar.h"
 #include "custom_notebook.h"
 #include "filehistory.h"
+#include "message_pane.h"
 
+class MessagePane;
 class MainBook : public wxPanel
 {
 private:
@@ -43,7 +45,9 @@ private:
     wxWindow     *m_currentPage;
 
     std::set<wxWindow*> m_detachedTabs;
-
+	MessagePane  *m_messagePane;
+	
+private:
     void CreateGuiControls();
     void ConnectEvents    ();
 
@@ -58,6 +62,7 @@ private:
     void OnWorkspaceClosed   (wxCommandEvent    &e);
 
 	bool AskUserToSave(LEditor *editor);
+	bool DoSelectPage (wxWindow *win  );
 
 public:
 	MainBook(wxWindow *parent);
@@ -68,11 +73,13 @@ public:
 	FileHistory &GetRecentlyOpenedFilesClass() { return m_recentFiles; }
 
 	void ShowQuickBar (bool s = true)       { m_quickFindBar->Show(s); }
+	void ShowMessage  (const wxString &message, bool showHideButton = true, const wxBitmap &bmp = wxNullBitmap, const ButtonDetails &btn1 = ButtonDetails(), const ButtonDetails &btn2 = ButtonDetails(), const ButtonDetails &btn3 = ButtonDetails());
+	
 	void ShowNavBar   (bool s = true);
 	void UpdateNavBar (LEditor *editor);
 	bool IsNavBarShown()                    { return m_navBar->IsShown(); }
 
-    void SaveSession   (SessionEntry &session);
+    void SaveSession   (SessionEntry &session, wxArrayInt& intArr);
     void RestoreSession(SessionEntry &session);
 
     LEditor *GetActiveEditor();
@@ -102,7 +109,7 @@ public:
 
 	bool SaveAll(bool askUser, bool includeUntitled);
 
-    void ReloadExternallyModified();
+    void ReloadExternallyModified(bool prompt);
 
     bool ClosePage      (const wxString &text) { return ClosePage(FindPage(text)); }
     bool ClosePage      (wxWindow *win);

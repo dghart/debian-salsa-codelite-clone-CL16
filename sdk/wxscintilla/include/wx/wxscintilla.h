@@ -134,8 +134,10 @@
 #define wxSCI_MASK_FOLDERS 0xFE000000
 #define wxSCI_MARGIN_SYMBOL 0
 #define wxSCI_MARGIN_NUMBER 1
-#define wxSCI_MARGIN_BACK 2
-#define wxSCI_MARGIN_FORE 3
+#define wxSCI_MARGIN_BACK   2
+#define wxSCI_MARGIN_FORE   3
+#define wxSCI_MARGIN_TEXT   4
+#define wxSCI_MARGIN_RTEXT  5
 
 // Styles in range 32..38 are predefined for parts of the UI and are not used as normal styles.
 // Styles 39 is for future use.
@@ -419,13 +421,15 @@
 #define wxSCI_LEX_POWERSHELL 88
 
 //ERAN
-#define wxSCI_LEX_GCC	150
-#define wxSCI_LEX_GCC_DEFAULT 0
-#define wxSCI_LEX_GCC_ERROR	  1
-#define wxSCI_LEX_GCC_WARNING 2
-#define wxSCI_LEX_GCC_BUILDING 3
-#define wxSCI_LEX_GCC_FILE_LINK 4
-#define wxSCI_LEX_GCC_OUTPUT 5
+#define wxSCI_LEX_GCC            150
+#define wxSCI_LEX_GCC_DEFAULT      0
+#define wxSCI_LEX_GCC_ERROR        1
+#define wxSCI_LEX_GCC_WARNING      2
+#define wxSCI_LEX_GCC_BUILDING     3
+#define wxSCI_LEX_GCC_FILE_LINK    4
+#define wxSCI_LEX_GCC_OUTPUT       5
+#define wxSCI_LEX_GCC_MAKE_ENTER   6
+#define wxSCI_LEX_GCC_MAKE_LEAVING 7
 
 #define wxSCI_LEX_FIF 151
 #define wxSCI_LEX_FIF_DEFAULT 0
@@ -442,6 +446,7 @@
 #define wxSCI_LEX_SVN_MERGED 	3
 #define wxSCI_LEX_SVN_DELETED 	4
 #define wxSCI_LEX_SVN_ADDED 	5
+#define wxSCI_LEX_SVN_INFO  	6
 
 //ERAN - END
 
@@ -2109,6 +2114,12 @@ public:
 
     // Set the foreground colour of a style.
     void StyleSetForeground (int style, const wxColour& fore);
+	
+	// Get the background colour of a style
+	wxColour StyleGetBackground(int style);
+	
+	// Get the foreground colour of a style
+	wxColour StyleGetForeground(int style);
 
     // Set the background colour of a style.
     void StyleSetBackground (int style, const wxColour& back);
@@ -3365,6 +3376,7 @@ public:
 	void     SetIndicatorCurrent(int indicator);
 	int      GetIndicatorCurrent();
 	int      IndicatorValueAt(int indicator, int position);
+	void     SetInidicatorValue(int indicator, int value);
 	void     IndicatorFillRange(int position, int len);
 	void     IndicatorClearRange(int position, int len);
 	int      IndicatorStart(int indicator, int position);

@@ -22,9 +22,10 @@
 //
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-
+#include <wx/app.h>
+#include <wx/log.h>
 #include "buildmanager.h"
-#include "macros.h"
+#include "asyncprocess.h"
 #include "imanager.h"
 #include <wx/ffile.h>
 #include "environmentconfig.h"
@@ -35,6 +36,7 @@
 #include "custombuildrequest.h"
 #include "workspace.h"
 #include "plugin.h"
+#include "macros.h"
 
 CustomBuildRequest::CustomBuildRequest(wxEvtHandler *owner, const QueueCommand &buildInfo, const wxString &fileName)
 		: ShellCommand(owner, buildInfo)
@@ -48,19 +50,17 @@ CustomBuildRequest::~CustomBuildRequest()
 
 void CustomBuildRequest::Process(IManager *manager)
 {
-	wxString cmd;
-	wxString errMsg;
-	SetBusy(true);
+	wxString  cmd;
+	wxString  errMsg;
 	StringMap om;
 
-	BuildSettingsConfig *bsc(manager ? manager->GetBuildSettingsConfigManager() : BuildSettingsConfigST::Get());
-	Workspace *w(manager ? manager->GetWorkspace() : WorkspaceST::Get());
-	EnvironmentConfig *env(manager ? manager->GetEnv() : EnvironmentConfig::Instance());
+	BuildSettingsConfig *bsc ( manager->GetBuildSettingsConfigManager() );
+	Workspace *          w   ( manager->GetWorkspace()                  );
+	EnvironmentConfig *  env ( manager->GetEnv()                        );
 
 	ProjectPtr proj = w->FindProjectByName(m_info.GetProject(), errMsg);
 	if (!proj) {
 		AppendLine(wxT("Cant find project: ") + m_info.GetProject());
-		SetBusy(false);
 		return;
 	}
 
@@ -78,11 +78,10 @@ void CustomBuildRequest::Process(IManager *manager)
 	wxApp *app = manager ? manager->GetTheApp() : wxTheApp;
 	app->ProcessEvent(event);
 
-	if(app->ProcessEvent(event)){
+	if (app->ProcessEvent(event)) {
 
 		// the build is being handled by some plugin, no need to build it
 		// using the standard way
-		SetBusy(false);
 		return;
 	}
 
@@ -92,7 +91,6 @@ void CustomBuildRequest::Process(IManager *manager)
 	BuildConfigPtr bldConf = w->GetProjBuildConf(m_info.GetProject(), m_info.GetConfiguration());
 	if ( !bldConf ) {
 		wxLogMessage(wxString::Format(wxT("Failed to find build configuration for project '%s' and configuration '%s'"), m_info.GetProject().c_str(), m_info.GetConfiguration().c_str()));
-		SetBusy(false);
 		return;
 	}
 
@@ -110,14 +108,19 @@ void CustomBuildRequest::Process(IManager *manager)
 	bool isClean(false);
 	if (m_info.GetCustomBuildTarget() == wxT("Build")) {
 		cmd = bldConf->GetCustomBuildCmd();
+
 	} else if (m_info.GetCustomBuildTarget() == wxT("Clean")) {
 		cmd = bldConf->GetCustomCleanCmd();
 		isClean = true;
+	} else if ( m_info.GetCustomBuildTarget() == wxT("Rebuild")) {
+		cmd = bldConf->GetCustomRebuildCmd();
+
 	} else if (m_info.GetCustomBuildTarget() == wxT("Compile Single File")) {
 		cmd = bldConf->GetSingleFileBuildCommand();
+
 	} else if (m_info.GetCustomBuildTarget() == wxT("Preprocess File")) {
-        cmd = bldConf->GetPreprocessFileCommand();
-    }
+		cmd = bldConf->GetPreprocessFileCommand();
+	}
 
 	// if still no luck, try with the other custom targets
 	if (cmd.IsEmpty()) {
@@ -135,56 +138,93 @@ void CustomBuildRequest::Process(IManager *manager)
 		} else {
 			AppendLine(wxT("Command line is empty. Build aborted."));
 		}
-		SetBusy(false);
 		return;
 	}
 
-	m_proc = new clProcess(wxNewId(), cmd);
-	if (m_proc) {
-		DirSaver ds;
 
-		DoSetWorkingDirectory(proj, true, false);
+	// Working directory:
+	// By default we use the project path
+	//////////////////////////////////////////////////////
 
-		//expand the variables of the command
-		cmd = ExpandAllVariables(cmd, w, m_info.GetProject(), m_info.GetConfiguration(), m_fileName);
+	DirSaver ds;
 
-		// in case our configuration includes post/pre build commands
-		// we generate a makefile to include them as well and we update
-		// the build command
-		DoUpdateCommand(manager, cmd, proj, bldConf);
+	//first set the path to the project working directory
+	::wxSetWorkingDirectory(proj->GetFileName().GetPath());
 
-		//replace the command line
-		m_proc->SetCommand(cmd);
+	// If a working directory was specified, use it instead
+	wxString wd = bldConf->GetCustomBuildWorkingDir();
+	wd.Trim().Trim(false);
 
-		//print the build command
-		AppendLine(cmd + wxT("\n"));
-		wxString configName(m_info.GetConfiguration());
+	wxString filename;
+	if(manager->GetActiveEditor()) {
+		filename = manager->GetActiveEditor()->GetFileName().GetFullPath();
+	}
 
-		//also, send another message to the main frame, indicating which project is being built
-		//and what configuration
-		wxString text;
-		if (isClean) {
-			text << CLEAN_PROJECT_PREFIX;
-		} else {
-			text << BUILD_PROJECT_PREFIX;
-		}
-		text << m_info.GetProject() << wxT(" - ") << configName << wxT(" ]----------\n");
+	if (wd.IsEmpty()) {
 
-		AppendLine(text);
-		env->ApplyEnv( &om );
-		if (m_proc->Start() == 0) {
-			wxString message;
-			message << wxT("Failed to start build process, command: ") << cmd << wxT(", process terminated with exit code: 0");
-			EnvironmentConfig::Instance()->UnApplyEnv();
-			AppendLine(message);
-			delete m_proc;
-			SetBusy(false);
-			return;
-		}
-		env->UnApplyEnv();
-		m_timer->Start(10);
-		Connect(wxEVT_TIMER, wxTimerEventHandler(CustomBuildRequest::OnTimer), NULL, this);
-		m_proc->Connect(wxEVT_END_PROCESS, wxProcessEventHandler(CustomBuildRequest::OnProcessEnd), NULL, this);
+		// use the project path
+		wd = proj->GetFileName().GetPath();
+
+	} else {
+
+		// expand macros from the working directory
+		wd = ExpandAllVariables(wd,
+								WorkspaceST::Get(),
+								proj->GetName(),
+								bldConf->GetName(),
+								filename);
+	}
+
+	::wxSetWorkingDirectory(wd);
+
+	// Print message to the build tab
+	AppendLine(wxString::Format(wxT("MESSAGE: Entering directory `%s'\n"), wd.c_str()));
+
+	// Command handling:
+	//////////////////////////////////////////////////////
+
+	//expand the variables of the command
+	cmd = ExpandAllVariables(cmd, w, m_info.GetProject(), m_info.GetConfiguration(), filename);
+
+	// in case our configuration includes post/pre build commands
+	// we generate a makefile to include them as well and we update
+	// the build command
+	DoUpdateCommand(manager, cmd, proj, bldConf);
+
+#ifdef __WXMSW__
+	// Windows CD command requires the paths to be backslashe
+	if(cmd.Find(wxT("cd ")) != wxNOT_FOUND)
+		cmd.Replace(wxT("/"), wxT("\\"));
+#endif
+
+	// Wrap the build command in the shell, so it will be able
+	// to perform 'chain' commands like
+	// cd SOMEWHERE && make && ...
+	WrapInShell(cmd);
+
+	//print the build command
+	AppendLine(cmd + wxT("\n"));
+	wxString configName(m_info.GetConfiguration());
+
+	//also, send another message to the main frame, indicating which project is being built
+	//and what configuration
+	wxString text;
+	if (isClean) {
+		text << CLEAN_PROJECT_PREFIX;
+	} else {
+		text << BUILD_PROJECT_PREFIX;
+	}
+	text << m_info.GetProject() << wxT(" - ") << configName << wxT(" ]----------\n");
+
+	AppendLine(text);
+	EnvSetter environment(env, &om);
+
+	m_proc = CreateAsyncProcess(this, cmd);
+	if ( !m_proc ) {
+		wxString message;
+		message << wxT("Failed to start build process, command: ") << cmd << wxT(", process terminated with exit code: 0");
+		AppendLine(message);
+		return;
 	}
 }
 

@@ -22,7 +22,10 @@
 //
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
- #include "xmlutils.h"
+#include "xmlutils.h"
+
+// wxXmlNode compatibilty macros
+#include "wx_xml_compatibility.h"
 
 wxXmlNode *XmlUtils::FindNodeByName(const wxXmlNode *parent, const wxString &tagName, const wxString &name)
 {
@@ -91,6 +94,11 @@ wxString XmlUtils::ReadString(wxXmlNode *node, const wxString &propName, const w
 	return node->GetPropVal(propName, defaultValue);
 }
 
+bool XmlUtils::ReadStringIfExists(wxXmlNode* node, const wxString& propName, wxString& value)
+{
+	return node->GetPropVal(propName, &value);
+}
+
 long XmlUtils::ReadLong(wxXmlNode *node, const wxString &propName, long defaultValue)
 {
 	wxString val = node->GetPropVal(propName, wxEmptyString);
@@ -109,12 +117,27 @@ long XmlUtils::ReadLong(wxXmlNode *node, const wxString &propName, long defaultV
 	return retVal;
 }
 
+bool XmlUtils::ReadLongIfExists(wxXmlNode *node, const wxString &propName, long& answer)
+{
+	wxString value;
+	if( ! node->GetPropVal(propName, &value) ) {
+		return false;
+	}
+
+	if(value.StartsWith(wxT("\""))){
+		value = value.AfterFirst(wxT('"'));
+	}
+	if(value.EndsWith(wxT("\""))){
+		value = value.BeforeLast(wxT('"'));
+	}
+
+	bool retVal = value.ToLong(&answer);
+	return retVal;
+}
+
 bool XmlUtils::ReadBool(wxXmlNode *node, const wxString &propName, bool defaultValue)
 {
 	wxString val = node->GetPropVal(propName, wxEmptyString);
-	if( val.IsEmpty() ){
-		return defaultValue;
-	}
 
 	if(val.IsEmpty()){
 		return defaultValue;
@@ -127,6 +150,21 @@ bool XmlUtils::ReadBool(wxXmlNode *node, const wxString &propName, bool defaultV
 		retVal = false;
 	}
 	return retVal;
+}
+
+bool XmlUtils::ReadBoolIfExists(wxXmlNode* node, const wxString& propName, bool& answer)
+{
+	wxString value;
+	if( ! node->GetPropVal(propName, &value) ) {
+		return false;
+	}
+
+	if(value.CmpNoCase(wxT("yes")) == 0){
+		answer = true;
+	} else {
+		answer = false;
+	}
+	return true;
 }
 
 void XmlUtils::SetNodeContent(wxXmlNode *node, const wxString &text)
@@ -148,8 +186,10 @@ void XmlUtils::SetNodeContent(wxXmlNode *node, const wxString &text)
 		delete contentNode;
 	}
 
-	contentNode = new wxXmlNode(wxXML_TEXT_NODE, wxEmptyString, text);
-	node->AddChild( contentNode );
+	if(!text.IsEmpty()){
+		contentNode = new wxXmlNode(wxXML_TEXT_NODE, wxEmptyString, text);
+		node->AddChild( contentNode );
+	}
 }
 
 void XmlUtils::RemoveChildren(wxXmlNode *node)
@@ -182,6 +222,60 @@ void XmlUtils::SetCDATANodeContent(wxXmlNode* node, const wxString& text)
 		delete contentNode;
 	}
 
-	contentNode = new wxXmlNode(wxXML_CDATA_SECTION_NODE, wxEmptyString, text);
-	node->AddChild( contentNode );
+	if(!text.IsEmpty()){
+		contentNode = new wxXmlNode(wxXML_CDATA_SECTION_NODE, wxEmptyString, text);
+		node->AddChild( contentNode );
+	}
+}
+
+bool XmlUtils::StaticReadObject(wxXmlNode* root, const wxString& name, SerializedObject* obj)
+{
+	//find the object node in the xml file
+	
+	wxXmlNode *node = XmlUtils::FindNodeByName(root, wxT("ArchiveObject"), name);
+	if (node) {
+		
+		// Check to see if we need a version check
+		wxString objectVersion = obj->GetVersion();
+		if(objectVersion.IsEmpty() == false) {
+			if(node->GetPropVal(wxT("Version"), wxT("")) != objectVersion) {
+				return false;
+			}
+		}
+		
+		Archive arch;
+		arch.SetXmlNode(node);
+		obj->DeSerialize(arch);
+		return true;
+	}
+	return false;
+}
+
+bool XmlUtils::StaticWriteObject(wxXmlNode* root, const wxString& name, SerializedObject* obj)
+{
+	if(!root)
+		return false;
+
+	Archive arch;
+	wxXmlNode *child = XmlUtils::FindNodeByName(root, wxT("ArchiveObject"), name);
+	if (child) {
+		wxXmlNode *n = root;
+		n->RemoveChild(child);
+		delete child;
+	}
+
+	//create new xml node for this object
+	child = new wxXmlNode(NULL, wxXML_ELEMENT_NODE, wxT("ArchiveObject"));
+	root->AddChild(child);
+	
+	wxString objectVersion = obj->GetVersion();
+	if(objectVersion.IsEmpty() == false)
+		child->AddProperty(wxT("Version"), objectVersion);
+		
+	child->AddProperty(wxT("Name"), name);
+
+	arch.SetXmlNode(child);
+	//serialize the object into the archive
+	obj->Serialize(arch);
+	return true;
 }
