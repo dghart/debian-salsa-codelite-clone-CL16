@@ -1,5 +1,2 @@
 debian/codelite.1
-debian/codelite_indexer.1
 debian/codelite_fix_files.1
-debian/codelite_exec.1
-debian/codelite_kill_children.1

@@ -1,9 +1,12 @@
-Fix broken desktop file
-Index: codelite-1.0.2785+dfsg/Runtime/codelite.desktop.template
-===================================================================
---- codelite-1.0.2785+dfsg.orig/Runtime/codelite.desktop.template	2009-02-24 22:58:14.000000000 +0800
-+++ codelite-1.0.2785+dfsg/Runtime/codelite.desktop.template	2009-03-03 04:13:46.000000000 +0800
-@@ -1,9 +1,8 @@
+Author: Chow Loong Jin <hyperair@gmail.com>
+Description: Fix desktop file as Freedesktop.org's per spec.
+---
+ Runtime/codelite.desktop.template |    3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+--- codelite-2.2.0.3681+dfsg.orig/Runtime/codelite.desktop.template
++++ codelite-2.2.0.3681+dfsg/Runtime/codelite.desktop.template
+@@ -1,6 +1,5 @@
  [Desktop Entry]
 -Encoding=UTF-8
 -Name=codelite
@@ -11,7 +14,3 @@ Index: codelite-1.0.2785+dfsg/Runtime/codelite.desktop.template
  Exec=codelite %f
  Icon=%%PREFIX%%/share/codelite/images/cubes.png
  Terminal=false
- Type=Application
--Categories=Development
-+Categories=Development;
- StartupNotify=true

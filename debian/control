@@ -1,25 +1,27 @@
 Source: codelite
 Section: devel
 Priority: optional
-Maintainer: Chow Loong Jin <hyperair@ubuntu.com>
-Build-Depends: debhelper (>= 7.0.50),
-               quilt (>= 0.46-7~),
-               autotools-dev,
-               libgtk2.0-dev,
-               libwxgtk2.8-dev,
-    	       libsqlite3-dev
-Standards-Version: 3.8.3
+Maintainer: Alessio Treglia <quadrispro@ubuntu.com>
+Build-Depends: debhelper (>= 7.0.50~),
+ quilt (>= 0.46-7~),
+ autotools-dev,
+ libgtk2.0-dev,
+ libwxgtk2.8-dev,
+ libsqlite3-dev
+Standards-Version: 3.8.4
+DM-Upload-Allowed: yes
 Homepage: http://www.codelite.org
 Vcs-Git: git://git.debian.org/git/collab-maint/codelite.git
 Vcs-Browser: http://git.debian.org/?p=collab-maint/codelite.git
 
 Package: codelite
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends},
+ ${misc:Depends}
 Recommends: gdb,
-            gcc,
-            g++,
-            xterm,
+ gcc,
+ g++,
+ xterm | x-terminal-emulator
 Suggests: codelite-plugins
 Description: Powerful and lightweight C/C++ IDE
  CodeLite is a powerful and lightweight C/C++ IDE which comes with but is not
@@ -35,107 +37,42 @@ Description: Powerful and lightweight C/C++ IDE
   * doxygen comment generator
 
 Package: codelite-plugins
-Architecture: all
-Depends: ${misc:Depends},
-         codelite-plugins-abbreviation (>= ${source:Version}),
-         codelite-plugins-codeformatter (>= ${source:Version}),
-         codelite-plugins-continuousbuild (>= ${source:Version}),
-         codelite-plugins-copyright (>= ${source:Version}),
-         codelite-plugins-cscope (>= ${source:Version}),
-         codelite-plugins-externaltools (>= ${source:Version}),
-         codelite-plugins-gizmos (>= ${source:Version}),
-         codelite-plugins-snipwiz (>= ${source:Version}),
-         codelite-plugins-subversion (>= ${source:Version}),
-         codelite-plugins-symbolview (>= ${source:Version}),
-         codelite-plugins-unittestcpp (>= ${source:Version}),
-         codelite-plugins-wxformbuilder (>= ${source:Version})
-Description: Powerful and lightweight C/C++ IDE - plugins
- This is a metapackage which installs all official CodeLite plugins. 
-
-Package: codelite-plugins-abbreviation
-Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, codelite (= ${binary:Version})
-Description: Powerful and lightweight C/C++ IDE - abbreviation plugin
- This package extends CodeLite functionality with the included 
- Abbreviation plugin.
-
-Package: codelite-plugins-codeformatter
-Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, codelite (= ${binary:Version})
-Description: Powerful and lightweight C/C++ IDE - CodeFormatter plugin
- This package extends CodeLite functionality with the included 
- CodeFormatter plugin.
-
-Package: codelite-plugins-continuousbuild
-Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, codelite (= ${binary:Version})
-Description: Powerful and lightweight C/C++ IDE - ContinuousBuild plugin
- This package extends CodeLite functionality with the included
- ContinuousBuild plugin.
-
-Package: codelite-plugins-copyright
-Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, codelite (= ${binary:Version})
-Description: Powerful and lightweight C/C++ IDE - Copyright plugin
- This package extends CodeLite functionality with the included Copyright
- plugin.
-
-Package: codelite-plugins-cscope
-Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, codelite (= ${binary:Version})
-Description: Powerful and lightweight C/C++ IDE - CScope plugin
- This package extends CodeLite functionality with the included CScope
- plugin.
-
-Package: codelite-plugins-externaltools
-Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, codelite (= ${binary:Version})
-Description: Powerful and lightweight C/C++ IDE - ExternalTools plugin
- This package extends CodeLite functionality with the included ExternalTools
- plugin.
-
-Package: codelite-plugins-gizmos
-Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, codelite (= ${binary:Version})
-Description: Powerful and lightweight C/C++ IDE - Gizmos plugin
- This package extends CodeLite functionality with the included Gizmos
- plugin.
-
-Package: codelite-plugins-snipwiz
-Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, codelite (= ${binary:Version})
-Description: Powerful and lightweight C/C++ IDE - SnipWiz plugin
- This package extends CodeLite functionality with the included Gizmos
- plugin.
-
-Package: codelite-plugins-subversion
 Architecture: any
 Depends: ${shlibs:Depends},
-         ${misc:Depends},
-         codelite (= ${binary:Version}),
-         subversion
-Description: Powerful and lightweight C/C++ IDE - Subversion plugin
- This package extends CodeLite functionality with the included Subversion
- plugin.
-
-Package: codelite-plugins-symbolview
-Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, codelite (= ${binary:Version})
-Description: Powerful and lightweight C/C++ IDE - SymbolView plugin
- This package extends CodeLite functionality with the included SymbolView
- plugin.
-
-Package: codelite-plugins-unittestcpp
-Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, codelite (= ${binary:Version})
-Description: Powerful and lightweight C/C++ IDE - UnitTest++ plugin
- This package extends CodeLite functionality with the included UnitTest++ 
- plugin.
-
-Package: codelite-plugins-wxformbuilder
-Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, codelite (= ${binary:Version})
-Description: Powerful and lightweight C/C++ IDE - WXFormBuilder plugin
- This package extends CodeLite functionality with the included WXFormBuilder
- plugin.
-
+ ${misc:Depends}
+Conflicts: codelite-plugins-abbreviation (<< 2.3.0.3833+dfsg-1),
+ codelite-plugins-codeformatter (<< 2.3.0.3833+dfsg-1),
+ codelite-plugins-continuousbuild (<< 2.3.0.3833+dfsg-1),
+ codelite-plugins-copyright (<< 2.3.0.3833+dfsg-1),
+ codelite-plugins-cscope (<< 2.3.0.3833+dfsg-1),
+ codelite-plugins-externaltools (<< 2.3.0.3833+dfsg-1),
+ codelite-plugins-gizmos (<< 2.3.0.3833+dfsg-1),
+ codelite-plugins-snipwiz (<< 2.3.0.3833+dfsg-1),
+ codelite-plugins-subversion (<< 2.3.0.3833+dfsg-1),
+ codelite-plugins-unittestcpp (<< 2.3.0.3833+dfsg-1),
+ codelite-plugins-wxformbuilder (<< 2.3.0.3833+dfsg-1)
+Replaces: codelite-plugins-abbreviation (<< 2.3.0.3833+dfsg-1),
+ codelite-plugins-codeformatter (<< 2.3.0.3833+dfsg-1),
+ codelite-plugins-continuousbuild (<< 2.3.0.3833+dfsg-1),
+ codelite-plugins-copyright (<< 2.3.0.3833+dfsg-1),
+ codelite-plugins-cscope (<< 2.3.0.3833+dfsg-1),
+ codelite-plugins-externaltools (<< 2.3.0.3833+dfsg-1),
+ codelite-plugins-gizmos (<< 2.3.0.3833+dfsg-1),
+ codelite-plugins-snipwiz (<< 2.3.0.3833+dfsg-1),
+ codelite-plugins-subversion (<< 2.3.0.3833+dfsg-1),
+ codelite-plugins-unittestcpp (<< 2.3.0.3833+dfsg-1),
+ codelite-plugins-wxformbuilder (<< 2.3.0.3833+dfsg-1)
+Description: Powerful and lightweight C/C++ IDE - plugins
+ CodeLite is a powerful and lightweight C/C++ IDE which comes with but is not
+ limited to the following features:
+  * Generic support for compilers
+  * Built-in GDB support
+  * Database-based Code Completion mechanism
+  * Syntax highlighting for C/C++, Java, Perl, XML, Makefile, Lua, Diff files,
+    PHP, JavaScript, Python, HTML, and ASP
+  * Text Folding
+  * Bookmarks
+  * Find and Replace
+  * doxygen comment generator
+ .
+ This package contains the plugins for CodeLite.

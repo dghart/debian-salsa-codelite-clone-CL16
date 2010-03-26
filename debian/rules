@@ -5,7 +5,7 @@ DEBIAN_DIR := $(dir $(MAKEFILE))
 SOURCE_DIR := $(DEBIAN_DIR)/..
 DEB_SOURCE_NAME := $(shell grep ^Source $(DEBIAN_DIR)/control | cut -f2 -d' ')
 CURRENT_VERSION = $(shell dpkg-parsechangelog -l$(DEBIAN_DIR)/changelog | \
-		sed -n 's/+dfsg-.*$$//; s/^Version: //p')
+		sed -n 's/~dfsg-.*$$//; s/^Version: //p')
 USCAN = uscan \
 			--package=$(DEB_SOURCE_NAME) \
 			--watchfile=$(DEBIAN_DIR)/watch \
@@ -13,21 +13,44 @@ USCAN = uscan \
 VERSION ?= $(shell $(USCAN) --dehs --no-download | \
 	sed -n 's/.*<upstream-version>\(.*\)<\/upstream-version>.*/\1/p')
 
+UNITTEST_TARBALL = unittest++1.3.tar.gz 
+
+%:
+	dh --with=quilt $@
+
 # this is a hack so we can grab everything in /usr/share/codelite for
 # codelite while splitting these directories away into separate plugins
 override_dh_install:
 	dh_install
+	rm -f debian/codelite/usr/share/codelite/src/$(UNITTEST_TARBALL)
 	cd debian/codelite/usr/share/codelite; \
 	rm -rf \
+		src/unittest*.tar.gz \
 		templates/gizmos \
 		templates/projects/UnitTest++ \
-		src/unittest*.tar.gz \
-		templates/formbuilder
+		templates/formbuilder \
+		templates/qmake
+	# Prune empty dirs
+	find debian/codelite/ -type d -empty -delete
+	find debian/codelite-plugins/ -type d -empty -delete
 
 override_dh_auto_clean:
 	dh_auto_clean
 	find -name Makefile ! -wholename '*sdk*' -delete
 	rm -f fakeroot/DEBIAN/control
+	rm -rf $(CURDIR)/Runtime/src/UnitTest++
+	rm -rf $(CURDIR)/Runtime/src/unittest*.tar.gz
+
+override_dh_auto_build:
+	cp -a UnitTest++ $(CURDIR)/Runtime/src
+	GZIP=-9fn tar -czf Runtime/src/$(UNITTEST_TARBALL) \
+		Runtime/src/UnitTest++
+	rm -rf $(CURDIR)/Runtime/src/UnitTest++
+	dh_auto_build
+
+override_dh_auto_install:
+	sed -i -e 's/\(install:.*\)\(uninstall\)\(.*\)/\1 \3/' Makefile
+	dh_auto_install
 
 get-orig-source:
 	$(USCAN) \
@@ -43,7 +66,7 @@ get-orig-source:
 	tar -xzf $(DEB_SOURCE_NAME)_$(VERSION).orig.tar.gz
 	mv \
 		$(DEB_SOURCE_NAME)-$(VERSION) \
-		$(DEB_SOURCE_NAME)-$(VERSION)+dfsg
+		$(DEB_SOURCE_NAME)-$(VERSION)~dfsg
 	GZIP=-9fn tar \
 		 --exclude=*.dll \
 		 --exclude=*.exe \
@@ -51,13 +74,11 @@ get-orig-source:
 		 --exclude=sdk/src \
 		 --exclude=sdk/wxconfig \
 		 --exclude=sdk/astyle \
-		 -czf $(DEB_SOURCE_NAME)_$(VERSION)+dfsg.orig.tar.gz \
-		 $(DEB_SOURCE_NAME)-$(VERSION)+dfsg
+		 --exclude=sqlite3 \
+		 --exclude=unittest*.tar.gz \
+		 -czf $(DEB_SOURCE_NAME)_$(VERSION)~dfsg.orig.tar.gz \
+		 $(DEB_SOURCE_NAME)-$(VERSION)~dfsg
 	rm -rf \
 		$(DEB_SOURCE_NAME)_$(VERSION).orig.tar.gz \
-		$(DEB_SOURCE_NAME)-$(VERSION)+dfsg
+		$(DEB_SOURCE_NAME)-$(VERSION)~dfsg
 
-%:
-	dh --with=quilt $@
-
-.PHONY: get-orig-source
