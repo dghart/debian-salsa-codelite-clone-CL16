@@ -1,3 +1,0 @@
-LIBRARY	CodeFormatter
-EXPORTS
-	CreatePlugin
