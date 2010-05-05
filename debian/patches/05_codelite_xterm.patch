@@ -5,12 +5,12 @@ Description:
  to set the right one.
 Forwarded: no
 ---
- Runtime/codelite_xterm |   17 +++++++++++++++--
- 1 file changed, 15 insertions(+), 2 deletions(-)
+ Runtime/codelite_xterm |   15 +++++++++++++--
+ 1 file changed, 13 insertions(+), 2 deletions(-)
 
 --- codelite.orig/Runtime/codelite_xterm
 +++ codelite/Runtime/codelite_xterm
-@@ -9,11 +9,24 @@ if [ $# -ne 2 ]; then
+@@ -9,11 +9,22 @@ if [ $# -ne 2 ]; then
  fi
  
  program_title=$1
@@ -24,8 +24,6 @@ Forwarded: no
 +		title_opt="-T"
 +		;;
 +esac
-+
-+echo $title_opt
 +
  if [ "${LD_LIBRARY_PATH}" = "" ]; then
  	## LD_LIBRARY_PATH is not defined OR empty
