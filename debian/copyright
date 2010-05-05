@@ -1,13 +1,12 @@
-Format-Specification: http://svn.debian.org/wsvn/dep/web/deps/dep5.mdwn?op=file&rev=59
+Format-Specification: http://svn.debian.org/wsvn/dep/web/deps/dep5.mdwn?op=file&rev=135
 Name: CodeLite
 Maintainer: Eran Ifrah <eranif@gmail.com>
 Source: http://www.codelite.org
 
-Files: *
 Copyright: 2007-2010 Eran Ifrah <eranif@gmail.com>
 License: CodeLite
 
-Files: CxxParser/cpp5_grammar.y.full
+Files: ./CxxParser/cpp5_grammar.y.full
 Copyright: 1989-1990, James  A. Roskind <jar@hq.ileaf.com>
 License: other
  This grammar was developed  and  written  by  James  A.  Roskind. 
@@ -39,7 +38,7 @@ License: other
  WARRANTIES  OF  MERCHANTABILITY  AND  FITNESS  LE_FOR  A  PARTICULAR 
  PURPOSE.
 
-Files: CodeLite/cpp5.l
+Files: ./CodeLite/cpp5.l
 Copyright: 1989-1991, James A. Roskind <jar@hq.ileaf.com>
 License: other
  This lexer description was written by James A.  Roskind.  Copying
@@ -69,191 +68,191 @@ License: other
  WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES
  OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 
-Files: CodeLite/readtags*
+Files: ./CodeLite/readtags*
 Copyright: 1996-2003, Darren Hiebert
  2008, Eran Ifrah <eranif@gmail.com>
 License: CodeLite
 X-Comment: the original author, Darren Hiebert, released these
  files in the Public Domain.
 
-Files: sdk/codelite_cppchecker/src/*
+Files: ./sdk/codelite_cppchecker/src/*
 Copyright: 2007-2009 Daniel Marjamäki and Cppcheck team
 License: GPL-3+
 
-Files: sdk/codelite_indexer/libctags/asp.c
+Files: ./sdk/codelite_indexer/libctags/asp.c
 Copyright: 2000, Patrick Dehne <patrick@steidle.net>
 License: GPL-2+
 
-Files: sdk/codelite_indexer/libctags/beta.c
+Files: ./sdk/codelite_indexer/libctags/beta.c
 Copyright: 1999-2000, Mj�lner Informatics
 License: GPL-2+
 
-Files: sdk/codelite_indexer/libctags/e_mac.h
+Files: ./sdk/codelite_indexer/libctags/e_mac.h
 Copyright: 2001, Maarten L. Hekkelman <maarten@hekkelman.com>
 License: GPL-2+
 
-Files: sdk/codelite_indexer/libctags/e_riscos.h
+Files: ./sdk/codelite_indexer/libctags/e_riscos.h
 Copyright: 2002, Andrew Wingate <andy@sparse.net>
 License: GPL-2+
 
-Files: sdk/codelite_indexer/libctags/erlang.c
+Files: ./sdk/codelite_indexer/libctags/erlang.c
 Copyright: 2003, Brent Fulgham <bfulgham@debian.org>
 License: GPL-2+
 
-Files: sdk/codelite_indexer/libctags/lua.c
+Files: ./sdk/codelite_indexer/libctags/lua.c
 Copyright: 2000-2001, Max Ischenko <mfi@ukr.net>
 License: GPL-2+
 
-Files: sdk/codelite_indexer/libctags/php.c
+Files: ./sdk/codelite_indexer/libctags/php.c
 Copyright: 2000, Jesus Castagnetto <jmcastagnetto@zkey.com>
 License: GPL-2+
 
-Files: sdk/codelite_indexer/libctags/ruby.c
+Files: ./sdk/codelite_indexer/libctags/ruby.c
 Copyright: 2000-2001, Thaddeus Covert <sahuagin@mediaone.net>
            2002, Matthias Veit <matthias_veit@yahoo.de>
            2004, Elliott Hughes <enh@acm.org>
 License: GPL-2+
 
-Files: sdk/codelite_indexer/libctags/slang.c
+Files: ./sdk/codelite_indexer/libctags/slang.c
 Copyright: 2000-2001, Francesc Rocher <f.rocher@computer.org>
 License: GPL-2+
 
-Files: sdk/codelite_indexer/libctags/sml.c
+Files: ./sdk/codelite_indexer/libctags/sml.c
 Copyright: 2002, Venkatesh Prasad Ranganath
            2002, Darren Hiebert
 License: GPL-2+
 
-Files: sdk/codelite_indexer/libctags/yacc.c
+Files: ./sdk/codelite_indexer/libctags/yacc.c
 Copyright: 2001-2002, Nick Hibma <n_hibma@van-laarhoven.org>
 License: GPL-2+
 
-Files: sdk/codelite_indexer/libctags/*
+Files: ./sdk/codelite_indexer/libctags/*
 Copyright: 1996-2003, Darren Hiebert
 License: GPL-2+
 
-Files: sdk/wxflatnotebook/src/wxFlatNotebook/xh_fnb.cpp
+Files: ./sdk/wxflatnotebook/src/wxFlatNotebook/xh_fnb.cpp
 Copyright: 2006i, Armel Asselin (copied from Vaclav Slavik xh_notbk)
 License: wxWindows
 
-Files: sdk/wxscintilla/*
+Files: ./sdk/wxscintilla/*
 Copyright: 1998-2008, Neil Hodgson <neilh@scintilla.org>
 License: wxWindows
 
-Files: sdk/wxscintilla/{build,include}/*
+Files: ./sdk/wxscintilla/{build,include}/*
 Copyright: 2004, wxCode
 License: wxWindows
 
-Files: sdk/wxscintilla/src/scintilla/src/LexPLM.cxx
+Files: ./sdk/wxscintilla/src/scintilla/src/LexPLM.cxx
 Copyright: 1990-2007, Scientific Toolworks, Inc
 License: Scintilla
 
-Files: sdk/wxscintilla/src/scintilla/src/LexTCL.cxx
+Files: ./sdk/wxscintilla/src/scintilla/src/LexTCL.cxx
 Copyright: 1998-2001, Andre Arpin <arpin@kingston.net>
 License: Scintilla
 
-Files: sdk/wxscintilla/src/scintilla/src/LexGCC.cxx
-       sdk/wxscintilla/src/scintilla/src/LexSVN.cxx
-       sdk/wxscintilla/src/scintilla/src/LexFIF.cxx
+Files: ./sdk/wxscintilla/src/scintilla/src/LexGCC.cxx,
+ ./sdk/wxscintilla/src/scintilla/src/LexSVN.cxx,
+ ./sdk/wxscintilla/src/scintilla/src/LexFIF.cxx
 Copyright: 1998-2001 Eran Ifrah <eran.ifrah@gmail.com>
 License: Scintilla
 
-Files: sdk/wxscintilla/src/ScintillaWX.cpp
+Files: ./sdk/wxscintilla/src/ScintillaWX.cpp
 Copyright: 2000, Total Control Software
 License: wxWindows
 
-Files: sdk/wxscintilla/src/scintilla/src/LexRuby.cxx
+Files: ./sdk/wxscintilla/src/scintilla/src/LexRuby.cxx
 Copyright: 2001, Clemens Wyss <wys@helbling.ch>
 License: Scintilla
 
-Files: sdk/wxscintilla/src/scintilla/src/LexBaan.cxx
+Files: ./sdk/wxscintilla/src/scintilla/src/LexBaan.cxx
 Copyright: 2001, Vamsi Potluru <vamsi@who.net>
 Copyright: 2001, Praveen Ambekar <ambekarpraveen@yahoo.com>
 License: Scintilla
 
-Files: sdk/wxscintilla/src/scintilla/src/ExternalLexer.cxx
+Files: ./sdk/wxscintilla/src/scintilla/src/ExternalLexer.cxx
 Copyright: 2001, Simon Steele <ss@notepad.org>
 License: Scintilla
 
-Files: sdk/wxscintilla/src/scintilla/src/LexAda.cxx
+Files: ./sdk/wxscintilla/src/scintilla/src/LexAda.cxx
 Copyright: 2002, Sergey Koshcheyev <sergey.k@seznam.cz>
 License: Scintilla
 
-Files: sdk/wxscintilla/src/scintilla/src/LexCLW.cxx
+Files: ./sdk/wxscintilla/src/scintilla/src/LexCLW.cxx
 Copyright: 2003-2004, Ron Schofield <ron@schofieldcomputer.com>
 License: Scintilla
 
-Files: sdk/wxscintilla/src/scintilla/src/LexNsis.cxx
+Files: ./sdk/wxscintilla/src/scintilla/src/LexNsis.cxx
 Copyright: 2003-2005, Angelo Mandato <angelo@spaceblue.com>
 License: Scintilla
 
-Files: sdk/wxscintilla/src/scintilla/src/LexLout.cxx
+Files: ./sdk/wxscintilla/src/scintilla/src/LexLout.cxx
 Copyright: 2003, Kein-Hong Man <mkh@pl.jaring.my>
 License: Scintilla
 
-Files: sdk/wxscintilla/src/scintilla/src/LexMPT.cxx
+Files: ./sdk/wxscintilla/src/scintilla/src/LexMPT.cxx
 Copyright: 2003, Marius Gheorghe <mgheorghe@cabletest.com>
 License: Scintilla
 
-Files: sdk/wxscintilla/src/scintilla/src/LexEScript.cxx
+Files: ./sdk/wxscintilla/src/scintilla/src/LexEScript.cxx
 Copyright: 2003, Patrizio Bekerle <patrizio@bekerle.com>
 License: Scintilla
 
-Files: sdk/wxscintilla/src/scintilla/src/LexYAML.cxx
+Files: ./sdk/wxscintilla/src/scintilla/src/LexYAML.cxx
 Copyright: 2003, Sean O'Dell <sean@celsoft.com>
 License: Scintilla
 
-Files: sdk/wxscintilla/src/scintilla/src/LexAsn1.cxx
+Files: ./sdk/wxscintilla/src/scintilla/src/LexAsn1.cxx
 Copyright: 2004, Herr Pfarrer <rpfarrer@yahoo.de>
 License: Scintilla
 
-Files: sdk/wxscintilla/src/scintilla/src/LexKix.cxx
+Files: ./sdk/wxscintilla/src/scintilla/src/LexKix.cxx
 Copyright: 2004, Manfred Becker <manfred@becker-trdf.de>
 License: Scintilla
 
-Files: sdk/wxscintilla/src/wxscintilla.cpp
+Files: ./sdk/wxscintilla/src/wxscintilla.cpp
 Copyright: 2004, wxCode
 License: wxWindows
 
-Files: sdk/wxscintilla/src/scintilla/src/LexRebol.cxx
+Files: ./sdk/wxscintilla/src/scintilla/src/LexRebol.cxx
 Copyright: 2005, Pascal Hurni <pascal_hurni@fastmail.fm>
 License: Scintilla
 
-Files: sdk/wxscintilla/src/scintilla/src/LexFlagship.cxx
+Files: ./sdk/wxscintilla/src/scintilla/src/LexFlagship.cxx
 Copyright: 1998-2003, Neil Hodgson <neilh@scintilla.org>
 Copyright: 2005, Randy Butler
 License: Scintilla
 
-Files: sdk/wxscintilla/src/scintilla/src/LexCaml.cxx
+Files: ./sdk/wxscintilla/src/scintilla/src/LexCaml.cxx
 Copyright: 2005, Robert Roessler <robertr@rftp.com>
 License: Scintilla
 
-Files: sdk/wxscintilla/src/scintilla/src/LexProgress.cxx
+Files: ./sdk/wxscintilla/src/scintilla/src/LexProgress.cxx
 Copyright: 2006-2007, Yuval Papish <Yuval@YuvCom.com>
 License: Scintilla
 
-Files: sdk/wxscintilla/src/scintilla/src/LexCmake.cxx
+Files: ./sdk/wxscintilla/src/scintilla/src/LexCmake.cxx
 Copyright: 2007, Cristian Adam <cristian.adam@gmx.net>
 License: Scintilla
 
-Files: sdk/wxscintilla/src/scintilla/src/LexGAP.cxx
+Files: ./sdk/wxscintilla/src/scintilla/src/LexGAP.cxx
 Copyright: 2007, Istvan Szollosi <szteven@gmail.com>
 License: Scintilla
 
-Files: sdk/wxscintilla/src/scintilla/src/LexPowerShell.cxx
+Files: ./sdk/wxscintilla/src/scintilla/src/LexPowerShell.cxx
 Copyright: 2008, Tim Gerundt <tim@gerundt.de>
 License: Scintilla
 
-Files: sdk/wxsqlite3/*
+Files: ./sdk/wxsqlite3/*
 Copyright: Ulrich Telle
 License: wxWindows
 
-Files: CodeFormatter/AS*.cpp, CodeFormatter/astyle*
+Files: ./CodeFormatter/AS*.cpp, ./CodeFormatter/astyle*
 Copyright:
  2006-2010, Jim Pattee <jimp03@email.com>
  1998-2002, Tal Davidson
 License: LGPL-2.1+
 
-Files: Plugin/md5*
+Files: ./Plugin/md5*
 Copyright: 1991-1992, RSA Data Security, Inc.
 License: other
  License to copy and use this software is granted provided that it
@@ -274,16 +273,16 @@ License: other
  These notices must be retained in any copies of any part of this
  documentation and/or software.
 
-Files: Plugin/wxmd5*
+Files: ./Plugin/wxmd5*
 Copyright: 1991-1992, RSA Data Security, Inc.
 License: wxWindows
 
-Files: UnitTest++/*
+Files: ./UnitTest++/*
 Copyright: 2006, Noel Llopis <llopis@convexhull.com>
            2006, Charles Nicholson <cn@cnicholson.net>
 License: MIT
 
-Files: debian/*
+Files: ./debian/*
 Copyright: 2010, Alessio Treglia <quadrispro@ubuntu.com>
            2009, Chow Loong Jin <hyperair@ubuntu.com>
 License: GPL-2+
