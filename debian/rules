@@ -29,6 +29,8 @@ override_dh_install:
 		templates/gizmos \
 		templates/projects/UnitTest++ \
 		templates/formbuilder \
+		Runtime/templates/projects/dynamic-library-wx-enabled/dynamic-library-wx-enabled.project~ \
+		UnitTest++/Makefile \
 		templates/qmake
 	# Prune empty dirs
 	find debian/codelite/ -type d -empty -delete
