@@ -1,5 +1,6 @@
 codelite (2.5.2.4031~dfsg-2) unstable; urgency=low
 
+  * Set pkg source format to 1.0.
   * Fix little mistake in debian/codelite.1 (Closes: #579761).
   * Install codelite_xterm script into /usr/lib/codelite.
   * debian/patches/01_x-terminal-emulator.patch:
@@ -8,8 +9,10 @@ codelite (2.5.2.4031~dfsg-2) unstable; urgency=low
     - Don't rely on xterm, try to use the user's preferred terminal emulator first.
     - The option to change the window title depends on the terminal emulator used.
     - Pass '-x' instead of '-e' to terminator.
+  * debian/rules:
+    - Adjust get-orig-source rule to remove junk files from the original tarball.
 
- -- Alessio Treglia <quadrispro@ubuntu.com>  Wed, 05 May 2010 17:40:46 +0200
+ -- Alessio Treglia <quadrispro@ubuntu.com>  Wed, 05 May 2010 17:46:58 +0200
 
 codelite (2.5.2.4031~dfsg-1) unstable; urgency=low
 
