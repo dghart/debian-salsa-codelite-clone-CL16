@@ -1,4 +1,4 @@
-codelite (2.5.2.4031~dfsg-2) UNRELEASED; urgency=low
+codelite (2.5.2.4031~dfsg-2) unstable; urgency=low
 
   * Fix little mistake in debian/codelite.1 (Closes: #579761).
   * Install codelite_xterm script into /usr/lib/codelite.
@@ -6,10 +6,10 @@ codelite (2.5.2.4031~dfsg-2) UNRELEASED; urgency=low
     - Rely on codelite_xterm script to run console programs (LP: #575635).
   * debian/patches/05_codelite_xterm.patch:
     - Don't rely on xterm, try to use the user's preferred terminal emulator first.
-    - The option to change the window title differ between terminal emulators, try
-      to set the right one.
+    - The option to change the window title depends on the terminal emulator used.
+    - Pass '-x' instead of '-e' to terminator.
 
- -- Alessio Treglia <quadrispro@ubuntu.com>  Wed, 05 May 2010 15:18:47 +0200
+ -- Alessio Treglia <quadrispro@ubuntu.com>  Wed, 05 May 2010 17:40:46 +0200
 
 codelite (2.5.2.4031~dfsg-1) unstable; urgency=low
 
