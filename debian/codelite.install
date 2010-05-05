@@ -7,3 +7,4 @@ usr/bin/codelite_fix_files
 usr/bin/codelite_exec usr/lib/codelite
 usr/bin/codelite_indexer usr/lib/codelite
 usr/bin/codelite_kill_children usr/lib/codelite
+usr/bin/codelite_xterm usr/lib/codelite
