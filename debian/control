@@ -1,7 +1,7 @@
 Source: codelite
 Section: devel
 Priority: optional
-Maintainer: Alessio Treglia <quadrispro@ubuntu.com>
+Maintainer: Alessio Treglia <alessio@debian.org>
 Build-Depends: debhelper (>= 7.0.50~),
  quilt (>= 0.46-7~),
  autotools-dev,
