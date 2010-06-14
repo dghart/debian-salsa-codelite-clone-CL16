@@ -1,0 +1,78 @@
+Source: codelite
+Section: devel
+Priority: optional
+Maintainer: Alessio Treglia <alessio@debian.org>
+Build-Depends: debhelper (>= 7.0.50~),
+ quilt (>= 0.46-7~),
+ autotools-dev,
+ libgtk2.0-dev,
+ libwxgtk2.8-dev,
+ libsqlite3-dev
+Standards-Version: 3.8.4
+DM-Upload-Allowed: yes
+Homepage: http://www.codelite.org
+Vcs-Git: git://git.debian.org/git/collab-maint/codelite.git
+Vcs-Browser: http://git.debian.org/?p=collab-maint/codelite.git
+
+Package: codelite
+Architecture: any
+Depends: ${shlibs:Depends},
+ ${misc:Depends}
+Recommends: gdb,
+ gcc,
+ g++,
+ xterm | x-terminal-emulator
+Suggests: codelite-plugins
+Description: Powerful and lightweight C/C++ IDE
+ CodeLite is a powerful and lightweight C/C++ IDE which comes with but is not
+ limited to the following features:
+  * Generic support for compilers
+  * Built-in GDB support
+  * Database-based Code Completion mechanism
+  * Syntax highlighting for C/C++, Java, Perl, XML, Makefile, Lua, Diff files,
+    PHP, JavaScript, Python, HTML, and ASP
+  * Text Folding
+  * Bookmarks
+  * Find and Replace
+  * doxygen comment generator
+
+Package: codelite-plugins
+Architecture: any
+Depends: ${shlibs:Depends},
+ ${misc:Depends}
+Conflicts: codelite-plugins-abbreviation (<< 2.3.0.3833+dfsg-1),
+ codelite-plugins-codeformatter (<< 2.3.0.3833+dfsg-1),
+ codelite-plugins-continuousbuild (<< 2.3.0.3833+dfsg-1),
+ codelite-plugins-copyright (<< 2.3.0.3833+dfsg-1),
+ codelite-plugins-cscope (<< 2.3.0.3833+dfsg-1),
+ codelite-plugins-externaltools (<< 2.3.0.3833+dfsg-1),
+ codelite-plugins-gizmos (<< 2.3.0.3833+dfsg-1),
+ codelite-plugins-snipwiz (<< 2.3.0.3833+dfsg-1),
+ codelite-plugins-subversion (<< 2.3.0.3833+dfsg-1),
+ codelite-plugins-unittestcpp (<< 2.3.0.3833+dfsg-1),
+ codelite-plugins-wxformbuilder (<< 2.3.0.3833+dfsg-1)
+Replaces: codelite-plugins-abbreviation (<< 2.3.0.3833+dfsg-1),
+ codelite-plugins-codeformatter (<< 2.3.0.3833+dfsg-1),
+ codelite-plugins-continuousbuild (<< 2.3.0.3833+dfsg-1),
+ codelite-plugins-copyright (<< 2.3.0.3833+dfsg-1),
+ codelite-plugins-cscope (<< 2.3.0.3833+dfsg-1),
+ codelite-plugins-externaltools (<< 2.3.0.3833+dfsg-1),
+ codelite-plugins-gizmos (<< 2.3.0.3833+dfsg-1),
+ codelite-plugins-snipwiz (<< 2.3.0.3833+dfsg-1),
+ codelite-plugins-subversion (<< 2.3.0.3833+dfsg-1),
+ codelite-plugins-unittestcpp (<< 2.3.0.3833+dfsg-1),
+ codelite-plugins-wxformbuilder (<< 2.3.0.3833+dfsg-1)
+Description: Powerful and lightweight C/C++ IDE - plugins
+ CodeLite is a powerful and lightweight C/C++ IDE which comes with but is not
+ limited to the following features:
+  * Generic support for compilers
+  * Built-in GDB support
+  * Database-based Code Completion mechanism
+  * Syntax highlighting for C/C++, Java, Perl, XML, Makefile, Lua, Diff files,
+    PHP, JavaScript, Python, HTML, and ASP
+  * Text Folding
+  * Bookmarks
+  * Find and Replace
+  * doxygen comment generator
+ .
+ This package contains the plugins for CodeLite.
