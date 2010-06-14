@@ -30,6 +30,7 @@
 #include <vector>
 #include <map>
 #include "entry.h"
+#include "stringhighlighterjob.h"
 #include "cl_calltip.h"
 #include "wx/filename.h"
 #include "findreplacedlg.h"
@@ -189,6 +190,14 @@ public:
 	void SetEOL();
 
 	void CompleteWord();
+
+	/**
+	 * \brief chage the case of the current selection. If selection is empty,
+	 * change the selection of the character to the right of the cart. In case of changing
+	 * the char to the right, move the caret to the right as well.
+	 * \param toLower change to lower case.
+	 */
+	void ChangeCase(bool toLower);
 
 	// set this editor file name
 	void SetFileName(const wxFileName &name) {
@@ -583,6 +592,7 @@ public:
 	}
 
 	wxString GetEolString();
+	void HighlightWord(StringHighlightOutput *highlightOutput);
 
 private:
 	void FillBPtoMarkerArray();
@@ -633,7 +643,6 @@ private:
 	void OnDbgCustomWatch(wxCommandEvent &event);
 	void OnDragStart(wxScintillaEvent &e);
 	void OnDragEnd(wxScintillaEvent &e);
-	void OnHighlightThread(wxCommandEvent &e);
 	void DoSetCaretAt(long pos);
 };
 

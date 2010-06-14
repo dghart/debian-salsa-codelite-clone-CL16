@@ -63,7 +63,7 @@
 // Define the version string for this codelite
 //////////////////////////////////////////////
 extern wxChar *SvnRevision;
-wxString CODELITE_VERSION_STR = wxString::Format(wxT("v2.5.2.%s"), SvnRevision);
+wxString CODELITE_VERSION_STR = wxString::Format(wxT("v2.5.3.%s"), SvnRevision);
 
 #if defined(__WXMAC__)||defined(__WXGTK__)
 #include <signal.h> // sigprocmask
@@ -251,7 +251,7 @@ bool App::OnInit()
 
 	wxSocketBase::Initialize();
 
-#if wxUSE_STACKWALKER
+#if wxUSE_ON_FATAL_EXCEPTION
 	//trun on fatal exceptions handler
 	wxHandleFatalExceptions(true);
 #endif
@@ -313,6 +313,7 @@ bool App::OnInit()
 		wxMkdir(homeDir + wxT("/images/"));
 		wxMkdir(homeDir + wxT("/templates/"));
 		wxMkdir(homeDir + wxT("/config/"));
+		wxMkdir(homeDir + wxT("/tabgroups/"));
 
 		//copy the settings from the global location if needed
 		wxString installPath( INSTALL_DIR, wxConvUTF8 );
@@ -341,6 +342,7 @@ bool App::OnInit()
 		wxMkdir(homeDir + wxT("/images/"));
 		wxMkdir(homeDir + wxT("/templates/"));
 		wxMkdir(homeDir + wxT("/config/"));
+		wxMkdir(homeDir + wxT("/tabgroups/"));
 	}
 
 	wxString installPath( MacGetBasePath() );

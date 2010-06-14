@@ -112,7 +112,6 @@ FindResultsTab::~FindResultsTab()
 
 MatchInfo& FindResultsTab::GetMatchInfo(size_t idx)
 {
-	// assert(idx < m_matchInfo.size());
 	ListMatchInfos::iterator itMatchInfo = m_matchInfo.begin();
 	if (m_book) {
 		for (size_t i = 0; i < idx; ++i) {
@@ -142,9 +141,9 @@ void FindResultsTab::SaveFindInFilesData()
 void FindResultsTab::SetStyles(wxScintilla *sci)
 {
 	InitStyle(sci, wxSCI_LEX_FIF, true);
-	
+
 	wxColour fifFgColour = *wxBLUE;
-	
+
 #ifdef __WXGTK__
 	wxColour fifBgColour = DrawingUtils::GetPanelBgColour();
 #else
@@ -261,10 +260,11 @@ void FindResultsTab::OnFindInFiles(wxCommandEvent &e)
 {
 	LoadFindInFilesData();
 
-	if (m_recv) {
+	if (m_searchInProgress) {
 		wxMessageBox(_("The search thread is currently busy"), wxT("CodeLite"), wxICON_INFORMATION|wxOK);
 		return;
 	}
+
 	wxString rootDir = e.GetString();
 	if (!rootDir.IsEmpty()) {
 		m_find->SetRootDir(rootDir);
@@ -360,6 +360,11 @@ void FindResultsTab::OnSearchMatch(wxCommandEvent& e)
 		return;
 
 	size_t m = m_book ? m_book->GetPageIndex(m_recv) : 0;
+	if(m == Notebook::npos) {
+		delete res;
+		return;
+	}
+
 	MatchInfo& matchInfo = GetMatchInfo(m);
 	for (SearchResultList::iterator iter = res->begin(); iter != res->end(); iter++) {
 		if (matchInfo.empty() || matchInfo.rbegin()->second.GetFileName() != iter->GetFileName()) {
@@ -395,12 +400,17 @@ void FindResultsTab::OnSearchEnded(wxCommandEvent& e)
 	if (!summary)
 		return;
 
-	AppendText(summary->GetMessage());
-	delete summary;
-	m_recv = NULL;
-	if (m_tb->GetToolState(XRCID("scroll_on_output"))) {
-		m_sci->GotoLine(0);
+	// did the page closed before the search ended?
+	if(m_book && m_book->GetPageIndex(m_recv) != Notebook::npos) {
+
+		AppendText(summary->GetMessage());
+		m_recv = NULL;
+		if (m_tb->GetToolState(XRCID("scroll_on_output"))) {
+			m_sci->GotoLine(0);
+		}
+
 	}
+	delete summary;
 }
 
 void FindResultsTab::OnSearchCancel(wxCommandEvent &e)
@@ -409,7 +419,12 @@ void FindResultsTab::OnSearchCancel(wxCommandEvent &e)
 	wxString *str = (wxString*) e.GetClientData();
 	if (!str)
 		return;
-	AppendText(*str + wxT("\n"));
+
+	// did the page closed before the search ended?
+	if(m_book && m_book->GetPageIndex(m_recv) != Notebook::npos) {
+		AppendText(*str + wxT("\n"));
+	}
+
 	delete str;
 	m_recv = NULL;
 }

@@ -23,6 +23,7 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 #include "cc_box.h"
+#include "editor_config.h"
 #include "cl_editor_tip_window.h"
 #include "cl_editor.h"
 #include "globals.h"
@@ -31,8 +32,8 @@
 #include "entry.h"
 #include "plugin.h"
 
-#define BOX_HEIGHT 200
-#define BOX_WIDTH  300
+#define BOX_HEIGHT 250
+#define BOX_WIDTH  400
 
 CCBox::CCBox(LEditor* parent, bool autoHide, bool autoInsertSingleChoice)
 		:
@@ -43,7 +44,8 @@ CCBox::CCBox(LEditor* parent, bool autoHide, bool autoInsertSingleChoice)
 		, m_insertSingleChoice(autoInsertSingleChoice)
 		, m_owner(NULL)
 {
-	Hide();
+	m_constructing = true;
+	HideCCBox();
 
 	// load all the CC images
 	wxImageList *il = new wxImageList(16, 16, true);
@@ -88,13 +90,14 @@ CCBox::CCBox(LEditor* parent, bool autoHide, bool autoInsertSingleChoice)
 	m_listCtrl->SetFocus();
 	// return the focus to scintilla
 	parent->SetActive();
+	m_constructing = false;
 }
 
 void CCBox::OnItemActivated( wxListEvent& event )
 {
 	m_selectedItem = event.m_itemIndex;
 	InsertSelection();
-	Hide();
+	HideCCBox();
 
 	LEditor *editor = (LEditor*)GetParent();
 	if (editor) {
@@ -193,7 +196,7 @@ bool CCBox::SelectWord(const wxString& word)
 
 	} else {
 		if (GetAutoHide()) {
-			Hide();
+			HideCCBox();
 		}
 	}
 	return fullMatch;
@@ -242,27 +245,43 @@ void CCBox::Show(const wxString& word)
 	size_t i(0);
 	std::vector<CCItemInfo> _tags;
 
+	long checkIt (0);
+	EditorConfigST::Get()->GetLongValue(wxT("CC_Show_All_Members"), checkIt);
+	m_toolBar1->ToggleTool(TOOL_SHOW_PRIVATE_MEMBERS, checkIt);
+
 	CCItemInfo item;
 	m_listCtrl->DeleteAllItems();
 
+	bool showPrivateMembers ( checkIt );
+
+	// Get the associated editor
+	LEditor *editor = dynamic_cast<LEditor*>(GetParent());
 	if (m_tags.empty() == false) {
 		for (; i<m_tags.size(); i++) {
 			TagEntryPtr tag = m_tags.at(i);
+			bool        isVisible = m_tags.at(i)->GetAccess() == wxT("private") || m_tags.at(i)->GetAccess() == wxT("protected");
+			bool        isInScope = (editor && (m_tags.at(i)->GetParent() == editor->GetContext()->GetCurrentScopeName()));
 			if (lastName != m_tags.at(i)->GetName()) {
+				if( (!isVisible && !showPrivateMembers) || (showPrivateMembers) || (isInScope) ) {
 
-				item.displayName =  tag->GetName();
-				item.imgId = GetImageId(*m_tags.at(i));
-				_tags.push_back(item);
+					item.displayName =  tag->GetName();
+					item.imgId = GetImageId(*m_tags.at(i));
+					_tags.push_back(item);
 
-				lastName = tag->GetName();
+					lastName = tag->GetName();
+
+				}
 			}
 
 			if (m_showFullDecl) {
 				//collect only declarations
 				if (m_tags.at(i)->GetKind() == wxT("prototype")) {
-					item.displayName =  tag->GetName()+tag->GetSignature();
-					item.imgId = GetImageId(*m_tags.at(i));
-					_tags.push_back(item);
+
+					if( (!isVisible && !showPrivateMembers) || (showPrivateMembers) || (isInScope) ) {
+						item.displayName =  tag->GetName()+tag->GetSignature();
+						item.imgId = GetImageId(*m_tags.at(i));
+						_tags.push_back(item);
+					}
 
 				}
 			}
@@ -276,7 +295,7 @@ void CCBox::Show(const wxString& word)
 		// return without calling to wxWindow::Show()
 		// also, make sure we are hidden
 		if ( IsShown() ) {
-			Hide();
+			HideCCBox();
 		}
 		return;
 	}
@@ -497,3 +516,21 @@ void CCBox::PreviousPage()
 		}
 	}
 }
+
+void CCBox::HideCCBox()
+{
+	if( IsShown() ) {
+		Hide();
+		if( !m_constructing ) {
+			bool checked  = m_toolBar1->FindById(TOOL_SHOW_PRIVATE_MEMBERS)->IsToggled();
+			EditorConfigST::Get()->SaveLongValue(wxT("CC_Show_All_Members"), checked ? 1 : 0);
+		}
+	}
+}
+
+void CCBox::OnShowPublicItems(wxCommandEvent& event)
+{
+	wxUnusedVar(event);
+	HideCCBox();
+}
+
