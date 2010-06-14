@@ -1,4 +1,0 @@
-LIBRARY	Debugger
-EXPORTS
-	CreateDebuggerGDB
-	GetDebuggerInfo
