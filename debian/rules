@@ -76,6 +76,7 @@ get-orig-source:
 	GZIP=-9fn tar \
 		 --exclude=*.dll \
 		 --exclude=*.exe \
+		 --exclude=Runtime/templates/projects/dynamic-library-wx-enabled/dynamic-library-wx-enabled.project~ \
 		 --exclude=sdk/wxsqlite3/sqlite3 \
 		 --exclude=sdk/src \
 		 --exclude=sdk/wxconfig \
