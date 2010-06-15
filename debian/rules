@@ -37,11 +37,15 @@ override_dh_install:
 	find debian/codelite-plugins/ -type d -empty -delete
 
 override_dh_auto_clean:
+	[ -e UnitTest++/Makefile ] && \
+		mv UnitTest++/Makefile UnitTest++/Makefile.new
 	dh_auto_clean
 	find -name Makefile ! -wholename '*sdk*' -delete
 	rm -f fakeroot/DEBIAN/control
 	rm -rf $(CURDIR)/Runtime/src/UnitTest++
 	rm -rf $(CURDIR)/Runtime/src/unittest*.tar.gz
+	[ -e UnitTest++/Makefile.new ] && \
+		mv UnitTest++/Makefile.new UnitTest++/Makefile
 
 override_dh_auto_build:
 	cp -a UnitTest++ $(CURDIR)/Runtime/src
