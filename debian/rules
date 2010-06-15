@@ -16,7 +16,7 @@ VERSION ?= $(shell $(USCAN) --dehs --no-download | \
 UNITTEST_TARBALL = unittest++1.3.tar.gz 
 
 %:
-	dh --with=quilt $@
+	dh $@
 
 # this is a hack so we can grab everything in /usr/share/codelite for
 # codelite while splitting these directories away into separate plugins

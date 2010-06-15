@@ -1,4 +1,4 @@
-Repackaging
+Repacking
 -----------
 
 The upstream tarball used to build this package has been repackaged to
@@ -33,11 +33,3 @@ do this were:
 	rm -rf \
 		$(DEB_SOURCE_NAME)_$(VERSION).orig.tar.gz \
 		$(DEB_SOURCE_NAME)-$(VERSION)~dfsg
-
-Patching
---------
-
-Patches are stored in debian/patches. You can apply these patches 
-manually from the top of the source tree. You can also quilt to apply 
-patches. Install quilt and see /usr/share/doc/quilt/README.source
-Also, see quilt(1).
