@@ -3,4 +3,3 @@
 03_move-helper-binaries.patch
 04_configure.patch
 05_codelite_xterm.patch
-06_restore_drynlib_project.patch
