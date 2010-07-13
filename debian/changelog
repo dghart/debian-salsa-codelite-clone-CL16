@@ -1,3 +1,14 @@
+codelite (2.5.3.4075~dfsg-2) unstable; urgency=low
+
+  * Add git-buildpackage config file.
+  * debian/control:
+    - Update Standards to 3.9.0:
+      + Replace Conflicts with Breaks.
+    - Drop DM-Upload-Allowed field.
+    - Add qt4-qmake,wx-common to Recommends.
+
+ -- Alessio Treglia <alessio@debian.org>  Tue, 13 Jul 2010 10:35:12 +0200
+
 codelite (2.5.3.4075~dfsg-1) unstable; urgency=low
 
   * New upstream bugfix release.
