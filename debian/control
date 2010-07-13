@@ -17,6 +17,8 @@ Architecture: any
 Depends: ${shlibs:Depends},
  ${misc:Depends}
 Recommends: gdb,
+ qt4-qmake,
+ wx-common,
  gcc,
  g++,
  xterm | x-terminal-emulator
