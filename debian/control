@@ -40,7 +40,7 @@ Package: codelite-plugins
 Architecture: any
 Depends: ${shlibs:Depends},
  ${misc:Depends}
-Conflicts: codelite-plugins-abbreviation (<< 2.3.0.3833+dfsg-1),
+Breaks: codelite-plugins-abbreviation (<< 2.3.0.3833+dfsg-1),
  codelite-plugins-codeformatter (<< 2.3.0.3833+dfsg-1),
  codelite-plugins-continuousbuild (<< 2.3.0.3833+dfsg-1),
  codelite-plugins-copyright (<< 2.3.0.3833+dfsg-1),
