@@ -24,6 +24,7 @@
 //////////////////////////////////////////////////////////////////////////////
 #include "precompiled_header.h"
 #include "crawler_include.h"
+#include <wx/regex.h>
 #include <wx/tokenzr.h>
 
 #include "language.h"
@@ -109,34 +110,40 @@ wxString Language::OptimizeScope(const wxString& srcString)
 	return scope;
 }
 
-bool Language::NextToken(wxString &token, wxString &delim)
+bool Language::NextToken(wxString &token, wxString &delim, bool &subscriptOperator)
 {
 	int type(0);
 	int depth(0);
-	while ( (type = m_tokenScanner->yylex()) != 0 ) {
+	subscriptOperator = false;
+	while ( (type = m_tokenScanner->yylex()) != 0 )
+	{
 		switch (type) {
 		case CLCL:
 		case wxT('.'):
-					case lexARROW:
-							if (depth == 0) {
-						delim = _U(m_tokenScanner->YYText());
-						return true;
-					} else {
-						token << wxT(" ") << _U(m_tokenScanner->YYText());
-					}
+		case lexARROW:
+			if (depth == 0) {
+				delim = _U(m_tokenScanner->YYText());
+				return true;
+			} else {
+				token << wxT(" ") << _U(m_tokenScanner->YYText());
+			}
+			break;
+		case wxT('['):
+			subscriptOperator = true;
+			depth++;
+			token << wxT(" ") << _U(m_tokenScanner->YYText());
 			break;
 		case wxT('<'):
-					case wxT('['):
-						case wxT('('):
-							case wxT('{'):
-									depth++;
+		case wxT('('):
+		case wxT('{'):
+			depth++;
 			token << wxT(" ") << _U(m_tokenScanner->YYText());
 			break;
 		case wxT('>'):
-					case wxT(']'):
-						case wxT(')'):
-							case wxT('}'):
-									depth--;
+		case wxT(']'):
+		case wxT(')'):
+		case wxT('}'):
+			depth--;
 			token << wxT(" ") << _U(m_tokenScanner->YYText());
 			break;
 		default:
@@ -208,7 +215,8 @@ bool Language::ProcessExpression(const wxString& stmt,
 		//get next token using the tokenscanner object
 		m_tokenScanner->SetText(_C(statement));
 		Variable parent;
-		while (NextToken(word, op)) {
+		bool     subscriptOperator;
+		while (NextToken(word, op, subscriptOperator)) {
 
 			oper = op;
 			result = ParseExpression(word);
@@ -340,19 +348,7 @@ bool Language::ProcessExpression(const wxString& stmt,
 				}
 
 				// HACK1: Let the user override the parser decisions
-				wxString path = PathFromNameAndScope(typeName, typeScope);
-				std::map<wxString, wxString>::iterator where = typeMap.find(path);
-				if (where != typeMap.end()) {
-					wxArrayString argList;
-					typeName            = where->second.BeforeFirst(wxT('<'));
-					wxString argsString = where->second.AfterFirst(wxT('<'));
-					argsString.Prepend(wxT("<"));
-					ParseTemplateArgs(argsString, argList);
-
-					if (argList.IsEmpty() == false) {
-						m_templateHelper.SetTemplateDeclaration(argList);
-					}
-				}
+				ExcuteUserTypes(typeName, typeScope, typeMap);
 
 				// We call here to IsTypeAndScopeExists which will attempt to provide the best scope / type
 				// in cases there is a change in the scope we also need to update the templateHelper class
@@ -366,11 +362,21 @@ bool Language::ProcessExpression(const wxString& stmt,
 
 				int  retryCount(0);
 				bool cont(false);
+				bool cont2(false);
 				do {
 					CheckForTemplateAndTypedef(typeName, typeScope);
-					cont = ( op == wxT("->") && OnArrowOperatorOverloading(typeName, typeScope) );
+					// We check subscript operator only once
+					cont = (subscriptOperator && OnSubscriptOperator(typeName, typeScope));
+					if(cont) {
+						ExcuteUserTypes(typeName, typeScope, typeMap);
+					}
+					subscriptOperator = false;
+					cont2 = ( op == wxT("->") && OnArrowOperatorOverloading(typeName, typeScope) );
+					if(cont2) {
+						ExcuteUserTypes(typeName, typeScope, typeMap);
+					}
 					retryCount++;
-				} while ( cont && retryCount < 5);
+				} while ( (cont || cont2) && retryCount < 5);
 			}
 
 			parentTypeName = typeName;
@@ -1105,6 +1111,9 @@ bool Language::FunctionFromPattern(TagEntryPtr tag, clFunction &foo)
 	TagsManager *mgr = GetTagsManager();
 	std::map<std::string, std::string> ignoreTokens = mgr->GetCtagsOptions().GetTokensMap();
 
+	// use the replacement table on the pattern before processing it
+	DoReplaceTokens(pattern, GetTagsManager()->GetCtagsOptions().GetTokensWxMap());
+
 	const wxCharBuffer patbuf = _C(pattern);
 	get_functions(patbuf.data(), fooList, ignoreTokens);
 	if (fooList.size() == 1) {
@@ -1120,6 +1129,9 @@ bool Language::FunctionFromPattern(TagEntryPtr tag, clFunction &foo)
 		wxString pat2;
 
 		pat2 << tag->GetReturnValue() << wxT(" ") << tag->GetName() << tag->GetSignature() << wxT(";");
+
+		// use the replacement table on the pattern before processing it
+		DoReplaceTokens(pat2, GetTagsManager()->GetCtagsOptions().GetTokensWxMap());
 
 		const wxCharBuffer patbuf1 = _C(pat2);
 		get_functions(patbuf1.data(), fooList, ignoreTokens);
@@ -1235,7 +1247,6 @@ void Language::GetLocalVariables(const wxString &in, std::vector<TagEntryPtr> &t
 bool Language::OnArrowOperatorOverloading(wxString &typeName, wxString &typeScope)
 {
 	bool ret(false);
-
 	//collect all functions of typename
 	std::vector< TagEntryPtr > tags;
 	wxString scope;
@@ -1243,36 +1254,21 @@ bool Language::OnArrowOperatorOverloading(wxString &typeName, wxString &typeScop
 		scope << typeName;
 	else
 		scope << typeScope << wxT("::") << typeName;
-
 	//this function will retrieve the ineherited tags as well
-	GetTagsManager()->TagsByScope(scope, tags);
-	if (tags.empty() == false) {
+	GetTagsManager()->GetDereferenceOperator(scope, tags);
+	if (tags.size() == 1) {
 		//loop over the tags and scan for operator -> overloading
-		for (std::vector< TagEntryPtr >::size_type i=0; i< tags.size(); i++) {
-			wxString pattern = tags.at(i)->GetPattern();
-			if (pattern.Contains(wxT("operator")) && pattern.Contains(wxT("->"))) {
-				//we found our overloading operator
-				//extract the 'real' type from the pattern
-				clFunction f;
-				if (FunctionFromPattern(tags.at(i), f)) {
-					typeName = _U(f.m_returnValue.m_type.c_str());
-
-					// first assume that the return value has the same scope like the parent (unless the return value has a scope)
-					typeScope = f.m_returnValue.m_typeScope.empty() ? scope : _U(f.m_returnValue.m_typeScope.c_str());
-
-					// Call the magic method that fixes typename/typescope
-					GetTagsManager()->IsTypeAndScopeExists(typeName, typeScope);
-
-					ret = true;
-					break;
-
-				} else {
-					//failed to extract the return value from the patterm
-					//fallback to the current behavior
-					break;
-				}
-			}
-		}
+		//we found our overloading operator
+		//extract the 'real' type from the pattern
+		clFunction f;
+		if (FunctionFromPattern(tags.at(0), f)) {
+			typeName = _U(f.m_returnValue.m_type.c_str());
+			// first assume that the return value has the same scope like the parent (unless the return value has a scope)
+			typeScope = f.m_returnValue.m_typeScope.empty() ? scope : _U(f.m_returnValue.m_typeScope.c_str());
+			// Call the magic method that fixes typename/typescope
+			GetTagsManager()->IsTypeAndScopeExists(typeName, typeScope);
+			ret = true;
+		} 
 	}
 	return ret;
 }
@@ -1375,9 +1371,12 @@ bool Language::ResolveTemplate(wxString& typeName, wxString& typeScope, const wx
 
 void Language::DoFixFunctionUsingCtagsReturnValue(clFunction& foo, TagEntryPtr tag)
 {
-	if (foo.m_returnValue.m_name.empty()) {
+	if (foo.m_returnValue.m_type.empty()) {
+
 		// Use the CTAGS return value
 		wxString ctagsRetValue = tag->GetReturnValue();
+		DoReplaceTokens(ctagsRetValue, GetTagsManager()->GetCtagsOptions().GetTokensWxMap());
+
 		const wxCharBuffer cbuf = ctagsRetValue.mb_str(wxConvUTF8);
 		std::map<std::string, std::string> ignoreTokens = GetTagsManager()->GetCtagsOptions().GetTokensMap();
 
@@ -1385,6 +1384,42 @@ void Language::DoFixFunctionUsingCtagsReturnValue(clFunction& foo, TagEntryPtr t
 		get_variables(cbuf.data(), li, ignoreTokens, false);
 		if (li.size() == 1) {
 			foo.m_returnValue = *li.begin();
+		}
+	}
+}
+
+void Language::DoReplaceTokens(wxString &inStr, const std::map<wxString, wxString>& ignoreTokens)
+{
+	if(inStr.IsEmpty())
+		return;
+
+	std::map<wxString, wxString>::const_iterator iter = ignoreTokens.begin();
+	for(; iter != ignoreTokens.end(); iter++) {
+		wxString findWhat    = iter->first;
+		wxString replaceWith = iter->second;
+
+		if(findWhat.StartsWith(wxT("re:"))) {
+			findWhat.Remove(0, 3);
+			wxRegEx re(findWhat);
+			if(re.IsValid() && re.Matches(inStr)) {
+				re.ReplaceAll(&inStr, replaceWith);
+			}
+		} else {
+			// Simple replacement
+			int where = inStr.Find(findWhat);
+			if(where >= 0) {
+				if(inStr.Length() > static_cast<size_t>(where)) {
+					// Make sure that the next char is a non valid char otherwise this is not a complete word
+					if(inStr.Mid(where, 1).find_first_of(wxT("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_1234567890")) != wxString::npos) {
+						// the match is not a full word
+						continue;
+					} else {
+						inStr.Replace(findWhat, replaceWith);
+					}
+				} else {
+					inStr.Replace(findWhat, replaceWith);
+				}
+			}
 		}
 	}
 }
@@ -1672,4 +1707,50 @@ void Language::SetAdditionalScopes(const std::vector<wxString>& additionalScopes
 const std::vector<wxString>& Language::GetAdditionalScopes() const
 {
 	return m_additionalScopes;
+}
+
+bool Language::OnSubscriptOperator(wxString& typeName, wxString& typeScope)
+{
+	bool ret(false);
+	//collect all functions of typename
+	std::vector< TagEntryPtr > tags;
+	wxString scope;
+	if (typeScope == wxT("<global>"))
+		scope << typeName;
+	else
+		scope << typeScope << wxT("::") << typeName;
+	//this function will retrieve the ineherited tags as well
+	GetTagsManager()->GetSubscriptOperator(scope, tags);
+	if (tags.size() == 1) {
+		//we found our overloading operator
+		//extract the 'real' type from the pattern
+		clFunction f;
+		if (FunctionFromPattern(tags.at(0), f)) {
+			typeName = _U(f.m_returnValue.m_type.c_str());
+			// first assume that the return value has the same scope like the parent (unless the return value has a scope)
+			typeScope = f.m_returnValue.m_typeScope.empty() ? scope : _U(f.m_returnValue.m_typeScope.c_str());
+			// Call the magic method that fixes typename/typescope
+			GetTagsManager()->IsTypeAndScopeExists(typeName, typeScope);
+			ret = true;
+			
+		}
+	}
+	return ret;
+}
+
+void Language::ExcuteUserTypes(wxString &typeName, wxString &typeScope, const std::map<wxString, wxString> &typeMap)
+{
+	// HACK1: Let the user override the parser decisions
+	wxString path = PathFromNameAndScope(typeName, typeScope);
+	std::map<wxString, wxString>::const_iterator where = typeMap.find(path);
+	if (where != typeMap.end()) {
+		wxArrayString argList;
+		typeName            = where->second.BeforeFirst(wxT('<'));
+		wxString argsString = where->second.AfterFirst(wxT('<'));
+		argsString.Prepend(wxT("<"));
+		ParseTemplateArgs(argsString, argList);
+		if (argList.IsEmpty() == false) {
+			m_templateHelper.SetTemplateDeclaration(argList);
+		}
+	}
 }

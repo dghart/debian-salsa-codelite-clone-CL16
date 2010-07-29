@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version Aug 25 2009)
+// C++ code generated with wxFormBuilder (version May  4 2010)
 // http://www.wxformbuilder.org/
 //
 // PLEASE DO "NOT" EDIT THIS FILE!
@@ -93,12 +93,12 @@ class CommitDialogBase : public wxDialog
 		
 		CommitDialogBase( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Svn Commit"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER );
 		~CommitDialogBase();
+		
 		void m_splitter1OnIdle( wxIdleEvent& )
 		{
 			m_splitter1->SetSashPosition( 0 );
 			m_splitter1->Disconnect( wxEVT_IDLE, wxIdleEventHandler( CommitDialogBase::m_splitter1OnIdle ), NULL, this );
 		}
-		
 	
 };
 
@@ -303,6 +303,29 @@ class SvnLogDialog : public wxDialog
 		
 		SvnLogDialog( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Svn Log"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( -1,-1 ), long style = wxDEFAULT_DIALOG_STYLE );
 		~SvnLogDialog();
+	
+};
+
+///////////////////////////////////////////////////////////////////////////////
+/// Class DiffDialogBase
+///////////////////////////////////////////////////////////////////////////////
+class DiffDialogBase : public wxDialog 
+{
+	private:
+	
+	protected:
+		wxStaticText* m_staticText25;
+		wxTextCtrl* m_textCtrlFromRev;
+		wxStaticText* m_staticText26;
+		wxTextCtrl* m_textCtrlToRev;
+		wxStaticLine* m_staticline6;
+		wxButton* m_button20;
+		wxButton* m_button19;
+	
+	public:
+		
+		DiffDialogBase( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Svn Diff..."), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER );
+		~DiffDialogBase();
 	
 };
 

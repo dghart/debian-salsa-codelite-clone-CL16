@@ -138,7 +138,11 @@ class LEditor : public wxScintilla, public IEditor
 	clEditorTipWindow*                          m_functionTip;
 	wxChar                                      m_lastCharEntered;
 	int                                         m_lastCharEnteredPos;
-//	DisplayVariableDlg*                         m_debuggerTip;
+
+public:
+	static bool                                 m_ccShowPrivateMembers;
+	static bool                                 m_ccShowItemsComments;
+	static bool                                 m_ccInitialized;
 
 public:
 	static FindReplaceData &GetFindReplaceData() {
@@ -155,10 +159,6 @@ public:
 	clEditorTipWindow* GetFunctionTip() {
 		return m_functionTip;
 	}
-
-//	DisplayVariableDlg *GetDebuggerTip() {
-//		return m_debuggerTip;
-//	}
 
 public:
 	/// Construct a LEditor object
@@ -570,11 +570,40 @@ public:
 	virtual int WordEndPos (int pos, bool onlyWordCharacters);
 
 	/**
-	 * Insert text to the editor and keeping the indentation
+	 * Prepend the indentation level found at line at 'pos' to each line in the input string
 	 * \param text text to enter
 	 * \param pos position to insert the text
+	 * \param flags formatting flags
 	 */
-	virtual wxString FormatTextKeepIndent(const wxString &text, int pos);
+	virtual wxString FormatTextKeepIndent(const wxString &text, int pos, size_t flags = 0);
+
+
+	/**
+	 * @brief return the line numebr containing 'pos'
+	 * @param pos the position
+	 */
+	virtual int LineFromPos(int pos);
+
+	/**
+	 * @brief return the start pos of line nummber
+	 * @param line the line number
+	 * @return line nummber or 0 if the document is empty
+	 */
+	virtual int PosFromLine(int line);
+
+	/**
+	 * @brief return the END position of 'line'
+	 * @param line the line number
+	 */
+	virtual int LineEnd(int line);
+
+	/**
+	 * @brief return text from a given pos -> endPos
+	 * @param startPos
+	 * @param endPos
+	 * @return
+	 */
+	virtual wxString GetTextRange(int startPos, int endPos);
 
 	//----------------------------------------------------------------------------
 	//----------------------------------------------------------------------------
@@ -599,12 +628,13 @@ private:
 	BPtoMarker GetMarkerForBreakpt(enum BreakpointType bp_type);
 	void SetProperties();
 	void DefineMarker(int marker, int markerType, wxColor fore, wxColor back);
-	void SetLineNumberWidth();
 	bool SaveToFile(const wxFileName &fileName);
 	void BraceMatch(const bool& bSelRegion);
 	void BraceMatch(long pos);
 	void DoHighlightWord();
 	void DoSetStatusMessage(const wxString &msg, int col);
+	bool IsOpenBrace (int position);
+	bool IsCloseBrace(int position);
 
 	// Conevert FindReplaceDialog flags to wxSD flags
 	size_t SearchFlags(const FindReplaceData &data);

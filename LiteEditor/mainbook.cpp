@@ -29,6 +29,7 @@
 #include "frame.h"
 #include <wx/wupdlock.h>
 #include "manager.h"
+#include "clang_code_completion.h"
 #include "close_all_dlg.h"
 #include "filechecklist.h"
 #include "editor_config.h"
@@ -75,6 +76,7 @@ void MainBook::ConnectEvents()
 	m_book->Connect(wxEVT_COMMAND_BOOK_PAGE_CLOSING,         NotebookEventHandler(MainBook::OnPageClosing),  NULL, this);
 	m_book->Connect(wxEVT_COMMAND_BOOK_PAGE_CLOSED,          NotebookEventHandler(MainBook::OnPageClosed),   NULL, this);
 	m_book->Connect(wxEVT_COMMAND_BOOK_PAGE_CHANGED,         NotebookEventHandler(MainBook::OnPageChanged),  NULL, this);
+	m_book->Connect(wxEVT_COMMAND_BOOK_PAGE_CHANGING,        NotebookEventHandler(MainBook::OnPageChanging), NULL, this);
 	m_book->Connect(wxEVT_COMMAND_BOOK_PAGE_X_CLICKED,       NotebookEventHandler(MainBook::OnClosePage),    NULL, this);
 	m_book->Connect(wxEVT_COMMAND_BOOK_PAGE_MIDDLE_CLICKED,  NotebookEventHandler(MainBook::OnClosePage),    NULL, this);
 	m_book->Connect(wxEVT_COMMAND_BOOK_BG_DCLICK,            NotebookEventHandler(MainBook::OnMouseDClick),  NULL, this);
@@ -116,9 +118,12 @@ void MainBook::OnMouseDClick(NotebookEvent& e)
 void MainBook::OnPageClosing(NotebookEvent &e)
 {
 	LEditor *editor = dynamic_cast<LEditor*>(m_book->GetPage(e.GetSelection()));
-	if (!editor) {
-		; // the page is not an editor
-	} else if (AskUserToSave(editor)) {
+	if (!editor)
+		return;
+	
+	ClangCodeCompletion::Instance()->CancelCodeComplete();
+		
+	if (AskUserToSave(editor)) {
 		SendCmdEvent(wxEVT_EDITOR_CLOSING, (IEditor*)editor);
 	} else {
 		e.Veto();
@@ -705,6 +710,8 @@ bool MainBook::CloseAll(bool cancellable)
 
 	// Delete the files without notifications (it will be faster)
 	wxWindowUpdateLocker locker(this);
+	ClangCodeCompletion::Instance()->CancelCodeComplete();
+	
 	m_book->DeleteAllPages(false);
 
 	// Since we got no more editors opened,
@@ -960,4 +967,14 @@ void MainBook::OnStringHighlight(wxCommandEvent& e)
 		}
 		delete result;
 	}
+}
+
+void MainBook::OnPageChanging(NotebookEvent& e)
+{
+	LEditor *editor = GetActiveEditor();
+	if(editor) {
+		editor->HideCompletionBox();
+		editor->CallTipCancel();
+	}
+	e.Skip();
 }

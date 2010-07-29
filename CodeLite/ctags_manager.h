@@ -55,6 +55,9 @@ class Language;
 class wxTimer;
 class Language;
 
+// Change this macro if you dont want to use the parser thread for performing
+// the workspcae retag
+#define USE_PARSER_TREAD_FOR_RETAGGING_WORKSPACE 1
 
 #define TagsGlobal 0
 #define TagsGlobalGTK 1
@@ -75,12 +78,15 @@ enum NormalizeFuncFlag {
 	// variable default value
 	Normalize_Func_Default_value = 0x00000002,
 	// re-place back macros
-	Normalize_Func_Reverse_Macro = 0x00000004
+	Normalize_Func_Reverse_Macro = 0x00000004,
+	// Each argument is placed on a separate line
+	Normalize_Func_Arg_Per_Line  = 0x00000008
 };
 
 enum FunctionFormatFlag {
 	FunctionFormat_WithVirtual   = 0x00000001,
-	FunctionFormat_Impl          = 0x00000002
+	FunctionFormat_Impl          = 0x00000002,
+	FunctionFormat_Arg_Per_Line  = 0x00000004
 };
 
 class ITagsStorage;
@@ -121,10 +127,10 @@ class TagsManager : public wxEvtHandler
 	friend class Singleton<TagsManager>;
 	friend class DirTraverser;
 	friend class Language;
-	
+
 public:
 	wxCriticalSection      m_crawlerLocker;
-	
+
 private:
 	ITagsStorage *                m_workspaceDatabase;
 	wxCriticalSection             m_cs;
@@ -162,6 +168,11 @@ public:
 	 * @brief clear the file cached
 	 */
 	void ClearCachedFile(const wxString &fileName);
+
+	/**
+	 * @brief clear all the cached tags information stored in this class
+	 */
+	void ClearAllCaches();
 
 	/**
 	 * @brief load fileName into cache, note that this call will clear perivous
@@ -284,17 +295,17 @@ public:
 	 * @return true if the file name extension matches the current running ctags file spec
 	 */
 	bool IsValidCtagsFile(const wxFileName &filename) const;
-	
+
 	/**
 	 * @brief set the project paths
 	 */
 	void SetProjectPaths(const wxArrayString &paths);
-	
+
 	/**
 	 * @return project file paths
 	 */
-	const wxArrayString& GetProjectPaths() const {return m_projectPaths;} 
-	
+	const wxArrayString& GetProjectPaths() const {return m_projectPaths;}
+
 	/**
 	 * Find symbols by name and scope.
 	 * @param name symbol name
@@ -534,6 +545,19 @@ public:
 	void TagsFromFileAndScope(const wxFileName &fileName, const wxString &scopeName, std::vector<TagEntryPtr> &tags);
 
 	/**
+	 * @brief
+	 * @param scope
+	 * @param tags
+	 */
+	virtual void GetSubscriptOperator(const wxString &scope, std::vector<TagEntryPtr> &tags) ;
+	/**
+	 * @brief
+	 * @param scope
+	 * @param tags
+	 */
+	virtual void GetDereferenceOperator(const wxString &scope, std::vector<TagEntryPtr> &tags);
+
+	/**
 	 * @brief return information about the current function based on file & line
 	 * @param fileName the current file name
 	 * @param lineno the current line number
@@ -565,7 +589,7 @@ public:
 	 * @param partName name criterion (partial)
 	 */
 	void GetTagsByKind(std::vector<TagEntryPtr> &tags, const wxArrayString &kind, const wxString &partName = wxEmptyString);
-	
+
 	/**
 	 * @brief return list of tags by KIND
 	 * @param tags [output]
@@ -692,7 +716,7 @@ public:
 	 * @return tag tree, must be freed by caller
 	 */
 	TagTreePtr TreeFromTags(const wxString& tags, int &count);
-	
+
 	/**
 	 * @brief clear the underlying caching mechanism
 	 */
@@ -721,6 +745,7 @@ private:
 	 */
 	virtual ~TagsManager();
 
+public:
 	/**
 	 *
 	 * @param &path
@@ -735,7 +760,8 @@ protected:
 
 protected:
 	void           DoFindByNameAndScope(const wxString &name, const wxString &scope, std::vector<TagEntryPtr> &tags);
-	void           RemoveDuplicates(std::vector<TagEntryPtr>& src, std::vector<TagEntryPtr>& target);
+	void           DoFilterDuplicatesByTagID(std::vector<TagEntryPtr>& src, std::vector<TagEntryPtr>& target);
+	void           DoFilterDuplicatesBySignature(std::vector<TagEntryPtr>& src, std::vector<TagEntryPtr>& target);
 	void           RemoveDuplicatesTips(std::vector<TagEntryPtr>& src, std::vector<TagEntryPtr>& target);
 	void           GetGlobalTags(const wxString &name, std::vector<TagEntryPtr> &tags, size_t flags = PartialMatch);
 	void           GetLocalTags(const wxString &name, const wxString &scope, std::vector<TagEntryPtr> &tags, size_t flags = PartialMatch);
