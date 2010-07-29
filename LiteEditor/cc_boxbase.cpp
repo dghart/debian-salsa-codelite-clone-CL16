@@ -10,23 +10,33 @@
 
 ///////////////////////////////////////////////////////////////////////////
 
-CCBoxBase::CCBoxBase( wxWindow* parent, wxWindowID id, const wxPoint& pos, const wxSize& size, long style ) : wxPanel( parent, id, pos, size, style )
+CCBoxBase::CCBoxBase( wxWindow* parent, wxWindowID id, const wxPoint& pos, const wxSize& size, long style )
+#if CC_USES_POPUPWIN
+	: CCBoxParent( parent, CC_STYLE )
+#else
+	: wxPanel( parent, id, pos, size, style )
+#endif
 {
-	wxBoxSizer* bSizer1;
-	bSizer1 = new wxBoxSizer( wxVERTICAL );
+	SetSizeHints(BOX_WIDTH, BOX_HEIGHT);
+	wxBoxSizer* topSizer = new wxBoxSizer( wxHORIZONTAL );
+	m_mainPanel = new wxPanel(this);
 
-	m_listCtrl = new CCVirtualListCtrl( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLC_NO_HEADER|wxLC_REPORT|wxLC_SINGLE_SEL|wxLC_VIRTUAL );
-	bSizer1->Add( m_listCtrl, 1, wxEXPAND|wxALL, 2 );
+	m_listCtrl = new CCVirtualListCtrl( m_mainPanel, wxID_ANY, wxDefaultPosition, wxSize(BOX_WIDTH - 25, BOX_HEIGHT), wxLC_NO_HEADER|wxLC_REPORT|wxLC_SINGLE_SEL|wxLC_VIRTUAL|wxBORDER_NONE );
 
-	wxBitmap bmp = wxXmlResource::Get()->LoadBitmap(wxT("cc_private_members"));
-	m_toolBar1 = new wxToolBar( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTB_HORIZONTAL|wxSIMPLE_BORDER|wxTB_FLAT|wxTB_NODIVIDER );
-	m_toolBar1->AddTool( TOOL_SHOW_PRIVATE_MEMBERS, wxT("Show Protected / Private Items"), bmp, bmp, wxITEM_CHECK, wxT("Show Protected / Private Items"), wxEmptyString );
+	wxBitmap bmp         = wxXmlResource::Get()->LoadBitmap(wxT("cc_private_members"));
+	wxBitmap commentsBmp =  wxXmlResource::Get()->LoadBitmap(wxT("note"));
+	m_toolBar1 = new wxToolBar( m_mainPanel, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTB_FLAT|wxTB_VERTICAL|wxSIMPLE_BORDER|wxTB_NODIVIDER );
+	m_toolBar1->AddTool( TOOL_SHOW_PRIVATE_MEMBERS, wxT("Show Protected / Private Items"), bmp, bmp, wxITEM_CHECK, wxT("Show Only Public Items"), wxEmptyString );
+	m_toolBar1->AddTool( TOOL_SHOW_ITEM_COMMENTS, wxT("Show Item Comments"), commentsBmp, commentsBmp, wxITEM_CHECK, wxT("Show Item Comments"), wxEmptyString );
 	m_toolBar1->Realize();
 
-	bSizer1->Add( m_toolBar1, 0, wxEXPAND|wxRIGHT|wxLEFT, 2 );
+	topSizer->Add( m_listCtrl, 1, wxEXPAND, 2 );
+	topSizer->Add( m_toolBar1, 0, wxEXPAND, 2 );
 
-	this->SetSizer( bSizer1 );
-	this->Layout();
+    m_mainPanel->SetAutoLayout( true );
+    m_mainPanel->SetSizer( topSizer );
+    topSizer->Fit(m_mainPanel);
+    topSizer->Fit(this);
 
 	// Connect Events
 	m_listCtrl->Connect( wxEVT_COMMAND_LIST_ITEM_ACTIVATED, wxListEventHandler( CCBoxBase::OnItemActivated ), NULL, this );
@@ -34,6 +44,7 @@ CCBoxBase::CCBoxBase( wxWindow* parent, wxWindowID id, const wxPoint& pos, const
 	m_listCtrl->Connect( wxEVT_COMMAND_LIST_ITEM_SELECTED, wxListEventHandler( CCBoxBase::OnItemSelected ), NULL, this );
 	m_listCtrl->Connect( wxEVT_COMMAND_LIST_KEY_DOWN, wxListEventHandler( CCBoxBase::OnKeyDown ), NULL, this );
 	this->Connect( TOOL_SHOW_PRIVATE_MEMBERS, wxEVT_COMMAND_TOOL_CLICKED, wxCommandEventHandler( CCBoxBase::OnShowPublicItems ) );
+	this->Connect( TOOL_SHOW_ITEM_COMMENTS, wxEVT_COMMAND_TOOL_CLICKED, wxCommandEventHandler( CCBoxBase::OnShowComments ) );
 }
 
 CCBoxBase::~CCBoxBase()
@@ -44,5 +55,5 @@ CCBoxBase::~CCBoxBase()
 	m_listCtrl->Disconnect( wxEVT_COMMAND_LIST_ITEM_SELECTED, wxListEventHandler( CCBoxBase::OnItemSelected ), NULL, this );
 	m_listCtrl->Disconnect( wxEVT_COMMAND_LIST_KEY_DOWN, wxListEventHandler( CCBoxBase::OnKeyDown ), NULL, this );
 	this->Disconnect( TOOL_SHOW_PRIVATE_MEMBERS, wxEVT_COMMAND_TOOL_CLICKED, wxCommandEventHandler( CCBoxBase::OnShowPublicItems ) );
-
+	this->Disconnect( TOOL_SHOW_ITEM_COMMENTS, wxEVT_COMMAND_TOOL_CLICKED, wxCommandEventHandler( CCBoxBase::OnShowComments ) );
 }

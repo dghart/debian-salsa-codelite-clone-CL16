@@ -125,14 +125,14 @@ static bool _IsCppKeyword(const wxString &word)
 
 TagsOptionsData::TagsOptionsData()
 		: SerializedObject()
-		, m_ccFlags       (CC_DISP_FUNC_CALLTIP | CC_LOAD_EXT_DB | CC_CPP_KEYWORD_ASISST | CC_COLOUR_VARS | CC_ACCURATE_SCOPE_RESOLVING)
+		, m_ccFlags       (CC_DISP_FUNC_CALLTIP | CC_LOAD_EXT_DB | CC_CPP_KEYWORD_ASISST | CC_COLOUR_VARS | CC_ACCURATE_SCOPE_RESOLVING | CC_PARSE_EXT_LESS_FILES)
 		, m_ccColourFlags (CC_COLOUR_DEFAULT)
 		, m_fileSpec(wxT  ("*.cpp;*.cc;*.cxx;*.h;*.hpp;*.c;*.c++;*.tcc"))
 		, m_minWordLen    (3)
 		, m_parserEnabled (true)
 		, m_maxItemToColour(1000)
 {
-	SetVersion(wxT("2.4"));
+	SetVersion(wxT("2.5"));
 	// Initialize defaults
 	m_languages.Add(wxT("C++"));
 	m_tokens =
@@ -159,6 +159,10 @@ wxT("__MINGW_ATTRIB_PURE\n")
 wxT("__MINGW_ATTRIB_MALLOC\n")
 wxT("__GOMP_NOTHROW")
 wxT("wxT\n")
+wxT("SCI_NAMESPACE=0\n")
+wxT("WINBASEAPI\n")
+wxT("WINAPI\n")
+wxT("__nonnull\n")
 #if defined (__WXGTK__)
 	wxT("wxTopLevelWindowNative=wxTopLevelWindowGTK\n")
 	wxT("wxWindow=wxWindowGTK\n")
@@ -263,6 +267,9 @@ void TagsOptionsData::DeSerialize(Archive &arch)
 	arch.Read     (wxT("m_maxItemToColour"),   m_maxItemToColour);
 
 	// since of build 3749, we *always* set CC_ACCURATE_SCOPE_RESOLVING to true
+	DoUpdateTokensWxMapReversed();
+	DoUpdateTokensWxMap();
+	
 	m_ccFlags |= CC_ACCURATE_SCOPE_RESOLVING;
 }
 
@@ -339,17 +346,9 @@ std::map<std::string,std::string> TagsOptionsData::GetTokensMap() const
 	return tokens;
 }
 
-std::map<wxString, wxString> TagsOptionsData::GetTokensWxMap() const
+const std::map<wxString, wxString>& TagsOptionsData::GetTokensWxMap() const
 {
-	std::map<wxString, wxString> tokens;
-	wxArrayString tokensArr = wxStringTokenize(m_tokens, wxT("\r\n"), wxTOKEN_STRTOK);
-	for (size_t i=0; i<tokensArr.GetCount(); i++) {
-		wxString item = tokensArr.Item(i).Trim().Trim(false);
-		wxString k = item.BeforeFirst(wxT('='));
-		wxString v = item.AfterFirst(wxT('='));
-		tokens[k] = v;
-	}
-	return tokens;
+	return m_tokensWxMap;
 }
 
 std::map<wxString,wxString> TagsOptionsData::GetTypesMap() const
@@ -381,18 +380,41 @@ std::map<std::string, std::string> TagsOptionsData::GetTokensReversedMap() const
 	return tokens;
 }
 
-std::map<wxString,wxString> TagsOptionsData::GetTokensReversedWxMap() const
+void TagsOptionsData::SetTokens(const wxString& tokens)
 {
-	std::map<wxString, wxString> tokens;
+	DoUpdateTokensWxMapReversed();
+	DoUpdateTokensWxMap();
+	
+	this->m_tokens = tokens;
+}
+
+void TagsOptionsData::DoUpdateTokensWxMap()
+{
+	m_tokensWxMap.clear();
+	wxArrayString tokensArr = wxStringTokenize(m_tokens, wxT("\r\n"), wxTOKEN_STRTOK);
+	for (size_t i=0; i<tokensArr.GetCount(); i++) {
+		wxString item = tokensArr.Item(i).Trim().Trim(false);
+		wxString k = item.BeforeFirst(wxT('='));
+		wxString v = item.AfterFirst(wxT('='));
+		m_tokensWxMap[k] = v;
+	}
+}
+
+void TagsOptionsData::DoUpdateTokensWxMapReversed()
+{
+	m_tokensWxMapReversed.clear();
 	wxArrayString typesArr = wxStringTokenize(m_tokens, wxT("\r\n"), wxTOKEN_STRTOK);
 	for (size_t i=0; i<typesArr.GetCount(); i++) {
 		wxString item = typesArr.Item(i).Trim().Trim(false);
 		wxString k = item.AfterFirst(wxT('='));
 		wxString v = item.BeforeFirst(wxT('='));
-
 		if(_IsValidCppIndetifier(k) && !_IsCppKeyword(k)) {
-			tokens[k] = v;
+			m_tokensWxMapReversed[k] = v;
 		}
 	}
-	return tokens;
 }
+const std::map<wxString,wxString>& TagsOptionsData::GetTokensReversedWxMap() const
+{
+	return m_tokensWxMapReversed;
+}
+

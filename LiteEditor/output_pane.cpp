@@ -44,25 +44,6 @@ const wxString OutputPane::REPLACE_IN_FILES  = wxT("Replace");
 const wxString OutputPane::TASKS             = wxT("Tasks");
 const wxString OutputPane::TRACE_TAB         = wxT("Trace");
 
-
-//#if wxCHECK_VERSION(2, 9, 0)
-//#    if defined(__WXMSW__)
-//#        define USE_TOOLBOOK 0
-//#        define BOOK_ORIENTATION wxBK_TOP
-//#    else
-//#        define USE_TOOLBOOK 0
-//#        define BOOK_ORIENTATION wxBK_BOTTOM
-//#    endif
-//#else  // wx2.8
-//#    if defined(__WXMSW__)||defined(__WXGTK__)
-//#        define USE_TOOLBOOK 1
-//#        define BOOK_ORIENTATION wxBK_RIGHT
-//#    else
-//#        define USE_TOOLBOOK 0
-//#        define BOOK_ORIENTATION wxBK_BOTTOM
-//#    endif
-//#endif
-
 OutputPane::OutputPane(wxWindow *parent, const wxString &caption)
 		: wxPanel(parent, wxID_ANY, wxDefaultPosition, wxSize(200, 200))
 		, m_caption(caption)
@@ -110,7 +91,6 @@ void OutputPane::CreateGUIControls()
 
 	wxTextCtrl *text = new wxTextCtrl(m_book, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxTE_RICH2 | wxTE_MULTILINE | wxTE_READONLY| wxHSCROLL);
 	m_book->AddPage(text, TRACE_TAB, false, wxXmlResource::Get()->LoadBitmap(wxT("debug_window")));
-
 	m_logTargetOld = wxLog::SetActiveTarget( new wxLogTextCtrl(text) );
 
 	m_taskPanel = new TaskPanel(m_book, wxID_ANY, TASKS);

@@ -31,11 +31,11 @@
 
 // Forward Declarations
 class FileViewTree;
-class WindowStack;
 class OpenWindowsPanel;
 class FileExplorer;
 class WorkspaceTab;
 class TabgroupsPane;
+class wxGauge;
 
 class WorkspacePane : public wxPanel
 {
@@ -43,30 +43,20 @@ private:
 	wxString          m_caption;
 	wxChoice         *m_workspaceConfig;
 	wxAuiManager     *m_mgr;
-
+	wxGauge          *m_parsingProgress;
+	wxStaticText     *m_staticText;
 	Notebook         *m_book;
-	WindowStack      *m_winStack;
-	TabgroupsPane	 *m_TabgroupsPane;
+	TabgroupsPane    *m_TabgroupsPane;
 	OpenWindowsPanel *m_openWindowsPane;
 	FileExplorer     *m_explorer;
 	WorkspaceTab     *m_workspaceTab;
 
 	void CreateGUIControls();
     void Connect();
-    void ShowCurrentOutline();
 
     // Workspace event handlers
     void OnWorkspaceConfig    (wxCommandEvent &e);
     void OnWorkspaceClosed    (wxCommandEvent &e);
-    void OnFileRetagged       (wxCommandEvent &e);
-    void OnProjectFileAdded   (wxCommandEvent &e);
-    void OnProjectFileRemoved (wxCommandEvent &e);
-    void OnSymbolsUpdated     (wxCommandEvent &e);
-    void OnSymbolsDeleted     (wxCommandEvent &e);
-    void OnSymbolsAdded       (wxCommandEvent &e);
-    void OnActiveEditorChanged(wxCommandEvent &e);
-    void OnEditorClosing      (wxCommandEvent &e);
-    void OnAllEditorsClosed   (wxCommandEvent &e);
 
 	// Configuration mgr handlers
 	void OnConfigurationManager      (wxCommandEvent  &e);
@@ -76,6 +66,9 @@ private:
 public:
 	WorkspacePane(wxWindow *parent, const wxString &caption, wxAuiManager *mgr);
 	~WorkspacePane();
+
+	void           UpdateProgress(int val);
+	void           ClearProgress ();
 
 	// Getters
 	const wxString &GetCaption      () const    { return m_caption;      }

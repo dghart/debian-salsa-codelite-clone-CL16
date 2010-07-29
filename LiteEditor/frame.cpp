@@ -118,11 +118,14 @@
 #include "tabgroupdlg.h"
 #include "tabgroupmanager.h"
 #include "tabgroupspane.h"
+#include "clang_code_completion.h"
 #include "cl_defs.h"
 
 // from auto-generated file svninfo.cpp:
 extern wxString CODELITE_VERSION_STR;
 extern const wxChar *SvnRevision;
+
+static wxStopWatch gStopWatch;
 
 // from iconsextra.cpp:
 extern char *cubes_xpm[];
@@ -138,6 +141,13 @@ const wxEventType wxEVT_LOAD_PERSPECTIVE  = XRCID("load_perspective");
 			return;\
 		}\
 	}
+#ifdef __WXGTK__
+#    define FACTOR_1 0.0
+#    define FACTOR_2 0.0
+#else
+#    define FACTOR_1 2.0
+#    define FACTOR_2 2.0
+#endif
 
 //----------------------------------------------------------------
 // Our main frame
@@ -484,6 +494,9 @@ BEGIN_EVENT_TABLE(Frame, wxFrame)
 	EVT_COMMAND(wxID_ANY, wxEVT_PARSE_THREAD_UPDATED_FILE_SYMBOLS, Frame::OnParsingThreadDone   )
 	EVT_COMMAND(wxID_ANY, wxEVT_PARSE_THREAD_MESSAGE             , Frame::OnParsingThreadMessage)
 	EVT_COMMAND(wxID_ANY, wxEVT_PARSE_THREAD_CLEAR_TAGS_CACHE,     Frame::OnClearTagsCache)
+	EVT_COMMAND(wxID_ANY, wxEVT_PARSE_THREAD_RETAGGING_COMPLETED,  Frame::OnRetaggingCompelted)
+	EVT_COMMAND(wxID_ANY, wxEVT_PARSE_THREAD_RETAGGING_PROGRESS,   Frame::OnRetaggingProgress)
+
 	EVT_COMMAND(wxID_ANY, wxEVT_UPDATE_STATUS_BAR,                 Frame::OnSetStatusMessage)
 	EVT_COMMAND(wxID_ANY, wxEVT_TAGS_DB_UPGRADE,                   Frame::OnDatabaseUpgrade )
 	EVT_COMMAND(wxID_ANY, wxEVT_SHELL_COMMAND_PROCESS_ENDED,       Frame::OnBuildEnded)
@@ -636,11 +649,6 @@ void Frame::Initialize(bool loadLastSession)
 	wxCommandEvent e(wxEVT_COMMAND_MENU_SELECTED, XRCID("go_home"));
 	m_theFrame->GetFileExplorer()->GetEventHandler()->ProcessEvent(e);
 
-	//load last session?
-	if (m_theFrame->m_frameGeneralInfo.GetFlags() & CL_LOAD_LAST_SESSION && loadLastSession) {
-		m_theFrame->LoadSession(SessionManager::Get().GetLastSession());
-	}
-
 	m_theFrame->SendSizeEvent();
 	m_theFrame->StartTimer();
 
@@ -660,6 +668,8 @@ Frame* Frame::Get()
 
 void Frame::CreateGUIControls(void)
 {
+	this->Freeze();
+
 #ifdef __WXMSW__
 	SetIcon(wxICON(aaaaa));
 #else
@@ -682,14 +692,16 @@ void Frame::CreateGUIControls(void)
 
 	// Mac / Linux
 	m_mgr.SetFlags(m_mgr.GetFlags() | wxAUI_MGR_ALLOW_ACTIVE_PANE);
+	m_mgr.GetArtProvider()->SetMetric(wxAUI_DOCKART_GRADIENT_TYPE,                   wxAUI_GRADIENT_VERTICAL);
+
+#ifndef __WXGTK__
 	wxColor col1 = DrawingUtils::DarkColour(DrawingUtils::GetPanelBgColour(), 5.0);
 	wxColor col2 = DrawingUtils::DarkColour(DrawingUtils::GetPanelBgColour(), 2.0);
-
-	m_mgr.GetArtProvider()->SetMetric(wxAUI_DOCKART_GRADIENT_TYPE,                   wxAUI_GRADIENT_VERTICAL);
-	m_mgr.GetArtProvider()->SetColor(wxAUI_DOCKART_ACTIVE_CAPTION_GRADIENT_COLOUR,   col2);
-	m_mgr.GetArtProvider()->SetColor(wxAUI_DOCKART_INACTIVE_CAPTION_GRADIENT_COLOUR, col2);
-	m_mgr.GetArtProvider()->SetColor(wxAUI_DOCKART_ACTIVE_CAPTION_COLOUR,            col1);
-	m_mgr.GetArtProvider()->SetColor(wxAUI_DOCKART_INACTIVE_CAPTION_COLOUR,          col1);
+//	m_mgr.GetArtProvider()->SetColor(wxAUI_DOCKART_ACTIVE_CAPTION_GRADIENT_COLOUR,   col2);
+//	m_mgr.GetArtProvider()->SetColor(wxAUI_DOCKART_INACTIVE_CAPTION_GRADIENT_COLOUR, col2);
+//	m_mgr.GetArtProvider()->SetColor(wxAUI_DOCKART_ACTIVE_CAPTION_COLOUR,            col1);
+//	m_mgr.GetArtProvider()->SetColor(wxAUI_DOCKART_INACTIVE_CAPTION_COLOUR,          col1);
+#endif
 
 	m_mgr.GetArtProvider()->SetColor(wxAUI_DOCKART_ACTIVE_CAPTION_TEXT_COLOUR,       wxSystemSettings::GetColour(wxSYS_COLOUR_CAPTIONTEXT));
 	m_mgr.GetArtProvider()->SetColor(wxAUI_DOCKART_INACTIVE_CAPTION_TEXT_COLOUR,     wxSystemSettings::GetColour(wxSYS_COLOUR_INACTIVECAPTIONTEXT));
@@ -824,6 +836,8 @@ void Frame::CreateGUIControls(void)
 		CreateToolbars24();
 	}
 
+	ClangCodeCompletion::Instance()->Initialize(PluginManager::Get());
+
 	GetWorkspacePane()->GetNotebook()->SetRightClickMenu( wxXmlResource::Get()->LoadMenu(wxT("workspace_view_rmenu")) );
 	GetDebuggerPane()->GetNotebook()->SetRightClickMenu(wxXmlResource::Get()->LoadMenu( wxT("debugger_view_rmenu") ) );
 
@@ -876,6 +890,12 @@ void Frame::CreateViewAsSubMenu()
 		EditorConfig::ConstIterator iter = EditorConfigST::Get()->LexerBegin();
 		for (; iter != EditorConfigST::Get()->LexerEnd(); iter++) {
 			LexerConfPtr lex = iter->second;
+			wxString lexName = lex->GetName();
+			lexName.Trim().Trim(false);
+
+			if(lexName.IsEmpty())
+				continue;
+
 			item = new wxMenuItem(submenu, minId, lex->GetName(), wxEmptyString, wxITEM_CHECK);
 			m_viewAsMap[minId] = lex->GetName();
 			minId++;
@@ -1389,8 +1409,6 @@ void Frame::OnClose(wxCloseEvent& event)
 void Frame::LoadSession(const wxString &sessionName)
 {
 	SessionEntry session;
-
-	wxWindowUpdateLocker locker(this);
 
 	if (SessionManager::Get().FindSession(sessionName, session)) {
 		wxString wspFile = session.GetWorkspaceName();
@@ -2238,6 +2256,16 @@ void Frame::OnTimer(wxTimerEvent &event)
 	if (GetMainBook()->GetCurrentPage() == 0) {
 		NavMgr::Get()->Clear();
 	}
+
+	// Load last session?
+	if (m_frameGeneralInfo.GetFlags() & CL_LOAD_LAST_SESSION) {
+		wxWindowUpdateLocker locker(this);
+		LoadSession(SessionManager::Get().GetLastSession());
+	}
+	
+	// For some reason, under Linux we need to force the menu accelerator again
+	// otherwise some shortcuts are getting lose (e.g. Ctrl-/ to comment line)
+	ManagerST::Get()->UpdateMenuAccelerators();
 	event.Skip();
 }
 
@@ -2790,9 +2818,12 @@ void Frame::CompleteInitialization()
 	OutputViewControlBar* outputViewControlBar = new OutputViewControlBar(this, GetOutputPane()->GetNotebook(), &m_mgr, wxID_ANY);
 	outputViewControlBar->AddAllButtons();
 
+
 	GetSizer()->Add(outputViewControlBar, 0, wxEXPAND);
 	Layout();
 	SetEnvStatusMessage();
+
+	this->Thaw();
 }
 
 void Frame::OnAppActivated(wxActivateEvent &e)
@@ -2800,6 +2831,13 @@ void Frame::OnAppActivated(wxActivateEvent &e)
 	if (m_theFrame && e.GetActive()) {
 		m_theFrame->ReloadExternallyModifiedProjectFiles();
 		m_theFrame->GetMainBook()->ReloadExternallyModified(true);
+	} else if(m_theFrame) {
+		LEditor *editor = GetMainBook()->GetActiveEditor();
+		if(editor) {
+			// we are loosing the focus
+			editor->CallTipCancel();
+			editor->HideCompletionBox();
+		}
 	}
 	e.Skip();
 }
@@ -3081,7 +3119,7 @@ void Frame::OnNewVersionAvailable(wxCommandEvent& e)
 			btn.isDefault   = true;
 			btn.window      = this;
 
-			GetMainBook()->ShowMessage(wxT("A new version of CodeLite is available. Download it?"), true, wxXmlResource::Get()->LoadBitmap(wxT("message_pane_software_update")), btn);
+			GetMainBook()->ShowMessage(wxT("A new version of CodeLite is available. Would you like to download it?"), true, wxXmlResource::Get()->LoadBitmap(wxT("message_pane_software_update")), btn);
 
 		} else {
 			if (!data->GetShowMessage()) {
@@ -3722,13 +3760,11 @@ void Frame::OnShowActiveProjectSettingsUI(wxUpdateUIEvent& e)
 
 void Frame::StartTimer()
 {
-	m_timer->Start(2500, true);
+	m_timer->Start(2000, true);
 }
 
 void Frame::OnLoadPerspective(wxCommandEvent& e)
 {
-	wxWindowUpdateLocker locker(this);
-
 	long loadIt(1);
 	EditorConfigST::Get()->GetLongValue(wxT("LoadSavedPrespective"), loadIt);
 	if (loadIt) {
@@ -3742,6 +3778,7 @@ void Frame::OnLoadPerspective(wxCommandEvent& e)
 			ReadFileWithConversion(file_name, pers);
 		}
 
+		//wxWindowUpdateLocker locker(this);
 		if ( pers.IsEmpty() == false && EditorConfigST::Get()->GetRevision() == SvnRevision) {
 			m_mgr.LoadPerspective(pers);
 
@@ -3888,4 +3925,49 @@ void Frame::UpdateAUI()
 		paneInfo.CaptionVisible(EditorConfigST::Get()->GetOptions()->GetOutputPaneDockable());
 		m_mgr.Update();
 	}
+}
+
+void Frame::OnRetaggingCompelted(wxCommandEvent& e)
+{
+	e.Skip();
+#if USE_PARSER_TREAD_FOR_RETAGGING_WORKSPACE
+	SetStatusMessage(wxT("Done"), 0);
+	GetWorkspacePane()->ClearProgress();
+
+	// Clear all cached tags now that we got our database updated
+	TagsManagerST::Get()->ClearAllCaches();
+
+	// Send event notifying parsing completed
+	std::vector<std::string>* files = (std::vector<std::string>*) e.GetClientData();
+	if(files) {
+
+		// Print the parsing end time
+		wxLogMessage(wxT("INFO: Retag workspace completed in %d seconds (%d files were scanned)"), gStopWatch.Time()/1000, files->size());
+
+		std::vector<wxFileName> taggedFiles;
+		for(size_t i=0; i<files->size(); i++) {
+			taggedFiles.push_back( wxFileName(wxString(files->at(i).c_str(), wxConvUTF8)) );
+		}
+
+		SendCmdEvent ( wxEVT_FILE_RETAGGED, ( void* ) &taggedFiles );
+		delete files;
+
+	} else {
+
+		wxLogMessage(wxT("INFO: Retag workspace completed in %d seconds (%d files were scanned)"), gStopWatch.Time()/1000, 0);
+	}
+#endif
+}
+
+void Frame::OnRetaggingProgress(wxCommandEvent& e)
+{
+	e.Skip();
+#if USE_PARSER_TREAD_FOR_RETAGGING_WORKSPACE
+	if(e.GetInt() == 1) {
+		// parsing started
+		gStopWatch.Start();
+	}
+
+	GetWorkspacePane()->UpdateProgress( e.GetInt() );
+#endif
 }

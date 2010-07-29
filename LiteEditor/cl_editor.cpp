@@ -132,9 +132,12 @@ BEGIN_EVENT_TABLE(LEditor, wxScintilla)
 END_EVENT_TABLE()
 
 // Instantiate statics
-FindReplaceDialog* LEditor::m_findReplaceDlg = NULL;
-FindReplaceData LEditor::m_findReplaceData;
-std::map<wxString, int> LEditor::ms_bookmarkShapes;
+FindReplaceDialog*      LEditor::m_findReplaceDlg       = NULL ;
+FindReplaceData         LEditor::m_findReplaceData             ;
+std::map<wxString, int> LEditor::ms_bookmarkShapes             ;
+bool                    LEditor::m_ccShowPrivateMembers = true ;
+bool                    LEditor::m_ccShowItemsComments  = true ;
+bool                    LEditor::m_ccInitialized        = false;
 
 LEditor::LEditor(wxWindow* parent)
 		: wxScintilla                (parent, wxID_ANY, wxDefaultPosition, wxSize(1, 1), wxSTATIC_BORDER)
@@ -994,6 +997,22 @@ bool LEditor::SaveFileAs()
 	return false;
 }
 
+#ifdef __WXGTK__
+//--------------------------------
+// GTK only get permissions method
+//--------------------------------
+mode_t GTKGetFilePermissions(const wxString &filename)
+{
+	// keep the original file permissions
+	struct stat b;
+	mode_t permissions(0);
+	if(stat(filename.mb_str(wxConvUTF8).data(), &b) == 0) {
+		permissions = b.st_mode;
+	}
+	return permissions;
+}
+#endif
+
 // an internal function that does the actual file writing to disk
 bool LEditor::SaveToFile(const wxFileName &fileName)
 {
@@ -1050,11 +1069,32 @@ bool LEditor::SaveToFile(const wxFileName &fileName)
 	file.Write(theText, fontEncConv);
 	file.Close();
 
+#ifdef __WXGTK__
+	// keep the original file permissions
+	mode_t origPermissions = GTKGetFilePermissions(fileName.GetFullPath());
+#endif
+
 	// if the saving was done to a temporary file, override it
 	if (tmp_file.IsEmpty() == false) {
 		if (wxRenameFile(tmp_file, fileName.GetFullPath(), true) == false) {
 			wxMessageBox(wxString::Format(wxT("Failed to override read-only file")), wxT("CodeLite"), wxOK|wxICON_WARNING);
 			return false;
+		} else {
+			// override was successful, restore execute permissions
+#ifdef __WXGTK__
+			mode_t newFilePermissions = GTKGetFilePermissions(fileName.GetFullPath());
+
+			if(origPermissions & S_IXUSR)
+				newFilePermissions |= S_IXUSR;
+
+			if(origPermissions & S_IXGRP)
+				newFilePermissions |= S_IXGRP;
+
+			if(origPermissions & S_IXOTH)
+				newFilePermissions |= S_IXOTH;
+
+			::chmod(fileName.GetFullPath().mb_str(wxConvUTF8), newFilePermissions);
+#endif
 		}
 	}
 
@@ -1419,28 +1459,43 @@ void LEditor::RecalcHorizontalScrollbar()
 //--------------------------------------------------------
 // Brace match
 //--------------------------------------------------------
+
+bool LEditor::IsCloseBrace(int position)
+{
+	return  GetCharAt(position) == '}' ||
+			GetCharAt(position) == ']' ||
+			GetCharAt(position) == ')';
+}
+
+bool LEditor::IsOpenBrace(int position)
+{
+	return  GetCharAt(position) == '{' ||
+			GetCharAt(position) == '[' ||
+			GetCharAt(position) == '(';
+}
+
 void LEditor::MatchBraceAndSelect(bool selRegion)
 {
 	// Get current position
 	long pos = GetCurrentPos();
 
-	if (GetCharAt(pos) == '{' && !m_context->IsCommentOrString(pos)) {
+	if (IsOpenBrace(pos) && !m_context->IsCommentOrString(pos)) {
 		BraceMatch(selRegion);
 		return;
 	}
 
-	if (GetCharAt(PositionBefore(pos)) == '{' && !m_context->IsCommentOrString(PositionBefore(pos))) {
+	if (IsOpenBrace(PositionBefore(pos)) && !m_context->IsCommentOrString(PositionBefore(pos))) {
 		SetCurrentPos(PositionBefore(pos));
 		BraceMatch(selRegion);
 		return;
 	}
 
-	if (GetCharAt(pos) == '}' && !m_context->IsCommentOrString(pos)) {
+	if (IsCloseBrace(pos) && !m_context->IsCommentOrString(pos)) {
 		BraceMatch(selRegion);
 		return;
 	}
 
-	if (GetCharAt(PositionBefore(pos)) == '}' && !m_context->IsCommentOrString(PositionBefore(pos))) {
+	if (IsCloseBrace(PositionBefore(pos)) && !m_context->IsCommentOrString(PositionBefore(pos))) {
 		SetCurrentPos(PositionBefore(pos));
 		BraceMatch(selRegion);
 		return;
@@ -2140,17 +2195,29 @@ void LEditor::InsertTextWithIndentation(const wxString &text, int lineno)
 	InsertText(PositionFromLine(lineno), textTag);
 }
 
-wxString LEditor::FormatTextKeepIndent(const wxString &text, int pos)
+wxString LEditor::FormatTextKeepIndent(const wxString &text, int pos, size_t flags)
 {
 	//keep the page idnetation level
 	wxString textToInsert(text);
-
-	int indentSize = GetIndent();
-	int indent = GetLineIndentation(LineFromPosition(pos));
-
 	wxString indentBlock;
+
+	int indentSize = 0;
+	int indent     = 0;
+
+	if(flags & Format_Text_Indent_Prev_Line) {
+		indentSize = GetIndent();
+		int foldLevel = (GetFoldLevel(LineFromPosition(pos)) & wxSCI_FOLDLEVELNUMBERMASK) - wxSCI_FOLDLEVELBASE;
+		indent = foldLevel*indentSize;
+
+	} else {
+		indentSize = GetIndent();
+		indent     = GetLineIndentation(LineFromPosition(pos));
+	}
+
 	if (GetUseTabs()) {
-		indent = indent / indentSize;
+		if(indentSize)
+			indent = indent / indentSize;
+
 		for (int i=0; i<indent; i++) {
 			indentBlock << wxT("\t");
 		}
@@ -2161,7 +2228,6 @@ wxString LEditor::FormatTextKeepIndent(const wxString &text, int pos)
 	}
 
 	wxString eol = GetEolString();
-
 	textToInsert.Replace(wxT("\r"), wxT("\n"));
 	wxArrayString lines = wxStringTokenize(textToInsert, wxT("\n"), wxTOKEN_STRTOK);
 
@@ -2170,7 +2236,6 @@ wxString LEditor::FormatTextKeepIndent(const wxString &text, int pos)
 		textToInsert << indentBlock;
 		textToInsert << lines.Item(i) << eol;
 	}
-
 	return textToInsert;
 }
 
@@ -2379,6 +2444,8 @@ void LEditor::OnLeftDown(wxMouseEvent &event)
 	if (!value) {
 		DoMarkHyperlink(event, false);
 	}
+	
+	SetActive();
 	PostCmdEvent(wxEVT_EDITOR_CLICKED, NULL);
 	event.Skip();
 }
@@ -2768,8 +2835,30 @@ void LEditor::ShowCompletionBox(const std::vector<TagEntryPtr>& tags, const wxSt
 		m_ccBox = new CCBox(this);
 	}
 
+	if(tags.empty()) {
+		return;
+	}
+
 	m_ccBox->SetAutoHide(false);
 	m_ccBox->SetInsertSingleChoice(false);
+
+	// Show extra info pane for C++ tags
+	bool showExtInfoPane = (tags.at(0)->GetKind() == wxT("function")  ||
+							tags.at(0)->GetKind() == wxT("prototype") ||
+							tags.at(0)->GetKind() == wxT("class")     ||
+							tags.at(0)->GetKind() == wxT("struct")    ||
+							tags.at(0)->GetKind() == wxT("union")     ||
+							tags.at(0)->GetKind() == wxT("namespace") ||
+							tags.at(0)->GetKind() == wxT("member")    ||
+							tags.at(0)->GetKind() == wxT("variable")  ||
+							tags.at(0)->GetKind() == wxT("typedef")   ||
+							tags.at(0)->GetKind() == wxT("macro")     ||
+							tags.at(0)->GetKind() == wxT("enum")      ||
+							tags.at(0)->GetKind() == wxT("enumerator"));
+	if(showExtInfoPane) {
+		// it will be disabled automatically when the CC box is dissmissed
+		m_ccBox->EnableExtInfoPane();
+	}
 
 	// If the number of elements exceeds the maximum query result,
 	// alert the user
@@ -2786,11 +2875,33 @@ void LEditor::ShowCompletionBox(const std::vector<TagEntryPtr>& tags, const wxSt
 {
 	if ( m_ccBox == NULL ) {
 		// create new completion box
-		m_ccBox = new CCBox(this);
+		m_ccBox = new CCBox( this );
+	}
+
+	if(tags.empty()) {
+		return;
 	}
 
 	m_ccBox->SetAutoHide(autoHide);
 	m_ccBox->SetInsertSingleChoice(autoInsertSingleChoice);
+
+	// Show extra info pane for C++ tags
+	bool showExtInfoPane = (tags.at(0)->GetKind() == wxT("function")  ||
+							tags.at(0)->GetKind() == wxT("prototype") ||
+							tags.at(0)->GetKind() == wxT("class")     ||
+							tags.at(0)->GetKind() == wxT("struct")    ||
+							tags.at(0)->GetKind() == wxT("union")     ||
+							tags.at(0)->GetKind() == wxT("namespace") ||
+							tags.at(0)->GetKind() == wxT("member")    ||
+							tags.at(0)->GetKind() == wxT("variable")  ||
+							tags.at(0)->GetKind() == wxT("typedef")   ||
+							tags.at(0)->GetKind() == wxT("macro")     ||
+							tags.at(0)->GetKind() == wxT("enum")      ||
+							tags.at(0)->GetKind() == wxT("enumerator"));
+	if(showExtInfoPane) {
+		// it will be disabled automatically when the CC box is dissmissed
+		m_ccBox->EnableExtInfoPane();
+	}
 
 	// If the number of elements exceeds the maximum query result,
 	// alert the user
@@ -3031,7 +3142,7 @@ void LEditor::RegisterImageForKind(const wxString& kind, const wxBitmap& bmp)
 {
 	if ( m_ccBox == NULL ) {
 		// create new completion box
-		m_ccBox = new CCBox(this);
+		m_ccBox = new CCBox( this );
 	}
 
 	m_ccBox->RegisterImageForKind(kind, bmp);
@@ -3539,4 +3650,25 @@ void LEditor::ChangeCase(bool toLower)
 		toLower ? LowerCase() : UpperCase();
 		CharRight();
 	}
+}
+
+int LEditor::LineFromPos(int pos)
+{
+	return wxScintilla::LineFromPosition(pos);
+}
+
+int LEditor::PosFromLine(int line)
+{
+	return wxScintilla::PositionFromLine(line);
+}
+
+int LEditor::LineEnd(int line)
+{
+	int pos = wxScintilla::PositionFromLine(line);
+	return pos + wxScintilla::LineLength(line);
+}
+
+wxString LEditor::GetTextRange(int startPos, int endPos)
+{
+	return wxScintilla::GetTextRange(startPos, endPos);
 }

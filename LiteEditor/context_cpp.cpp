@@ -25,6 +25,7 @@
 
 
 #include "pluginmanager.h"
+#include "clang_code_completion.h"
 #include "drawingutils.h"
 #include "buildtabsettingsdata.h"
 #include "cl_editor_tip_window.h"
@@ -495,165 +496,6 @@ void ContextCpp::RemoveDuplicates(std::vector<TagEntryPtr>& src, std::vector<Tag
 	}
 }
 
-wxString ContextCpp::GetExpression(long pos, bool onlyWord, LEditor *editor, bool forCC)
-{
-	bool cont(true);
-	int depth(0);
-
-	LEditor *ctrl(NULL);
-	if (!editor) {
-		ctrl = &GetCtrl();
-	} else {
-		ctrl = editor;
-	}
-
-	int position( pos );
-	int at(position);
-	bool prevGt(false);
-	bool prevColon(false);
-	while (cont && depth >= 0) {
-		wxChar ch =ctrl->PreviousChar(position, at, true);
-		position = at;
-		//Eof?
-		if (ch == 0) {
-			at = 0;
-			break;
-		}
-
-		//Comment?
-		int style = ctrl->GetStyleAt(pos);
-		if (style == wxSCI_C_COMMENT				||
-		        style == wxSCI_C_COMMENTLINE			||
-		        style == wxSCI_C_COMMENTDOC				||
-		        style == wxSCI_C_COMMENTLINEDOC			||
-		        style == wxSCI_C_COMMENTDOCKEYWORD		||
-		        style == wxSCI_C_COMMENTDOCKEYWORDERROR ||
-		        style == wxSCI_C_STRING					||
-		        style == wxSCI_C_STRINGEOL				||
-		        style == wxSCI_C_CHARACTER) {
-			continue;
-		}
-
-		switch (ch) {
-		case wxT(';'):
-						// dont include this token
-						at = ctrl->PositionAfter(at);
-			cont = false;
-			prevColon = false;
-			break;
-		case wxT('-'):
-						if (prevGt) {
-					prevGt = false;
-					//if previous char was '>', we found an arrow so reduce the depth
-					//which was increased
-					depth--;
-				} else {
-					if (depth <= 0) {
-						//dont include this token
-						at =ctrl->PositionAfter(at);
-						cont = false;
-					}
-				}
-			prevColon = false;
-			break;
-		case wxT(' '):
-					case wxT('\n'):
-						case wxT('\v'):
-							case wxT('\t'):
-								case wxT('\r'):
-										prevGt = false;
-			prevColon = false;
-			if (depth <= 0) {
-				cont = false;
-				break;
-			}
-			break;
-		case wxT('{'):
-					case wxT('='):
-							prevGt = false;
-			prevColon = false;
-			cont = false;
-			break;
-		case wxT('('):
-					case wxT('['):
-							depth--;
-			prevGt = false;
-			prevColon = false;
-			if (depth < 0) {
-				//dont include this token
-				at =ctrl->PositionAfter(at);
-				cont = false;
-			}
-			break;
-		case wxT(','):
-					case wxT('*'):
-						case wxT('&'):
-							case wxT('!'):
-								case wxT('~'):
-									case wxT('+'):
-										case wxT('^'):
-											case wxT('|'):
-												case wxT('%'):
-													case wxT('?'):
-															prevGt = false;
-			prevColon = false;
-			if (depth <= 0) {
-
-				//dont include this token
-				at =ctrl->PositionAfter(at);
-				cont = false;
-			}
-			break;
-		case wxT('>'):
-						prevGt = true;
-			prevColon = false;
-			depth++;
-			break;
-		case wxT('<'):
-						prevGt = false;
-			prevColon = false;
-			depth--;
-			if (depth < 0) {
-
-				//dont include this token
-				at =ctrl->PositionAfter(at);
-				cont = false;
-			}
-			break;
-		case wxT(')'):
-					case wxT(']'):
-							prevGt = false;
-			prevColon = false;
-			depth++;
-			break;
-		default:
-			prevGt = false;
-			prevColon = false;
-			break;
-		}
-	}
-
-	if (at < 0) at = 0;
-	wxString expr = ctrl->GetTextRange(at, pos);
-	if ( !forCC ) {
-		// If we do not require the expression for CodeCompletion
-		// return the un-touched buffer
-		return expr;
-	}
-
-	//remove comments from it
-	CppScanner sc;
-	sc.SetText(_C(expr));
-	wxString expression;
-	int type=0;
-	while ( (type = sc.yylex()) != 0 ) {
-		wxString token = _U(sc.YYText());
-		expression += token;
-		expression += wxT(" ");
-	}
-	return expression;
-}
-
 wxString ContextCpp::GetWordUnderCaret()
 {
 	LEditor &rCtrl = GetCtrl();
@@ -864,8 +706,10 @@ void ContextCpp::CompleteWord()
 	DoSetProjectPaths();
 	if (mgr->WordCompletionCandidates(rCtrl.GetFileName(), lineNum, expr, text, word, candidates)) {
 		DisplayCompletionBox(candidates, word, false);
+	} else {
+		// Incase code completion fails, use clang to complete
+		ClangCodeCompletion::Instance()->CodeComplete( &rCtrl );
 	}
-
 }
 
 void ContextCpp::DisplayCompletionBox(const std::vector<TagEntryPtr> &tags, const wxString &word, bool showFullDecl)
@@ -2620,9 +2464,10 @@ void ContextCpp::DoCodeComplete(long pos)
 		DoSetProjectPaths();
 		if (TagsManagerST::Get()->AutoCompleteCandidates(rCtrl.GetFileName(), line, expr, text, candidates)) {
 			DisplayCompletionBox(candidates, wxEmptyString, showFullDecl);
+		} else {
+			ClangCodeCompletion::Instance()->CodeComplete( &rCtrl );
 		}
 	}
-
 }
 
 int ContextCpp::GetHyperlinkRange(int pos, int &start, int &end)
@@ -2765,7 +2610,7 @@ void ContextCpp::OnGotoNextFunction(wxCommandEvent& event)
 
 void ContextCpp::OnCallTipClick(wxScintillaEvent& e)
 {
-	wxUnusedVar(e);
+	e.Skip();
 }
 
 void ContextCpp::OnCalltipCancel()
@@ -2887,4 +2732,163 @@ wxString ContextCpp::GetCurrentScopeName()
 		return tag->GetParent();
 	}
 	return wxEmptyString;
+}
+
+wxString ContextCpp::GetExpression(long pos, bool onlyWord, LEditor *editor, bool forCC)
+{
+	bool cont(true);
+	int depth(0);
+
+	LEditor *ctrl(NULL);
+	if (!editor) {
+		ctrl = &GetCtrl();
+	} else {
+		ctrl = editor;
+	}
+
+	int position( pos );
+	int at(position);
+	bool prevGt(false);
+	bool prevColon(false);
+	while (cont && depth >= 0) {
+		wxChar ch =ctrl->PreviousChar(position, at, true);
+		position = at;
+		//Eof?
+		if (ch == 0) {
+			at = 0;
+			break;
+		}
+
+		//Comment?
+		int style = ctrl->GetStyleAt(pos);
+		if (style == wxSCI_C_COMMENT				||
+		        style == wxSCI_C_COMMENTLINE			||
+		        style == wxSCI_C_COMMENTDOC				||
+		        style == wxSCI_C_COMMENTLINEDOC			||
+		        style == wxSCI_C_COMMENTDOCKEYWORD		||
+		        style == wxSCI_C_COMMENTDOCKEYWORDERROR ||
+		        style == wxSCI_C_STRING					||
+		        style == wxSCI_C_STRINGEOL				||
+		        style == wxSCI_C_CHARACTER) {
+			continue;
+		}
+
+		switch (ch) {
+		case wxT(';'):
+						// dont include this token
+						at = ctrl->PositionAfter(at);
+			cont = false;
+			prevColon = false;
+			break;
+		case wxT('-'):
+						if (prevGt) {
+					prevGt = false;
+					//if previous char was '>', we found an arrow so reduce the depth
+					//which was increased
+					depth--;
+				} else {
+					if (depth <= 0) {
+						//dont include this token
+						at =ctrl->PositionAfter(at);
+						cont = false;
+					}
+				}
+			prevColon = false;
+			break;
+		case wxT(' '):
+					case wxT('\n'):
+						case wxT('\v'):
+							case wxT('\t'):
+								case wxT('\r'):
+										prevGt = false;
+			prevColon = false;
+			if (depth <= 0) {
+				cont = false;
+				break;
+			}
+			break;
+		case wxT('{'):
+					case wxT('='):
+							prevGt = false;
+			prevColon = false;
+			cont = false;
+			break;
+		case wxT('('):
+					case wxT('['):
+							depth--;
+			prevGt = false;
+			prevColon = false;
+			if (depth < 0) {
+				//dont include this token
+				at =ctrl->PositionAfter(at);
+				cont = false;
+			}
+			break;
+		case wxT(','):
+					case wxT('*'):
+						case wxT('&'):
+							case wxT('!'):
+								case wxT('~'):
+									case wxT('+'):
+										case wxT('^'):
+											case wxT('|'):
+												case wxT('%'):
+													case wxT('?'):
+															prevGt = false;
+			prevColon = false;
+			if (depth <= 0) {
+
+				//dont include this token
+				at =ctrl->PositionAfter(at);
+				cont = false;
+			}
+			break;
+		case wxT('>'):
+						prevGt = true;
+			prevColon = false;
+			depth++;
+			break;
+		case wxT('<'):
+						prevGt = false;
+			prevColon = false;
+			depth--;
+			if (depth < 0) {
+
+				//dont include this token
+				at =ctrl->PositionAfter(at);
+				cont = false;
+			}
+			break;
+		case wxT(')'):
+					case wxT(']'):
+							prevGt = false;
+			prevColon = false;
+			depth++;
+			break;
+		default:
+			prevGt = false;
+			prevColon = false;
+			break;
+		}
+	}
+
+	if (at < 0) at = 0;
+	wxString expr = ctrl->GetTextRange(at, pos);
+	if ( !forCC ) {
+		// If we do not require the expression for CodeCompletion
+		// return the un-touched buffer
+		return expr;
+	}
+
+	//remove comments from it
+	CppScanner sc;
+	sc.SetText(_C(expr));
+	wxString expression;
+	int type=0;
+	while ( (type = sc.yylex()) != 0 ) {
+		wxString token = _U(sc.YYText());
+		expression += token;
+		expression += wxT(" ");
+	}
+	return expression;
 }

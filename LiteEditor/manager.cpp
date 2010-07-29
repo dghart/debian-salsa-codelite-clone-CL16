@@ -27,6 +27,7 @@
 #include "evnvarlist.h"
 #include "crawler_include.h"
 #include "renamefiledlg.h"
+#include "clang_code_completion.h"
 #include "localstable.h"
 #include "new_quick_watch_dlg.h"
 #include "debuggerconfigtool.h"
@@ -213,7 +214,8 @@ Manager::~Manager ( void )
 	SearchThreadST::Free();
 	MenuManager::Free();
 	EnvironmentConfig::Release();
-
+	ClangCodeCompletion::Release();
+	
 	if ( m_shellProcess ) {
 		delete m_shellProcess;
 		m_shellProcess = NULL;
@@ -233,6 +235,7 @@ bool Manager::IsWorkspaceOpen() const
 
 void Manager::CreateWorkspace ( const wxString &name, const wxString &path )
 {
+
 	// make sure that the workspace pane is visible
 	ShowWorkspacePane (Frame::Get()->GetWorkspaceTab()->GetCaption());
 
@@ -342,9 +345,19 @@ void Manager::CloseWorkspace()
 	wxSetWorkingDirectory ( GetStarupDirectory() );
 #endif
 
+	/////////////////////////////////////////////////////////////////
+	// set back the "Default" environment variable as the active set
+	/////////////////////////////////////////////////////////////////
+
+	EvnVarList vars = EnvironmentConfig::Instance()->GetSettings();
+	if(vars.IsSetExist(wxT("Default"))) {
+		vars.SetActiveSet(wxT("Default"));
+	}
+	EnvironmentConfig::Instance()->SetSettings(vars);
+	Frame::Get()->SetEnvStatusMessage();
+
 	UpdateParserPaths();
 	m_workspceClosing = false;
-
 }
 
 void Manager::AddToRecentlyOpenedWorkspaces ( const wxString &fileName )
@@ -3087,10 +3100,13 @@ void Manager::OnIncludeFilesScanDone(wxCommandEvent& event)
 	// -----------------------------------------------
 
 	TagsManagerST::Get()->RetagFiles ( projectFiles, event.GetInt() );
+
+#if !USE_PARSER_TREAD_FOR_RETAGGING_WORKSPACE
 	long end   = sw.Time();
 	Frame::Get()->SetStatusMessage(wxT("Done"), 0);
 	wxLogMessage(wxT("INFO: Retag workspace completed in %d seconds (%d files were scanned)"), (end)/1000, projectFiles.size());
 	SendCmdEvent ( wxEVT_FILE_RETAGGED, ( void* ) &projectFiles );
+#endif
 
 	delete fileSet;
 }

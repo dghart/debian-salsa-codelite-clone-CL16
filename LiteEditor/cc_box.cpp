@@ -23,6 +23,10 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 #include "cc_box.h"
+#include "frame.h"
+#include "comment_parser.h"
+#include "ctags_manager.h"
+#include <wx/wupdlock.h>
 #include "editor_config.h"
 #include "cl_editor_tip_window.h"
 #include "cl_editor.h"
@@ -31,18 +35,28 @@
 #include <wx/xrc/xmlres.h>
 #include "entry.h"
 #include "plugin.h"
+#include <wx/tooltip.h>
+#include <wx/tipwin.h>
 
-#define BOX_HEIGHT 250
-#define BOX_WIDTH  400
+#ifndef wxScintillaEventHandler
+#define wxScintillaEventHandler(func) \
+	(wxObjectEventFunction)(wxEventFunction)wxStaticCastEvent(wxScintillaEventFunction, &func)
+#endif
 
 CCBox::CCBox(LEditor* parent, bool autoHide, bool autoInsertSingleChoice)
-		:
-		CCBoxBase(parent, wxID_ANY, wxDefaultPosition, wxSize(0, 0))
-		, m_showFullDecl(false)
-		, m_height(BOX_HEIGHT)
-		, m_autoHide(autoHide)
-		, m_insertSingleChoice(autoInsertSingleChoice)
-		, m_owner(NULL)
+#if CC_USES_POPUPWIN
+	: CCBoxBase(wxTheApp->GetTopWindow(), wxID_ANY, wxDefaultPosition, wxSize(0, 0))
+#else
+	: CCBoxBase(parent, wxID_ANY, wxDefaultPosition, wxSize(0, 0))
+#endif
+	, m_showFullDecl(false)
+	, m_height(BOX_HEIGHT)
+	, m_autoHide(autoHide)
+	, m_insertSingleChoice(autoInsertSingleChoice)
+	, m_owner(NULL)
+	, m_hideExtInfoPane(true)
+	, m_startPos(wxNOT_FOUND)
+	, m_editor(parent)
 {
 	m_constructing = true;
 	HideCCBox();
@@ -84,13 +98,35 @@ CCBox::CCBox(LEditor* parent, bool autoHide, bool autoInsertSingleChoice)
 	// assign the image list and let the control take owner ship (i.e. delete it)
 	m_listCtrl->AssignImageList(il, wxIMAGE_LIST_SMALL);
 	m_listCtrl->InsertColumn(0, wxT("Name"));
-	m_listCtrl->SetBackgroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_INFOBK));
-	m_listCtrl->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_INFOTEXT));
+
+	m_isTipBgDark = DrawingUtils::IsDark(wxSystemSettings::GetColour(wxSYS_COLOUR_INFOBK));
+
+	if ( !m_isTipBgDark ) {
+		m_listCtrl->SetBackgroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_INFOBK));
+		m_listCtrl->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_INFOTEXT));
+		GetEditor()->m_isTipBgDark = false;
+
+	} else {
+		// the tooltip colour is dark
+		GetEditor()->CallTipSetForegroundHighlight(wxT("YELLOW"));
+		GetEditor()->m_isTipBgDark = true;
+		if( DrawingUtils::IsDark(wxSystemSettings::GetColour(wxSYS_COLOUR_3DFACE)) == false ) {
+			m_listCtrl->SetBackgroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_3DFACE));
+		}
+	}
 
 	m_listCtrl->SetFocus();
 	// return the focus to scintilla
-	parent->SetActive();
+	GetEditor()->SetActive();
 	m_constructing = false;
+
+	GetParent()->Connect(wxEVT_SCI_CALLTIP_CLICK, wxScintillaEventHandler(CCBox::OnTipClicked), NULL, this);
+}
+
+CCBox::~CCBox()
+{
+	EditorConfigST::Get()->SaveLongValue(wxT("CC_Show_Item_Commetns"), LEditor::m_ccShowItemsComments  ? 1 : 0);
+	EditorConfigST::Get()->SaveLongValue(wxT("CC_Show_All_Members"),   LEditor::m_ccShowPrivateMembers ? 1 : 0);
 }
 
 void CCBox::OnItemActivated( wxListEvent& event )
@@ -99,7 +135,7 @@ void CCBox::OnItemActivated( wxListEvent& event )
 	InsertSelection();
 	HideCCBox();
 
-	LEditor *editor = (LEditor*)GetParent();
+	LEditor *editor = GetEditor();
 	if (editor) {
 		editor->SetActive();
 	}
@@ -116,6 +152,10 @@ void CCBox::OnItemDeSelected( wxListEvent& event )
 void CCBox::OnItemSelected( wxListEvent& event )
 {
 	m_selectedItem = event.m_itemIndex;
+	CCItemInfo tag;
+	if(m_listCtrl->GetItemTagEntry(m_selectedItem, tag)) {
+		DoFormatDescriptionPage( tag );
+	}
 }
 
 void CCBox::Show(const std::vector<TagEntryPtr> &tags, const wxString &word, bool showFullDecl, wxEvtHandler *owner)
@@ -133,26 +173,56 @@ void CCBox::Show(const std::vector<TagEntryPtr> &tags, const wxString &word, boo
 
 void CCBox::Adjust()
 {
-	LEditor *parent = (LEditor*)GetParent();
+	LEditor *editor = GetEditor();
 
-	int point = parent->GetCurrentPos();
-	wxPoint pt = parent->PointFromPosition(point);
+	int     point      = editor->GetCurrentPos();
+	wxPoint pt         = editor->PointFromPosition(point); // Point is in editor's coordinates
+	int     lineHeight = editor->GetCurrLineHeight();
 
 	// add the line height
-	int hh = parent->GetCurrLineHeight();
-	pt.y += hh;
+	pt.y += lineHeight;
 
-	wxSize size = parent->GetClientSize();
+#if CC_USES_POPUPWIN
+	wxSize  size       = ::wxGetDisplaySize();
+
+	// the completion box is child of the main frame
+	wxPoint ccPoint = pt;
+	// Make sure that CC box remains is fully visible
+	ccPoint = editor->ClientToScreen(pt);
+	int diff = ccPoint.x + BOX_WIDTH - size.x;
+	// Handle the X axis
+	if(ccPoint.x + BOX_WIDTH > size.x) {
+		ccPoint.x -= diff;
+		pt.x      -= diff;
+	}
+
+	if(ccPoint.y + BOX_HEIGHT > size.y) {
+		ccPoint.y -= BOX_HEIGHT;
+		ccPoint.y -= lineHeight;
+
+		pt.y -=      BOX_HEIGHT;
+		pt.y -=      lineHeight;
+	}
+#ifdef __WXMSW__
+	ccPoint = GetParent()->ScreenToClient(ccPoint);
+#endif
+	Move(ccPoint);
+	editor->m_ccPoint = pt;
+	editor->m_ccPoint.x += 2;
+
+#else
+	wxSize  size       = GetParent()->GetClientSize();
 	int diff = size.y - pt.y;
 	m_height = BOX_HEIGHT;
+
 	if (diff < BOX_HEIGHT) {
 		pt.y -= BOX_HEIGHT;
-		pt.y -= hh;
+		pt.y -= lineHeight;
 
 		if (pt.y < 0) {
 			// the completion box is out of screen, resotre original size
 			pt.y += BOX_HEIGHT;
-			pt.y += hh;
+			pt.y += lineHeight;
 			m_height = diff;
 		}
 	}
@@ -168,7 +238,9 @@ void CCBox::Adjust()
 			pt.x = 0;
 		}
 	}
+	editor->m_ccPoint = pt;
 	Move(pt);
+#endif
 }
 
 bool CCBox::SelectWord(const wxString& word)
@@ -188,7 +260,7 @@ bool CCBox::SelectWord(const wxString& word)
 			// Incase we got a full match, insert the selection and release the completion box
 			InsertSelection();
 
-			LEditor *editor = dynamic_cast<LEditor*>( GetParent() );
+			LEditor *editor = GetEditor();
 			if (editor) {
 				editor->SetActive();
 			}
@@ -237,6 +309,12 @@ void CCBox::SelectItem(long item)
 {
 	m_listCtrl->Select(item);
 	m_listCtrl->EnsureVisible(item);
+
+	CCItemInfo tag;
+	if(m_listCtrl->GetItemTagEntry(item, tag)) {
+		DoFormatDescriptionPage( tag );
+	}
+
 }
 
 void CCBox::Show(const wxString& word)
@@ -245,47 +323,70 @@ void CCBox::Show(const wxString& word)
 	size_t i(0);
 	std::vector<CCItemInfo> _tags;
 
+	m_listCtrl->SetCursor( wxCursor(wxCURSOR_ARROW) );
+	m_toolBar1->SetCursor( wxCursor(wxCURSOR_ARROW) );
+	this->SetCursor( wxCursor(wxCURSOR_ARROW) );
+
 	long checkIt (0);
-	EditorConfigST::Get()->GetLongValue(wxT("CC_Show_All_Members"), checkIt);
-	m_toolBar1->ToggleTool(TOOL_SHOW_PRIVATE_MEMBERS, checkIt);
+	if(LEditor::m_ccInitialized == false) {
+		if(EditorConfigST::Get()->GetLongValue(wxT("CC_Show_All_Members"), checkIt)) {
+			LEditor::m_ccShowPrivateMembers = (bool)checkIt;
+		}
+
+		if(EditorConfigST::Get()->GetLongValue(wxT("CC_Show_Item_Commetns"), checkIt)) {
+			LEditor::m_ccShowItemsComments = (bool)checkIt;
+		}
+		LEditor::m_ccInitialized = true;
+	}
+
+	m_toolBar1->ToggleTool(TOOL_SHOW_PRIVATE_MEMBERS, LEditor::m_ccShowPrivateMembers);
+	m_toolBar1->ToggleTool(TOOL_SHOW_ITEM_COMMENTS,   LEditor::m_ccShowItemsComments);
 
 	CCItemInfo item;
+	wxWindowUpdateLocker locker(m_listCtrl);
 	m_listCtrl->DeleteAllItems();
 
-	bool showPrivateMembers ( checkIt );
-
 	// Get the associated editor
-	LEditor *editor = dynamic_cast<LEditor*>(GetParent());
+	LEditor *editor = GetEditor();
+	wxString scopeName = editor->GetContext()->GetCurrentScopeName();
 	if (m_tags.empty() == false) {
+		_tags.reserve(m_tags.size());
 		for (; i<m_tags.size(); i++) {
-			TagEntryPtr tag = m_tags.at(i);
-			bool        isVisible = m_tags.at(i)->GetAccess() == wxT("private") || m_tags.at(i)->GetAccess() == wxT("protected");
-			bool        isInScope = (editor && (m_tags.at(i)->GetParent() == editor->GetContext()->GetCurrentScopeName()));
-			if (lastName != m_tags.at(i)->GetName()) {
-				if( (!isVisible && !showPrivateMembers) || (showPrivateMembers) || (isInScope) ) {
 
-					item.displayName =  tag->GetName();
-					item.imgId = GetImageId(*m_tags.at(i));
-					_tags.push_back(item);
+			const TagEntryPtr& tag = m_tags.at(i);
+			wxString access = tag->GetAccess();
+			bool        isVisible = access == wxT("private") || access == wxT("protected");
+			bool        isInScope = (editor && (tag->GetParent() == scopeName));
+			bool        collectIt = (!isVisible && !LEditor::m_ccShowPrivateMembers) || (LEditor::m_ccShowPrivateMembers) || (isInScope);
 
-					lastName = tag->GetName();
+			if(collectIt) {
 
-				}
-			}
-
-			if (m_showFullDecl) {
-				//collect only declarations
-				if (m_tags.at(i)->GetKind() == wxT("prototype")) {
-
-					if( (!isVisible && !showPrivateMembers) || (showPrivateMembers) || (isInScope) ) {
-						item.displayName =  tag->GetName()+tag->GetSignature();
-						item.imgId = GetImageId(*m_tags.at(i));
+				if (item.displayName != tag->GetName()) {// Starting a new group or it is first time
+					if( item.IsOk() ) {
+						// we got a group of tags stored in 'item' add it
+						// to the _tags before we continue
+						DoFilterCompletionEntries(item);
 						_tags.push_back(item);
 					}
 
+					// start a new group
+					item.Reset();
+
+					item.displayName =  tag->GetName();
+					item.imgId       = GetImageId(tag);
+					item.tag         = *tag;
+					item.listOfTags.push_back( *tag );
+
+				} else {
+					item.listOfTags.push_back( *tag );
 				}
 			}
 		}
+	}
+
+	if(item.IsOk()) {
+		DoFilterCompletionEntries(item);
+		_tags.push_back(item);
 	}
 
 	if (_tags.size() == 1 && m_insertSingleChoice) {
@@ -297,6 +398,7 @@ void CCBox::Show(const wxString& word)
 		if ( IsShown() ) {
 			HideCCBox();
 		}
+		DoHideCCHelpTab();
 		return;
 	}
 
@@ -310,17 +412,34 @@ void CCBox::Show(const wxString& word)
 	m_selectedItem = m_listCtrl->FindMatch(word, fullMatch);
 	if ( m_selectedItem == wxNOT_FOUND && GetAutoHide() ) {
 		// return without calling wxWindow::Show
+		DoHideCCHelpTab();
 		return;
 	}
-
 	if (m_selectedItem == wxNOT_FOUND) {
 		m_selectedItem = 0;
 	}
 
+#if !CC_USES_POPUPWIN
 	SetSize(BOX_WIDTH, m_height);
-	GetSizer()->Layout();
-	wxWindow::Show();
+#endif
 
+#if CC_USES_POPUPWIN
+	m_mainPanel->GetSizer()->Fit(m_mainPanel);
+	m_mainPanel->GetSizer()->Fit(this);
+
+
+#ifdef __WXGTK__
+	wxPopupWindow::Show();
+	Frame::Get()->Raise();
+	GetEditor()->SetFocus();
+	GetEditor()->SetSCIFocus(true);
+#else // Windows
+	wxPopupTransientWindow::Show();
+#endif
+
+#else
+	wxWindow::Show();
+#endif
 	SelectItem(m_selectedItem);
 }
 
@@ -334,7 +453,7 @@ void CCBox::DoInsertSelection(const wxString& word, bool triggerTip)
 		m_owner->ProcessEvent(e);
 
 	} else {
-		LEditor *editor = (LEditor*)GetParent();
+		LEditor *editor = GetEditor();
 		int insertPos = editor->WordStartPosition(editor->GetCurrentPos(), true);
 
 		editor->SetSelection(insertPos, editor->GetCurrentPos());
@@ -349,7 +468,7 @@ void CCBox::DoInsertSelection(const wxString& word, bool triggerTip)
 			// in the middle, and trigger the function tooltip
 
 			if (word.Find(wxT("(")) == wxNOT_FOUND && triggerTip) {
-				// image id in range of 8-10 is function
+				// ima)ge id in range of 8-10 is function
 				editor->InsertText(editor->GetCurrentPos(), wxT("()"));
 				editor->CharRight();
 				int pos = editor->GetCurrentPos();
@@ -394,59 +513,61 @@ void CCBox::InsertSelection()
 	DoInsertSelection(word);
 }
 
-int CCBox::GetImageId(const TagEntry &entry)
+int CCBox::GetImageId(TagEntryPtr entry)
 {
-	if (entry.GetKind() == wxT("class"))
+	wxString kind   = entry->GetKind();
+	wxString access = entry->GetAccess();
+	if (kind == wxT("class"))
 		return 0;
 
-	if (entry.GetKind() == wxT("struct"))
+	if (kind == wxT("struct"))
 		return 1;
 
-	if (entry.GetKind() == wxT("namespace"))
+	if (kind == wxT("namespace"))
 		return 2;
 
-	if (entry.GetKind() == wxT("variable"))
+	if (kind == wxT("variable"))
 		return 3;
 
-	if (entry.GetKind() == wxT("typedef"))
+	if (kind == wxT("typedef"))
 		return 4;
 
-	if (entry.GetKind() == wxT("member") && entry.GetAccess().Contains(wxT("private")))
+	if (kind == wxT("member") && access.Contains(wxT("private")))
 		return 5;
 
-	if (entry.GetKind() == wxT("member") && entry.GetAccess().Contains(wxT("public")))
+	if (kind == wxT("member") && access.Contains(wxT("public")))
 		return 6;
 
-	if (entry.GetKind() == wxT("member") && entry.GetAccess().Contains(wxT("protected")))
+	if (kind == wxT("member") && access.Contains(wxT("protected")))
 		return 7;
 
 	//member with no access? (maybe part of namespace??)
-	if (entry.GetKind() == wxT("member"))
+	if (kind == wxT("member"))
 		return 6;
 
-	if ((entry.GetKind() == wxT("function") || entry.GetKind() == wxT("prototype")) && entry.GetAccess().Contains(wxT("private")))
+	if ((kind == wxT("function") || kind == wxT("prototype")) && access.Contains(wxT("private")))
 		return 8;
 
-	if ((entry.GetKind() == wxT("function") || entry.GetKind() == wxT("prototype")) && (entry.GetAccess().Contains(wxT("public")) || entry.GetAccess().IsEmpty()))
+	if ((kind == wxT("function") || kind == wxT("prototype")) && (access.Contains(wxT("public")) || access.IsEmpty()))
 		return 9;
 
-	if ((entry.GetKind() == wxT("function") || entry.GetKind() == wxT("prototype")) && entry.GetAccess().Contains(wxT("protected")))
+	if ((kind == wxT("function") || kind == wxT("prototype")) && access.Contains(wxT("protected")))
 		return 10;
 
-	if (entry.GetKind() == wxT("macro"))
+	if (kind == wxT("macro"))
 		return 11;
 
-	if (entry.GetKind() == wxT("enum"))
+	if (kind == wxT("enum"))
 		return 12;
 
-	if (entry.GetKind() == wxT("enumerator"))
+	if (kind == wxT("enumerator"))
 		return 13;
 
-	if (entry.GetKind() == wxT("cpp_keyword"))
+	if (kind == wxT("cpp_keyword"))
 		return 17;
 
 	// try the user defined images
-	std::map<wxString, int>::iterator iter = m_userImages.find(entry.GetKind());
+	std::map<wxString, int>::iterator iter = m_userImages.find(kind);
 	if (iter != m_userImages.end()) {
 		return iter->second;
 	}
@@ -521,9 +642,14 @@ void CCBox::HideCCBox()
 {
 	if( IsShown() ) {
 		Hide();
+		DoHideCCHelpTab();
 		if( !m_constructing ) {
-			bool checked  = m_toolBar1->FindById(TOOL_SHOW_PRIVATE_MEMBERS)->IsToggled();
-			EditorConfigST::Get()->SaveLongValue(wxT("CC_Show_All_Members"), checked ? 1 : 0);
+			bool checked;
+			checked = m_toolBar1->FindById(TOOL_SHOW_PRIVATE_MEMBERS)->IsToggled();
+			LEditor::m_ccShowPrivateMembers = checked ? 1 : 0;
+
+			checked = m_toolBar1->FindById(TOOL_SHOW_ITEM_COMMENTS)->IsToggled();
+			LEditor::m_ccShowItemsComments  = checked ? 1 : 0;
 		}
 	}
 }
@@ -534,3 +660,238 @@ void CCBox::OnShowPublicItems(wxCommandEvent& event)
 	HideCCBox();
 }
 
+void CCBox::DoShowTagTip()
+{
+	LEditor *editor = GetEditor();
+	if( !editor ) {
+		return;
+	}
+
+	if(m_currentItem.listOfTags.empty())
+		return;
+
+	if(m_currentItem.currentIndex >= (int)m_currentItem.listOfTags.size()) {
+		m_currentItem.currentIndex = 0;
+	}
+
+	if(m_currentItem.currentIndex < 0) {
+		m_currentItem.currentIndex = m_currentItem.listOfTags.size() - 1;
+	}
+
+	wxString prefix;
+	TagEntry tag = m_currentItem.listOfTags.at(m_currentItem.currentIndex);
+	if(m_currentItem.listOfTags.size() > 1) {
+		prefix << wxT("  \002 ") << m_currentItem.currentIndex+1 << wxT(" of ") << m_currentItem.listOfTags.size() << wxT("\001 ");
+		prefix << wxT("\n@@LINE@@\n");
+	}
+
+	if( tag.IsMethod() ) {
+
+		if(tag.IsConstructor())
+			prefix << wxT("[Constructor]\n");
+
+		else if( tag.IsDestructor())
+			prefix << wxT("[Destructor]\n");
+
+		TagEntryPtr p(new TagEntry(tag));
+		prefix << TagsManagerST::Get()->FormatFunction(p, FunctionFormat_WithVirtual|FunctionFormat_Arg_Per_Line) << wxT("\n");
+
+	} else if( tag.IsClass() ) {
+
+		prefix << wxT("Kind: ");
+		prefix << wxString::Format(wxT("%s\n"), tag.GetKind().c_str() );
+
+		if(tag.GetInherits().IsEmpty() == false) {
+			prefix << wxT("Inherits: ");
+			prefix << tag.GetInherits() << wxT("\n");
+		}
+
+	} else if(tag.IsMacro() || tag.IsTypedef() || tag.IsContainer() || tag.GetKind() == wxT("member") || tag.GetKind() == wxT("variable")) {
+
+		prefix << wxT("Kind : ");
+		prefix << wxString::Format(wxT("%s\n"), tag.GetKind().c_str() );
+
+		prefix << wxT("Match Pattern: ");
+
+		// Prettify the match pattern
+		wxString matchPattern(tag.GetPattern());
+		matchPattern.Trim().Trim(false);
+
+		if(matchPattern.StartsWith(wxT("/^"))) {
+			matchPattern.Replace(wxT("/^"), wxT(""));
+		}
+
+		if(matchPattern.EndsWith(wxT("$/"))) {
+			matchPattern.Replace(wxT("$/"), wxT(""));
+		}
+
+		matchPattern.Replace(wxT("\t"), wxT(" "));
+		while(matchPattern.Replace(wxT("  "), wxT(" "))) {}
+
+		matchPattern.Trim().Trim(false);
+		prefix << matchPattern << wxT("\n");
+
+	} else {
+		// non valid tag entry
+		return;
+	}
+
+	// Add comment section
+	wxString filename (m_comments.getFilename().c_str(), wxConvUTF8);
+	if(filename != tag.GetFile()) {
+		m_comments.clear();
+		ParseComments(tag.GetFile().mb_str(wxConvUTF8).data(), m_comments);
+		m_comments.setFilename(tag.GetFile().mb_str(wxConvUTF8).data());
+	}
+
+	wxString tagComment;
+	bool     foundComment(false);
+
+	std::string comment;
+	// search for comment in the current line, the line above it and 2 above it
+	// use the first match we got
+	for(size_t i=0; i<3; i++) {
+		comment = m_comments.getCommentForLine(tag.GetLine() - i);
+		if(comment.empty() == false) {
+			foundComment = true;
+			break;
+		}
+	}
+
+	if( foundComment ) {
+		wxString theComment(comment.c_str(), wxConvUTF8);
+		theComment.Trim(false);
+		tagComment = wxString::Format(wxT("%s\n"), theComment.c_str());
+		if(prefix.IsEmpty() == false) {
+			prefix.Trim().Trim(false);
+			prefix << wxT("\n\n@@LINE@@\n");
+		}
+		prefix << tagComment;
+	}
+
+	editor->CallTipCancel();
+	m_startPos == wxNOT_FOUND ? m_startPos = editor->GetCurrentPos() : m_startPos;
+
+	// if nothing to display skip this
+	prefix.Trim().Trim(false);
+	if(prefix.IsEmpty()) {
+		return;
+	}
+	editor->CallTipShowExt( m_startPos, prefix);
+	int hightlightFrom = prefix.Find(tag.GetName());
+	if(hightlightFrom != wxNOT_FOUND) {
+		int highlightLen = tag.GetName().Length();
+		editor->CallTipSetHighlight(hightlightFrom, hightlightFrom + highlightLen);
+	}
+}
+
+void CCBox::DoFormatDescriptionPage(const CCItemInfo& item)
+{
+	LEditor *editor = GetEditor();
+	if( !editor ) {
+		return;
+	}
+
+	if(LEditor::m_ccShowItemsComments == false) {
+		editor->CallTipCancel();
+		return;
+	}
+
+	m_currentItem = item;
+	if(m_currentItem.listOfTags.empty()) {
+		editor->CallTipCancel();
+		return;
+	}
+
+	m_currentItem.currentIndex = 0;
+	DoShowTagTip();
+}
+
+void CCBox::EnableExtInfoPane()
+{
+	m_hideExtInfoPane = false;
+}
+
+void CCBox::DoHideCCHelpTab()
+{
+	m_hideExtInfoPane = true;
+	m_startPos = wxNOT_FOUND;
+	m_currentItem.Reset();
+	LEditor *editor = GetEditor();
+	if(editor)
+		editor->CallTipCancel();
+}
+
+void CCBox::OnShowComments(wxCommandEvent& event)
+{
+	LEditor::m_ccShowItemsComments = event.IsChecked();
+	if( LEditor::m_ccShowItemsComments == false ) {
+		DoFormatDescriptionPage( CCItemInfo() );
+	} else {
+		CCItemInfo tag;
+		if(m_listCtrl->GetItemTagEntry(m_selectedItem, tag)) {
+			DoFormatDescriptionPage( tag );
+		}
+	}
+	event.Skip();
+}
+
+void CCBox::OnTipClicked(wxScintillaEvent& event)
+{
+	event.Skip();
+	if(event.GetPosition() == 1) {       // Up
+		m_currentItem.currentIndex++;
+		DoShowTagTip();
+	} else if(event.GetPosition() == 2) {// down
+		m_currentItem.currentIndex--;
+		DoShowTagTip();
+	}
+}
+
+void CCBox::DoFilterCompletionEntries(CCItemInfo& item)
+{
+	std::map<wxString, TagEntry> uniqueList;
+
+	// filter our some of the duplicate results
+	// (e.g. dont show prototpe + impl as 2 entries)
+	for(size_t i=0; i<item.listOfTags.size(); i++) {
+		const TagEntry& t = item.listOfTags.at(i);
+		const wxString& name = t.GetName();
+
+		if(t.IsMethod()) {
+			wxString signature = t.GetSignature();
+			if(t.IsFunction()) {
+				if(uniqueList.find(name + signature) == uniqueList.end())
+					uniqueList[name + signature] = t;
+
+			} else {
+				// override any existing item
+				uniqueList[name + signature] = t;
+			}
+		} else {
+			uniqueList[name] = t;
+		}
+	}
+
+	item.listOfTags.clear();
+	item.listOfTags.reserve( uniqueList.size() );
+	std::map<wxString, TagEntry>::iterator iter = uniqueList.begin();
+	for(; iter != uniqueList.end(); iter++ ) {
+		item.listOfTags.push_back( iter->second );
+	}
+}
+
+LEditor* CCBox::GetEditor()
+{
+#if !CC_USES_POPUPWIN
+	if(m_editor == NULL)
+		m_editor = dynamic_cast<LEditor*>( GetParent() );
+#endif
+	return m_editor;
+}
+
+
+void CCBox::OnKeyDown(wxListEvent& event)
+{
+	event.Skip();
+}
