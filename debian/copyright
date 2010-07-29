@@ -130,6 +130,10 @@ Files: ./sdk/codelite_indexer/libctags/*
 Copyright: 1996-2003, Darren Hiebert
 License: GPL-2+
 
+Files: ./Debugger/*
+Copyright: 2008 Eran Ifrah <eranif@gmail.com>
+License: GPL-2+
+
 Files: ./sdk/wxflatnotebook/src/wxFlatNotebook/xh_fnb.cpp
 Copyright: 2006i, Armel Asselin (copied from Vaclav Slavik xh_notbk)
 License: wxWindows
