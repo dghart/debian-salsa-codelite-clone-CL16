@@ -23,7 +23,7 @@ Description: Fallback on "x-terminal-emulator" if all other terminal
  		terminal = where;
 --- codelite.orig/LiteEditor/manager.cpp
 +++ codelite/LiteEditor/manager.cpp
-@@ -1900,8 +1900,8 @@ void Manager::DbgStart ( long pid )
+@@ -1913,8 +1913,8 @@ void Manager::DbgStart ( long pid )
  
  #if defined(__WXGTK__)
  	wxString where;
@@ -36,7 +36,7 @@ Description: Fallback on "x-terminal-emulator" if all other terminal
  #endif
 --- codelite.orig/Plugin/macros.h
 +++ codelite/Plugin/macros.h
-@@ -22,97 +22,97 @@
+@@ -22,98 +22,98 @@
  //
  //////////////////////////////////////////////////////////////////////////////
  //////////////////////////////////////////////////////////////////////////////
@@ -106,8 +106,8 @@ Description: Fallback on "x-terminal-emulator" if all other terminal
 -const wxString clCMD_DELETE = wxT("<Delete...>");
 -
 -// constant message
--const wxString BUILD_START_MSG      = wxT("----------Build Started--------\n");
--const wxString BUILD_END_MSG        = wxT("----------Build Ended----------\n");
+-const wxString BUILD_START_MSG             = wxT("----------Build Started--------\n");
+-const wxString BUILD_END_MSG               = wxT("----------Build Ended----------\n");
 +//-------------------------------------------------------
 +// wxWidgets Connect macros
 +//-------------------------------------------------------
@@ -167,15 +167,16 @@ Description: Fallback on "x-terminal-emulator" if all other terminal
 +const wxString clCMD_DELETE = wxT("<Delete...>");
 +
 +// constant message
-+const wxString BUILD_START_MSG      = wxT("----------Build Started--------\n");
-+const wxString BUILD_END_MSG        = wxT("----------Build Ended----------\n");
- const wxString BUILD_PROJECT_PREFIX = wxT("----------Building project:[ ");
- const wxString CLEAN_PROJECT_PREFIX = wxT("----------Cleaning project:[ ");
--const wxString SEARCH_IN_WORKSPACE  = wxT("Entire Workspace");
--const wxString SEARCH_IN_PROJECT    = wxT("Active Project");
-+const wxString SEARCH_IN_WORKSPACE  = wxT("Entire Workspace");
-+const wxString SEARCH_IN_PROJECT    = wxT("Active Project");
- const wxString SEARCH_IN_CURR_FILE_PROJECT = wxT("Current File's Project");
++const wxString BUILD_START_MSG             = wxT("----------Build Started--------\n");
++const wxString BUILD_END_MSG               = wxT("----------Build Ended----------\n");
+ const wxString BUILD_PROJECT_PREFIX        = wxT("----------Building project:[ ");
+ const wxString CLEAN_PROJECT_PREFIX        = wxT("----------Cleaning project:[ ");
+-const wxString SEARCH_IN_WORKSPACE         = wxT("Entire Workspace");
++const wxString SEARCH_IN_WORKSPACE         = wxT("Entire Workspace");
+ const wxString SEARCH_IN_PROJECT           = wxT("Active Project");
+-const wxString SEARCH_IN_CURR_FILE_PROJECT = wxT("Current File's Project");
++const wxString SEARCH_IN_CURR_FILE_PROJECT = wxT("Current File's Project");
+ const wxString SEARCH_IN_CURRENT_FILE      = wxT("Current File");
  
  // terminal macro
  #ifdef __WXGTK__
