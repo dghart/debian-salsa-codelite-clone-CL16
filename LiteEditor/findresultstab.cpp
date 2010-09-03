@@ -23,6 +23,7 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 #include <wx/xrc/xmlres.h>
+#include "bitmap_loader.h"
 #include <wx/wupdlock.h>
 #include "drawingutils.h"
 #include <wx/tokenzr.h>
@@ -32,6 +33,7 @@
 #include "ctags_manager.h"
 #include "cl_editor.h"
 #include "editor_config.h"
+#include "pluginmanager.h"
 #include "globals.h"
 #include "findresultstab.h"
 #include "search_thread.h"
@@ -63,6 +65,13 @@ FindResultsTab::FindResultsTab(wxWindow *parent, wxWindowID id, const wxString &
 		, m_recv(NULL)
 		, m_matchInfo(1)
 {
+	// Remove the 'find' tool
+#if 0
+	m_tb->RemoveTool ( XRCID ( "search_output" ) );
+	m_tb->Realize();
+	m_findBar->SetEditor(NULL);
+#endif
+
 	if (useBook) {
 
 		// load the book style from the settings file
@@ -79,10 +88,11 @@ FindResultsTab::FindResultsTab(wxWindow *parent, wxWindowID id, const wxString &
 		m_book->Connect(wxEVT_COMMAND_BOOK_PAGE_MIDDLE_CLICKED, NotebookEventHandler(FindResultsTab::OnClosePage) , NULL, this);
 
 		// get rid of base class scintilla component
-		wxSizer *sz = GetSizer();
+		wxSizer *sz = m_hSizer;
 		sz->Detach(m_sci);
 		m_sci->Destroy();
 		m_sci = NULL;
+		m_findBar->SetEditor(m_sci);
 #ifdef __WXMAC__
 		sz->Insert(0, m_book, 1, wxALL|wxEXPAND);
 #else
@@ -94,8 +104,10 @@ FindResultsTab::FindResultsTab(wxWindow *parent, wxWindowID id, const wxString &
 		SetStyles(m_sci);
 	}
 
+	BitmapLoader &loader = *(PluginManager::Get()->GetStdIcons());
+
 	wxTheApp->Connect(XRCID("find_in_files"), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(FindResultsTab::OnFindInFiles), NULL, this);
-	m_tb->AddTool ( XRCID ( "stop_search" ), wxT ( "Stop current search" ), wxXmlResource::Get()->LoadBitmap ( wxT ( "stop_build16" ) ), wxT ( "Stop current search" ) );
+	m_tb->AddTool ( XRCID ( "stop_search" ), wxT ( "Stop current search" ), loader.LoadBitmap(wxT("toolbars/16/build/stop")), wxT ( "Stop current search" ) );
 	Connect( XRCID ( "stop_search" ), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler ( FindResultsTab::OnStopSearch  ), NULL, this );
 	Connect( XRCID ( "stop_search" ), wxEVT_UPDATE_UI,             wxUpdateUIEventHandler( FindResultsTab::OnStopSearchUI), NULL, this );
 	m_tb->Realize();
@@ -228,8 +240,10 @@ void FindResultsTab::OnPageChanged(NotebookEvent& e)
 {
 	// this function can't be called unless m_book != NULL
 	m_sci = dynamic_cast<wxScintilla*>(m_book->GetCurrentPage());
-	if(m_sci)
+	m_findBar->SetEditor(m_sci);
+	if(m_sci){
 		m_tb->ToggleTool(XRCID("word_wrap_output"), m_sci->GetWrapMode() == wxSCI_WRAP_WORD);
+	}
 }
 
 void FindResultsTab::OnPageClosed(NotebookEvent& e)
@@ -253,6 +267,7 @@ void FindResultsTab::OnPageClosed(NotebookEvent& e)
 	} else {
 		m_sci = dynamic_cast<wxScintilla*>(m_book->GetCurrentPage());
 	}
+	m_findBar->SetEditor(m_sci);
 }
 
 void FindResultsTab::OnFindInFiles(wxCommandEvent &e)
@@ -583,7 +598,7 @@ void FindResultsTab::NextMatch()
 		e.SetEventObject(this);
 		e.SetString(wxString::Format(wxT("Reached the end of 'find in files' search results list" )));
 		e.SetInt(0);
-		Frame::Get()->GetEventHandler()->AddPendingEvent(e);
+		clMainFrame::Get()->GetEventHandler()->AddPendingEvent(e);
 	}
 }
 
@@ -617,14 +632,14 @@ void FindResultsTab::PrevMatch()
 		e.SetEventObject(this);
 		e.SetString(wxString::Format(wxT("Reached the begining of 'find in files' search results list" )));
 		e.SetInt(0);
-		Frame::Get()->GetEventHandler()->AddPendingEvent(e);
+		clMainFrame::Get()->GetEventHandler()->AddPendingEvent(e);
 	}
 }
 
 void FindResultsTab::DoOpenSearchResult(const SearchResult &result, wxScintilla *sci, int markerLine)
 {
 	if (!result.GetFileName().IsEmpty()) {
-		LEditor *editor = Frame::Get()->GetMainBook()->OpenFile(result.GetFileName(), wxEmptyString, result.GetLineNumber()-1);
+		LEditor *editor = clMainFrame::Get()->GetMainBook()->OpenFile(result.GetFileName(), wxEmptyString, result.GetLineNumber()-1);
 		if (editor && result.GetColumn() >= 0 && result.GetLen() >= 0) {
 
 			int offset = editor->PositionFromLine(result.GetLineNumber()-1) + result.GetColumn();

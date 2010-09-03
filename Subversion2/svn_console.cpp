@@ -187,11 +187,11 @@ void SvnConsole::AppendText(const wxString& text)
 
 	wxString noPasswordText(text);
 
-	int where = noPasswordText.Find(wxT("--password "));
+	int where = noPasswordText.Find(wxT("--password \""));
 	if(where != wxNOT_FOUND) {
-		where += wxStrlen(wxT("--password "));
+		where += wxStrlen(wxT("--password \""));
 		wxString password = noPasswordText.Mid(where);
-		password = password.BeforeFirst(wxT(' '));
+		password = password.BeforeFirst(wxT('"'));
 
 		noPasswordText.Replace(password, wxT("******"));
 	}
@@ -283,7 +283,7 @@ bool SvnConsole::DoExecute(const wxString& cmd, SvnCommandHandler* handler, cons
 	bool useOverrideMap = m_plugin->GetSettings().GetFlags() & SvnUsePosixLocale;
 	EnvSetter env(m_plugin->GetManager()->GetEnv(), useOverrideMap ? &om : NULL);
 
-	m_process = CreateAsyncProcess(this, cmdShell, workingDirectory);
+	m_process = CreateAsyncProcess(this, cmdShell, IProcessCreateDefault, workingDirectory);
 	if (!m_process) {
 		AppendText(wxT("Failed to launch Subversion client.\n"));
 		return false;

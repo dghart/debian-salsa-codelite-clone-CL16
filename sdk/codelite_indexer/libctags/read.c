@@ -46,35 +46,6 @@ extern void freeSourceFileResources (void)
 	vStringDelete (File.line);
 }
 
-static char *load_file(const char *fileName) {
-	FILE *fp;
-	long len;
-	char *buf = NULL;
-
-	fp = fopen(fileName, "rb");
-	if (!fp) {
-		return 0;
-	}
-
-
-	fseek(fp, 0, SEEK_END);
-	len = ftell(fp);
-	fseek(fp, 0, SEEK_SET);
-	buf = (char *)malloc(len+1);
-
-
-	long bytes = fread(buf, sizeof(char), len, fp);
-	if (bytes != len) {
-		fclose(fp);
-		free(buf);
-		return 0;
-	}
-
-	buf[len] = 0;	// make it null terminated string
-	fclose(fp);
-	return buf;
-}
-
 /*
  *   Source file access functions
  */
@@ -405,12 +376,10 @@ extern void fileUngetc (int c)
 	File.ungetch = c;
 }
 
-extern char* regReplace(const char* src, const char* key, const char* value);
+extern char* clPatternReplace(const char* src, const char* key, const char* value);
+extern char* ctagsReplacements(char* result);
 static vString *iFileGetLine (void)
 {
-	static list_t *replacements = (list_t *)0;
-	static int first = 1;
-
 	vString *result = NULL;
 	int c;
 	if (File.line == NULL)
@@ -433,62 +402,16 @@ static vString *iFileGetLine (void)
 		}
 	} while (c != EOF);
 	Assert (result != NULL  ||  File.eof);
-
-	/* try to load the file once */
-	if( first ) {
-		char *content = (char*)0;
-		char *file_name = getenv("CTAGS_REPLACEMENTS");
-
-		first = 0;
-		if(file_name) {
-			/* open the file */
-			content = load_file(file_name);
-			if(content) {
-				replacements = string_split(content, "=");
-				free(content);
-			}
-		}
-	}
-
-	if( result && replacements && replacements->size ) {
-
-		int first_loop = 1;
-		char *src = result->buffer;
-		char *new_str = src;
-		char *tmp = 0;
-		list_node_t *node = replacements->head;
-
-		while( node ) {
-			char *find_what    = ((string_pair_t*)node->data)->key;
-			char *replace_with = ((string_pair_t*)node->data)->data;
-			
-			if(find_what && strlen(find_what) > 3 && strncmp(find_what, "re:", 3) == 0) {
-				// regular expression search/replace
-				tmp = regReplace(new_str, find_what+3, replace_with);
-				
-			} else {
-				// normal searcn/replace
-				tmp = string_replace(new_str, find_what, replace_with);
-				
-			}
-			if(!first_loop) {
-				free(new_str);
-			}
-
-			new_str = tmp;
-			first_loop = 0;
-			
-			/* advance to next item in the list */
-			node = node->next;
-		}
-
-		if(new_str != result->buffer) {
+	
+	// replcae tokens
+	if(result && result->buffer) {
+		char* new_str = ctagsReplacements(result->buffer);
+		if(new_str && new_str != result->buffer) {
 			vStringClear(File.line);
 			vStringCatS(File.line, new_str);
 			free(new_str);
 		}
 	}
-
 	return result;
 }
 

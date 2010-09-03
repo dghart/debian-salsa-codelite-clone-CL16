@@ -1,3 +1,28 @@
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+//
+// copyright            : (C) 2009 by Eran Ifrah
+// file name            : variable.h
+//
+// -------------------------------------------------------------------------
+// A
+//              _____           _      _     _ _
+//             /  __ \         | |    | |   (_) |
+//             | /  \/ ___   __| | ___| |    _| |_ ___
+//             | |    / _ \ / _  |/ _ \ |   | | __/ _ )
+//             | \__/\ (_) | (_| |  __/ |___| | ||  __/
+//              \____/\___/ \__,_|\___\_____/_|\__\___|
+//
+//                                                  F i l e
+//
+//    This program is free software; you can redistribute it and/or modify
+//    it under the terms of the GNU General Public License as published by
+//    the Free Software Foundation; either version 2 of the License, or
+//    (at your option) any later version.
+//
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+
 #ifndef VARIABLE_H
 #define VARIABLE_H
 
@@ -15,6 +40,7 @@ public:
 	std::string     m_type;		//as in 'int a;' -> type=int
 	std::string     m_typeScope;//as in 'std::string a;' -> typeScope = std, type=string
 	std::string     m_pattern;
+	std::string     m_completeType;
 	std::string     m_starAmp;
 	int             m_lineno;
 	bool            m_isConst;

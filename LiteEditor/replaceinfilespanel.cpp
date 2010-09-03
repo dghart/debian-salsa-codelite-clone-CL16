@@ -74,7 +74,7 @@ ReplaceInFilesPanel::ReplaceInFilesPanel(wxWindow* parent, int id, const wxStrin
 	vertSizer->Add(horzSizer, 0, wxEXPAND|wxTOP|wxBOTTOM);
 
 	// grab the base class scintilla and put our sizer in its place
-	wxSizer *mainSizer = GetSizer();
+	wxSizer *mainSizer = m_hSizer;
 	mainSizer->Detach(m_sci);
 	vertSizer->Add(m_sci, 1, wxEXPAND | wxALL, 1);
 
@@ -191,7 +191,7 @@ void ReplaceInFilesPanel::DoSaveResults(wxScintilla *sci,
 wxScintilla *ReplaceInFilesPanel::DoGetEditor(const wxString &fileName)
 {
 	// look for open editor first
-	wxScintilla *sci = Frame::Get()->GetMainBook()->FindEditor(fileName);
+	wxScintilla *sci = clMainFrame::Get()->GetMainBook()->FindEditor(fileName);
 	if (sci) {
 		// FIXME: if editor is already modified, the found locations may not be accurate
 		return sci;
@@ -215,7 +215,7 @@ void ReplaceInFilesPanel::OnReplace(wxCommandEvent& e)
 {
 	// FIX bug#2770561
 	int lineNumber(0);
-	LEditor *activeEditor = Frame::Get()->GetMainBook()->GetActiveEditor();
+	LEditor *activeEditor = clMainFrame::Get()->GetMainBook()->GetActiveEditor();
 	if( activeEditor ) {
 		lineNumber = activeEditor->GetCurrentLine();
 	}
@@ -237,6 +237,9 @@ void ReplaceInFilesPanel::OnReplace(wxCommandEvent& e)
 	MatchInfo::iterator firstInFile = matchInfo.begin();
 
 	m_progress->SetRange(matchInfo.size());
+
+	// Disable the 'buffer limit' feature during replace
+	clMainFrame::Get()->GetMainBook()->SetUseBuffereLimit(false);
 	for (MatchInfo::iterator i = firstInFile; i != matchInfo.end(); i++) {
 		m_progress->SetValue(m_progress->GetValue()+1);
 		m_progress->Update();
@@ -301,6 +304,9 @@ void ReplaceInFilesPanel::OnReplace(wxCommandEvent& e)
 	m_progress->SetValue(0);
 	DoSaveResults(sci, firstInFile, matchInfo.end());
 
+	// Disable the 'buffer limit' feature during replace
+	clMainFrame::Get()->GetMainBook()->SetUseBuffereLimit(true);
+
 	// Step 2: Update the Replace pane
 
 	std::set<wxString> updatedEditors;
@@ -327,7 +333,7 @@ void ReplaceInFilesPanel::OnReplace(wxCommandEvent& e)
 		}
 
 		if (m_sci->MarkerGet(line) & 1<<0x9) {
-			LEditor *editor = Frame::Get()->GetMainBook()->FindEditor(lastFile);
+			LEditor *editor = clMainFrame::Get()->GetMainBook()->FindEditor(lastFile);
 			if (editor && editor->GetModify()) {
 				updatedEditors.insert(lastFile);
 			}
@@ -365,11 +371,11 @@ void ReplaceInFilesPanel::OnReplace(wxCommandEvent& e)
 		filesToSave.push_back(std::make_pair(wxFileName(*i), true));
 	}
 	if (!filesToSave.empty() &&
-	        Frame::Get()->GetMainBook()->UserSelectFiles(filesToSave, wxT("Save Modified Files"),
+	        clMainFrame::Get()->GetMainBook()->UserSelectFiles(filesToSave, wxT("Save Modified Files"),
 	                wxT("Some files are modified.\nChoose the files you would like to save."), true)) {
 		for (size_t i = 0; i < filesToSave.size(); i++) {
 			if (filesToSave[i].second) {
-				LEditor *editor = Frame::Get()->GetMainBook()->FindEditor(filesToSave[i].first.GetFullPath());
+				LEditor *editor = clMainFrame::Get()->GetMainBook()->FindEditor(filesToSave[i].first.GetFullPath());
 				if (editor) {
 					editor->SaveFile();
 				}
@@ -380,7 +386,7 @@ void ReplaceInFilesPanel::OnReplace(wxCommandEvent& e)
 	// FIX bug#2770561
 	if(activeEditor) {
 
-		Frame::Get()->GetMainBook()->SelectPage(activeEditor);
+		clMainFrame::Get()->GetMainBook()->SelectPage(activeEditor);
 
 		// restore the line
 		activeEditor->GotoLine( lineNumber );

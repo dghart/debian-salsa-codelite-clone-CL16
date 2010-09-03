@@ -1,8 +1,38 @@
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+//
+// copyright            : (C) 2009 by Eran Ifrah
+// file name            : asyncprocess.h
+//
+// -------------------------------------------------------------------------
+// A
+//              _____           _      _     _ _
+//             /  __ \         | |    | |   (_) |
+//             | /  \/ ___   __| | ___| |    _| |_ ___
+//             | |    / _ \ / _  |/ _ \ |   | | __/ _ )
+//             | \__/\ (_) | (_| |  __/ |___| | ||  __/
+//              \____/\___/ \__,_|\___\_____/_|\__\___|
+//
+//                                                  F i l e
+//
+//    This program is free software; you can redistribute it and/or modify
+//    it under the terms of the GNU General Public License as published by
+//    the Free Software Foundation; either version 2 of the License, or
+//    (at your option) any later version.
+//
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+
 #ifndef I_PROCESS_H
 #define I_PROCESS_H
 
 #include <wx/string.h>
 #include <wx/event.h>
+
+enum IProcessCreateFlags {
+	IProcessCreateDefault = 0x0000000, // Default: create process with no console window
+	IProcessCreateConsole = 0x0000001  // Create with console window shown
+};
 
 /**
  * @class IProcess
@@ -52,7 +82,7 @@ public:
 	int GetExitCode() const {
 		return m_exitCode;
 	}
-	
+
 	void SetHardKill(bool hardKill) {
 		this->m_hardKill = hardKill;
 	}
@@ -62,5 +92,5 @@ public:
 };
 
 // Help method
-IProcess* CreateAsyncProcess(wxEvtHandler *parent, const wxString& cmd, const wxString &workingDir = wxEmptyString);
+IProcess* CreateAsyncProcess(wxEvtHandler *parent, const wxString& cmd, IProcessCreateFlags flags = IProcessCreateDefault, const wxString &workingDir = wxEmptyString);
 #endif // I_PROCESS_H

@@ -23,6 +23,8 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 #include "precompiled_header.h"
+#include "ctags_manager.h"
+#include "pptable.h"
 
 #include "entry.h"
 #include <wx/tokenzr.h>
@@ -95,7 +97,7 @@ bool TagEntry::operator ==(const TagEntry& rhs)
 	    m_name == rhs.m_name &&
 	    m_path == rhs.m_path &&
 	    m_lineNumber == rhs.m_lineNumber &&
-	    GetInherits() == rhs.GetInherits() &&
+	    GetInheritsAsString() == rhs.GetInheritsAsString() &&
 	    GetAccess() == rhs.GetAccess() &&
 	    GetSignature() == rhs.GetSignature() &&
 	    GetTyperef() == rhs.GetTyperef();
@@ -107,7 +109,7 @@ bool TagEntry::operator ==(const TagEntry& rhs)
 	            m_pattern == rhs.m_pattern &&
 	            m_name == rhs.m_name &&
 	            m_path == rhs.m_path &&
-	            GetInherits() == rhs.GetInherits() &&
+	            GetInheritsAsString() == rhs.GetInheritsAsString() &&
 	            GetAccess() == rhs.GetAccess() &&
 	            GetSignature() == rhs.GetSignature() &&
 	            GetTyperef() == rhs.GetTyperef();
@@ -302,6 +304,62 @@ wxString TagEntry::TypeFromTyperef() const
 	return wxEmptyString;
 }
 
+static bool GetMacroArgList(CppScanner &scanner, wxArrayString& argList)
+{
+	int  depth(0);
+	int  type (0);
+	bool cont (true);
+	bool isOk (false);
+
+	wxString word;
+
+	while( cont ) {
+		type = scanner.yylex();
+		if(type == 0) {
+			// eof
+			break;
+		}
+
+		switch(type) {
+		case (int)'(':
+			isOk = true;
+			depth++;
+
+			if(word.empty() == false)
+				word << wxT("(");
+
+			break;
+
+		case (int)')':
+			depth--;
+			if(depth == 0) {
+				cont = false;
+				break;
+			} else {
+				word << wxT(")");
+			}
+			break;
+
+		case (int)',':
+			word.Trim().Trim(false);
+			if(!word.empty()) {
+				argList.Add( word );
+			}
+			word.clear();
+			break;
+
+		default:
+			word << wxString::From8BitData(scanner.YYText()) << wxT(" ");
+			break;
+		}
+	}
+
+	if(word.empty() == false) {
+		argList.Add( word );
+	}
+
+	return (depth == 0) && isOk;
+}
 
 wxString TagEntry::NameFromTyperef(wxString &templateInitList)
 {
@@ -314,29 +372,64 @@ wxString TagEntry::NameFromTyperef(wxString &templateInitList)
 	// incase our entry is a typedef, and it is not marked as typeref,
 	// try to get the real name from the pattern
 	if ( GetKind() == wxT("typedef")) {
+
+		wxString pat ( GetPattern() );
+		if(!GetPattern().Contains(wxT("typedef"))) {
+			// The pattern does not contain 'typedef' however this *is* a typedef
+			// try to see if this is a macro
+			pat.StartsWith(wxT("/^"), &pat);
+			pat.Trim().Trim(false);
+
+			// we take the first token
+			CppScanner scanner;
+			scanner.SetText( pat.To8BitData() );
+			int type = scanner.yylex();
+			if(type == IDENTIFIER) {
+				wxString token = wxString::From8BitData(scanner.YYText());
+
+				PPToken tok = TagsManagerST::Get()->GetDatabase()->GetMacro(token);
+				if(tok.flags & PPToken::IsValid) {
+					// we found a match!
+					if(tok.flags & PPToken::IsFunctionLike) {
+						wxArrayString argList;
+						if(GetMacroArgList(scanner, argList)) {
+							tok.expandOnce( argList );
+						}
+					}
+					pat = tok.replacement;
+					pat << wxT(";");
+
+					// Remove double spaces
+					while(pat.Replace(wxT("  "), wxT(" "))) {}
+				}
+			}
+		}
+
 		wxString name;
-		if (TypedefFromPattern(GetPattern(), GetName(),name, templateInitList))
+		if (TypedefFromPattern(pat, GetName(),name, templateInitList))
 			return name;
 	}
+
+
 	return wxEmptyString;
 }
 
 bool TagEntry::TypedefFromPattern(const wxString &tagPattern, const wxString &typedefName, wxString &name, wxString &templateInit)
 {
 	wxString pattern(tagPattern);
-	
+
 	pattern.StartsWith(wxT("/^"), &pattern);
 	const wxCharBuffer cdata = pattern.mb_str(wxConvUTF8);
-	
+
 	clTypedefList li;
 	get_typedefs(cdata.data(), li);
-	
+
 	if(li.size() == 1) {
 		clTypedef td = *li.begin();
 		templateInit = _U(td.m_realType.m_templateDecl.c_str());
 		if(td.m_realType.m_typeScope.empty() == false)
 			name << _U(td.m_realType.m_typeScope.c_str()) << wxT("::");
-			
+
 		name         << _U(td.m_realType.m_type.c_str());
 		return true;
 	}
@@ -529,4 +622,120 @@ bool TagEntry::IsScopeGlobal() const
 bool TagEntry::IsTypedef() const
 {
 	return GetKind() == wxT("typedef");
+}
+
+wxString TagEntry::GetInheritsAsString() const
+{
+	return GetExtField(_T("inherits"));
+}
+
+wxArrayString TagEntry::GetInheritsAsArrayNoTemplates() const
+{
+	// Parse the input string
+	wxString      inherits = GetInheritsAsString();
+	wxString      parent;
+	wxArrayString parentsArr;
+
+	int depth(0);
+	for(size_t i=0; i<inherits.Length(); i++) {
+		wxChar ch = inherits.GetChar(i);
+
+		switch(ch) {
+		case wxT('<'):
+			if(depth == 0 && parent.IsEmpty() == false) {
+				parent.Trim().Trim(false);
+				parentsArr.Add(parent);
+				parent.Clear();
+			}
+			depth++;
+			break;
+
+		case wxT('>'):
+			depth--;
+			break;
+
+		case wxT(','):
+			if(depth == 0 && parent.IsEmpty() == false) {
+				parent.Trim().Trim(false);
+				parentsArr.Add(parent);
+				parent.Clear();
+			}
+			break;
+
+		default:
+			if(depth == 0) {
+				parent << ch;
+			}
+			break;
+		}
+	}
+
+	if(parent.IsEmpty() == false) {
+		parent.Trim().Trim(false);
+		parentsArr.Add(parent);
+	}
+	return parentsArr;
+}
+
+wxArrayString TagEntry::GetInheritsAsArrayWithTemplates() const
+{
+	// Parse the input string
+	wxString      inherits = GetInheritsAsString();
+	wxString      parent;
+	wxArrayString parentsArr;
+
+	int depth(0);
+	for(size_t i=0; i<inherits.Length(); i++) {
+		wxChar ch = inherits.GetChar(i);
+
+		switch(ch) {
+		case wxT('<'):
+			depth++;
+			parent << ch;
+			break;
+
+		case wxT('>'):
+			depth--;
+			parent << ch;
+			break;
+
+		case wxT(','):
+			if(depth == 0 && parent.IsEmpty() == false) {
+				parent.Trim().Trim(false);
+				parentsArr.Add(parent);
+				parent.Clear();
+
+			} else if(depth != 0) {
+				parent << ch;
+
+			}
+			break;
+
+		default:
+			parent << ch;
+			break;
+		}
+	}
+
+	if(parent.IsEmpty() == false) {
+		parent.Trim().Trim(false);
+		parentsArr.Add(parent);
+	}
+	return parentsArr;
+}
+
+TagEntryPtr TagEntry::ReplaceSimpleMacro()
+{
+	if(IsMacro()) {
+		PPToken tok = TagsManagerST::Get()->GetDatabase()->GetMacro( GetName() );
+		if(tok.flags & PPToken::IsValid && !(tok.flags & PPToken::IsFunctionLike)) {
+			std::vector<TagEntryPtr> tags;
+			TagsManagerST::Get()->FindByNameAndScope(tok.replacement, GetScopeName(), tags);
+			if(tags.size() == 1) {
+				// replace the current tag content with the new match
+				return tags.at(0);
+			}
+		}
+	}
+	return NULL;
 }

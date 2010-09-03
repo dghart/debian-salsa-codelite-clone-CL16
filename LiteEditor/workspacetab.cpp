@@ -26,6 +26,7 @@
 #include <wx/combobox.h>
 #include <wx/sizer.h>
 #include <wx/button.h>
+#include "pluginmanager.h"
 #include "project_settings_dlg.h"
 #include "globals.h"
 #include "manager.h"
@@ -83,8 +84,10 @@ void WorkspaceTab::CreateGUIControls()
 	tb->AddTool(XRCID("collapse_all"), wxEmptyString, wxXmlResource::Get()->LoadBitmap(wxT("collapse")), wxT("Collapse All"), wxITEM_NORMAL);
 	tb->AddTool(XRCID("go_home"), wxEmptyString, wxXmlResource::Get()->LoadBitmap(wxT("gohome")), wxT("Goto Active Project"), wxITEM_NORMAL);
 	tb->AddSeparator();
-	tb->AddTool(XRCID("project_properties"), wxEmptyString, wxXmlResource::Get()->LoadBitmap(wxT("project_settings")), wxT("Open Active Project Settings..."), wxITEM_NORMAL);
-	tb->AddTool(XRCID("set_project_active"), wxEmptyString, wxXmlResource::Get()->LoadBitmap(wxT("set_active")), wxT("Select Active Project"), wxITEM_NORMAL);
+
+	BitmapLoader *bmpLoader = PluginManager::Get()->GetStdIcons();
+	tb->AddTool(XRCID("project_properties"), wxEmptyString, bmpLoader->LoadBitmap(wxT("workspace/16/project_settings")),      wxT("Open Active Project Settings..."), wxITEM_NORMAL);
+	tb->AddTool(XRCID("set_project_active"), wxEmptyString, bmpLoader->LoadBitmap(wxT("workspace/16/project_select_active")), wxT("Select Active Project"),           wxITEM_NORMAL);
 	tb->AddSeparator();
 
 	// add the 'multiple/single' tree style
@@ -196,7 +199,7 @@ void WorkspaceTab::OnProjectSettings(wxCommandEvent& e)
 	BuildMatrixPtr matrix = ManagerST::Get()->GetWorkspaceBuildMatrix();
 
 	//find the project configuration name that matches the workspace selected configuration
-	ProjectSettingsDlg dlg( Frame::Get(), matrix->GetProjectSelectedConf( matrix->GetSelectedConfigurationName(), projectName ), projectName, title );
+	ProjectSettingsDlg dlg( clMainFrame::Get(), matrix->GetProjectSelectedConf( matrix->GetSelectedConfigurationName(), projectName ), projectName, title );
 	dlg.ShowModal();
 
 	//mark this project as modified
@@ -268,7 +271,7 @@ void WorkspaceTab::OnMenuSelection(wxCommandEvent& e)
 
 void WorkspaceTab::OnShowFile(wxCommandEvent& e)
 {
-    LEditor *editor = Frame::Get()->GetMainBook()->GetActiveEditor();
+    LEditor *editor = clMainFrame::Get()->GetMainBook()->GetActiveEditor();
     if (editor && !editor->GetProject().IsEmpty()) {
         m_fileView->ExpandToPath(editor->GetProject(), editor->GetFileName());
         ManagerST::Get()->ShowWorkspacePane(m_caption);
@@ -278,7 +281,7 @@ void WorkspaceTab::OnShowFile(wxCommandEvent& e)
 
 void WorkspaceTab::OnShowFileUI(wxUpdateUIEvent& e)
 {
-	LEditor *editor = Frame::Get()->GetMainBook()->GetActiveEditor();
+	LEditor *editor = clMainFrame::Get()->GetMainBook()->GetActiveEditor();
 	e.Enable(editor && !editor->GetProject().IsEmpty());
 }
 
@@ -286,7 +289,7 @@ void WorkspaceTab::OnActiveEditorChanged(wxCommandEvent& e)
 {
     e.Skip();
     if (m_isLinkedToEditor) {
-        LEditor *editor = Frame::Get()->GetMainBook()->GetActiveEditor();
+        LEditor *editor = clMainFrame::Get()->GetMainBook()->GetActiveEditor();
         if (editor && !editor->GetProject().IsEmpty()) {
             m_fileView->ExpandToPath(editor->GetProject(), editor->GetFileName());
         }
@@ -343,6 +346,6 @@ void WorkspaceTab::OnToggleMultiSelection(wxCommandEvent& e)
 	int answer = wxMessageBox(_("Workspace reload is required\nWould you like to reload workspace now?"), wxT("CodeLite"), wxICON_INFORMATION|wxYES_NO|wxCANCEL, this);
 	if ( answer == wxYES ) {
 		wxCommandEvent e(wxEVT_COMMAND_MENU_SELECTED, XRCID("reload_workspace"));
-		Frame::Get()->GetEventHandler()->AddPendingEvent(e);
+		clMainFrame::Get()->GetEventHandler()->AddPendingEvent(e);
 	}
 }

@@ -38,7 +38,7 @@ public:
 };
 
 /*static*/
-IProcess* WinProcessImpl::Execute(wxEvtHandler *parent, const wxString& cmd, wxString &errMsg, const wxString &workingDir)
+IProcess* WinProcessImpl::Execute(wxEvtHandler *parent, const wxString& cmd, wxString &errMsg, IProcessCreateFlags flags, const wxString &workingDir)
 {
 	SECURITY_ATTRIBUTES saAttr;
 	BOOL                fSuccess;
@@ -170,21 +170,23 @@ IProcess* WinProcessImpl::Execute(wxEvtHandler *parent, const wxString& cmd, wxS
 	siStartInfo.hStdError  = prc->hChildStderrWr;
 
 	// Set the window to hide
-	siStartInfo.wShowWindow = SW_HIDE;
+	siStartInfo.wShowWindow = flags & IProcessCreateConsole ? SW_SHOW : SW_HIDE;
+	DWORD creationFlags     = flags & IProcessCreateConsole ? CREATE_NEW_CONSOLE : CREATE_NO_WINDOW;
+
 	BOOL ret = CreateProcess( NULL,
 #if wxVERSION_NUMBER < 2900
 							  (WCHAR*)cmd.GetData(),
 #else
-							  cmd.wchar_str(),        // shell line execution command
+							  cmd.wchar_str(),   // shell line execution command
 #endif
-	                          NULL,                   // process security attributes
-	                          NULL,                   // primary thread security attributes
-	                          TRUE,                   // handles are inherited
-	                          CREATE_NO_WINDOW,       // creation flags
-	                          NULL,                   // use parent's environment
-	                          NULL,                   // CD to tmp dir
-	                          &siStartInfo,           // STARTUPINFO pointer
-	                          &prc->piProcInfo);      // receives PROCESS_INFORMATION
+	                          NULL,              // process security attributes
+	                          NULL,              // primary thread security attributes
+	                          TRUE,              // handles are inherited
+	                          creationFlags,     // creation flags
+	                          NULL,              // use parent's environment
+	                          NULL,              // CD to tmp dir
+	                          &siStartInfo,      // STARTUPINFO pointer
+	                          &prc->piProcInfo); // receives PROCESS_INFORMATION
 	if ( ret ) {
 		prc->dwProcessId = prc->piProcInfo.dwProcessId;
 	} else {
@@ -357,10 +359,7 @@ bool WinProcessImpl::DoReadFromPipe(HANDLE pipe, wxString& buff)
 	DWORD dwRead;
 	DWORD dwMode;
 	DWORD dwTimeout;
-	char *chBuf = new char [65536+1];     //64K should be sufficient buffer
-	memset(chBuf, 0, 65536+1);
-
-	std::auto_ptr<char> sp(chBuf);
+	memset(m_buffer, 0, sizeof(m_buffer));
 
 	// Make the pipe to non-blocking mode
 	dwMode = PIPE_READMODE_BYTE | PIPE_NOWAIT;
@@ -370,15 +369,15 @@ bool WinProcessImpl::DoReadFromPipe(HANDLE pipe, wxString& buff)
 	                        NULL,
 	                        &dwTimeout);
 
-	BOOL bRes = ReadFile( pipe, chBuf, 65536, &dwRead, NULL);
+	BOOL bRes = ReadFile( pipe, m_buffer, 65536, &dwRead, NULL);
 	if ( bRes ) {
 		wxString tmpBuff;
 		// Success read
-		chBuf[dwRead/sizeof(char)] = 0;
-		tmpBuff = wxString(chBuf, wxConvUTF8);
+		m_buffer[dwRead/sizeof(char)] = 0;
+		tmpBuff = wxString(m_buffer, wxConvUTF8);
 		if (tmpBuff.IsEmpty() && dwRead > 0) {
 			//conversion failed
-			tmpBuff = wxString::From8BitData(chBuf);
+			tmpBuff = wxString::From8BitData(m_buffer);
 		}
 		buff << tmpBuff;
 		return true;

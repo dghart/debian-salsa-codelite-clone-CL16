@@ -31,6 +31,8 @@
     <File Name="cl_calltip.cpp"/>
     <File Name="performance.cpp"/>
     <File Name="fileextmanager.cpp"/>
+    <File Name="parsedtoken.h"/>
+    <File Name="parsedtoken.cpp"/>
   </VirtualDirectory>
   <VirtualDirectory Name="Header Files">
     <File Name="y.tab.h"/>
@@ -138,6 +140,11 @@
     <File Name="include_finder.h"/>
     <File Name="include_finder.cpp"/>
   </VirtualDirectory>
+  <Dependencies Name="DebugUnicode"/>
+  <Dependencies Name="ReleaseUnicode"/>
+  <Dependencies Name="WinReleaseUnicode"/>
+  <Dependencies Name="WinDebug_29"/>
+  <Dependencies Name="WinDebugUnicode"/>
   <Settings Type="Static Library">
     <Configuration Name="DebugUnicode" CompilerType="gnu g++" DebuggerType="GNU gdb debugger" Type="Static Library" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
       <Compiler Options="-g;$(shell wx-config --cxxflags --debug=yes --unicode=yes);" Required="yes" PreCompiledHeader="">
@@ -208,7 +215,7 @@
       </AdditionalRules>
     </Configuration>
     <Configuration Name="WinDebugUnicode" CompilerType="gnu g++" DebuggerType="GNU gdb debugger" Type="Static Library" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
-      <Compiler Options="$(shell wx-config --cxxflags --debug=yes --unicode=yes);-g" Required="yes" PreCompiledHeader="">
+      <Compiler Options="$(shell wx-config --cxxflags --debug=yes --unicode=yes);-g;-Wall" Required="yes" PreCompiledHeader="">
         <IncludePath Value="."/>
         <IncludePath Value="./include"/>
         <IncludePath Value="../sdk/wxsqlite3/include"/>
@@ -316,9 +323,24 @@
       <ResourceCompiler Options=""/>
     </GlobalSettings>
   </Settings>
-  <Dependencies Name="DebugUnicode"/>
-  <Dependencies Name="ReleaseUnicode"/>
-  <Dependencies Name="WinReleaseUnicode"/>
-  <Dependencies Name="WinDebug_29"/>
-  <Dependencies Name="WinDebugUnicode"/>
+  <VirtualDirectory Name="PreProcessing">
+    <File Name="pp.cpp"/>
+    <File Name="pp.l"/>
+    <File Name="pp.y"/>
+    <File Name="pp_include.h"/>
+    <File Name="pp_lexer.cpp"/>
+    <File Name="pp_lexer.h"/>
+    <File Name="pptable.cpp"/>
+    <File Name="pptable.h"/>
+  </VirtualDirectory>
+  <VirtualDirectory Name="RefactorEngine">
+    <File Name="refactorengine.h"/>
+    <File Name="refactorengine.cpp"/>
+    <File Name="stringaccessor.h"/>
+    <File Name="cpptoken.cpp"/>
+    <File Name="cpptoken.h"/>
+    <File Name="cppwordscanner.cpp"/>
+    <File Name="cppwordscanner.h"/>
+    <File Name="stringaccessor.cpp"/>
+  </VirtualDirectory>
 </CodeLite_Project>

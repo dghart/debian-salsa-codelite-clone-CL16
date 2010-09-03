@@ -138,7 +138,8 @@ class LEditor : public wxScintilla, public IEditor
 	clEditorTipWindow*                          m_functionTip;
 	wxChar                                      m_lastCharEntered;
 	int                                         m_lastCharEnteredPos;
-
+	bool                                        m_isFocused;
+	
 public:
 	static bool                                 m_ccShowPrivateMembers;
 	static bool                                 m_ccShowItemsComments;
@@ -159,7 +160,9 @@ public:
 	clEditorTipWindow* GetFunctionTip() {
 		return m_functionTip;
 	}
-
+	
+	bool IsFocused() const;
+	
 public:
 	/// Construct a LEditor object
 	LEditor(wxWindow* parent);
@@ -666,6 +669,7 @@ private:
 	void OnLeftUp(wxMouseEvent &event);
 	void OnLeaveWindow(wxMouseEvent &event);
 	void OnFocusLost(wxFocusEvent &event);
+	void OnFocus    (wxFocusEvent &event);
 	void OnLeftDClick(wxScintillaEvent &event);
 	void OnPopupMenuUpdateUI(wxUpdateUIEvent &event);
 	void OnDbgAddWatch(wxCommandEvent &event);
@@ -674,6 +678,7 @@ private:
 	void OnDragStart(wxScintillaEvent &e);
 	void OnDragEnd(wxScintillaEvent &e);
 	void DoSetCaretAt(long pos);
+	void OnSetActive(wxCommandEvent &e);
 };
 
 #endif // LITEEDITOR_EDITOR_H

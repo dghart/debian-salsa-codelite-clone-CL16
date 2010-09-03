@@ -1,10 +1,13 @@
 #include "utils.h"
+#include <wx/tokenzr.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <wx/string.h>
 #include <wx/regex.h>
+#include <wx/arrstr.h>
 #include <map>
+#include "pptable.h"
 
 #ifdef __WXMSW__
 #    include <windows.h>
@@ -95,38 +98,86 @@ bool is_process_alive(long pid)
 #endif
 }
 
-static std::map<wxString, wxRegEx*> s_regexPool;
+static char *load_file(const char *fileName) {
+	FILE *fp;
+	long len;
+	char *buf = NULL;
 
-extern "C" char* regReplace(const char* src, const char* key, const char* value)
+	fp = fopen(fileName, "rb");
+	if (!fp) {
+		return 0;
+	}
+
+
+	fseek(fp, 0, SEEK_END);
+	len = ftell(fp);
+	fseek(fp, 0, SEEK_SET);
+	buf = (char *)malloc(len+1);
+
+
+	long bytes = fread(buf, sizeof(char), len, fp);
+	if (bytes != len) {
+		fclose(fp);
+		free(buf);
+		return 0;
+	}
+
+	buf[len] = 0;	// make it null terminated string
+	fclose(fp);
+	return buf;
+}
+
+static CLReplacementList replacements;
+static int first = 1;
+
+extern "C" char* ctagsReplacements(char* result)
 {
-	wxString findWhat    = wxString(key,   wxConvUTF8);
-	wxString replaceWith = wxString(value, wxConvUTF8);
-	wxString inputStr    = wxString(src,   wxConvUTF8);
 	
-	
-	wxRegEx *re (NULL);
-	if(s_regexPool.find(findWhat) != s_regexPool.end()) {
-		re = s_regexPool.find(findWhat)->second;
+	/**
+	 * try to load the file once 
+	 **/
+	 
+	if( first ) {
+		char *content = (char*)0;
+		char *file_name = getenv("CTAGS_REPLACEMENTS");
+
+		first = 0;
+		if(file_name) {
+			/* open the file */
+			content = load_file(file_name);
+			if(content) {
+				wxArrayString lines = wxStringTokenize(wxString::From8BitData(content), wxT("\n"), wxTOKEN_STRTOK);
+				free(content);
+				
+				for(size_t i=0; i<lines.GetCount(); i++) {
+					wxString pattern = lines.Item(i).BeforeFirst(wxT('='));
+					wxString replace = lines.Item(i).AfterFirst(wxT('='));
+					
+					pattern.Trim().Trim(false);
+					replace.Trim().Trim(false);
+					
+					CLReplacement repl;
+					repl.construct(pattern.To8BitData().data(), replace.To8BitData().data());
+					if(repl.is_ok) {
+						replacements.push_back( repl );
+					}
+				}
+			}
+		}
 	}
-	
-	if(re == NULL) {
-		re = new wxRegEx(findWhat);
+
+	if( replacements.empty() == false ) {
+
+		std::string outStr = result;
+		CLReplacementList::iterator iter = replacements.begin();
+		for(; iter != replacements.end(); iter++) {
+			CLReplacePatternA(outStr, *iter, outStr);
+		}
+		
+		if(outStr == result)
+			return NULL;
+			
+		return strdup(outStr.c_str());
 	}
-	
-	if(!re->IsValid()) {
-		// invalid regular expression
-		// return a copy of the input string
-		delete re;
-		return strdup(src);
-	}
-	
-	// keep this instance
-	s_regexPool[findWhat] = re;
-	
-	// regex is valid, try to match
-	if(re->Matches(inputStr)) {
-		re->ReplaceAll(&inputStr, replaceWith);
-	}
-	
-	return strdup( inputStr.mb_str(wxConvUTF8).data() );
+	return NULL;
 }

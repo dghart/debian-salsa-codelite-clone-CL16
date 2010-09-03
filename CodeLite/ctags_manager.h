@@ -34,6 +34,7 @@
 #include "tree.h"
 #include "entry.h"
 #include "tags_storage_sqlite3.h"
+#include "cpptoken.h"
 #include <wx/thread.h>
 #include "singleton.h"
 #include "cl_calltip.h"
@@ -49,17 +50,16 @@
 #endif
 
 /// Forward declaration
-class clProcess;
 class DirTraverser;
 class Language;
-class wxTimer;
 class Language;
+class IProcess;
 
 // Change this macro if you dont want to use the parser thread for performing
 // the workspcae retag
 #define USE_PARSER_TREAD_FOR_RETAGGING_WORKSPACE 1
 
-#define TagsGlobal 0
+#define TagsGlobal    0
 #define TagsGlobalGTK 1
 
 // send this event whenever the a tags file needs to be updated
@@ -133,17 +133,13 @@ public:
 
 private:
 	ITagsStorage *                m_workspaceDatabase;
-	wxCriticalSection             m_cs;
 	wxFileName                    m_codeliteIndexerPath;
-	clProcess*                    m_codeliteIndexerProcess;
+	IProcess*                     m_codeliteIndexerProcess;
 	wxString                      m_ctagsCmd;
 	wxStopWatch                   m_watch;
 	TagsOptionsData               m_tagsOptions;
-	std::map<int, clProcess*>     m_processes;
 	bool                          m_parseComments;
-	bool                          m_canDeleteCtags;
-	std::list<clProcess*>         m_gargabeCollector;
-	wxTimer*                      m_timer;
+	bool                          m_canRestartIndexer;
 	Language*                     m_lang;
 	std::vector<TagEntryPtr>      m_cachedFileFunctionsTags;
 	wxString                      m_cachedFile;
@@ -272,22 +268,14 @@ public:
 	void Delete(const wxFileName& path, const wxString& fileName);
 
 	/**
-	 * Start a ctags process on a filter mode.
-	 * By default, TagsManager will try to launch the ctags process using the following command line:
-	 * @code
-	 * ctags --fields=aKmSsni --filter=yes --filter-terminator="<<EOF>>\n"
-	 * @endcode
-	 *
-	 * It is possible to add a full path to ctags exectuable by calling the SetCtagsPath() function.
+	 * Start a codelite_indexer process
 	 */
-	clProcess *StartCtagsProcess();
+	void StartCodeLiteIndexer();
 
 	/**
 	 * Restart ctags process.
-	 * @param kind
-	 * @return
 	 */
-	void RestartCtagsProcess();
+	void RestartCodeLiteIndexer();
 
 	/**
 	 * Test if filename matches the current ctags file spec.
@@ -469,6 +457,16 @@ public:
 	 * @param tags the output
 	 */
 	void FindImplDecl(const wxFileName &fileName, int lineno, const wxString & expr, const wxString &word,  const wxString &text, std::vector<TagEntryPtr> &tags, bool impl = true, bool workspaceOnly = false);
+
+	/**
+	 * @brief return a CppToken poiting to the offset of a local variable
+	 * @param fileName file name to search in
+	 * @param pos the position pointing to the *start* of the variable to search
+	 * @param word the variable name to search
+	 * @param modifiedText if the file is modified and not saved, user can pass the unmodified text here to override the file's content
+	 * @return CppToken. Check CppToken::getOffset() != wxString::npos to make sure that this is a valid token
+	 */
+	CppToken FindLocalVariable(const wxFileName& fileName, int pos, int lineNumber, const wxString &word, const wxString &modifiedText = wxEmptyString);
 
 	/**
 	 * @brief get the scope name. CodeLite assumes that the caret is placed at the end of the 'scope'
@@ -726,11 +724,12 @@ protected:
 	std::map<wxString, bool> m_typeScopeCache;
 	std::map<wxString, bool> m_typeScopeContainerCache;
 
+	void DoParseModifiedText(const wxString &text, std::vector<TagEntryPtr>& tags);
+
 	/**
 	 * Handler ctags process termination
 	 */
-	void OnCtagsEnd    (wxProcessEvent &event);
-	void OnTimer       (wxTimerEvent   &event);
+	void OnIndexerTerminated    (wxCommandEvent &event);
 
 	DECLARE_EVENT_TABLE()
 
@@ -752,7 +751,7 @@ public:
 	 * @param &derivationList
 	 * @return
 	 */
-	bool GetDerivationList(const wxString &path, std::vector<wxString> &derivationList);
+	bool GetDerivationList(const wxString &path, std::vector<wxString> &derivationList, std::set<wxString> &scannedInherits);
 
 protected:
 	// provide a default handler for the wxEVT_UPDATE_FILETREE_EVENT event

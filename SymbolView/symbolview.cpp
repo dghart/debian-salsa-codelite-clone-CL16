@@ -35,6 +35,7 @@
 #include "workspace.h"
 #include "ctags_manager.h"
 #include "symbolview.h"
+#include "fileextmanager.h"
 #include <wx/busyinfo.h>
 #include <wx/utils.h>
 #include <wx/xrc/xmlres.h>
@@ -118,68 +119,69 @@ void SymbolViewPlugin::LoadImagesAndIndexes()
 
 	// ATTN: the order of the images in this list determines the sorting of tree children (along with the child names).
 	// That is why we sometimes reload the same image rather than just referring to the prior index.
+	BitmapLoader *bmpLoader = m_mgr->GetStdIcons();
 
-	m_image[wxT("workspace")]           = m_imagesList->Add(wxXmlResource::Get()->LoadBitmap(wxT("workspace")));
-	m_image[wxT("project")]             = m_imagesList->Add(wxXmlResource::Get()->LoadBitmap(wxT("project")));
+	m_image[wxT("workspace")]           = m_imagesList->Add(bmpLoader->LoadBitmap(wxT("workspace/16/workspace")));
+	m_image[wxT("project")]             = m_imagesList->Add(bmpLoader->LoadBitmap(wxT("workspace/16/project")));
 
-	m_image[wxT("h")]                   = m_imagesList->Add(wxXmlResource::Get()->LoadBitmap(wxT("page_white_h")));
+	m_image[wxT("h")]                   = m_imagesList->Add(bmpLoader->LoadBitmap(wxT("mime/16/h")));
 	m_image[wxT("hpp")]                 = m_image[wxT("h")];
 
-	m_image[wxT("c")]                   = m_imagesList->Add(wxXmlResource::Get()->LoadBitmap(wxT("page_white_c")));
-	m_image[wxT("cpp")]                 = m_imagesList->Add(wxXmlResource::Get()->LoadBitmap(wxT("page_white_cplusplus")));
+	m_image[wxT("c")]                   = m_imagesList->Add(bmpLoader->LoadBitmap(wxT("mime/16/c")));
+	m_image[wxT("cpp")]                 = m_imagesList->Add(bmpLoader->LoadBitmap(wxT("mime/16/cpp")));
 	m_image[wxT("cxx")]                 = m_image[wxT("cpp")];
 	m_image[wxT("c++")]                 = m_image[wxT("cpp")];
 	m_image[wxT("cc")]                  = m_image[wxT("cpp")];
 
-	m_image[wxT("file")]                = m_imagesList->Add(wxXmlResource::Get()->LoadBitmap(wxT("page_white_text")));
+	m_image[wxT("file")]                = m_imagesList->Add(bmpLoader->LoadBitmap(wxT("mime/16/text")));
 
-	m_image[wxT("class_view")]          = m_imagesList->Add(wxXmlResource::Get()->LoadBitmap(wxT("class_view")));
-	m_image[wxT("globals")]             = m_imagesList->Add(wxXmlResource::Get()->LoadBitmap(wxT("globals")));
-	m_image[wxT("namespace")]           = m_imagesList->Add(wxXmlResource::Get()->LoadBitmap(wxT("namespace")));
+	m_image[wxT("class_view")]          = m_imagesList->Add(bmpLoader->LoadBitmap(wxT("cc/16/globals")));
+	m_image[wxT("globals")]             = m_imagesList->Add(bmpLoader->LoadBitmap(wxT("cc/16/globals")));
+	m_image[wxT("namespace")]           = m_imagesList->Add(bmpLoader->LoadBitmap(wxT("cc/16/namespace")));
 
-	m_image[wxT("macro")]               = m_imagesList->Add(wxXmlResource::Get()->LoadBitmap(wxT("typedef")), wxColor(0, 128, 128));
+	m_image[wxT("macro")]               = m_imagesList->Add(bmpLoader->LoadBitmap(wxT("cc/16/typedef")));
 	m_image[wxT("macro_protected")]     = m_image[wxT("macro")];
 	m_image[wxT("macro_public")]        = m_image[wxT("macro")];
 	m_image[wxT("macro_private")]       = m_image[wxT("macro")];
 
-	m_image[wxT("interface")]           = m_imagesList->Add(wxXmlResource::Get()->LoadBitmap(wxT("class")));
+	m_image[wxT("interface")]           = m_imagesList->Add(bmpLoader->LoadBitmap(wxT("cc/16/class")));
 	m_image[wxT("interface_public")]    = m_image[wxT("interface")];
 	m_image[wxT("interface_protected")] = m_image[wxT("interface")];
 	m_image[wxT("interface_private")]   = m_image[wxT("interface")];
 
-	m_image[wxT("class")]               = m_imagesList->Add(wxXmlResource::Get()->LoadBitmap(wxT("class")));
+	m_image[wxT("class")]               = m_imagesList->Add(bmpLoader->LoadBitmap(wxT("cc/16/class")));
 	m_image[wxT("class_public")]        = m_image[wxT("class")];
 	m_image[wxT("class_protected")]     = m_image[wxT("class")];
 	m_image[wxT("class_private")]       = m_image[wxT("class")];
 
-	m_image[wxT("struct")]              = m_imagesList->Add(wxXmlResource::Get()->LoadBitmap(wxT("struct")));
+	m_image[wxT("struct")]              = m_imagesList->Add(bmpLoader->LoadBitmap(wxT("cc/16/struct")));
 	m_image[wxT("struct_public")]       = m_image[wxT("struct")];
 	m_image[wxT("struct_protected")]    = m_image[wxT("struct")];
 	m_image[wxT("struct_private")]      = m_image[wxT("struct")];
 
-	m_image[wxT("union")]               = m_image[wxT("struct")];
+	m_image[wxT("union")]               = m_imagesList->Add(bmpLoader->LoadBitmap(wxT("cc/16/union")));
 	m_image[wxT("union_public")]        = m_image[wxT("union")];
 	m_image[wxT("union_protected")]     = m_image[wxT("union")];
 	m_image[wxT("union_private")]       = m_image[wxT("union")];
 
-	m_image[wxT("enum")]                = m_imagesList->Add(wxXmlResource::Get()->LoadBitmap(wxT("enum")), wxColor(0, 128, 128));
+	m_image[wxT("enum")]                = m_imagesList->Add(bmpLoader->LoadBitmap(wxT("cc/16/enum")));
 	m_image[wxT("enum_public")]         = m_image[wxT("enum")];
 	m_image[wxT("enum_protected")]      = m_image[wxT("enum")];
 	m_image[wxT("enum_private")]        = m_image[wxT("enum")];
 
-	m_image[wxT("typedef")]             = m_imagesList->Add(wxXmlResource::Get()->LoadBitmap(wxT("typedef")), wxColor(0, 128, 128));
+	m_image[wxT("typedef")]             = m_imagesList->Add(bmpLoader->LoadBitmap(wxT("cc/16/typedef")));
 	m_image[wxT("typedef_public")]      = m_image[wxT("typedef")];
 	m_image[wxT("typedef_protected")]   = m_image[wxT("typedef")];
 	m_image[wxT("typedef_private")]     = m_image[wxT("typedef")];
 
-	m_image[wxT("prototype_public")]    = m_imagesList->Add(wxXmlResource::Get()->LoadBitmap(wxT("func_public")));
-	m_image[wxT("prototype_protected")] = m_imagesList->Add(wxXmlResource::Get()->LoadBitmap(wxT("func_protected")));
-	m_image[wxT("prototype_private")]   = m_imagesList->Add(wxXmlResource::Get()->LoadBitmap(wxT("func_private")));
+	m_image[wxT("prototype_public")]    = m_imagesList->Add(bmpLoader->LoadBitmap(wxT("cc/16/function_public")));
+	m_image[wxT("prototype_protected")] = m_imagesList->Add(bmpLoader->LoadBitmap(wxT("cc/16/function_protected")));
+	m_image[wxT("prototype_private")]   = m_imagesList->Add(bmpLoader->LoadBitmap(wxT("cc/16/function_private")));
 	m_image[wxT("prototype")]           = m_image[wxT("prototype_public")];
 
-	m_image[wxT("function_public")]     = m_imagesList->Add(wxXmlResource::Get()->LoadBitmap(wxT("func_public")));
-	m_image[wxT("function_protected")]  = m_imagesList->Add(wxXmlResource::Get()->LoadBitmap(wxT("func_protected")));
-	m_image[wxT("function_private")]    = m_imagesList->Add(wxXmlResource::Get()->LoadBitmap(wxT("func_private")));
+	m_image[wxT("function_public")]     = m_imagesList->Add(bmpLoader->LoadBitmap(wxT("cc/16/function_public")));
+	m_image[wxT("function_protected")]  = m_imagesList->Add(bmpLoader->LoadBitmap(wxT("cc/16/function_protected")));
+	m_image[wxT("function_private")]    = m_imagesList->Add(bmpLoader->LoadBitmap(wxT("cc/16/function_private")));
 	m_image[wxT("function")]            = m_image[wxT("function_public")];
 
 	m_image[wxT("method_public")]       = m_image[wxT("function_public")];
@@ -187,15 +189,14 @@ void SymbolViewPlugin::LoadImagesAndIndexes()
 	m_image[wxT("method_private")]      = m_image[wxT("function_private")];
 	m_image[wxT("method")]              = m_image[wxT("method_public")];
 
-	m_image[wxT("member_public")]       = m_imagesList->Add(wxXmlResource::Get()->LoadBitmap(wxT("member_public")));
-	m_image[wxT("member_protected")]    = m_imagesList->Add(wxXmlResource::Get()->LoadBitmap(wxT("member_protected")));
-	m_image[wxT("member_private")]      = m_imagesList->Add(wxXmlResource::Get()->LoadBitmap(wxT("member_private")));
+	m_image[wxT("member_public")]       = m_imagesList->Add(bmpLoader->LoadBitmap(wxT("cc/16/member_public")));
+	m_image[wxT("member_protected")]    = m_imagesList->Add(bmpLoader->LoadBitmap(wxT("cc/16/member_protected")));
+	m_image[wxT("member_private")]      = m_imagesList->Add(bmpLoader->LoadBitmap(wxT("cc/16/member_private")));
 	m_image[wxT("member")]              = m_image[wxT("member_public")];
 	m_image[wxT("variable")]            = m_image[wxT("member_public")];
 
-	m_image[wxT("enumerator")]          = m_imagesList->Add(wxXmlResource::Get()->LoadBitmap(wxT("enumerator")));
-
-	m_image[wxT("default")]             = m_imagesList->Add(wxXmlResource::Get()->LoadBitmap(wxT("struct"))); // fallback for anything else
+	m_image[wxT("enumerator")]          = m_imagesList->Add(bmpLoader->LoadBitmap(wxT("cc/16/enumerator")));
+	m_image[wxT("default")]             = m_imagesList->Add(bmpLoader->LoadBitmap(wxT("cc/16/struct"))); // fallback for anything else
 }
 
 void SymbolViewPlugin::CreateGUIControls()
@@ -474,9 +475,11 @@ void SymbolViewPlugin::GetFiles(const wxFileName &path, wxArrayString &files)
 					// TODO: replace this code with a "real" solution based on actual file dependencies.
 					// for now, make sure .c or .cpp file also includes corresponding .h file.
 					// FIXME: this only works if the .h file is in the same directory as the .c/.cpp file.
-					fileName.SetExt(path.GetExt());
-					if (fullPath.CmpNoCase(fileName.GetFullPath()) == 0) {
-						files.Add(file);
+					wxString otherFile;
+					if(FindSwappedFile(fileName, otherFile, projectFiles)) {
+						if (fullPath.CmpNoCase(otherFile) == 0) {
+							files.Add(file);
+						}
 					}
 				}
 			}
@@ -523,13 +526,11 @@ void SymbolViewPlugin::GetPaths(const wxArrayString &files, std::multimap<wxStri
 				filePaths.insert(std::make_pair(filePath, projectFileName));
 			}
 			if (fileName.GetExt() != wxT("h")) {
-				// TODO: replace this code with a "real" solution based on actual file dependencies.
-				// for now, make sure .h file also includes corresponding .c or .cpp file.
-				// FIXME: this only works if the .h file is in the same directory as the .c/.cpp file.
-				fileName.SetExt(wxT("h"));
-				wxString headerPath = fileName.GetFullPath();
-				if (fileset.find(headerPath) != fileset.end()) {
-					filePaths.insert(std::make_pair(headerPath, filePath));
+				wxString headerFile;
+				if(FindSwappedFile(fileName, headerFile, projectFiles)) {
+					if (fileset.find(headerFile) == fileset.end()) {
+						filePaths.insert(std::make_pair(headerFile, filePath));
+					}
 				}
 			}
 		}
@@ -547,14 +548,14 @@ int SymbolViewPlugin::SymTree::IsCtorOrDtor(const wxTreeItemId &id)
 	if (!id.IsOk() || GetRootItem() == id)
 		return 0;
 	TagTreeData *childtag = (TagTreeData*) GetItemData(id);
-	if (!childtag || childtag->GetKind() != wxT("function") && childtag->GetKind() != wxT("prototype"))
+	if (!childtag || ((childtag->GetKind() != wxT("function")) && (childtag->GetKind() != wxT("prototype"))))
 		return 0;
 
 	wxTreeItemId parent = GetItemParent(id);
 	if (!parent.IsOk())
 		return 0;
 	TagTreeData *parenttag = (TagTreeData*) GetItemData(parent);
-	if (!parenttag || parenttag->GetKind() != wxT("class") && parenttag->GetKind() != wxT("struct"))
+	if (!parenttag || ((parenttag->GetKind() != wxT("class")) && (parenttag->GetKind() != wxT("struct"))))
 		return 0;
 
 	wxString name = childtag->GetName();
@@ -681,6 +682,11 @@ int SymbolViewPlugin::LoadChildren(SymTree *tree, wxTreeItemId id)
 {
 	int count = 0;
 
+	wxString activeFileName;
+	if(m_mgr->GetActiveEditor()) {
+		activeFileName = m_mgr->GetActiveEditor()->GetFileName().GetFullPath();
+	}
+
 	// root node gets special grouping children
 	if (id == tree->GetRootItem()) {
 		tree->m_globals = tree->AppendItem(id, wxT("Global Functions and Variables"), m_image[wxT("globals")]);
@@ -736,9 +742,20 @@ int SymbolViewPlugin::LoadChildren(SymTree *tree, wxTreeItemId id)
 			continue;
 		wxTreeItemId parent = id != tree->GetRootItem() ? id : GetParentForGlobalTag(tree, *tag);
 		// create child node, add our custom tag data to it, and set its appearance accordingly
-		wxTreeItemId child = tree->AppendItem(parent, wxEmptyString);
-		SetNodeData(tree, child, *tag);
-		count++;
+
+		// If the view mode is "Current File" but the tagEntry is NOT from
+		// the current tree, AND the current item is not a "parent" node
+		// dont show it
+		bool disableItem = (GetViewMode() == vmCurrentFile   &&
+							activeFileName != tag->GetFile() &&
+							!(tag->IsContainer() || tag->GetKind() == wxT("enum")) );
+		if(!disableItem) {
+
+			wxTreeItemId child = tree->AppendItem(parent, wxEmptyString);
+			SetNodeData(tree, child, *tag);
+			count++;
+
+		}
 	}
 
 	SortChildren();
@@ -1021,6 +1038,16 @@ bool SymbolViewPlugin::DoActivateSelection(wxTreeCtrl* tree)
 	if (!tag)
 		return false;
 
+	bool     linkEditor    = m_tb->GetToolState(XRCID("link_editor"));
+	IEditor *currentEditor = m_mgr->GetActiveEditor();
+
+	if(linkEditor) {
+		// When link editor is enabled, dont allow opening items from the SymbolView tree which dont belong
+		// to the current file
+		if(GetViewMode() == vmCurrentFile && currentEditor && tag->GetFile() != currentEditor->GetFileName().GetFullPath())
+			return false;
+	}
+
 	if (tag->GetFile().IsEmpty() || !m_mgr->OpenFile(tag->GetFile(), wxEmptyString, tag->GetLine()-1))
 		return false;
 
@@ -1191,6 +1218,12 @@ void SymbolViewPlugin::OnWorkspaceLoaded(wxCommandEvent& e)
  */
 void SymbolViewPlugin::OnWorkspaceClosed(wxCommandEvent& e)
 {
+	DoClearSymbolView();
+	e.Skip();
+}
+
+void SymbolViewPlugin::DoClearSymbolView()
+{
 	for (size_t i = 0; i < m_viewModeNames.Count(); i++) {
 		WindowStack *viewStack = (WindowStack*) m_viewStack->Find(m_viewModeNames[i]);
 		if (viewStack) {
@@ -1201,7 +1234,6 @@ void SymbolViewPlugin::OnWorkspaceClosed(wxCommandEvent& e)
 	// set the view mode to current file, this to avoid long waiting on opening next workspace
 	m_viewStack->Select(m_viewModeNames[vmCurrentFile]);
 	m_viewChoice->SetStringSelection(m_viewModeNames[vmCurrentFile]);
-	e.Skip();
 }
 
 /**
@@ -1210,14 +1242,32 @@ void SymbolViewPlugin::OnWorkspaceClosed(wxCommandEvent& e)
  */
 void SymbolViewPlugin::OnFileRetagged(wxCommandEvent& e)
 {
+	// Clear the plugin content
+
 	std::vector<wxFileName> *files = (std::vector<wxFileName>*) e.GetClientData();
 	if (files && !files->empty()) {
-		wxArrayString filePaths;
-		for (size_t i = 0; i < files->size(); i++) {
-			filePaths.Add(files->at(i).GetFullPath());
+
+		if(files->size() > 1) {
+			DoClearSymbolView();
+
+			// Tag only visible files
+			if(m_mgr->GetActiveEditor()) {
+				wxArrayString filePaths;
+				filePaths.Add(m_mgr->GetActiveEditor()->GetFileName().GetFullPath());
+
+				wxWindowUpdateLocker locker(m_viewStack);
+				UpdateTrees(filePaths, false);
+			}
+		} else {
+
+			wxArrayString filePaths;
+			for (size_t i = 0; i < files->size(); i++) {
+				filePaths.Add(files->at(i).GetFullPath());
+			}
+			wxWindowUpdateLocker locker(m_viewStack);
+			UpdateTrees(filePaths, true);
+
 		}
-		wxWindowUpdateLocker locker(m_viewStack);
-		UpdateTrees(filePaths, true);
 	}
 	e.Skip();
 }
@@ -1522,5 +1572,53 @@ void SymbolViewPlugin::OnShowTagInSymView(wxCommandEvent& e)
             break;
         }
     }
+}
+
+bool SymbolViewPlugin::FindSwappedFile(const wxFileName& rhs, wxString& lhs, const std::vector<wxFileName> &workspaceFiles)
+{
+	wxFileName otherFile(rhs);
+	wxString ext = rhs.GetExt();
+	wxArrayString exts;
+
+	//replace the file extension
+	int fileType = FileExtManager::GetType(rhs.GetFullName());
+	switch(fileType) {
+	case FileExtManager::TypeSourceC:
+	case FileExtManager::TypeSourceCpp:
+		//try to find a header file
+		exts.Add(wxT("h"));
+		exts.Add(wxT("hpp"));
+		exts.Add(wxT("hxx"));
+		break;
+
+	case FileExtManager::TypeHeader:
+		exts.Add(wxT("cpp"));
+		exts.Add(wxT("cxx"));
+		exts.Add(wxT("cc"));
+		exts.Add(wxT("c"));
+		break;
+	default:
+		return false;
+	}
+
+	wxArrayString           projects;
+	wxString                errMsg;
+
+	for (size_t j=0; j<exts.GetCount(); j++) {
+		otherFile.SetExt(exts.Item(j));
+		if (otherFile.FileExists()) {
+			//we got a match
+			lhs = otherFile.GetFullPath();
+			return true;
+		}
+
+		for (size_t i=0; i<workspaceFiles.size(); i++) {
+			if (workspaceFiles.at(i).GetFullName() == otherFile.GetFullName()) {
+				lhs = workspaceFiles.at(i).GetFullPath();
+				return true;
+			}
+		}
+	}
+	return false;
 }
 

@@ -1,3 +1,28 @@
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+//
+// copyright            : (C) 2009 by Eran Ifrah
+// file name            : subversion2.h
+//
+// -------------------------------------------------------------------------
+// A
+//              _____           _      _     _ _
+//             /  __ \         | |    | |   (_) |
+//             | /  \/ ___   __| | ___| |    _| |_ ___
+//             | |    / _ \ / _  |/ _ \ |   | | __/ _ )
+//             | \__/\ (_) | (_| |  __/ |___| | ||  __/
+//              \____/\___/ \__,_|\___\_____/_|\__\___|
+//
+//                                                  F i l e
+//
+//    This program is free software; you can redistribute it and/or modify
+//    it under the terms of the GNU General Public License as published by
+//    the Free Software Foundation; either version 2 of the License, or
+//    (at your option) any later version.
+//
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+
 #ifndef __Subversion2__
 #define __Subversion2__
 
@@ -48,6 +73,8 @@ protected:
 	void OnIgnoreFilePattern(wxCommandEvent &event);
 	void OnSelectAsView     (wxCommandEvent &event);
 	void OnSwitchURL        (wxCommandEvent &event);
+	void OnLockFile         (wxCommandEvent &event);
+	void OnUnLockFile       (wxCommandEvent &event);
 
 	///////////////////////////////////////////////////////////
 	// IDE events
@@ -59,6 +86,8 @@ protected:
 public:
 	void    DoGetSvnInfoSync         (SvnInfo& svnInfo, const wxString &workingDirectory);
 	void    DoSwitchURL              (const wxString &workingDirectory, const wxString &sourceUrl, wxCommandEvent &event);
+	void    DoLockFile               (const wxString &workingDirectory, const wxArrayString &fullpaths, wxCommandEvent &event, bool lock);
+
 public:
 	Subversion2(IManager *manager);
 	~Subversion2();
@@ -107,6 +136,7 @@ public:
 	bool LoginIfNeeded        (wxCommandEvent &event, const wxString &workingDirectory, wxString& loginString);
 	bool GetNonInteractiveMode(wxCommandEvent &event);
 	bool IsPathUnderSvn       (const wxString &path);
+	void ChangeLog            (const wxString &path, const wxString &fullpath, wxCommandEvent &event);
 
 protected:
 	void DoInitialize();

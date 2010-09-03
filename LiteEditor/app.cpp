@@ -63,7 +63,7 @@
 // Define the version string for this codelite
 //////////////////////////////////////////////
 extern wxChar *SvnRevision;
-wxString CODELITE_VERSION_STR = wxString::Format(wxT("v2.6.0.%s"), SvnRevision);
+wxString CODELITE_VERSION_STR = wxString::Format(wxT("v2.7.0.%s"), SvnRevision);
 
 #if defined(__WXMAC__)||defined(__WXGTK__)
 #include <signal.h> // sigprocmask
@@ -205,10 +205,10 @@ static void WaitForDebugger(int signo)
 }
 #endif
 
-IMPLEMENT_APP(App)
+IMPLEMENT_APP(CodeLiteApp)
 
 extern void InitXmlResource();
-App::App(void)
+CodeLiteApp::CodeLiteApp(void)
 		: m_pMainFrame(NULL)
 		, m_singleInstance(NULL)
 		, m_loadPlugins(true)
@@ -218,7 +218,7 @@ App::App(void)
 {
 }
 
-App::~App(void)
+CodeLiteApp::~CodeLiteApp(void)
 {
 	wxImage::CleanUpHandlers();
 #ifdef __WXMSW__
@@ -233,7 +233,7 @@ App::~App(void)
 	wxAppBase::ExitMainLoop();
 }
 
-bool App::OnInit()
+bool CodeLiteApp::OnInit()
 {
 #if defined(__WXGTK__) || defined(__WXMAC__)
 //	block signal pipe
@@ -307,8 +307,6 @@ bool App::OnInit()
 		wxLogNull noLog;
 		wxMkdir(homeDir);
 		wxMkdir(homeDir + wxT("/lexers/"));
-		wxMkdir(homeDir + wxT("/lexers/Default"));
-		wxMkdir(homeDir + wxT("/lexers/BlackTheme"));
 		wxMkdir(homeDir + wxT("/rc/"));
 		wxMkdir(homeDir + wxT("/images/"));
 		wxMkdir(homeDir + wxT("/templates/"));
@@ -336,8 +334,6 @@ bool App::OnInit()
 		//Create the directory structure
 		wxMkdir(homeDir);
 		wxMkdir(homeDir + wxT("/lexers/"));
-		wxMkdir(homeDir + wxT("/lexers/Default"));
-		wxMkdir(homeDir + wxT("/lexers/BlackTheme"));
 		wxMkdir(homeDir + wxT("/rc/"));
 		wxMkdir(homeDir + wxT("/images/"));
 		wxMkdir(homeDir + wxT("/templates/"));
@@ -406,6 +402,14 @@ bool App::OnInit()
 
 	//read the last frame size from the configuration file
 	// Initialise editor configuration files
+#ifdef __WXMSW__
+	{
+		wxLogNull noLog;
+		wxMkdir(wxStandardPaths::Get().GetUserDataDir());
+	}
+#endif
+
+	EditorConfigST::Get()->SetInstallDir( mgr->GetInstallDir() );
 	EditorConfig *cfg = EditorConfigST::Get();
 	if ( !cfg->Load() ) {
 		wxLogMessage(wxT("Failed to load configuration file: ") + wxGetCwd() + wxT("/config/codelite.xml"), wxT("CodeLite"), wxICON_ERROR | wxOK);
@@ -461,8 +465,8 @@ bool App::OnInit()
 	//       Horizontal dimension has to take into account the thin
 	//       hilighting border around the dialog (2 points in
 	//       Win 95).
-	Frame::Initialize( parser.GetParamCount() == 0 );
-	m_pMainFrame = Frame::Get();
+	clMainFrame::Initialize( parser.GetParamCount() == 0 );
+	m_pMainFrame = clMainFrame::Get();
 
 	// update the accelerators table
 	ManagerST::Get()->UpdateMenuAccelerators();
@@ -487,7 +491,7 @@ bool App::OnInit()
 		if (fn.GetExt() == wxT("workspace")) {
 			ManagerST::Get()->OpenWorkspace(fn.GetFullPath());
 		} else {
-			Frame::Get()->GetMainBook()->OpenFile(fn.GetFullPath(), wxEmptyString, lineNumber);
+			clMainFrame::Get()->GetMainBook()->OpenFile(fn.GetFullPath(), wxEmptyString, lineNumber);
 		}
 	}
 
@@ -497,22 +501,22 @@ bool App::OnInit()
 #ifdef __WXGTK__
 	// Needed on GTK
 	ManagerST::Get()->UpdateMenuAccelerators();
-	if (Frame::Get()->GetMainBook()->GetActiveEditor() == NULL) {
-		Frame::Get()->GetOutputPane()->GetBuildTab()->SetFocus();
+	if (clMainFrame::Get()->GetMainBook()->GetActiveEditor() == NULL) {
+		clMainFrame::Get()->GetOutputPane()->GetBuildTab()->SetFocus();
 	}
 #endif
 
 	return TRUE;
 }
 
-int App::OnExit()
+int CodeLiteApp::OnExit()
 {
 	EditorConfigST::Free();
 	ConfFileLocator::Release();
 	return 0;
 }
 
-bool App::CopySettings(const wxString &destDir, wxString& installPath)
+bool CodeLiteApp::CopySettings(const wxString &destDir, wxString& installPath)
 {
 	wxLogNull noLog;
 
@@ -521,18 +525,15 @@ bool App::CopySettings(const wxString &destDir, wxString& installPath)
 	// /usr/local/share/codelite/ (Linux) or at codelite.app/Contents/SharedSupport
 	///////////////////////////////////////////////////////////////////////////////////////////
 	CopyDir(installPath + wxT("/templates/"), destDir + wxT("/templates/"));
-	CopyDir(installPath + wxT("/lexers/"), destDir + wxT("/lexers/"));
 	massCopy  (installPath + wxT("/images/"), wxT("*.png"), destDir + wxT("/images/"));
-	wxCopyFile(installPath + wxT("/config/codelite.xml.default"), destDir + wxT("/config/codelite.xml.default"));
 	wxCopyFile(installPath + wxT("/rc/menu.xrc"), destDir + wxT("/rc/menu.xrc"));
 	wxCopyFile(installPath + wxT("/index.html"), destDir + wxT("/index.html"));
 	wxCopyFile(installPath + wxT("/svnreport.html"), destDir + wxT("/svnreport.html"));
 	wxCopyFile(installPath + wxT("/astyle.sample"), destDir + wxT("/astyle.sample"));
-	wxCopyFile(installPath + wxT("/config/accelerators.conf.default"), destDir + wxT("/config/accelerators.conf.default"));
 	return true;
 }
 
-void App::OnFatalException()
+void CodeLiteApp::OnFatalException()
 {
 #if wxUSE_STACKWALKER
 	Manager *mgr = ManagerST::Get();
@@ -548,7 +549,7 @@ void App::OnFatalException()
 #endif
 }
 
-bool App::CheckSingularity(const wxCmdLineParser &parser, const wxString &curdir)
+bool CodeLiteApp::CheckSingularity(const wxCmdLineParser &parser, const wxString &curdir)
 {
 	// check for single instance
 	long singleInstance(1);
@@ -590,19 +591,19 @@ bool App::CheckSingularity(const wxCmdLineParser &parser, const wxString &curdir
 	return true;
 }
 
-void App::MacOpenFile(const wxString& fileName)
+void CodeLiteApp::MacOpenFile(const wxString& fileName)
 {
 	switch (FileExtManager::GetType(fileName)) {
 	case FileExtManager::TypeWorkspace:
 		ManagerST::Get()->OpenWorkspace(fileName);
 		break;
 	default:
-		Frame::Get()->GetMainBook()->OpenFile(fileName);
+		clMainFrame::Get()->GetMainBook()->OpenFile(fileName);
 		break;
 	}
 }
 
-void App::MSWReadRegistry()
+void CodeLiteApp::MSWReadRegistry()
 {
 #ifdef __WXMSW__
 

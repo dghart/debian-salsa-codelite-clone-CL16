@@ -1,3 +1,28 @@
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+//
+// copyright            : (C) 2009 by Eran Ifrah
+// file name            : commit_dialog.h
+//
+// -------------------------------------------------------------------------
+// A
+//              _____           _      _     _ _
+//             /  __ \         | |    | |   (_) |
+//             | /  \/ ___   __| | ___| |    _| |_ ___
+//             | |    / _ \ / _  |/ _ \ |   | | __/ _ )
+//             | \__/\ (_) | (_| |  __/ |___| | ||  __/
+//              \____/\___/ \__,_|\___\_____/_|\__\___|
+//
+//                                                  F i l e
+//
+//    This program is free software; you can redistribute it and/or modify
+//    it under the terms of the GNU General Public License as published by
+//    the Free Software Foundation; either version 2 of the License, or
+//    (at your option) any later version.
+//
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+
 #ifndef __commit_dialog__
 #define __commit_dialog__
 
@@ -13,6 +38,7 @@ class Subversion2;
 class CommitDialog : public CommitDialogBase
 {
 	Subversion2 *m_plugin;
+	wxString     m_url;
 
 public:
 	static wxString NormalizeMessage(const wxString &message);
@@ -20,7 +46,7 @@ public:
 
 public:
 	/** Constructor */
-	CommitDialog( wxWindow* parent, const wxArrayString &paths, Subversion2 *plugin );
+	CommitDialog( wxWindow* parent, const wxArrayString &paths, const wxString &url, Subversion2 *plugin );
 	CommitDialog( wxWindow* parent, Subversion2 *plugin );
 	virtual ~CommitDialog();
 

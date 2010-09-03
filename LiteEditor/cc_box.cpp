@@ -27,6 +27,7 @@
 #include "comment_parser.h"
 #include "ctags_manager.h"
 #include <wx/wupdlock.h>
+#include "pluginmanager.h"
 #include "editor_config.h"
 #include "cl_editor_tip_window.h"
 #include "cl_editor.h"
@@ -37,11 +38,14 @@
 #include "plugin.h"
 #include <wx/tooltip.h>
 #include <wx/tipwin.h>
+#include <wx/display.h>
 
 #ifndef wxScintillaEventHandler
 #define wxScintillaEventHandler(func) \
 	(wxObjectEventFunction)(wxEventFunction)wxStaticCastEvent(wxScintillaEventFunction, &func)
 #endif
+
+const wxEventType wxCMD_EVENT_SET_EDITOR_ACTIVE = XRCID("wxCMD_EVENT_SET_EDITOR_ACTIVE");
 
 CCBox::CCBox(LEditor* parent, bool autoHide, bool autoInsertSingleChoice)
 #if CC_USES_POPUPWIN
@@ -64,36 +68,26 @@ CCBox::CCBox(LEditor* parent, bool autoHide, bool autoInsertSingleChoice)
 	// load all the CC images
 	wxImageList *il = new wxImageList(16, 16, true);
 
-	il->Add(wxXmlResource::Get()->LoadBitmap(wxT("class")));
-	il->Add(wxXmlResource::Get()->LoadBitmap(wxT("struct")));
-	il->Add(wxXmlResource::Get()->LoadBitmap(wxT("namespace")));
-	il->Add(wxXmlResource::Get()->LoadBitmap(wxT("member_public")));
-
-	wxBitmap m_tpyedefBmp = wxXmlResource::Get()->LoadBitmap(wxT("typedef"));
-	m_tpyedefBmp.SetMask(new wxMask(m_tpyedefBmp, wxColor(0, 128, 128)));
-	il->Add(m_tpyedefBmp);
-
-	il->Add(wxXmlResource::Get()->LoadBitmap(wxT("member_private")));
-	il->Add(wxXmlResource::Get()->LoadBitmap(wxT("member_public")));
-	il->Add(wxXmlResource::Get()->LoadBitmap(wxT("member_protected")));
-	il->Add(wxXmlResource::Get()->LoadBitmap(wxT("func_private")));
-	il->Add(wxXmlResource::Get()->LoadBitmap(wxT("func_public")));
-	il->Add(wxXmlResource::Get()->LoadBitmap(wxT("func_protected")));
-	wxBitmap m_macroBmp = wxXmlResource::Get()->LoadBitmap(wxT("typedef"));
-	m_macroBmp.SetMask(new wxMask(m_macroBmp, wxColor(0, 128, 128)));
-	il->Add(m_macroBmp);
-
-	wxBitmap m_enumBmp = wxXmlResource::Get()->LoadBitmap(wxT("enum"));
-	m_enumBmp.SetMask(new wxMask(m_enumBmp, wxColor(0, 128, 128)));
-	il->Add(m_enumBmp);
-
-	il->Add(wxXmlResource::Get()->LoadBitmap(wxT("enumerator")));
-
 	//Initialise the file bitmaps
-	il->Add(wxXmlResource::Get()->LoadBitmap(wxT("page_white_cplusplus")));
-	il->Add(wxXmlResource::Get()->LoadBitmap(wxT("page_white_h")));
-	il->Add(wxXmlResource::Get()->LoadBitmap(wxT("page_white_text")));
-	il->Add(wxXmlResource::Get()->LoadBitmap(wxT("cpp_keyword")));
+	BitmapLoader *bmpLoader = PluginManager::Get()->GetStdIcons();
+	il->Add(bmpLoader->LoadBitmap(wxT("cc/16/class")));
+	il->Add(bmpLoader->LoadBitmap(wxT("cc/16/struct")));
+	il->Add(bmpLoader->LoadBitmap(wxT("cc/16/namespace")));
+	il->Add(bmpLoader->LoadBitmap(wxT("cc/16/member_public")));
+	il->Add(bmpLoader->LoadBitmap(wxT("cc/16/typedef")));
+	il->Add(bmpLoader->LoadBitmap(wxT("cc/16/member_private")));
+	il->Add(bmpLoader->LoadBitmap(wxT("cc/16/member_public")));
+	il->Add(bmpLoader->LoadBitmap(wxT("cc/16/member_protected")));
+	il->Add(bmpLoader->LoadBitmap(wxT("cc/16/function_private")));
+	il->Add(bmpLoader->LoadBitmap(wxT("cc/16/function_public")));
+	il->Add(bmpLoader->LoadBitmap(wxT("cc/16/function_protected")));
+	il->Add(bmpLoader->LoadBitmap(wxT("cc/16/typedef")));
+	il->Add(bmpLoader->LoadBitmap(wxT("cc/16/enum")));
+	il->Add(bmpLoader->LoadBitmap(wxT("cc/16/enumerator")));
+	il->Add(bmpLoader->LoadBitmap(wxT("mime/16/cpp")));
+	il->Add(bmpLoader->LoadBitmap(wxT("mime/16/h")));
+	il->Add(bmpLoader->LoadBitmap(wxT("mime/16/text")));
+	il->Add(bmpLoader->LoadBitmap(wxT("cc/16/cpp_keyword")));
 
 	// assign the image list and let the control take owner ship (i.e. delete it)
 	m_listCtrl->AssignImageList(il, wxIMAGE_LIST_SMALL);
@@ -134,11 +128,6 @@ void CCBox::OnItemActivated( wxListEvent& event )
 	m_selectedItem = event.m_itemIndex;
 	InsertSelection();
 	HideCCBox();
-
-	LEditor *editor = GetEditor();
-	if (editor) {
-		editor->SetActive();
-	}
 }
 
 void CCBox::OnItemDeSelected( wxListEvent& event )
@@ -183,7 +172,21 @@ void CCBox::Adjust()
 	pt.y += lineHeight;
 
 #if CC_USES_POPUPWIN
-	wxSize  size       = ::wxGetDisplaySize();
+
+	wxSize  size = ::wxGetDisplaySize();
+
+	// FIX BUG#3032473: "CC box position and dual screen"
+	// Incase we are using multiple screens,
+	// re-calculate the width
+	unsigned displayCount = wxDisplay::GetCount();
+	if(displayCount > 1) {
+		size.x = 0;
+
+		for(unsigned i=0; i<displayCount; i++) {
+			wxDisplay display(i);
+			size.x += display.GetGeometry().width;
+		}
+	}
 
 	// the completion box is child of the main frame
 	wxPoint ccPoint = pt;
@@ -430,7 +433,7 @@ void CCBox::Show(const wxString& word)
 
 #ifdef __WXGTK__
 	wxPopupWindow::Show();
-	Frame::Get()->Raise();
+	clMainFrame::Get()->Raise();
 	GetEditor()->SetFocus();
 	GetEditor()->SetSCIFocus(true);
 #else // Windows
@@ -652,6 +655,12 @@ void CCBox::HideCCBox()
 			LEditor::m_ccShowItemsComments  = checked ? 1 : 0;
 		}
 	}
+
+	if(GetEditor()) {
+		wxCommandEvent evt(wxCMD_EVENT_SET_EDITOR_ACTIVE, GetId());
+		evt.SetEventObject(this);
+		GetEditor()->GetEventHandler()->AddPendingEvent( evt );
+	}
 }
 
 void CCBox::OnShowPublicItems(wxCommandEvent& event)
@@ -701,9 +710,9 @@ void CCBox::DoShowTagTip()
 		prefix << wxT("Kind: ");
 		prefix << wxString::Format(wxT("%s\n"), tag.GetKind().c_str() );
 
-		if(tag.GetInherits().IsEmpty() == false) {
+		if(tag.GetInheritsAsString().IsEmpty() == false) {
 			prefix << wxT("Inherits: ");
-			prefix << tag.GetInherits() << wxT("\n");
+			prefix << tag.GetInheritsAsString() << wxT("\n");
 		}
 
 	} else if(tag.IsMacro() || tag.IsTypedef() || tag.IsContainer() || tag.GetKind() == wxT("member") || tag.GetKind() == wxT("variable")) {
