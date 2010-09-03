@@ -10,7 +10,7 @@ Description: Fix codelite_indexer path.
 
 --- codelite.orig/LiteEditor/manager.cpp
 +++ codelite/LiteEditor/manager.cpp
-@@ -1231,7 +1231,7 @@ wxString Manager::GetProjectExecutionCom
+@@ -1241,7 +1241,7 @@ wxString Manager::GetProjectExecutionCom
  		if ( bldConf->GetPauseWhenExecEnds() ) {
  			wxString ld_lib_path;
  			wxFileName exePath ( wxStandardPaths::Get().GetExecutablePath() );
@@ -21,7 +21,7 @@ Description: Fix codelite_indexer path.
  				command << wxT ( "/bin/sh -f " ) << exeWrapper.GetFullPath() << wxT ( " LD_LIBRARY_PATH=" ) << ld_lib_path << wxT ( " " );
 --- codelite.orig/LiteEditor/frame.cpp
 +++ codelite/LiteEditor/frame.cpp
-@@ -784,7 +784,7 @@ void Frame::CreateGUIControls(void)
+@@ -783,7 +783,7 @@ void clMainFrame::CreateGUIControls(void
  #else
  	// set the path to codelite_indexer
  	wxFileName exePath( wxStandardPaths::Get().GetExecutablePath() );
@@ -29,7 +29,7 @@ Description: Fix codelite_indexer path.
 +	tagsManager->SetCodeLiteIndexerPath(wxStandardPaths::Get().GetPluginsDir());
  	ManagerST::Get()->SetCodeLiteLauncherPath(exePath.GetPath());
  #endif
- 	tagsManager->StartCtagsProcess();
+ 	tagsManager->StartCodeLiteIndexer();
 --- codelite.orig/Plugin/pipedprocess.cpp
 +++ codelite/Plugin/pipedprocess.cpp
 @@ -54,8 +54,7 @@ void PipedProcess::Terminate()

@@ -13,7 +13,7 @@
  	echo "PLUGIN_LINK_FLAGS =  -L${base_dir}/\$(OUTPUT_DIR) `${wxconfiglibs} ${wxcfg} ${additional_links}`" >> Makefile
  	echo "INCLUDES := \$(INCLUDES) ${additional_include_path} " >> Makefile
  	echo "" >> Makefile
-@@ -725,7 +725,7 @@ createVariables "no"
+@@ -724,7 +724,7 @@ createVariables "no"
  createObjectList "sdk/wxscintilla/src/scintilla/src/*.cxx sdk/wxscintilla/src/*.cpp" "ScintillaObjects"
  createObjectList "sdk/codelite_indexer/network/*.cpp CodeLite/*.cpp" "CodeLiteObjects"
  createObjectList "LiteEditor/*.cpp" "LiteEditorObjects"
@@ -22,7 +22,7 @@
  createObjectList "Plugin/*.cpp Plugin/*.c" "SDKObjects"
  
  createMainTargets
-@@ -735,8 +735,8 @@ echo >> Makefile
+@@ -734,8 +734,8 @@ echo >> Makefile
  # First the non-plugin .so libs:
  createRules_sharedObject  "Plugin/*.cpp Plugin/*.c" "SDKObjects" "SDK" "libplugin\$(EXT)" "dont_copy" "-L./lib -lwxscintilla\$(EXT) -lcodelite\$(EXT)"
  createRules_sharedObject  "sdk/wxscintilla/src/scintilla/src/*.cxx sdk/wxscintilla/src/*.cpp" "ScintillaObjects" "Scintilla" "libwxscintilla\$(EXT)" "dont_copy"

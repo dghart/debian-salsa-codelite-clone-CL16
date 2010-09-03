@@ -23,14 +23,14 @@ Description: Fallback on "x-terminal-emulator" if all other terminal
  		terminal = where;
 --- codelite.orig/LiteEditor/manager.cpp
 +++ codelite/LiteEditor/manager.cpp
-@@ -1913,8 +1913,8 @@ void Manager::DbgStart ( long pid )
+@@ -1926,8 +1926,8 @@ void Manager::DbgStart ( long pid )
  
  #if defined(__WXGTK__)
  	wxString where;
 -	if ( !ExeLocator::Locate ( wxT ( "xterm" ), where ) ) {
--		wxMessageBox ( _ ( "Failed to locate 'xterm' application required by CodeLite, please install it and try again!" ), wxT ( "CodeLite" ), wxOK|wxCENTER|wxICON_WARNING, Frame::Get() );
+-		wxMessageBox ( _ ( "Failed to locate 'xterm' application required by CodeLite, please install it and try again!" ), wxT ( "CodeLite" ), wxOK|wxCENTER|wxICON_WARNING, clMainFrame::Get() );
 +	if ( !ExeLocator::Locate ( wxT ( "x-terminal-emulator" ), where ) ) {
-+		wxMessageBox ( _ ( "Failed to locate 'x-terminal-emulator' application required by CodeLite, please install it and try again!" ), wxT ( "CodeLite" ), wxOK|wxCENTER|wxICON_WARNING, Frame::Get() );
++		wxMessageBox ( _ ( "Failed to locate 'x-terminal-emulator' application required by CodeLite, please install it and try again!" ), wxT ( "CodeLite" ), wxOK|wxCENTER|wxICON_WARNING, clMainFrame::Get() );
  		return;
  	}
  #endif
