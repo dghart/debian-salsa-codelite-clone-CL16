@@ -1,3 +1,6 @@
+Description: Link against the sqlite3 provided by the system.
+Author: Alessio Treglia <alessio@debian.org>
+Forwarded: not-needed
 ---
  configure |    8 ++++----
  1 file changed, 4 insertions(+), 4 deletions(-)
