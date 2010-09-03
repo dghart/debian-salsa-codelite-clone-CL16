@@ -316,13 +316,13 @@ void clAuiTabArt::DrawTab(wxDC& dc,
 		wxRect r(tab_x, tab_y, tab_width, tab_height);
 		dc.SetPen(m_base_colour_pen);
 		dc.SetBrush(m_base_colour_brush);
-		dc.DrawRectangle(r.x+1, r.y+1, r.width-1, r.height-4);
+		dc.DrawRectangle(r.x, r.y+1, r.width-1, r.height-4);
 
 		// this white helps fill out the gradient at the top of the tab
 
-		dc.SetPen(m_base_colour_4);
-		dc.SetBrush(m_base_colour_4);
-		dc.DrawRectangle(r.x+2, r.y+1, r.width-3, r.height-4);
+		dc.SetPen(m_base_colour);
+		dc.SetBrush(m_base_colour);
+		dc.DrawRectangle(r.x, r.y+1, r.width-1, r.height-4);
 
 		// these two points help the rounded corners appear more antialiased
 		dc.SetPen(m_base_colour_pen);
@@ -330,12 +330,11 @@ void clAuiTabArt::DrawTab(wxDC& dc,
 		dc.DrawPoint(r.x+r.width-2, r.y+1);
 
 		// set rectangle down a bit for gradient drawing
-		r.SetHeight(r.GetHeight()/2);
-		r.x += 2;
-		r.width -= 2;
-		r.y += r.height;
-		r.y -= 2;
-
+		r.height -= 1;
+		r.y      += 1;
+		r.width  -= 2;
+		r.x      += 1;
+		
 		// draw gradient background
 		wxColor top_color = m_base_colour_4;
 		wxColor bottom_color = m_base_colour;
@@ -343,7 +342,7 @@ void clAuiTabArt::DrawTab(wxDC& dc,
 	} else {
 		// draw inactive tab
 #ifdef __WXGTK__
-		wxColour shadeColour = wxSystemSettings::GetColour(wxSYS_COLOUR_3DFACE);
+		wxColour shadeColour = m_base_colour;
 #else
 		wxColour shadeColour = DrawingUtils::DarkColour(m_base_colour, 2.0);
 #endif
@@ -423,7 +422,7 @@ void clAuiTabArt::DrawTab(wxDC& dc,
 	                                   tab_width - (text_offset-tab_x) - close_button_width);
 
 	// draw tab text
-	dc.SetTextForeground(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
+	dc.SetTextForeground( wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT) );
 	dc.DrawText(draw_text,
 	            text_offset,
 	            drawn_tab_yoff + (drawn_tab_height)/2 - (texty/2) - 1);

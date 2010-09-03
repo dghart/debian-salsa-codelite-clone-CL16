@@ -5,6 +5,23 @@
 #include <wx/fileconf.h>
 #include "editor_config.h"
 
+// Helper method
+static wxArrayString ExecCommand(const wxString &cmd)
+{
+	wxArrayString outputArr;
+#ifdef __WXMSW__	
+	ProcUtils::SafeExecuteCommand(cmd, outputArr);
+#else
+	wxArrayString o, e;
+	wxExecute(cmd, o, e);
+	outputArr = o;
+	for(size_t i=0; i<e.size(); i++)
+		outputArr.Add(e.Item(i));
+	
+#endif
+	return outputArr;
+}
+
 IncludePathLocator::IncludePathLocator(IManager *mgr)
 		: m_mgr(mgr)
 {
@@ -16,6 +33,48 @@ IncludePathLocator::~IncludePathLocator()
 
 void IncludePathLocator::Locate(wxArrayString& paths, wxArrayString &excludePaths)
 {
+	// Common compiler paths - should be placed at top of the include path!
+	wxString tmpfile = wxFileName::CreateTempFileName(wxT("codelite"));
+	wxString command;
+	
+#ifdef __WXMAC__
+	// Mac does not like the standard command
+	command = wxString::Format(wxT("cpp -v -x=c++ %s"), tmpfile.c_str());
+#else
+	command = wxString::Format(wxT("cpp -x c++ -v %s"), tmpfile.c_str());
+#endif
+
+	wxArrayString outputArr = ExecCommand( command );
+	wxRemoveFile( tmpfile );
+	
+	// Analyze the output
+	bool collect(false);
+	for(size_t i=0; i<outputArr.GetCount(); i++) {
+		if(outputArr[i].Contains(wxT("#include <...> search starts here:"))) {
+			collect = true;
+			continue;
+		}
+
+		if(outputArr[i].Contains(wxT("End of search list."))) {
+			break;
+		}
+
+		if(collect) {
+			
+			wxString file = outputArr.Item(i).Trim().Trim(false);
+			
+			// on Mac, (framework directory) appears also, 
+			// but it is harmless to use it under all OSs
+			file.Replace(wxT("(framework directory)"), wxT(""));
+			file.Trim().Trim(false);
+			
+			wxFileName includePath(file, wxT(""));
+			includePath.Normalize();
+
+			paths.Add( includePath.GetPath() );
+		}
+	}
+
 	// try to locate QMAKE
 	wxFileConfig  qmakeConf(wxEmptyString, wxEmptyString, m_mgr->GetStartupDirectory() + wxT("/config/qmake.ini"));
 	wxString      groupName;
@@ -31,7 +90,7 @@ void IncludePathLocator::Locate(wxArrayString& paths, wxArrayString &excludePath
 	// Run: qmake -query QT_INSTALL_PREFIX
 	wxString cmd;
 	cmd << qmake << wxT(" -query QT_INSTALL_PREFIX");
-	ProcUtils::SafeExecuteCommand(cmd, out);
+	out = ExecCommand(cmd);
 
 	if (out.IsEmpty() == false ) {
 
@@ -100,16 +159,22 @@ void IncludePathLocator::Locate(wxArrayString& paths, wxArrayString &excludePath
 			wxString tmpPath;
 
 			tmpPath = pathWin + wxT("QtCore");
-			if(wxFileName::DirExists(tmpPath))
-				paths.Add( tmpPath );
+			if(wxFileName::DirExists(tmpPath)){
+				wxFileName fn(tmpPath, wxT(""));
+				paths.Add( fn.GetPath() );
+			}
 
 			tmpPath = pathWin + wxT("QtGui");
-			if(wxFileName::DirExists(tmpPath))
-				paths.Add( tmpPath );
+			if(wxFileName::DirExists(tmpPath)) {
+				wxFileName fn(tmpPath, wxT(""));
+				paths.Add( fn.GetPath() );
+			}
 
 			tmpPath = pathWin + wxT("QtXml");
-			if(wxFileName::DirExists(tmpPath))
-				paths.Add( tmpPath );
+			if(wxFileName::DirExists(tmpPath)) {
+				wxFileName fn(tmpPath, wxT(""));
+				paths.Add( fn.GetPath() );
+			}
 		}
 #endif
 	}
@@ -126,51 +191,10 @@ void IncludePathLocator::Locate(wxArrayString& paths, wxArrayString &excludePath
 			excludePaths.Add( wxwin + wxT("\\unix") );
 		}
 	}
-
-	wxString      standardIncludeBase;
-	wxGetEnv(wxT("MINGW_INCL_HOME"), &standardIncludeBase);
-	if (standardIncludeBase.IsEmpty() == false && wxDir::Exists(standardIncludeBase)) {
-		// since we only support codelite's installation of MinGW, we know what to append
-		// to the include path
-		paths.Add(standardIncludeBase + wxT("\\include"));
-		standardIncludeBase << wxT("\\lib\\gcc\\mingw32\\");
-
-		// Get the highest gcc version number
-		// 4.4.1\\include\\c++");
-
-		long          highestVersion(0);
-		wxString      sHighestVersion;
-		wxArrayString files;
-
-		if (wxDir::Exists( standardIncludeBase ) ) {
-			wxDir::GetAllFiles(standardIncludeBase, &files, wxEmptyString, wxDIR_DIRS|wxDIR_FILES);
-
-			//filter out all non-directories
-			for (size_t i=0; i<files.GetCount(); i++) {
-				wxFileName fn(files.Item(i));
-				wxString p = fn.GetPath().Mid( standardIncludeBase.Length() );
-				wxString tmp_p(p);
-				tmp_p.Replace(wxT("."), wxT(""));
-				long number(0);
-				tmp_p.ToLong( &number );
-				if (number && number > highestVersion) {
-					sHighestVersion = p.BeforeFirst(wxFileName::GetPathSeparator());
-					highestVersion  = number;
-				}
-			}
-
-			if (sHighestVersion.IsEmpty() == false) {
-				standardIncludeBase << sHighestVersion << wxT("\\include\\c++");
-				paths.Add( standardIncludeBase );
-				excludePaths.Add( standardIncludeBase + wxT("\\debug") );
-			}
-		}
-		///
-	}
 #else
 	// run wx-config and parse the output
 	out.Clear();
-	ProcUtils::SafeExecuteCommand(wxT("wx-config --cxxflags"), out);
+	out = ExecCommand(wxT("wx-config --cxxflags"));
 	if (out.IsEmpty() == false) {
 		wxString line ( out.Item(0) );
 		int where = line.Find(wxT(" -I"));
@@ -181,41 +205,6 @@ void IncludePathLocator::Locate(wxArrayString& paths, wxArrayString &excludePath
 			where = line.Find(wxT(" -I"));
 		}
 	}
-	wxString      standardIncludeBase(wxT("/usr/include"));
-	if (standardIncludeBase.IsEmpty() == false && wxDir::Exists(standardIncludeBase)) {
-		paths.Add(standardIncludeBase);
-
-		// Linux: In addition, add the STL path whcih is under /usr/include/c++/X.X.X
-		// take the highest number of the X.X.X
-		wxArrayString files;
-		wxArrayString dirs;
-		wxString      base(standardIncludeBase + wxFileName::GetPathSeparator() + wxT("c++") + wxFileName::GetPathSeparator());
-
-		long     highestVersion(0);
-		wxString sHighestVersion;
-
-		if (wxDir::Exists( base ) ) {
-			wxDir::GetAllFiles(base, &files, wxEmptyString, wxDIR_DIRS|wxDIR_FILES);
-
-			//filter out all non-directories
-			for (size_t i=0; i<files.GetCount(); i++) {
-				wxFileName fn(files.Item(i));
-				wxString p = fn.GetPath().Mid( base.Length() );
-				wxString tmp_p(p);
-				tmp_p.Replace(wxT("."), wxT(""));
-				long number(0);
-				tmp_p.ToLong( &number );
-				if (number && number > highestVersion) {
-					sHighestVersion = p.BeforeFirst(wxFileName::GetPathSeparator());
-					highestVersion  = number;
-				}
-			}
-
-			if (sHighestVersion.IsEmpty() == false) {
-				paths.Add( base + sHighestVersion );
-				excludePaths.Add( base + sHighestVersion + wxT("/debug") );
-			}
-		}
-	}
 #endif
 }
+

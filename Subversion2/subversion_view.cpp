@@ -6,7 +6,10 @@
 #include <wx/filedlg.h>
 #include <wx/textdlg.h>
 #include "plugin.h"
+#include "svn_local_properties.h"
+#include "svn_props_dialog.h"
 #include "procutils.h"
+#include "bitmap_loader.h"
 #include "svn_login_dialog.h"
 #include "svn_command_handlers.h"
 #include "svn_copy_dialog.h"
@@ -51,6 +54,10 @@ BEGIN_EVENT_TABLE(SubversionView, SubversionPageBase)
 	EVT_MENU(XRCID("svn_checkout"),           SubversionView::OnCheckout)
 	EVT_MENU(XRCID("svn_open_file"),          SubversionView::OnOpenFile)
 	EVT_MENU(XRCID("svn_switch"),             SubversionView::OnSwitch)
+	EVT_MENU(XRCID("svn_properties"),         SubversionView::OnProperties)
+	EVT_MENU(XRCID("svn_log"),                SubversionView::OnLog)
+	EVT_MENU(XRCID("svn_lock"),               SubversionView::OnLock)
+	EVT_MENU(XRCID("svn_unlock"),             SubversionView::OnUnLock)
 END_EVENT_TABLE()
 
 SubversionView::SubversionView( wxWindow* parent, Subversion2 *plugin )
@@ -122,37 +129,42 @@ void SubversionView::CreatGUIControls()
 {
 	// Assign the image list
 	wxImageList *imageList = new wxImageList(16, 16, true);
+	BitmapLoader *bmpLoader = m_plugin->GetManager()->GetStdIcons();
 
-	imageList->Add(wxXmlResource::Get()->LoadBitmap(wxT("folder")));
-	imageList->Add(wxXmlResource::Get()->LoadBitmap(wxT("error")));
-	imageList->Add(wxXmlResource::Get()->LoadBitmap(wxT("edit_add")));
-	imageList->Add(wxXmlResource::Get()->LoadBitmap(wxT("edit_delete")));
-	imageList->Add(wxXmlResource::Get()->LoadBitmap(wxT("project_conflict")));
-	imageList->Add(wxXmlResource::Get()->LoadBitmap(wxT("files_unversioned")));
+	imageList->Add(bmpLoader->LoadBitmap(wxT("mime/16/folder" ) ));            // 0
+	imageList->Add(bmpLoader->LoadBitmap(wxT("subversion/16/modified" ) ));    // 1
+	imageList->Add(bmpLoader->LoadBitmap(wxT("subversion/16/new" ) ));         // 2
+	imageList->Add(bmpLoader->LoadBitmap(wxT("subversion/16/deleted" ) ));     // 3
+	imageList->Add(bmpLoader->LoadBitmap(wxT("subversion/16/conflict" ) ));    // 4
+	imageList->Add(bmpLoader->LoadBitmap(wxT("subversion/16/unversioned" ) )); // 5
 
 	// File icons 6-13
-	imageList->Add( wxXmlResource::Get()->LoadBitmap(wxT("project" ) ) ); // 6
-	imageList->Add( wxXmlResource::Get()->LoadBitmap(wxT("folder" ) ) );  // 7
-	imageList->Add( wxXmlResource::Get()->LoadBitmap(wxT("page_white_c" ) ) );//8
-	imageList->Add( wxXmlResource::Get()->LoadBitmap(wxT("page_white_cplusplus" ) ) );//9
-	imageList->Add( wxXmlResource::Get()->LoadBitmap(wxT("page_white_h" ) ) );//10
-	imageList->Add( wxXmlResource::Get()->LoadBitmap(wxT("page_white_text" ) ) );//11
-	imageList->Add( wxXmlResource::Get()->LoadBitmap(wxT("workspace" ) ) );//12
-	imageList->Add( wxXmlResource::Get()->LoadBitmap(wxT("formbuilder" ) ) );//13
+	imageList->Add( bmpLoader->LoadBitmap(wxT("workspace/16/project") ) );     // 6
+	imageList->Add( bmpLoader->LoadBitmap(wxT("mime/16/folder" ) ) );          // 7
+	imageList->Add( bmpLoader->LoadBitmap(wxT("mime/16/c" ) ) );               // 8
+	imageList->Add( bmpLoader->LoadBitmap(wxT("mime/16/cpp" ) ) );             // 9
+	imageList->Add( bmpLoader->LoadBitmap(wxT("mime/16/h" ) ) );               // 10
+	imageList->Add( bmpLoader->LoadBitmap(wxT("mime/16/text" ) ) );            // 11
+	imageList->Add( bmpLoader->LoadBitmap(wxT("workspace/16/workspace") ) );   // 12
+	imageList->Add( bmpLoader->LoadBitmap(wxT("mime/16/wxfb" ) ) );            // 13
+
+	// lock files icon ID
+	imageList->Add( bmpLoader->LoadBitmap(wxT("subversion/16/locked" ) ) );    // 14
 
 	m_treeCtrl->AssignImageList( imageList );
 
 	// Add toolbar
 	// Create the toolbar
+	BitmapLoader *bmpLdr = m_plugin->GetManager()->GetStdIcons();
 	wxToolBar *tb = new wxToolBar(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTB_FLAT|wxTB_HORIZONTAL|wxTB_NODIVIDER);
 	tb->AddTool(XRCID("svn_link_editor"), wxT("Link Editor"), wxXmlResource::Get()->LoadBitmap(wxT("link_editor")), wxT("Link Editor"), wxITEM_CHECK);
 	tb->ToggleTool(XRCID("svn_link_editor"), m_plugin->GetSettings().GetFlags() & SvnLinkEditor);
 
-	tb->AddTool(XRCID("clear_svn_output"), wxT("Clear Svn Output Tab"), wxXmlResource::Get()->LoadBitmap(wxT("document_delete")), wxT("Clear Svn Output Tab"), wxITEM_NORMAL);
-	tb->AddTool(XRCID("svn_refresh"),      wxT("Refresh View"), wxXmlResource::Get()->LoadBitmap ( wxT ( "svn_refresh" ) ), wxT ( "Refresh View" ) );
+	tb->AddTool(XRCID("clear_svn_output"), wxT("Clear Svn Output Tab"), bmpLdr->LoadBitmap(wxT("output-pane/16/clear")), wxT("Clear Svn Output Tab"), wxITEM_NORMAL);
+	tb->AddTool(XRCID("svn_refresh"),      wxT("Refresh View"), bmpLdr->LoadBitmap ( wxT ( "output-pane/16/reload" ) ), wxT ( "Refresh View" ) );
 	tb->AddSeparator();
 
-	tb->AddTool(XRCID("svn_stop"),         wxT("Stop current svn process"), wxXmlResource::Get()->LoadBitmap ( wxT ( "stop_build16" ) ), wxT ( "Stop current svn process" ) );
+	tb->AddTool(XRCID("svn_stop"),         wxT("Stop current svn process"), bmpLdr->LoadBitmap(wxT("toolbars/16/build/stop")), wxT ( "Stop current svn process" ) );
 	tb->AddTool(XRCID("svn_cleanup"),      wxT("Svn Cleanup"), wxXmlResource::Get()->LoadBitmap ( wxT ( "eraser" ) ), wxT ( "Svn Cleanup" ) );
 
 	tb->AddSeparator();
@@ -218,7 +230,7 @@ void SubversionView::ClearAll()
 	m_treeCtrl->DeleteAllItems();
 }
 
-void SubversionView::UpdateTree(const wxArrayString& modifiedFiles, const wxArrayString& conflictedFiles, const wxArrayString& unversionedFiles, const wxArrayString& newFiles, const wxArrayString& deletedFiles)
+void SubversionView::UpdateTree(const wxArrayString& modifiedFiles, const wxArrayString& conflictedFiles, const wxArrayString& unversionedFiles, const wxArrayString& newFiles, const wxArrayString& deletedFiles, const wxArrayString& lockedFiles)
 {
 
 	wxWindowUpdateLocker locker( m_treeCtrl );
@@ -231,11 +243,12 @@ void SubversionView::UpdateTree(const wxArrayString& modifiedFiles, const wxArra
 	if(root.IsOk() == false)
 		return;
 
-	DoAddNode(svnMODIFIED_FILES,    1, SvnTreeData::SvnNodeTypeModifiedRoot,    modifiedFiles);
-	DoAddNode(svnADDED_FILES,       2, SvnTreeData::SvnNodeTypeAddedRoot,       newFiles);
-	DoAddNode(svnDELETED_FILES,     3, SvnTreeData::SvnNodeTypeDeletedRoot,     deletedFiles);
-	DoAddNode(svnCONFLICTED_FILES,  4, SvnTreeData::SvnNodeTypeConflictRoot,    conflictedFiles);
-	DoAddNode(svnUNVERSIONED_FILES, 5, SvnTreeData::SvnNodeTypeUnversionedRoot, unversionedFiles);
+	DoAddNode(svnMODIFIED_FILES,    1,  SvnTreeData::SvnNodeTypeModifiedRoot,    modifiedFiles);
+	DoAddNode(svnADDED_FILES,       2,  SvnTreeData::SvnNodeTypeAddedRoot,       newFiles);
+	DoAddNode(svnDELETED_FILES,     3,  SvnTreeData::SvnNodeTypeDeletedRoot,     deletedFiles);
+	DoAddNode(svnCONFLICTED_FILES,  4,  SvnTreeData::SvnNodeTypeConflictRoot,    conflictedFiles);
+	DoAddNode(svnLOCKED_FILES,      14, SvnTreeData::SvnNodeTypeLockedRoot,      lockedFiles);
+	DoAddNode(svnUNVERSIONED_FILES, 5,  SvnTreeData::SvnNodeTypeUnversionedRoot, unversionedFiles);
 
 	if (m_treeCtrl->ItemHasChildren(root)) {
 		m_treeCtrl->Expand(root);
@@ -398,6 +411,11 @@ void SubversionView::CreateFileMenu(wxMenu* menu)
 	menu->Append(XRCID("svn_update"),  wxT("Update"));
 	menu->AppendSeparator();
 	menu->Append(XRCID("svn_revert"),  wxT("Revert"));
+
+	menu->AppendSeparator();
+	menu->Append(XRCID("svn_lock"),    wxT("Lock"));
+	menu->Append(XRCID("svn_unlock"),  wxT("Unlock"));
+
 	menu->AppendSeparator();
 	menu->Append(XRCID("svn_add"),     wxT("Add"));
 	menu->Append(XRCID("svn_delete"),  wxT("Delete"));
@@ -430,12 +448,18 @@ void SubversionView::CreateRootMenu(wxMenu* menu)
 	menu->Append(XRCID("svn_branch"),        wxT("Create Branch"));
 	menu->AppendSeparator();
 
-	menu->Append(XRCID("svn_switch"),   wxT("Switch URL..."));
+	menu->Append(XRCID("svn_switch"),        wxT("Switch URL..."));
 	menu->AppendSeparator();
 
 	menu->Append(XRCID("svn_diff"),          wxT("Create Diff..."));
 	menu->Append(XRCID("svn_patch"),         wxT("Apply Patch..."));
 	menu->Append(XRCID("svn_patch_dry_run"), wxT("Apply Patch - Dry Run..."));
+
+	menu->AppendSeparator();
+	menu->Append(XRCID("svn_log"),           wxT("Change Log..."));
+
+	menu->AppendSeparator();
+	menu->Append(XRCID("svn_properties"),    wxT("Properties..."));
 }
 
 void SubversionView::DoGetPaths(const wxTreeItemId& parent, wxArrayString& paths)
@@ -501,7 +525,10 @@ void SubversionView::OnCommit(wxCommandEvent& event)
 	bool nonInteractive = m_plugin->GetNonInteractiveMode(event);
 	command << m_plugin->GetSvnExeName(nonInteractive) << loginString << wxT(" commit ");
 
-	CommitDialog dlg(m_plugin->GetManager()->GetTheApp()->GetTopWindow(), m_selectionInfo.m_paths, m_plugin);
+	SvnInfo svnInfo;
+	m_plugin->DoGetSvnInfoSync(svnInfo, m_textCtrlRootDir->GetValue());
+
+	CommitDialog dlg(m_plugin->GetManager()->GetTheApp()->GetTopWindow(), m_selectionInfo.m_paths, svnInfo.m_sourceUrl, m_plugin);
 	if (dlg.ShowModal() == wxID_OK) {
 		m_selectionInfo.m_paths = dlg.GetPaths();
 		if (m_selectionInfo.m_paths.IsEmpty())
@@ -986,3 +1013,44 @@ void SubversionView::OnSwitch(wxCommandEvent& event)
 	m_plugin->DoGetSvnInfoSync(svnInfo, m_textCtrlRootDir->GetValue());
 	m_plugin->DoSwitchURL(m_textCtrlRootDir->GetValue(), svnInfo.m_sourceUrl, event);
 }
+
+void SubversionView::OnProperties(wxCommandEvent& event)
+{
+	SvnInfo svnInfo;
+	m_plugin->DoGetSvnInfoSync(svnInfo, m_textCtrlRootDir->GetValue());
+
+	SvnPropsDlg dlg(m_plugin->GetManager()->GetTheApp()->GetTopWindow(), svnInfo.m_sourceUrl, m_plugin);
+	if(dlg.ShowModal() == wxID_OK) {
+		SubversionLocalProperties props(svnInfo.m_sourceUrl);
+		props.WriteProperty(SubversionLocalProperties::BUG_TRACKER_MESSAGE, dlg.GetBugMsg());
+		props.WriteProperty(SubversionLocalProperties::BUG_TRACKER_URL,     dlg.GetBugTrackerURL());
+		props.WriteProperty(SubversionLocalProperties::FR_TRACKER_MESSAGE,  dlg.GetFRMsg());
+		props.WriteProperty(SubversionLocalProperties::FR_TRACKER_URL,      dlg.GetFRTrackerURL());
+	}
+}
+
+void SubversionView::OnLog(wxCommandEvent& event)
+{
+	m_plugin->ChangeLog(m_textCtrlRootDir->GetValue(), m_textCtrlRootDir->GetValue(), event);
+}
+
+void SubversionView::OnLock(wxCommandEvent& event)
+{
+	wxArrayString files;
+	for(size_t i=0; i<m_selectionInfo.m_paths.size(); i++) {
+		wxFileName fn(m_textCtrlRootDir->GetValue() + wxFileName::GetPathSeparator() + m_selectionInfo.m_paths.Item(i));
+		files.Add( fn.GetFullPath() );
+	}
+	m_plugin->DoLockFile(m_textCtrlRootDir->GetValue(), files, event, true);
+}
+
+void SubversionView::OnUnLock(wxCommandEvent& event)
+{
+	wxArrayString files;
+	for(size_t i=0; i<m_selectionInfo.m_paths.size(); i++) {
+		wxFileName fn(m_textCtrlRootDir->GetValue() + wxFileName::GetPathSeparator() + m_selectionInfo.m_paths.Item(i));
+		files.Add( fn.GetFullPath() );
+	}
+	m_plugin->DoLockFile(m_textCtrlRootDir->GetValue(), files, event, false);
+}
+

@@ -1,4 +1,6 @@
-vector<wxString, std::vector<std::map<int, long> > >
+(const tokenInfo *const token,
+					 const statementInfo *const st,
+					 boolean isFileScope, const tagType type)
 
 
 

@@ -77,7 +77,7 @@ TaskPanel::TaskPanel(wxWindow* parent, wxWindowID id, const wxString &name)
 	vertSizer->Add(horzSizer, 0, wxEXPAND|wxTOP|wxBOTTOM);
 
 	// grab the base class scintilla and put our sizer in its place
-	wxSizer *mainSizer = GetSizer();
+	wxSizer *mainSizer = m_hSizer;
 	mainSizer->Detach(m_sci);
 	vertSizer->Add(m_sci, 1, wxEXPAND | wxALL, 1);
 
@@ -138,8 +138,8 @@ SearchData TaskPanel::DoGetSearchData()
 		ManagerST::Get()->GetProjectFiles(ManagerST::Get()->GetActiveProjectName(), files);
 	} else if (rootDir == SEARCH_IN_CURR_FILE_PROJECT) {
 		wxString project = ManagerST::Get()->GetActiveProjectName();
-		if (Frame::Get()->GetMainBook()->GetActiveEditor()) {
-			wxFileName activeFile = Frame::Get()->GetMainBook()->GetActiveEditor()->GetFileName();
+		if (clMainFrame::Get()->GetMainBook()->GetActiveEditor()) {
+			wxFileName activeFile = clMainFrame::Get()->GetMainBook()->GetActiveEditor()->GetFileName();
 			project = ManagerST::Get()->GetProjectNameByFile(activeFile.GetFullPath());
 		}
 		ManagerST::Get()->GetProjectFiles(project, files);

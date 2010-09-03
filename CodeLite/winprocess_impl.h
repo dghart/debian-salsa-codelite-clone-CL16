@@ -37,6 +37,7 @@ class WinProcessImpl : public IProcess
 {
 	ProcessReaderThread *m_thr;
 	HANDLE               m_hRead;
+	char                 m_buffer[65537];
 
 protected:
 	void StartReaderThread();
@@ -47,7 +48,7 @@ public:
 	virtual ~WinProcessImpl();
 
 	// Create process asynchronously and return a process object
-	static IProcess* Execute(wxEvtHandler *parent, const wxString& cmd, wxString &errMsg, const wxString &workingDir = wxEmptyString);
+	static IProcess* Execute(wxEvtHandler *parent, const wxString& cmd, wxString &errMsg, IProcessCreateFlags flags = IProcessCreateDefault,const wxString &workingDir = wxEmptyString);
 
 	/**
 	 * @brief read data from stdout, if no data is available, return
@@ -66,9 +67,9 @@ public:
 	// Clean the process resources and kill the process if it is
 	// still alive
 	virtual void Cleanup();
-	
+
 	virtual void Terminate();
-	
+
 private:
 	// Creating process related handles
 	HANDLE hChildStdinRd, hChildStdinWr, hChildStdinWrDup,

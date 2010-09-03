@@ -1,3 +1,28 @@
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+//
+// copyright            : (C) 2009 by Eran Ifrah
+// file name            : unixprocess_impl.h
+//
+// -------------------------------------------------------------------------
+// A
+//              _____           _      _     _ _
+//             /  __ \         | |    | |   (_) |
+//             | /  \/ ___   __| | ___| |    _| |_ ___
+//             | |    / _ \ / _  |/ _ \ |   | | __/ _ )
+//             | \__/\ (_) | (_| |  __/ |___| | ||  __/
+//              \____/\___/ \__,_|\___\_____/_|\__\___|
+//
+//                                                  F i l e
+//
+//    This program is free software; you can redistribute it and/or modify
+//    it under the terms of the GNU General Public License as published by
+//    the Free Software Foundation; either version 2 of the License, or
+//    (at your option) any later version.
+//
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+
 #ifndef __unixprocessimpl__
 #define __unixprocessimpl__
 
@@ -18,7 +43,7 @@ public:
 	UnixProcessImpl(wxEvtHandler *parent);
 	virtual ~UnixProcessImpl();
 
-	static IProcess *Execute(wxEvtHandler *parent, const wxString &cmd, const wxString &workingDirectory = wxEmptyString);
+	static IProcess *Execute(wxEvtHandler *parent, const wxString &cmd, IProcessCreateFlags flags, const wxString &workingDirectory = wxEmptyString);
 
 	void SetReadHandle(const int& readHandle) {
 		this->m_readHandle = readHandle;
@@ -39,7 +64,7 @@ public:
 	virtual bool Read(wxString& buff);
 	virtual bool Write(const wxString& buff);
 	virtual void Terminate();
-	
+
 };
 #endif //#if defined(__WXMAC )||defined(__WXGTK__)
 #endif // __unixprocessimpl__

@@ -1,3 +1,28 @@
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+//
+// copyright            : (C) 2009 by Eran Ifrah
+// file name            : svn_command_handlers.h
+//
+// -------------------------------------------------------------------------
+// A
+//              _____           _      _     _ _
+//             /  __ \         | |    | |   (_) |
+//             | /  \/ ___   __| | ___| |    _| |_ ___
+//             | |    / _ \ / _  |/ _ \ |   | | __/ _ )
+//             | \__/\ (_) | (_| |  __/ |___| | ||  __/
+//              \____/\___/ \__,_|\___\_____/_|\__\___|
+//
+//                                                  F i l e
+//
+//    This program is free software; you can redistribute it and/or modify
+//    it under the terms of the GNU General Public License as published by
+//    the Free Software Foundation; either version 2 of the License, or
+//    (at your option) any later version.
+//
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+
 #ifndef SVNCOMMITHANDLER_H
 #define SVNCOMMITHANDLER_H
 
@@ -91,12 +116,19 @@ public:
 //----------------------------------------------------
 
 class SvnLogHandler : public SvnDefaultCommandHandler {
-	bool m_compact;
+	bool     m_compact;
+	wxString m_url;
+
 protected:
 	wxString Compact(const wxString &message);
 public:
-	SvnLogHandler(Subversion2 *plugin, bool compact, int commandId, wxEvtHandler *owner) : SvnDefaultCommandHandler(plugin, commandId, owner), m_compact(compact) {};
-	virtual ~SvnLogHandler(){};
+	SvnLogHandler(Subversion2 *plugin, const wxString &url, bool compact, int commandId, wxEvtHandler *owner)
+	: SvnDefaultCommandHandler(plugin, commandId, owner)
+	, m_compact(compact)
+	, m_url(url)
+	{}
+
+	virtual ~SvnLogHandler(){}
 
 public:
 	virtual void Process(const wxString &output);
@@ -127,4 +159,5 @@ public:
 public:
 	virtual void Process(const wxString &output);
 };
+
 #endif // SVNCOMMITHANDLER_H

@@ -23,6 +23,8 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 #include "precompiled_header.h"
+#include "pp_include.h"
+#include "pptable.h"
 #include <wx/tokenzr.h>
 #include "crawler_include.h"
 #include "parse_thread.h"
@@ -318,6 +320,14 @@ void ParseThread::ProcessSimple(ParseRequest* req)
 	///////////////////////////////////////////
 	m_pDb->InsertFileEntry(file, (int)time(NULL));
 
+	////////////////////////////////////////////////
+	// Parse and store the macros found in this file
+	////////////////////////////////////////////////
+	PPTable::Instance()->Clear();
+	PPScan( file, true );
+	m_pDb->StoreMacros( PPTable::Instance()->GetTable() );
+	PPTable::Instance()->Clear();
+
 	m_pDb->Commit();
 
 	// Parse the saved file to get a list of files to include
@@ -476,6 +486,8 @@ void ParseThread::ProcessParseAndStore(ParseRequest* req)
 	int    precent               (0);
 	int    lastPercentageReported(0);
 
+	PPTable::Instance()->Clear();
+
 	for (size_t i=0; i<maxVal; i++) {
 
 		// give a shutdown request a chance
@@ -502,6 +514,8 @@ void ParseThread::ProcessParseAndStore(ParseRequest* req)
 		}
 
 		TagTreePtr tree = TagsManagerST::Get()->ParseSourceFile(curFile);
+		PPScan( curFile.GetFullPath(), true );
+
 		m_pDb->Store(tree, wxFileName(), false);
 		if(m_pDb->InsertFileEntry(curFile.GetFullPath(), (int)time(NULL)) == TagExist) {
 			m_pDb->UpdateFileEntry(curFile.GetFullPath(), (int)time(NULL));
@@ -515,8 +529,18 @@ void ParseThread::ProcessParseAndStore(ParseRequest* req)
 		}
 	}
 
+	// Process the macros
+	PPTable::Instance()->Squeeze();
+	const std::map<wxString, PPToken>& table = PPTable::Instance()->GetTable();
+
+	// Store the macros
+	m_pDb->StoreMacros( table );
+
 	// Commit whats left
 	m_pDb->Commit();
+
+	// Clear the results
+	PPTable::Instance()->Clear();
 
 	/// Send notification to the main window with our progress report
 	if(m_notifiedWindow) {

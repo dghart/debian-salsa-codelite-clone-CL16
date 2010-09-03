@@ -1,3 +1,3 @@
 #include <wx/string.h>
-const wxChar * SvnRevision = wxT("4189");
+const wxChar * SvnRevision = wxT("4375");
 

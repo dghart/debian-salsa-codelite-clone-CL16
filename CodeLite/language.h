@@ -32,6 +32,7 @@
 #include "entry.h"
 #include <wx/filename.h>
 #include "expression_result.h"
+#include "parsedtoken.h"
 #include "variable.h"
 #include "function.h"
 #include "comment.h"
@@ -131,7 +132,7 @@ public:
 	 */
 	wxString OptimizeScope(const wxString& srcString);
 
-	void CheckForTemplateAndTypedef(wxString &typeName, wxString &typeScope);
+	void CheckForTemplateAndTypedef(ParsedToken *token);
 
 	void SetLastFunctionSignature(const wxString& lastFunctionSignature) {
 		this->m_lastFunctionSignature = lastFunctionSignature;
@@ -210,20 +211,11 @@ public:
 	ExpressionResult ParseExpression(const wxString &in);
 
 	/**
-	 * get the name's type, using local scope when possible. if parsing of local scope fails to find
-	 * a match, try the symbol database
-	 * \param name name to search for
-	 * \param firstToken set to true if the 'name' is the first token in the chain (myClass.some_func(). --> when testing for some_func(), firstToken = false
-	 * and when testing myClass. --> first token is set to true
-	 * \param type [output] name's type, incase 'name' is matched to a function, type will contain the type of the reutrn value of the function
-	 * \param typeScope [output] type's scope
-	 * \return true on success false otherwise
+	 * @brief process a token and resolve it into typeName / typeScope
+	 * @param token
+	 * @return
 	 */
-	bool TypeFromName( const wxString &name,
-	                   const wxString &scopeName,
-	                   bool firstToken,
-	                   wxString &type,
-	                   wxString &typeScope);
+	bool ProcessToken( TokenContainer *tokeContainer );
 
 	/**
 	 * Collect local variables from given scope text (in) and an optional symbol name
@@ -238,7 +230,6 @@ public:
 	bool VariableFromPattern(const wxString &pattern, const wxString &name, Variable &var);
 	bool FunctionFromPattern(TagEntryPtr tag, clFunction &foo);
 
-	bool ResolveTemplate(wxString &typeName, wxString &typeScope, const wxString &parentPath, const wxString &parenttempalteInitList);
 private:
 	bool DoSearchByNameAndScope(const wxString &name,
 	                            const wxString &scopeName,
@@ -260,25 +251,36 @@ private:
 	/**
 	 * Return the next token and the delimiter found, the source string is taken from the
 	 * m_tokenScanner member of this class
-	 * \param token next token
-	 * \param delim delimiter found
-	 * \param subscriptOperator subscript operator was found
-	 * \return true if token was found false otherwise
+	 * @param token next token
+	 * @param delim delimiter found
+	 * @param subscriptOperator subscript operator was found
+	 * @param funcArgList the first argument list passed (e.g. MyCall(a)->, funcArgList will contain (a))
+	 * @return true if token was found false otherwise
 	 */
-	bool NextToken(wxString &token, wxString &delim, bool &subscriptOperator);
+	bool NextToken(wxString &token, wxString &delim, bool &subscriptOperator, wxString &funcArgList);
+
+	/**
+	 * @brief construct a list of tokens based on an expression and a give scope
+	 * For example: parsing the expression: variable->GetName().AfterFirst()
+	 * will yield a list of 3 tokens
+	 * @param scopeName the current scope name of where the expression was found
+	 * @return ParsedToken ptr (allocated on the heap. Must be freed by calling to ParsedToke::DeleteTokens( head ) or NULL incase
+	 * parsing fails
+	 */
+	ParsedToken* ParseTokens(const wxString &scopeName);
 
 	/**
 	 * @brief Attempt to fix template results
 	 * @param typeName the type name that was detected by the parser
 	 * @param typeScope the type scope
 	 */
-	bool OnTemplates(wxString &typeName, wxString &typeScope);
+	bool OnTemplates(ParsedToken *token);
 
 	/**
 	 * \brief attempt to expand 'typedef' to their actual value
 	 */
-	bool OnTypedef(wxString &typeName, wxString &typeScope);
-	void DoSimpleTypedef(wxString &typeName, wxString &typeScope);
+	bool OnTypedef      ( ParsedToken *token );
+	void DoSimpleTypedef( ParsedToken *token );
 
 	/**
 	 * @brief expand reference operator (->) overloading
@@ -286,7 +288,7 @@ private:
 	 * @param typeScope [input/output] its scope
 	 * @return true on success, false otherwise
 	 */
-	bool OnArrowOperatorOverloading(wxString &typeName, wxString &typeScope);
+	bool OnArrowOperatorOverloading( ParsedToken *token );
 
 	/**
 	 * @brief expand subscript operator
@@ -294,15 +296,13 @@ private:
 	 * @param typeScope [input/output] its scope
 	 * @return true on success, false otherwise
 	 */
-	bool OnSubscriptOperator(wxString &typeName, wxString &typeScope);
+	bool OnSubscriptOperator( ParsedToken *token );
 
 	/**
 	 * @brief run the user defined types as they appear in the 'Types' replacement table
-	 * @param typeName
-	 * @param typeScope
-	 * @param typeMap
+	 * @param token current token
 	 */
-	void ExcuteUserTypes(wxString &typeName, wxString &typeScope, const std::map<wxString, wxString> &typeMap);
+	void ExcuteUserTypes(ParsedToken *token, const std::map<wxString, wxString> &typeMap);
 
 	void ParseTemplateArgs             (const wxString &argListStr, wxArrayString &argsList);
 	void ParseTemplateInitList         (const wxString &argListStr, wxArrayString &argsList);
@@ -310,9 +310,18 @@ private:
 	void DoResolveTemplateInitializationList(wxArrayString &tmpInitList);
 	void DoFixFunctionUsingCtagsReturnValue(clFunction &foo, TagEntryPtr tag);
 	void DoReplaceTokens(wxString &inStr, const std::map<wxString, wxString>& ignoreTokens);
-	void DoExtractTemplateDeclarationArgs();
-	void DoExtractTemplateDeclarationArgsFromScope();
-	void DoExtractTemplateDeclarationArgs(TagEntryPtr tag);
+	wxArrayString DoExtractTemplateDeclarationArgsFromScope();
+	wxArrayString DoExtractTemplateDeclarationArgs(ParsedToken *token);
+	wxArrayString DoExtractTemplateDeclarationArgs(TagEntryPtr tag);
+	void DoExtractTemplateInitListFromInheritance(TagEntryPtr tag, ParsedToken *token);
+	void DoExtractTemplateInitListFromInheritance(ParsedToken *token);
+	void DoExtractTemplateArgsFromSelf           (ParsedToken *token);
+	void DoFixTokensFromVariable(TokenContainer* tokeContainer, const wxString &variableDecl);
+
+	// Wrapper methods to help the transition from the [wxString,wxString] API into the new ParsedToken
+	// code
+	bool DoIsTypeAndScopeExist   ( ParsedToken *token                                );
+	bool DoCorrectUsingNamespaces( ParsedToken *token, std::vector<TagEntryPtr> tags );
 };
 
 typedef Singleton<Language> LanguageST;

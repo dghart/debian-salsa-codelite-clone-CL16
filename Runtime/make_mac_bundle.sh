@@ -22,10 +22,21 @@ fix_shared_object_depends() {
 			done
 	done
 }
+fix_codelite_indexer_deps() {
+
+	orig_path=`otool -L ./codelite_indexer  | grep libwx_* | awk '{print $1;}'`
+
+	## Loop over the files, and update the path of the wx library
+	for path in ${orig_path}
+	do
+		new_path=`echo ${path} | xargs basename`
+		install_name_tool -change ${path} @executable_path/../MacOS/${new_path} ./codelite_indexer
+		echo install_name_tool -change ${path} @executable_path/../MacOS/${new_path} ./codelite_indexer
+	done
+}
 
 ## extract the file name from the Makefile
 exe_name=`cat ../Makefile | grep ^EXE_NAME_NO_PATH | cut -d= -f2`
-
 ## Run install_name_tool on the executable to bundle
 ## libwx with the bundle
 
@@ -42,6 +53,7 @@ mkdir -p ./CodeLite.app/Contents/SharedSupport/config
 # fix the script
 echo "Running install_name_tool..."
 fix_shared_object_depends libwx_
+fix_codelite_indexer_deps
 ## copy the wx dlls to the exeutable path which under Mac is located at ./CodeLite.app/Contents/MacOS/
 for wx_file in ${orig_path}
 do
@@ -69,6 +81,7 @@ cp index.html ./CodeLite.app/Contents/SharedSupport/
 cp svnreport.html ./CodeLite.app/Contents/SharedSupport/
 cp icon.icns ./CodeLite.app/Contents/Resources/
 cp -pr src/*.gz ./CodeLite.app/Contents/Resources/
+cp -pr codelite-icons.zip ./CodeLite.app/Contents/SharedSupport/
 
 ## copy empty layout file
 cp config/codelite.layout.default ./CodeLite.app/Contents/SharedSupport/config/codelite.layout
@@ -105,7 +118,7 @@ cp ../lib/libpluginu.so ./CodeLite.app/Contents/MacOS/
 cp ../lib/libcodeliteu.so ./CodeLite.app/Contents/MacOS/
 cp ../lib/libwxsqlite3u.so ./CodeLite.app/Contents/MacOS/
 
-cp ../sdk/codelite_indexer/codelite_indexer   ./CodeLite.app/Contents/SharedSupport/
+cp ./codelite_indexer  ./CodeLite.app/Contents/SharedSupport/
 cp ../sdk/codelite_cppcheck/codelite_cppcheck ./CodeLite.app/Contents/SharedSupport/
 cp ./OpenTerm   ./CodeLite.app/Contents/SharedSupport/
 cp plugins/resources/*.*                      ./CodeLite.app/Contents/SharedSupport/plugins/resources/

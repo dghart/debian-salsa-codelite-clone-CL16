@@ -129,7 +129,8 @@ public:
 	virtual void OnAddImpl(wxCommandEvent &e);
 	virtual void OnAddMultiImpl(wxCommandEvent &e);
 	virtual void OnOverrideParentVritualFunctions(wxCommandEvent &e);
-	virtual void OnRenameFunction(wxCommandEvent &e);
+	virtual void OnRenameGlobalSymbol(wxCommandEvent &e);
+	virtual void OnRenameLocalSymbol (wxCommandEvent &e);
 	virtual void OnRetagFile(wxCommandEvent &e);
 	virtual void OnUserTypedXChars(const wxString &word);
 	virtual void OnCallTipClick(wxScintillaEvent &e);
@@ -163,28 +164,11 @@ private:
 	bool FindSwappedFile(const wxFileName &rhs, wxString &lhs);
 
 	/**
-	 * \brief parse list of files and construct a token database that will be used for refactoring
-	 * \param word word to search
-	 * \param files list of files to parse
-	 */
-	void BuildRefactorDatabase(const wxString& word, CppTokensMap &l);
-
-	/**
 	 * \brief replace list of tokens representd by li with 'word'
 	 * \param li
 	 * \return
 	 */
-	void ReplaceInFiles(const wxString &word, std::list<CppToken> &li);
-
-	/**
-	 * \brief
-	 * \param ctrl
-	 * \param pos
-	 * \param word
-	 * \param rs
-	 * \return
-	 */
-	bool ResolveWord(LEditor *ctrl, int pos, const wxString &word, RefactorSource *rs);
+	void ReplaceInFiles(const wxString &word, const std::list<CppToken> &li);
 
 	/**
 	* \brief open file specified by the 'fileName' parameter and append 'text'

@@ -172,9 +172,10 @@ typedef struct sMemberInfo {
 typedef struct sTokenInfo {
 	tokenType     type;
 	keywordId     keyword;
-	vString*      name;          /* the name of the token */
-	unsigned long lineNumber;    /* line number of tag */
-	fpos_t        filePosition;  /* file position of line containing name */
+	vString*      name;             /* the name of the token */
+	vString*      templateInitList; /* template initialization */
+	unsigned long lineNumber;       /* line number of tag */
+	fpos_t        filePosition;     /* file position of line containing name */
 } tokenInfo;
 
 typedef enum eImplementation {
@@ -260,8 +261,13 @@ static langType Lang_csharp;
 static langType Lang_java;
 static langType Lang_vera;
 static vString *Signature;
+// ERAN IFRAH
+static vString *ParentTempalateInitList;
+// ERAN IFRAH - END
+
 vString *QuotedString = NULL;
 static boolean CollectingSignature;
+static boolean CollectingTemplateArgs = TRUE;
 
 /* Number used to uniquely identify anonymous structs and unions. */
 static int AnonymousID = 0;
@@ -490,6 +496,7 @@ static void initToken (tokenInfo* const token)
 	token->lineNumber	= getSourceLineNumber ();
 	token->filePosition	= getInputFilePosition ();
 	vStringClear (token->name);
+	vStringClear (token->templateInitList);
 }
 
 static void advanceToken (statementInfo* const st)
@@ -531,6 +538,7 @@ static tokenInfo *newToken (void)
 {
 	tokenInfo *const token = xMalloc (1, tokenInfo);
 	token->name = vStringNew ();
+	token->templateInitList = vStringNew();
 	initToken (token);
 	return token;
 }
@@ -540,6 +548,7 @@ static void deleteToken (tokenInfo *const token)
 	if (token != NULL)
 	{
 		vStringDelete (token->name);
+		vStringDelete (token->templateInitList);
 		eFree (token);
 	}
 }
@@ -1138,6 +1147,19 @@ static void makeExtraTagEntry (const tagType type, tagEntryInfo *const e,
 	}
 }
 
+static void appendStringToReturnValue(const char* s, size_t len, tagEntryInfo* e, size_t *writtern)
+{
+	if((len + *writtern + 2) > sizeof(e->return_value)) {
+		// we dont have enough buffer to use
+		return;
+	}
+	
+	if(len == 0 || s == NULL)
+		return;
+		
+	*writtern += sprintf(e->return_value + *writtern, "%s ", s);
+}
+
 static void makeTag (const tokenInfo *const token,
 					 const statementInfo *const st,
 					 boolean isFileScope, const tagType type)
@@ -1176,6 +1198,27 @@ static void makeTag (const tokenInfo *const token,
 			e.hasTemplate = TRUE;
 		else
 			e.hasTemplate = FALSE;
+		
+		// If the matched tag is of type function/prototype
+		// add the return value
+		if(e.kind == 'p' || e.kind == 'f') {
+			size_t count = 0;
+			size_t i     = 0;
+			size_t bytes = 0;
+			
+			if(st->tokenIndex > 2)
+				count = st->tokenIndex - 2;
+			
+			for(; i<count; i++) {
+				if(st->token[i]->type == TOKEN_DOUBLE_COLON)
+					appendStringToReturnValue("::", 2, &e, &bytes);
+				else
+					appendStringToReturnValue(st->token[i]->name->buffer,             st->token[i]->name->length,             &e, &bytes);
+					
+				appendStringToReturnValue(st->token[i]->templateInitList->buffer, st->token[i]->templateInitList->length, &e, &bytes);
+			}
+		}
+		
 		// ERAN IFRAH - END
 
 		makeTagEntry (&e);
@@ -1405,7 +1448,14 @@ static void skipToMatch (const char *const pair)
 				vStringPut (Signature, c);
 			}
 		}
-
+		
+		// ERAN IFRAH [PATCH - START]
+		// Collect template initialization
+		if(CollectingTemplateArgs) {
+			vStringPut (ParentTempalateInitList, c);
+		}
+		// ERAN IFRAH [PATCH - START]
+		
 		if (c == begin)
 		{
 			++matchLevel;
@@ -1700,7 +1750,10 @@ static void readParents (statementInfo *const st, const int qualifier)
 	tokenInfo *const token = newToken ();
 	tokenInfo *const parent = newToken ();
 	int c;
-
+	// ERAN IFRAH - START
+	char *inherit = 0;
+	// ERAN IFRAH - END
+	
 	do
 	{
 		c = skipToNonWhite ();
@@ -1717,8 +1770,35 @@ static void readParents (statementInfo *const st, const int qualifier)
 		}
 		else if (c == qualifier)
 			vStringPut (parent->name, c);
-		else if (c == '<')
+		else if (c == '<') {
+			
+			// ERAN IFRAH - START
+			CollectingTemplateArgs = TRUE;
+			
+			if(ParentTempalateInitList->size) {
+				memset(ParentTempalateInitList->buffer, 0, ParentTempalateInitList->size);
+			}
+			ParentTempalateInitList->length = 0;
+			
+			vStringPut(ParentTempalateInitList, '<');
 			skipToMatch ("<>");
+			if(ParentTempalateInitList->length) {
+				inherit = (char*)malloc(ParentTempalateInitList->length+1);
+				memcpy(inherit, ParentTempalateInitList->buffer, ParentTempalateInitList->length);
+				inherit[ParentTempalateInitList->length] = 0;
+			}
+			
+			if(inherit) {
+				vStringCatS(parent->name, inherit);
+				free(inherit);
+			}
+			
+			vStringClear(ParentTempalateInitList);
+			
+			CollectingTemplateArgs = FALSE;
+			
+			// ERAN IFRAH - END
+		}
 		else if (isType (token, TOKEN_NAME))
 		{
 			addParentClass (st, parent);
@@ -1786,7 +1866,7 @@ static void processToken (tokenInfo *const token, statementInfo *const st)
 		case KEYWORD_THROWS:    discardTypeList (token);                break;
 		case KEYWORD_UNION:     st->declaration = DECL_UNION;           break;
 		case KEYWORD_UNSIGNED:  st->declaration = DECL_BASE;            break;
-		case KEYWORD_USING:     skipStatement (st);                     break;
+		case KEYWORD_USING:     skipStatement (st); reinitStatement(st, FALSE); break;
 		case KEYWORD_VOID:      st->declaration = DECL_BASE;            break;
 		case KEYWORD_VOLATILE:  st->declaration = DECL_BASE;            break;
 		case KEYWORD_VIRTUAL:   st->implementation = IMP_VIRTUAL;       break;
@@ -2620,8 +2700,35 @@ static void nextToken (statementInfo *const st)
 					Signature->length = 0;
 					vStringPut(Signature, '<');
 					processAngleBracket ();
+					vStringTerminate(Signature);
 					
 					vStringCat(prev->name, Signature);
+					/* clear the Signature global buffer */
+					if(Signature->size) {
+						memset(Signature->buffer, 0, Signature->size);
+					}
+					Signature->length = 0;
+					CollectingSignature = FALSE;
+				} else if(prev->type == TOKEN_NAME && prev->keyword == KEYWORD_NONE) {
+					
+					/* we found a template instantiation */
+					CollectingSignature = TRUE;
+					
+					/* Keep the template instantiation list */
+					/* clear the Signature global buffer */
+					if(Signature->size) {
+						memset(Signature->buffer, 0, Signature->size);
+					}
+					Signature->length = 0;
+					vStringPut(Signature, '<');
+					processAngleBracket ();
+					
+					vStringTerminate(Signature);
+					
+					/* store the template initiailzation */
+					vStringClear(prev->templateInitList);
+					vStringCat(prev->templateInitList, Signature);
+					
 					/* clear the Signature global buffer */
 					if(Signature->size) {
 						memset(Signature->buffer, 0, Signature->size);
@@ -2908,7 +3015,11 @@ static boolean findCTags (const unsigned int passCount)
 	Assert (passCount < 3);
 	cppInit ((boolean) (passCount > 1), isLanguage (Lang_csharp));
 	Signature = vStringNew ();
-
+	
+	// ERAN IFRAH - START
+	ParentTempalateInitList = vStringNew();
+	// ERAN IFRAH - END
+	
 	exception = (exception_t) setjmp (Exception);
 	retry = FALSE;
 	if (exception == ExceptionNone)
@@ -2923,7 +3034,11 @@ static boolean findCTags (const unsigned int passCount)
 					getInputFileName ());
 		}
 	}
+	
 	vStringDelete (Signature);
+	// ERAN IFRAH - START
+	vStringDelete (ParentTempalateInitList);
+	// ERAN IFRAH - END
 	cppTerminate ();
 	return retry;
 }

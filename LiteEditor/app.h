@@ -29,10 +29,10 @@
 class wxSplashScreen;
 class wxSingleInstanceChecker;
 
-class App : public wxApp
+class CodeLiteApp : public wxApp
 {
 	wxSplashScreen*          m_splash;
-	Frame *                  m_pMainFrame;
+	clMainFrame *                  m_pMainFrame;
 	wxSingleInstanceChecker *m_singleInstance;
 	wxArrayString            m_parserPaths;
 	bool                     m_loadPlugins;
@@ -47,8 +47,8 @@ private: // Methods
 #endif
 
 public:
-	App(void);
-	virtual ~App(void);
+	CodeLiteApp(void);
+	virtual ~CodeLiteApp(void);
 
 	void SetParserPaths(const wxArrayString& parserPaths) {
 		this->m_parserPaths = parserPaths;

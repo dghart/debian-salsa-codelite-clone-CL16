@@ -23,6 +23,7 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 #include "precompiled_header.h"
+#include <wx/wfstream.h>
 #include <wx/log.h>
 #include <wx/imaglist.h>
 #include <wx/xrc/xmlres.h>
@@ -48,6 +49,7 @@
 #include <wx/tokenzr.h>
 #include <set>
 #include <wx/fontmap.h>
+#include <wx/zipstrm.h>
 
 static wxString DoExpandAllVariables(const wxString &expression, Workspace *workspace, const wxString &projectName, const wxString &confToBuild, const wxString &fileName);
 
@@ -303,14 +305,27 @@ wxString DoExpandAllVariables(const wxString &expression, Workspace *workspace, 
 			project_name.Replace(wxT(" "), wxT("_"));
 
 			BuildConfigPtr bldConf = workspace->GetProjBuildConf(proj->GetName(), confToBuild);
-			output.Replace(wxT("$(ProjectPath)"), proj->GetFileName().GetPath(wxPATH_GET_VOLUME|wxPATH_GET_SEPARATOR));
+			output.Replace(wxT("$(ProjectPath)"),   proj->GetFileName().GetPath(wxPATH_GET_VOLUME|wxPATH_GET_SEPARATOR));
 			output.Replace(wxT("$(WorkspacePath)"), workspace->GetWorkspaceFileName().GetPath(wxPATH_GET_VOLUME|wxPATH_GET_SEPARATOR));
-			output.Replace(wxT("$(ProjectName)"), project_name);
+			output.Replace(wxT("$(ProjectName)"),   project_name);
+
 			if (bldConf) {
-				output.Replace(wxT("$(IntermediateDirectory)"), bldConf->GetIntermediateDirectory());
 				output.Replace(wxT("$(ConfigurationName)"), bldConf->GetName());
-				output.Replace(wxT("$(OutDir)"), bldConf->GetIntermediateDirectory());
+
+				// the IntermediateDirectory variable is special, since it can contains
+				// other variables in it.
+				wxString id(bldConf->GetIntermediateDirectory());
+
+				// Substitute all macros from $(IntermediateDirectory)
+				id.Replace(wxT("$(ProjectPath)"),       proj->GetFileName().GetPath(wxPATH_GET_VOLUME|wxPATH_GET_SEPARATOR));
+				id.Replace(wxT("$(WorkspacePath)"),     workspace->GetWorkspaceFileName().GetPath(wxPATH_GET_VOLUME|wxPATH_GET_SEPARATOR));
+				id.Replace(wxT("$(ProjectName)"),       project_name);
+				id.Replace(wxT("$(ConfigurationName)"), bldConf->GetName());
+
+				output.Replace(wxT("$(IntermediateDirectory)"), id);
+				output.Replace(wxT("$(OutDir)"),                id);
 			}
+
 			if(output.Find(wxT("$(ProjectFiles)")) != wxNOT_FOUND)
 				output.Replace(wxT("$(ProjectFiles)"),   proj->GetFiles());
 
@@ -702,4 +717,34 @@ bool IsCppKeyword(const wxString& word)
 	}
 
 	return words.find(word) != words.end();
+}
+
+bool ExtractFileFromZip(const wxString& zipPath, const wxString& filename, const wxString& targetDir, wxString &targetFileName) {
+	wxZipEntry *       entry(NULL);
+	wxFFileInputStream in(zipPath);
+	wxZipInputStream   zip(in);
+
+	wxString lowerCaseName(filename);
+	lowerCaseName.MakeLower();
+
+	entry = zip.GetNextEntry();
+	while ( entry ) {
+		wxString name = entry->GetName();
+		name.MakeLower();
+		name.Replace(wxT("\\"), wxT("/"));
+
+		if (name == lowerCaseName) {
+			name.Replace(wxT("/"), wxT("_"));
+			targetFileName = wxString::Format(_("%s/%s"), targetDir.c_str(), name.c_str());
+			wxFFileOutputStream out(targetFileName);
+			zip.Read(out);
+			out.Close();
+			delete entry;
+			return true;
+		}
+
+		delete entry;
+		entry = zip.GetNextEntry();
+	}
+	return false;
 }

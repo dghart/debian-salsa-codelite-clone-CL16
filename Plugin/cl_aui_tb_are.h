@@ -17,6 +17,7 @@ public:
 	CLMainAuiTBArt();
 	virtual ~CLMainAuiTBArt();
 
+    virtual void DrawGripper( wxDC& dc, wxWindow* wnd, const wxRect& rect);
 	virtual void DrawBackground(wxDC& dc, wxWindow* wnd, const wxRect& rect);
 };
 #endif

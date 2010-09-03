@@ -34,6 +34,7 @@
 #include <wx/xml/xml.h>
 #include "wx_xml_compatibility.h"
 #include "editor_config.h"
+#include "pluginmanager.h"
 #include "frame.h"
 #include "tabgroupmanager.h"
 #include "tabgroupspane.h"
@@ -101,22 +102,23 @@ TabgroupsPane::TabgroupsPane(wxWindow* parent, const wxString& caption) : wxPane
 	// Add icons to the tree
 	wxImageList *imgList = new wxImageList(16, 16, true);
 
-	imgList->Add(wxXmlResource::Get()->LoadBitmap(wxT("document_root")));       //0
-	imgList->Add(wxXmlResource::Get()->LoadBitmap(wxT("folder")));              //1
-	imgList->Add(wxXmlResource::Get()->LoadBitmap(wxT("page_white_text")));     //2
-	imgList->Add(wxXmlResource::Get()->LoadBitmap(wxT("page_white_cplusplus")));//3
-	imgList->Add(wxXmlResource::Get()->LoadBitmap(wxT("page_white_c")));        //4
-	imgList->Add(wxXmlResource::Get()->LoadBitmap(wxT("page_white_h")));        //5
-	imgList->Add(wxXmlResource::Get()->LoadBitmap(wxT("executable")));          //6
-	imgList->Add(wxXmlResource::Get()->LoadBitmap(wxT("file_php")));            //7
-	imgList->Add(wxXmlResource::Get()->LoadBitmap(wxT("shared_library")));      //8
-	imgList->Add(wxXmlResource::Get()->LoadBitmap(wxT("pixmap")));              //9
-	imgList->Add(wxXmlResource::Get()->LoadBitmap(wxT("shellscript")));         //10
-	imgList->Add(wxXmlResource::Get()->LoadBitmap(wxT("compressed_file")));     //11
-	imgList->Add(wxXmlResource::Get()->LoadBitmap(wxT("file_xml")));            //12
-	imgList->Add(wxXmlResource::Get()->LoadBitmap(wxT("file_html")));           //13
-	imgList->Add(wxXmlResource::Get()->LoadBitmap(wxT("makefile")));            //14
-	imgList->Add(wxXmlResource::Get()->LoadBitmap(wxT("formbuilder")));         //15
+	BitmapLoader *bmpLoader = PluginManager::Get()->GetStdIcons();
+	imgList->Add(bmpLoader->LoadBitmap(wxT("mime/16/hard_disk")));   //0
+	imgList->Add(bmpLoader->LoadBitmap(wxT("mime/16/folder")));      //1
+	imgList->Add(bmpLoader->LoadBitmap(wxT("mime/16/text")));        //2
+	imgList->Add(bmpLoader->LoadBitmap(wxT("mime/16/cpp")));         //3
+	imgList->Add(bmpLoader->LoadBitmap(wxT("mime/16/c")));           //4
+	imgList->Add(bmpLoader->LoadBitmap(wxT("mime/16/h")));           //5
+	imgList->Add(bmpLoader->LoadBitmap(wxT("mime/16/exe")));         //6
+	imgList->Add(bmpLoader->LoadBitmap(wxT("mime/16/php")));         //7
+	imgList->Add(bmpLoader->LoadBitmap(wxT("mime/16/dll")));         //8
+	imgList->Add(bmpLoader->LoadBitmap(wxT("mime/16/bmp")));         //9
+	imgList->Add(bmpLoader->LoadBitmap(wxT("mime/16/script")));      //10
+	imgList->Add(bmpLoader->LoadBitmap(wxT("mime/16/zip")));         //11
+	imgList->Add(bmpLoader->LoadBitmap(wxT("mime/16/xml")));         //12
+	imgList->Add(bmpLoader->LoadBitmap(wxT("mime/16/html")));        //13
+	imgList->Add(bmpLoader->LoadBitmap(wxT("mime/16/makefile")));    //14
+	imgList->Add(bmpLoader->LoadBitmap(wxT("mime/16/wxfb")));        //15
 
 	m_tree->AssignImageList( imgList );
 	sz->Add(m_tree, 1, wxEXPAND);
@@ -225,7 +227,7 @@ void TabgroupsPane::OnItemActivated(wxTreeEvent& event) {
 		}
 
 		std::vector<LEditor*> editors;
-		Frame::Get()->GetMainBook()->GetAllEditors(editors);
+		clMainFrame::Get()->GetMainBook()->GetAllEditors(editors);
 		if (editors.size() > 0) {
 			// If there are editors currently loaded, ask if they are to be replaced or added to
 			wxString msg(_("Do you want to replace the existing editors? (Say 'No' to load the new ones alongside)"));
@@ -234,14 +236,14 @@ void TabgroupsPane::OnItemActivated(wxTreeEvent& event) {
 				return;
 			}
 			if (ans == wxYES) {
-				Frame::Get()->GetMainBook()->CloseAll(true);
+				clMainFrame::Get()->GetMainBook()->CloseAll(true);
 			}
 		}
 
-		wxWindowUpdateLocker locker(Frame::Get());
+		wxWindowUpdateLocker locker(clMainFrame::Get());
 		TabGroupEntry session;
 		if (SessionManager::Get().FindSession(filepath.BeforeLast(wxT('.')), session, wxString(wxT(".tabgroup")), tabgroupTag) ) {
-			Frame::Get()->GetMainBook()->RestoreSession(session);
+			clMainFrame::Get()->GetMainBook()->RestoreSession(session);
 
 			// Remove any previous instance of this group from the history, then prepend it and save
 			int index = previousgroups.Index(filepath);
@@ -259,7 +261,7 @@ void TabgroupsPane::OnItemActivated(wxTreeEvent& event) {
 			return;
 		}
 
-		Frame::Get()->GetMainBook()->OpenFile(filepath);
+		clMainFrame::Get()->GetMainBook()->OpenFile(filepath);
 	}
 }
 
@@ -369,7 +371,7 @@ void TabgroupsPane::OnEndLabelEdit(wxTreeEvent& event) {
 	// If we're here, the event won't be vetoed, so the tree shows the new name
 	// Update the file system correspondingly
 	if (wxRenameFile(oldfilepath.GetFullPath(), newfilepath.GetFullPath(), true)) {
-		Frame::Get()->SetStatusMessage(_("Tabgroup renamed"), 0);
+		clMainFrame::Get()->SetStatusMessage(_("Tabgroup renamed"), 0);
 		return;
 	}
 }
@@ -537,7 +539,7 @@ void TabgroupsPane::PasteTabgroupItem(wxTreeItemId itemtopaste /*= wxTreeItemId(
 			}
 		}
 
-		Frame::Get()->SetStatusMessage(_("Tabgroup item pasted"), 0);
+		clMainFrame::Get()->SetStatusMessage(_("Tabgroup item pasted"), 0);
 	}
 }
 
@@ -572,7 +574,7 @@ void TabgroupsPane::DeleteTabgroup() {
 
 		wxRemoveFile(filepath);
 
-		Frame::Get()->SetStatusMessage(_("Tabgroup deleted"), 0);
+		clMainFrame::Get()->SetStatusMessage(_("Tabgroup deleted"), 0);
 	}
 }
 
@@ -604,7 +606,7 @@ void TabgroupsPane::DuplicateTabgroup() {
 	}
 	// Do the rest in a separate method, which is also called by Frame::OnFileSaveTabGroup
 	if (AddNewTabgroupToTree(newfilepath.GetFullPath(), selection)) {
-		Frame::Get()->SetStatusMessage(_("Tabgroup duplicated"), 0);
+		clMainFrame::Get()->SetStatusMessage(_("Tabgroup duplicated"), 0);
 	}
 }
 
@@ -652,7 +654,7 @@ void TabgroupsPane::CopyTabgroupItem(wxTreeItemId itemtocopy /*= wxTreeItemId()*
 	delete m_node;
 	m_node =  new wxXmlNode(*node);
 	m_copieditem_filepath = itemfilepath;
-	Frame::Get()->SetStatusMessage(_("Tabgroup item copied"), 0);
+	clMainFrame::Get()->SetStatusMessage(_("Tabgroup item copied"), 0);
 }
 
 void TabgroupsPane::DeleteTabgroupItem(bool DoCut /*=false*/, wxTreeItemId itemtocut /*= wxTreeItemId()*/) {
@@ -691,9 +693,9 @@ void TabgroupsPane::DeleteTabgroupItem(bool DoCut /*=false*/, wxTreeItemId itemt
 				// If we're cutting, store the deleted node ready for paste
 				m_node = new wxXmlNode(*TabInfoNode);
 				m_copieditem_filepath = itemfilepath;
-				Frame::Get()->SetStatusMessage(_("Tabgroup item Cut"), 0);
+				clMainFrame::Get()->SetStatusMessage(_("Tabgroup item Cut"), 0);
 			} else {
-				Frame::Get()->SetStatusMessage(_("Tabgroup item deleted"), 0);
+				clMainFrame::Get()->SetStatusMessage(_("Tabgroup item deleted"), 0);
 			}
 			return;
 		}

@@ -26,6 +26,7 @@
 #include "stringsearcher.h"
 #include "stringsearcher.h"
 #include "cl_editor.h"
+#include "pluginmanager.h"
 
 #include "cpp_symbol_tree.h"
 #include "manager.h"
@@ -44,39 +45,23 @@ wxImageList* CreateSymbolTreeImages()
 {
 	wxImageList *images = new wxImageList(16, 16, true);
 
-	images->Add(wxXmlResource::Get()->LoadBitmap(_T("project")));		   // 0
-	images->Add(wxXmlResource::Get()->LoadBitmap(_T("namespace")));	   // 1
-	images->Add(wxXmlResource::Get()->LoadBitmap(_T("globals")));		   // 2
-	images->Add(wxXmlResource::Get()->LoadBitmap(_T("class")));		   // 3
-	images->Add(wxXmlResource::Get()->LoadBitmap(_T("struct")));		   // 4
-	images->Add(wxXmlResource::Get()->LoadBitmap(_T("func_public")));	   // 5
-	images->Add(wxXmlResource::Get()->LoadBitmap(_T("func_protected")));  // 6
-	images->Add(wxXmlResource::Get()->LoadBitmap(_T("func_private")));	   // 7
-	images->Add(wxXmlResource::Get()->LoadBitmap(_T("member_public")));   // 8
-	images->Add(wxXmlResource::Get()->LoadBitmap(_T("member_protected")));// 9
-	images->Add(wxXmlResource::Get()->LoadBitmap(_T("member_private")));  // 10
-
-	wxBitmap bmp;
-
-	// typedef
-	bmp = wxXmlResource::Get()->LoadBitmap(_T("typedef"));				   // 11
-	bmp.SetMask(new wxMask(bmp, wxColor(0, 128, 128)));
-	images->Add(bmp);
-
-	// macro (same icon as typedef)
-	bmp = wxXmlResource::Get()->LoadBitmap(_T("typedef"));				   // 12
-	bmp.SetMask(new wxMask(bmp, wxColor(0, 128, 128)));
-	images->Add(bmp);
-
-	bmp = wxXmlResource::Get()->LoadBitmap(_T("enum"));				   // 13
-	bmp.SetMask(new wxMask(bmp, wxColor(0, 128, 128)));
-	images->Add(bmp);
-
-	bmp = wxXmlResource::Get()->LoadBitmap(wxT("enumerator"));			//14
-	images->Add(bmp);
-
-	bmp = wxXmlResource::Get()->LoadBitmap(wxT("class_view"));			//15
-	images->Add(bmp);
+	BitmapLoader *bmpLoader = PluginManager::Get()->GetStdIcons();
+	images->Add(bmpLoader->LoadBitmap(wxT("mime/16/cpp")));               // 0
+	images->Add(bmpLoader->LoadBitmap(wxT("cc/16/namespace")));           // 1
+	images->Add(bmpLoader->LoadBitmap(wxT("cc/16/globals")));             // 2
+	images->Add(bmpLoader->LoadBitmap(wxT("cc/16/class")));               // 3
+	images->Add(bmpLoader->LoadBitmap(wxT("cc/16/struct")));              // 4
+	images->Add(bmpLoader->LoadBitmap(wxT("cc/16/function_public")));     // 5
+	images->Add(bmpLoader->LoadBitmap(wxT("cc/16/function_protected")));  // 6
+	images->Add(bmpLoader->LoadBitmap(wxT("cc/16/function_private")));    // 7
+	images->Add(bmpLoader->LoadBitmap(wxT("cc/16/member_public")));       // 8
+	images->Add(bmpLoader->LoadBitmap(wxT("cc/16/member_protected")));    // 9
+	images->Add(bmpLoader->LoadBitmap(wxT("cc/16/member_private")));      // 10
+	images->Add(bmpLoader->LoadBitmap(wxT("cc/16/typedef")));             // 11
+	images->Add(bmpLoader->LoadBitmap(wxT("cc/16/macro")));               // 12
+	images->Add(bmpLoader->LoadBitmap(wxT("cc/16/enum")));                // 13
+	images->Add(bmpLoader->LoadBitmap(wxT("cc/16/enumerator")));          // 14
+	images->Add(bmpLoader->LoadBitmap(wxT("mime/16/cpp")));               // 15
 	return images;
 }
 
@@ -153,9 +138,9 @@ bool CppSymbolTree::DoItemActivated(wxTreeItemId item, wxEvent &event, bool noti
     int      lineno  = itemData->GetLine();
 
 	// Open the file and set the cursor to line number
-	if(Frame::Get()->GetMainBook()->OpenFile(filename, project, lineno-1)) {
+	if(clMainFrame::Get()->GetMainBook()->OpenFile(filename, project, lineno-1)) {
 		// get the editor, and search for the pattern in the file
-		LEditor *editor = Frame::Get()->GetMainBook()->GetActiveEditor();
+		LEditor *editor = clMainFrame::Get()->GetMainBook()->GetActiveEditor();
 		if (editor) {
 			FindAndSelect(editor, pattern, GetItemText(item));
 		}

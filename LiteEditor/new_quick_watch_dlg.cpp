@@ -251,9 +251,9 @@ void DisplayVariableDlg::ShowDialog(bool center)
 		wxDialog::Show();
 	}
 
-	LEditor *editor = Frame::Get()->GetMainBook()->GetActiveEditor();
+	LEditor *editor = clMainFrame::Get()->GetMainBook()->GetActiveEditor();
 	if(editor) {
-		Frame::Get()->Raise();
+		clMainFrame::Get()->Raise();
 		editor->SetFocus();
 		editor->SetActive();
 	}
@@ -306,7 +306,11 @@ void DisplayVariableDlg::OnTimer(wxTimerEvent& e)
 		// This is to fix a 'MouseCapture' bug on Linux while leaving the mouse Window
 		// and mouse button is clicked and scrolling the scrollbar (H or Vertical)
 		// The UI hangs
+#if wxVERSION_NUMBER < 2900
 		if (state.LeftDown()) {
+#else
+		if (state.LeftIsDown()) {
+#endif
 			// Don't Hide, just restart the timer
 			m_timer->Start(500, true);
 			return;
@@ -400,9 +404,9 @@ void DisplayVariableDlg::OnMenuSelection(wxCommandEvent& e)
 	if (item.IsOk() && !IsFakeItem(item)) {
 		if (e.GetId() == XRCID("tip_add_watch")) {
 			wxString fullpath = DoGetItemPath(item);
-			Frame::Get()->GetDebuggerPane()->GetWatchesTable()->AddExpression(fullpath);
-			Frame::Get()->GetDebuggerPane()->SelectTab(DebuggerPane::WATCHES);
-			Frame::Get()->GetDebuggerPane()->GetWatchesTable()->RefreshValues();
+			clMainFrame::Get()->GetDebuggerPane()->GetWatchesTable()->AddExpression(fullpath);
+			clMainFrame::Get()->GetDebuggerPane()->SelectTab(DebuggerPane::WATCHES);
+			clMainFrame::Get()->GetDebuggerPane()->GetWatchesTable()->RefreshValues();
 
 		} else if (e.GetId() == XRCID("tip_copy_value")) {
 			wxString itemText = m_treeCtrl->GetItemText(item);

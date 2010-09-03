@@ -29,6 +29,7 @@
 #include "pluginmanager.h"
 #include "workspacesettingsdlg.h"
 #include "importfilesdialog.h"
+#include "bitmap_loader.h"
 #include "fileview.h"
 #include "frame.h"
 #include "nameanddescdlg.h"
@@ -114,8 +115,8 @@ void FileViewTree::ConnectEvents()
 	Connect( XRCID( "clean_project" ), wxEVT_UPDATE_UI, wxUpdateUIEventHandler( FileViewTree::OnBuildInProgress ), NULL, this );
 	Connect( XRCID( "build_project" ), wxEVT_UPDATE_UI, wxUpdateUIEventHandler( FileViewTree::OnBuildInProgress ), NULL, this );
 	Connect( XRCID( "rebuild_project" ), wxEVT_UPDATE_UI, wxUpdateUIEventHandler( FileViewTree::OnBuildInProgress ), NULL, this );
-	Connect( XRCID( "retag_project" ), wxEVT_UPDATE_UI, wxUpdateUIEventHandler( FileViewTree::OnBuildInProgress ), NULL, this );
-	Connect( XRCID( "retag_workspace" ), wxEVT_UPDATE_UI, wxUpdateUIEventHandler( FileViewTree::OnBuildInProgress ), NULL, this );
+	Connect( XRCID( "retag_project" ), wxEVT_UPDATE_UI, wxUpdateUIEventHandler( FileViewTree::OnRetagInProgressUI ), NULL, this );
+	Connect( XRCID( "retag_workspace" ), wxEVT_UPDATE_UI, wxUpdateUIEventHandler( FileViewTree::OnRetagInProgressUI ), NULL, this );
 	Connect( XRCID( "build_project_only" ), wxEVT_UPDATE_UI, wxUpdateUIEventHandler( FileViewTree::OnBuildInProgress ), NULL, this );
 	Connect( XRCID( "clean_project_only" ), wxEVT_UPDATE_UI, wxUpdateUIEventHandler( FileViewTree::OnBuildInProgress ), NULL, this );
 	Connect( XRCID( "rebuild_project_only" ), wxEVT_UPDATE_UI, wxUpdateUIEventHandler( FileViewTree::OnBuildInProgress ), NULL, this );
@@ -137,16 +138,17 @@ FileViewTree::FileViewTree( wxWindow *parent, const wxWindowID id, const wxPoint
 	Create( parent, id, pos, size, style );
 
 	// Initialise images map
+	BitmapLoader *bmpLoader = PluginManager::Get()->GetStdIcons();
 	wxImageList *images = new wxImageList( 16, 16, true );
-	images->Add( wxXmlResource::Get()->LoadBitmap( wxT( "project" ) ) );              //0
-	images->Add( wxXmlResource::Get()->LoadBitmap( wxT( "folder" ) ) );               //1
-	images->Add( wxXmlResource::Get()->LoadBitmap( wxT( "page_white_c" ) ) );         //2
-	images->Add( wxXmlResource::Get()->LoadBitmap( wxT( "page_white_cplusplus" ) ) ); //3
-	images->Add( wxXmlResource::Get()->LoadBitmap( wxT( "page_white_h" ) ) );         //4
-	images->Add( wxXmlResource::Get()->LoadBitmap( wxT( "page_white_text" ) ) );      //5
-	images->Add( wxXmlResource::Get()->LoadBitmap( wxT( "workspace" ) ) );            //6
-	images->Add( wxXmlResource::Get()->LoadBitmap( wxT( "formbuilder" ) ) );          //7
-	images->Add( wxXmlResource::Get()->LoadBitmap( wxT( "active_project" ) ) );       //8
+	images->Add( bmpLoader->LoadBitmap(wxT("workspace/16/project")) );        //0
+	images->Add( bmpLoader->LoadBitmap(wxT("mime/16/folder")) );              //1
+	images->Add( bmpLoader->LoadBitmap(wxT("mime/16/c")));                    //2
+	images->Add( bmpLoader->LoadBitmap(wxT("mime/16/cpp")));                  //3
+	images->Add( bmpLoader->LoadBitmap(wxT("mime/16/h")) );                   //4
+	images->Add( bmpLoader->LoadBitmap(wxT("mime/16/text")) );                //5
+	images->Add( bmpLoader->LoadBitmap(wxT("workspace/16/workspace")) );      //6
+	images->Add( bmpLoader->LoadBitmap(wxT("mime/16/wxfb")) );                //7
+	images->Add( bmpLoader->LoadBitmap(wxT("workspace/16/project_active")) ); //8
 
 	AssignImageList( images );
 
@@ -388,7 +390,7 @@ void FileViewTree::PopupContextMenu( wxMenu *menu, MenuType type, const wxString
 				for (; iter != targets.end(); iter++) {
 					item = new wxMenuItem(customTargetsMenu, wxXmlResource::GetXRCID(iter->first.c_str()), iter->first, wxEmptyString, wxITEM_NORMAL);
 					customTargetsMenu->Append(item);
-					Frame::Get()->Connect(wxXmlResource::GetXRCID(iter->first.c_str()), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(Frame::OnBuildCustomTarget));
+					clMainFrame::Get()->Connect(wxXmlResource::GetXRCID(iter->first.c_str()), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(clMainFrame::OnBuildCustomTarget));
 				}
 
 				// iterator over the menu items and search for 'Project Only' target
@@ -432,7 +434,7 @@ void FileViewTree::PopupContextMenu( wxMenu *menu, MenuType type, const wxString
 		// disconnect events
 		std::map<wxString, wxString>::iterator iter = targets.begin();
 		for (; iter != targets.end(); iter++) {
-			Frame::Get()->Disconnect(wxXmlResource::GetXRCID(iter->first.c_str()), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(Frame::OnBuildCustomTarget));
+			clMainFrame::Get()->Disconnect(wxXmlResource::GetXRCID(iter->first.c_str()), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(clMainFrame::OnBuildCustomTarget));
 		}
 	}
 }
@@ -542,7 +544,7 @@ void FileViewTree::DoItemActivated( wxTreeItemId &item, wxEvent &event )
 		if (SendCmdEvent(wxEVT_TREE_ITEM_FILE_ACTIVATED, &file_path)) {
 			return;
 		}
-		Frame::Get()->GetMainBook()->OpenFile( fn.GetFullPath(), project, -1 );
+		clMainFrame::Get()->GetMainBook()->OpenFile( fn.GetFullPath(), project, -1 );
 
 	} else if ( itemData->GetData().GetKind() == ProjectItem::TypeProject ) {
 		// make it active
@@ -757,7 +759,7 @@ void FileViewTree::OnNewItem( wxCommandEvent & WXUNUSED( event ) )
 	wxString projName = path.BeforeFirst( wxT( ':' ) );
 	wxString projCwd = ManagerST::Get()->GetProjectCwd( projName );
 
-	NewItemDlg dlg(Frame::Get(), projCwd);
+	NewItemDlg dlg(clMainFrame::Get(), projCwd);
 	dlg.SetTitle(_("New Item"));
 	if ( dlg.ShowModal() == wxID_OK ) {
 		DoAddNewItem(item, dlg.GetFileName().GetFullPath(), path);
@@ -977,7 +979,7 @@ void FileViewTree::OnLocalPrefs( wxCommandEvent& event )
 		EditorSettingsLocal dlg(higherOptions, lwsnode, pLevel_workspace, this);
 		if (dlg.ShowModal() == wxID_OK &&
 		    LocalWorkspaceST::Get()->SetWorkspaceOptions(dlg.GetLocalOpts()) ) {
-			Frame::Get()->GetMainBook()->ApplySettingsChanges();
+			clMainFrame::Get()->GetMainBook()->ApplySettingsChanges();
 			// Notify plugins that some settings have changed
 			PostCmdEvent( wxEVT_EDITOR_SETTINGS_CHANGED );
 		}
@@ -998,7 +1000,7 @@ void FileViewTree::OnLocalPrefs( wxCommandEvent& event )
 	EditorSettingsLocal dlg(higherOptions, lpnode, pLevel_project, this);
 	if (dlg.ShowModal() == wxID_OK &&
 	    LocalWorkspaceST::Get()->SetProjectOptions(dlg.GetLocalOpts(), GetItemText(item)) ) {
-		Frame::Get()->GetMainBook()->ApplySettingsChanges();
+		clMainFrame::Get()->GetMainBook()->ApplySettingsChanges();
 		// Notify plugins that some settings have changed
 		PostCmdEvent( wxEVT_EDITOR_SETTINGS_CHANGED );
 	}
@@ -1018,7 +1020,7 @@ void FileViewTree::OnProjectProperties( wxCommandEvent & WXUNUSED( event ) )
 	//open the project properties dialog
 	BuildMatrixPtr matrix = ManagerST::Get()->GetWorkspaceBuildMatrix();
 	//find the project configuration name that matches the workspace selected configuration
-	ProjectSettingsDlg *dlg = new ProjectSettingsDlg( Frame::Get(), matrix->GetProjectSelectedConf( matrix->GetSelectedConfigurationName(), projectName ),
+	ProjectSettingsDlg *dlg = new ProjectSettingsDlg( clMainFrame::Get(), matrix->GetProjectSelectedConf( matrix->GetSelectedConfigurationName(), projectName ),
 	        projectName,
 	        title );
 	dlg->ShowModal();
@@ -1075,7 +1077,7 @@ void FileViewTree::OnSaveAsTemplate( wxCommandEvent & WXUNUSED( event ) )
 		wxString name = GetItemText( item );
 		ProjectPtr proj = ManagerST::Get()->GetProject( name );
 		if ( proj ) {
-			NameAndDescDlg dlg(Frame::Get(), PluginManager::Get(), name);
+			NameAndDescDlg dlg(clMainFrame::Get(), PluginManager::Get(), name);
 			if ( dlg.ShowModal() == wxID_OK ) {
 				wxString newName = dlg.GetName();
 				wxString desc  	 = dlg.GetDescription();
@@ -1102,7 +1104,7 @@ void FileViewTree::OnBuildOrder( wxCommandEvent &event )
 	wxUnusedVar( event );
 	wxTreeItemId item = GetSingleSelection();
 	if ( item.IsOk() ) {
-		DependenciesDlg dlg ( Frame::Get(), GetItemText( item ) );
+		DependenciesDlg dlg ( clMainFrame::Get(), GetItemText( item ) );
 		dlg.ShowModal();
 	}
 }
@@ -1489,7 +1491,7 @@ void FileViewTree::OnImportDirectory(wxCommandEvent &e)
 	wxArrayString     files;
 	wxArrayString     all_files;
 	wxString          filespec;
-	ImportFilesDialog dlg(Frame::Get());
+	ImportFilesDialog dlg(clMainFrame::Get());
 
 	if(dlg.ShowModal() != wxID_OK) {
 		return;
@@ -1733,7 +1735,29 @@ void FileViewTree::OnReBuild(wxCommandEvent& event)
 	wxTreeItemId item = GetSingleSelection();
 	if ( item.IsOk() ) {
 		wxString projectName = GetItemText( item );
-		Frame::Get()->RebuildProject( projectName );
+
+		wxString conf;
+		// get the selected configuration to be built
+		BuildConfigPtr bldConf = WorkspaceST::Get()->GetProjBuildConf(projectName, wxEmptyString);
+		if (bldConf) {
+			conf = bldConf->GetName();
+		}
+
+		// Custom build supports the 'Rebuild' target
+		if(bldConf && bldConf->IsCustomBuild()){
+			QueueCommand buildInfo(projectName, conf, false, QueueCommand::ReBuild);
+			if (bldConf && bldConf->IsCustomBuild()) {
+				buildInfo.SetKind(QueueCommand::CustomBuild);
+				buildInfo.SetCustomBuildTarget(wxT("Rebuild"));
+			}
+
+			ManagerST::Get()->PushQueueCommand(buildInfo);
+			ManagerST::Get()->ProcessCommandQueue();
+
+		} else {
+			clMainFrame::Get()->RebuildProject( projectName );
+
+		}
 	}
 }
 
@@ -1851,17 +1875,22 @@ void FileViewTree::OnRebuildProjectOnly(wxCommandEvent& event)
 void FileViewTree::OnLocalWorkspaceSettings(wxCommandEvent& e)
 {
 	bool retagRequires;
-	WorkspaceSettingsDlg dlg(Frame::Get(), LocalWorkspaceST::Get());
+	WorkspaceSettingsDlg dlg(clMainFrame::Get(), LocalWorkspaceST::Get());
 	if(dlg.ShowModal() == wxID_OK) {
 
-		Frame::Get()->SetEnvStatusMessage();
+		clMainFrame::Get()->SetEnvStatusMessage();
 		// Update the new paths
 		retagRequires = ManagerST::Get()->UpdateParserPaths();
 
 		// send notification to the main frame to perform retag
 		if ( retagRequires ) {
 			wxCommandEvent event( wxEVT_COMMAND_MENU_SELECTED, XRCID("retag_workspace") );
-			Frame::Get()->GetEventHandler()->AddPendingEvent( event );
+			clMainFrame::Get()->GetEventHandler()->AddPendingEvent( event );
 		}
 	}
+}
+
+void FileViewTree::OnRetagInProgressUI(wxUpdateUIEvent& event)
+{
+	event.Enable( !ManagerST::Get()->GetRetagInProgress() );
 }

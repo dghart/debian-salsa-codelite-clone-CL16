@@ -31,6 +31,9 @@
 #include <map>
 #include "smart_ptr.h"
 
+class TagEntry;
+typedef SmartPtr<TagEntry> TagEntryPtr;
+
 /**
  * TagEntry is a persistent object which is capable of storing and loading itself from
  * various inputs:
@@ -139,12 +142,12 @@ public:
 	 * @brief return true if this tag represents a destructor
 	 */
 	bool IsDestructor() const;
-	
+
 	/**
 	 * @brief return true of the this tag is a function or prototype
 	 */
 	bool IsMethod() const;
-	
+
 	bool IsFunction() const;
 	bool IsPrototype() const;
 	bool IsMacro() const;
@@ -152,7 +155,7 @@ public:
 	bool IsStruct() const;
 	bool IsScopeGlobal() const;
 	bool IsTypedef() const;
-	
+
 	//------------------------------------------
 	// Operations
 	//------------------------------------------
@@ -194,12 +197,15 @@ public:
 	void SetInherits ( const wxString &inherits ) { m_extFields[_T("inherits")] = inherits; }
 	void SetTyperef  ( const wxString &typeref  ) { m_extFields[_T("typeref")]   = typeref; }
 
-	wxString GetInherits() const { return GetExtField(_T("inherits")); }
+	wxString GetInheritsAsString                  () const;
+	wxArrayString GetInheritsAsArrayNoTemplates   () const;
+	wxArrayString GetInheritsAsArrayWithTemplates () const;
+
 	wxString GetTyperef() const { return GetExtField(_T("typeref")); }
-	
+
 	void     SetReturnValue(const wxString &retVal  ) { m_extFields[_T("returns")]   = retVal; }
 	wxString GetReturnValue() const;
-	
+
 	const wxString &GetScope() const {return m_scope;}
 	void SetScope(const wxString &scope){m_scope = scope;}
 
@@ -256,6 +262,8 @@ public:
 	//------------------------------------------
 	void Print();
 
+	TagEntryPtr ReplaceSimpleMacro();
+
 private:
 	/**
 	 * Update the path with full path (e.g. namespace::class)
@@ -265,5 +273,4 @@ private:
 	bool TypedefFromPattern(const wxString &tagPattern, const wxString &typedefName, wxString &name, wxString &templateInit);
 };
 
-typedef SmartPtr<TagEntry> TagEntryPtr;
 #endif // CODELITE_ENTRY_H
