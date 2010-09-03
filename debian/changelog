@@ -1,3 +1,16 @@
+codelite (2.7.0.4375~dfsg-1) experimental; urgency=low
+
+  * Set upstream's tarball compression to bzip2.
+  * New upstream bugfix release:
+    - Many bugfixes.
+    - Code completion enhancements.
+    - New refactoring feature: Rename Local Variable.
+  * Refresh patches.
+  * Add description to to debian/patches/04_configure.patch patch,
+    as per DEP-3.
+
+ -- Alessio Treglia <alessio@debian.org>  Fri, 03 Sep 2010 19:00:39 +0200
+
 codelite (2.6.0.4189~dfsg-1) unstable; urgency=low
 
   * New upstream release.
