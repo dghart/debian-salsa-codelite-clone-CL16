@@ -1,3 +1,10 @@
+codelite (2.7.0.4375~dfsg-2) experimental; urgency=low
+
+  * Fix CodeLite/unixprocess_impl.cpp, codelite_kill_children is located
+    in /usr/lib/codelite/.
+
+ -- Alessio Treglia <alessio@debian.org>  Sat, 04 Sep 2010 12:58:18 +0200
+
 codelite (2.7.0.4375~dfsg-1) experimental; urgency=low
 
   * Set upstream's tarball compression to bzip2.
