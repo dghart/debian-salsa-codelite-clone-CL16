@@ -2,11 +2,12 @@ Origin: Ubuntu
 Bug-Ubuntu: https://bugs.launchpad.net/bugs/511375
 Description: Fix codelite_indexer path.
 ---
- LiteEditor/frame.cpp      |    2 +-
- LiteEditor/manager.cpp    |    2 +-
- Plugin/pipedprocess.cpp   |    3 +--
- cppchecker/cppchecker.cpp |    3 +--
- 4 files changed, 4 insertions(+), 6 deletions(-)
+ CodeLite/unixprocess_impl.cpp |    6 ++----
+ LiteEditor/frame.cpp          |    2 +-
+ LiteEditor/manager.cpp        |    2 +-
+ Plugin/pipedprocess.cpp       |    3 +--
+ cppchecker/cppchecker.cpp     |    3 +--
+ 5 files changed, 6 insertions(+), 10 deletions(-)
 
 --- codelite.orig/LiteEditor/manager.cpp
 +++ codelite/LiteEditor/manager.cpp
@@ -53,4 +54,26 @@ Description: Fix codelite_indexer path.
 +	path = wxStandardPaths::Get().GetPluginsDir();
  
  #endif
+ 
+--- codelite.orig/CodeLite/unixprocess_impl.cpp
++++ codelite/CodeLite/unixprocess_impl.cpp
+@@ -231,8 +231,7 @@ void UnixProcessImpl::Cleanup()
+ 	// Kill the child process
+ 	if ( IsAlive() ) {
+ 		wxString cmd;
+-		wxFileName exePath(wxStandardPaths::Get().GetExecutablePath());
+-		wxFileName script(exePath.GetPath(), wxT("codelite_kill_children "));
++		wxFileName script(wxStandardPaths::Get().GetPluginsDir(), wxT("codelite_kill_children "));
+ 		cmd << wxT("/bin/sh -f ") << script.GetFullPath();
+ 		cmd << GetPid();
+ 
+@@ -406,8 +405,7 @@ void UnixProcessImpl::Terminate()
+ 	// Kill the child process
+ 	if ( IsAlive() ) {
+ 		wxString cmd;
+-		wxFileName exePath(wxStandardPaths::Get().GetExecutablePath());
+-		wxFileName script(exePath.GetPath(), wxT("codelite_kill_children "));
++		wxFileName script(wxStandardPaths::Get().GetPluginsDir(), wxT("codelite_kill_children "));
+ 		cmd << wxT("/bin/sh -f ") << script.GetFullPath();
+ 		cmd << GetPid();
  
