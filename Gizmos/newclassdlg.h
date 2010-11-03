@@ -83,7 +83,7 @@ protected:
 	void OnButtonDeleteUI( wxUpdateUIEvent& event );
 	void OnListItemDeSelected(wxListEvent &e);
 	void OnButtonOK(wxCommandEvent &e);
-	void OnCheckEnterFileNameManually(wxCommandEvent &e);
+	void OnUseUnderscores(wxCommandEvent &e);
 	bool ValidateInput();
 	void OnTextEnter(wxCommandEvent &e);
 	void OnCheckImpleAllVirtualFunctions(wxCommandEvent &e);
@@ -91,6 +91,8 @@ protected:
 	void OnBrowseVD(wxCommandEvent &e);
 	void OnBrowseNamespace(wxCommandEvent &e);
 	void OnCheckInline(wxCommandEvent &e);
+
+	wxString doSpliteByCaptilization(const wxString &str);
 
 public:
 	/** Constructor */
@@ -100,7 +102,7 @@ public:
 	void GetNewClassInfo(NewClassInfo &info);
 
 	void GetInheritance(std::vector< ClassParentInfo > &inheritVec);
-	bool IsSingleton() {return m_checkBox6->GetValue();}
+	bool IsSingleton() {return m_checkBoxSingleton->GetValue();}
 	wxString GetClassName(){return m_textClassName->GetValue();}
 	wxString GetClassNamespace() const {return m_textCtrlNamespace->GetValue();}
 	wxString GetClassPath();

@@ -25,6 +25,7 @@
 #ifndef TAGS_OPTIONS_DATA_H
 #define TAGS_OPTIONS_DATA_H
 
+#include "codelite_exports.h"
 #include "serialized_object.h"
 #include "wx/filename.h"
 #include <map>
@@ -35,10 +36,12 @@ enum CodeCompletionOpts {
 	CC_DISP_TYPE_INFO                      = 0x00000004,
 	CC_DISP_FUNC_CALLTIP                   = 0x00000008,
 	CC_LOAD_EXT_DB                         = 0x00000010,
+	CC_AUTO_INSERT_SINGLE_CHOICE           = 0x00000020,
 	CC_PARSE_EXT_LESS_FILES                = 0x00000040,
 	CC_COLOUR_VARS                         = 0x00000080,
 	CC_COLOUR_WORKSPACE_TAGS               = 0x00000100,
 	CC_CPP_KEYWORD_ASISST                  = 0x00000200,
+	CC_WORD_ASSIST                         = 0x00000400,
 	CC_DISABLE_AUTO_PARSING                = 0x00000800,
 	CC_MARK_TAGS_FILES_IN_BOLD             = 0x00001000,
 	CC_RETAG_WORKSPACE_ON_STARTUP          = 0x00004000,
@@ -66,7 +69,7 @@ enum CodeCompletionColourOpts {
 	CC_COLOUR_ENUM | CC_COLOUR_PROTOTYPE
 };
 
-class TagsOptionsData : public SerializedObject
+class WXDLLIMPEXP_CL TagsOptionsData : public SerializedObject
 {
 	size_t                       m_ccFlags;
 	size_t                       m_ccColourFlags;

@@ -380,7 +380,7 @@ void SurfaceImpl::RoundedRectangle(PRectangle rc, ColourAllocated fore, ColourAl
 void SurfaceImpl::AlphaRectangle (PRectangle rc, int cornerSize, ColourAllocated fill, int alphaFill, ColourAllocated outline, int alphaOutline, int WXUNUSED(flags))
 {
 
-#ifdef wxHAVE_RAW_BITMAP
+#if defined(wxHAVE_RAW_BITMAP)
     int x, y;
     wxRect r = wxRectFromPRectangle(rc);
 	wxRect outlineRect (r);
@@ -388,8 +388,17 @@ void SurfaceImpl::AlphaRectangle (PRectangle rc, int cornerSize, ColourAllocated
     wxBitmap bmp(r.width, r.height, 32);
 	if(bmp.IsOk() == false)
 		return;
+	
+	ColourDesired cdo;
+#if wxVERSION_NUMBER >= 2900
+	{
+#endif
+
     wxAlphaPixelData pixData(bmp);
+#if wxVERSION_NUMBER <= 2900
     pixData.UseAlpha();
+#endif
+
 	wxAlphaPixelData::Iterator p(pixData);
 
     // Set the fill pixels
@@ -414,7 +423,7 @@ void SurfaceImpl::AlphaRectangle (PRectangle rc, int cornerSize, ColourAllocated
     }
 
     // Set the outline pixels
-    ColourDesired cdo(outline.AsLong());
+    cdo.Set(outline.AsLong());
     red   = cdo.GetRed();
     green = cdo.GetGreen();
     blue  = cdo.GetBlue();
@@ -451,6 +460,10 @@ void SurfaceImpl::AlphaRectangle (PRectangle rc, int cornerSize, ColourAllocated
 			p.Alpha() = alphaOutline;
 		}
     }
+
+#if wxVERSION_NUMBER >= 2900
+	}
+#endif
 
     // Draw the bitmap
 	if(bmp.IsOk())

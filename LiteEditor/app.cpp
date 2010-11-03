@@ -40,6 +40,7 @@
 
 #include "xmlutils.h"
 #include "editor_config.h"
+#include "wx_xml_compatibility.h"
 #include <wx/xrc/xmlres.h>
 #include <wx/sysopt.h>
 #include "manager.h"
@@ -63,7 +64,7 @@
 // Define the version string for this codelite
 //////////////////////////////////////////////
 extern wxChar *SvnRevision;
-wxString CODELITE_VERSION_STR = wxString::Format(wxT("v2.7.0.%s"), SvnRevision);
+wxString CODELITE_VERSION_STR = wxString::Format(wxT("v2.8.0.%s"), SvnRevision);
 
 #if defined(__WXMAC__)||defined(__WXGTK__)
 #include <signal.h> // sigprocmask
@@ -377,7 +378,7 @@ bool CodeLiteApp::OnInit()
 	// into one giant XRC file if you wanted, but then they become more
 	// diffcult to manage, and harder to reuse in later projects.
 	// The menubar
-	if (!wxXmlResource::Get()->Load(wxT("rc/menu.xrc")))
+	if (!wxXmlResource::Get()->Load( DoFindMenuFile(ManagerST::Get()->GetInstallDir(), wxT("2.0")) ) )
 		return false;
 
 	// keep the startup directory
@@ -526,7 +527,7 @@ bool CodeLiteApp::CopySettings(const wxString &destDir, wxString& installPath)
 	///////////////////////////////////////////////////////////////////////////////////////////
 	CopyDir(installPath + wxT("/templates/"), destDir + wxT("/templates/"));
 	massCopy  (installPath + wxT("/images/"), wxT("*.png"), destDir + wxT("/images/"));
-	wxCopyFile(installPath + wxT("/rc/menu.xrc"), destDir + wxT("/rc/menu.xrc"));
+	//wxCopyFile(installPath + wxT("/rc/menu.xrc"), destDir + wxT("/rc/menu.xrc"));
 	wxCopyFile(installPath + wxT("/index.html"), destDir + wxT("/index.html"));
 	wxCopyFile(installPath + wxT("/svnreport.html"), destDir + wxT("/svnreport.html"));
 	wxCopyFile(installPath + wxT("/astyle.sample"), destDir + wxT("/astyle.sample"));
@@ -747,3 +748,25 @@ void CodeLiteApp::MSWReadRegistry()
 	}
 #endif
 }
+
+wxString CodeLiteApp::DoFindMenuFile(const wxString& installDirectory, const wxString &requiredVersion)
+{
+	wxString defaultMenuFile = installDirectory + wxFileName::GetPathSeparator() + wxT("rc") + wxFileName::GetPathSeparator() + wxT("menu.xrc");
+	wxFileName menuFile(wxStandardPaths::Get().GetUserDataDir() + wxFileName::GetPathSeparator() + wxT("rc") + wxFileName::GetPathSeparator() + wxT("menu.xrc"));
+	if(menuFile.FileExists()) {
+		// if we find the user's file menu, check that it has the required version
+		{
+			wxLogNull noLog;
+			wxXmlDocument doc;
+			if(doc.Load(menuFile.GetFullPath())) {
+				wxString version = doc.GetRoot()->GetPropVal(wxT("version"), wxT("1.0"));
+				if(version != requiredVersion) {
+					return defaultMenuFile;
+				}
+			}
+		}
+		return menuFile.GetFullPath();
+	}
+	return defaultMenuFile;
+}
+

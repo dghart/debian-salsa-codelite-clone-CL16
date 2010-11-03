@@ -66,9 +66,34 @@ public:
  */
 class DbgCmdHandlerGetLine : public DbgCmdHandler
 {
+	DbgGdb*  m_gdb;
 public:
-	DbgCmdHandlerGetLine(IDebuggerObserver *observer) : DbgCmdHandler(observer) {}
-	virtual ~DbgCmdHandlerGetLine() {}
+	DbgCmdHandlerGetLine(IDebuggerObserver *observe, DbgGdb* gdbr)
+	: DbgCmdHandler(observe)
+	, m_gdb(gdbr)
+	{}
+
+	virtual ~DbgCmdHandlerGetLine()
+	{}
+
+	virtual bool ProcessOutput(const wxString &line);
+};
+
+/**
+ * @class DbgCmdHandlerStackInfo
+ * handles the -stack-info-frame command
+ */
+class DbgCmdHandlerStackDepth : public DbgCmdHandler
+{
+	DbgGdb*  m_gdb;
+public:
+	DbgCmdHandlerStackDepth(IDebuggerObserver *observe, DbgGdb* gdbr)
+	: DbgCmdHandler(observe)
+	, m_gdb(gdbr)
+	{}
+
+	virtual ~DbgCmdHandlerStackDepth()
+	{}
 
 	virtual bool ProcessOutput(const wxString &line);
 };
@@ -92,6 +117,7 @@ public:
 	{}
 	virtual ~DbgCmdHandlerAsyncCmd() {}
 
+	void UpdateGotControl(DebuggerReasons reason, const wxString &func);
 	virtual bool ProcessOutput(const wxString &line);
 };
 
@@ -309,7 +335,16 @@ public:
 			: DbgCmdHandler(observer)
 			, m_expression(expression)
 			, m_userReason(userReason)
-			, m_debugger(gdb) {}
+			, m_debugger(gdb)
+	{
+	}
+
+	/**
+	 * @brief we want to handle error ourselves
+	 */
+	virtual bool WantsErrors() const {
+		return true;
+	}
 
 	virtual ~DbgCmdCreateVarObj() {}
 
@@ -336,14 +371,13 @@ class DbgCmdEvalVarObj : public DbgCmdHandler
 {
 	wxString      m_variable;
 	int           m_userReason;
-	DisplayFormat m_displayFormat;
 
 public:
-	DbgCmdEvalVarObj(IDebuggerObserver *observer, const wxString &variable, DisplayFormat displayFormat, int userReason)
+	DbgCmdEvalVarObj(IDebuggerObserver *observer, const wxString &variable, int userReason)
 			: DbgCmdHandler  (observer)
 			, m_variable     (variable)
 			, m_userReason   ( userReason )
-			, m_displayFormat(displayFormat) {}
+	{}
 
 	virtual ~DbgCmdEvalVarObj() {}
 
@@ -364,5 +398,27 @@ public:
 	{}
 
 	virtual bool ProcessOutput(const wxString & line);
+};
+
+class DbgVarObjUpdate : public DbgCmdHandler
+{
+	wxString m_variableName;
+	DbgGdb * m_debugger;
+	int      m_userReason;
+
+public:
+	DbgVarObjUpdate(IDebuggerObserver *observer, DbgGdb *debugger, const wxString &name, int userReason)
+			: DbgCmdHandler  (observer)
+			, m_debugger(debugger)
+			, m_variableName(name)
+			, m_userReason(userReason)
+			{}
+
+	virtual ~DbgVarObjUpdate()
+	{}
+
+	virtual bool ProcessOutput(const wxString & line);
+	virtual bool WantsErrors() { return true; }
+
 };
 #endif //DBGCMD_H

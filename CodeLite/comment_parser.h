@@ -28,8 +28,9 @@
 
 #include <map>
 #include <string>
+#include "codelite_exports.h"
 
-class CommentParseResult {
+class WXDLLIMPEXP_CL CommentParseResult {
 private:
 	std::map<size_t, std::string> m_comments;
 	std::string                   m_filename;
@@ -66,7 +67,7 @@ public:
 	{
 		std::map<size_t, std::string>::const_iterator iter = m_comments.begin();
 		for(; iter != m_comments.end(); iter++) {
-			printf("Line   : %d\n", iter->first);
+			printf("Line   : %u\n", (unsigned int)iter->first);
 			printf("Comment:\n%s\n", iter->second.c_str());
 		}
 	}
@@ -88,6 +89,6 @@ public:
 	}
 };
 
-extern int ParseComments(const char* filePath, CommentParseResult &comments);
+extern WXDLLIMPEXP_CL int ParseComments(const char* filePath, CommentParseResult &comments);
 
 #endif

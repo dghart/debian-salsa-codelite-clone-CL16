@@ -57,6 +57,8 @@ OutputTabWindow::OutputTabWindow(wxWindow *parent, wxWindowID id, const wxString
 		, m_sci(NULL)
 		, m_outputScrolls(true)
 		, m_autoAppear(true)
+		, m_autoAppearErrors(false)
+		, m_errorsFirstLine(false)
 		, m_findBar(NULL)
 {
 	CreateGUIControls();
@@ -68,7 +70,10 @@ OutputTabWindow::OutputTabWindow(wxWindow *parent, wxWindowID id, const wxString
 
 OutputTabWindow::~OutputTabWindow()
 {
-}
+	wxTheApp->Disconnect(wxID_COPY,      wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(OutputTabWindow::OnEdit),   NULL, this);
+	wxTheApp->Disconnect(wxID_SELECTALL, wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(OutputTabWindow::OnEdit),   NULL, this);
+	wxTheApp->Disconnect(wxID_COPY,      wxEVT_UPDATE_UI, wxUpdateUIEventHandler(OutputTabWindow::OnEditUI), NULL, this);
+	wxTheApp->Disconnect(wxID_SELECTALL, wxEVT_UPDATE_UI, wxUpdateUIEventHandler(OutputTabWindow::OnEditUI), NULL, this);}
 
 void OutputTabWindow::DefineMarker(wxScintilla *sci, int marker, int markerType, wxColor fore, wxColor back)
 {
@@ -106,7 +111,7 @@ void OutputTabWindow::InitStyle(wxScintilla *sci, int lexer, bool folding)
 
 	sci->IndicatorSetAlpha(1, 70);
 	sci->IndicatorSetAlpha(2, 70);
-
+	
 	sci->SetHotspotActiveUnderline (true);
 	sci->SetHotspotActiveForeground(true, wxT("BLUE"));
 	sci->SetHotspotSingleLine(true);
@@ -148,19 +153,19 @@ void OutputTabWindow::CreateGUIControls()
 {
 	wxBoxSizer *mainSizer = new wxBoxSizer(wxVERTICAL);
 	SetSizer(mainSizer);
-	
+
 	m_hSizer = new wxBoxSizer(wxHORIZONTAL);
-	
-	
+
+
 	// Create the default scintilla control
 	m_sci = new wxScintilla(this);
 	InitStyle(m_sci, wxSCI_LEX_CONTAINER, false);
-	
+
 	// Add the find bar
 	m_findBar = new QuickFindBar(this);
 	m_findBar->Connect(m_findBar->GetCloseButtonId(), wxEVT_COMMAND_TOOL_CLICKED, wxCommandEventHandler(OutputTabWindow::OnHideSearchBar), NULL, this);
 	m_findBar->SetEditor(m_sci);
-	
+
 	mainSizer->Add(m_findBar, 0, wxEXPAND);
 	mainSizer->Add(m_hSizer, 1, wxEXPAND|wxALL, 0);
 
@@ -186,13 +191,13 @@ void OutputTabWindow::CreateGUIControls()
 	              wxT("Clear All"),
 	              bmpLoader->LoadBitmap(wxT("output-pane/16/clear")),
 	              wxT("Clear All"));
-				  
+
 	m_tb->AddTool(XRCID("search_output"),
 	              wxT("Find..."),
 	              bmpLoader->LoadBitmap(wxT("toolbars/16/search/find")),
 	              wxT("Find..."),
 				  wxITEM_CHECK);
-				  
+
 	m_tb->AddTool(XRCID("collapse_all"), _("Fold All Results"),
 	              wxXmlResource::Get()->LoadBitmap(wxT("fold_airplane")),
 	              _("Fold All Results"));
@@ -210,7 +215,7 @@ void OutputTabWindow::CreateGUIControls()
 	m_hSizer->Add(m_tb, 0, wxEXPAND);
 	m_hSizer->Add(m_sci, 1, wxEXPAND);
 #endif
-	
+
 	// Hide the find bar by default
 	m_findBar->Hide();
 	m_hSizer->Layout();
@@ -395,10 +400,10 @@ void OutputTabWindow::OnSearchOutput(wxCommandEvent& e)
 {
 	if(m_findBar->IsShown()) {
 		m_findBar->Hide();
-		
+
 	} else {
 		m_findBar->Show();
-		
+
 	}
 	GetSizer()->Layout();
 }

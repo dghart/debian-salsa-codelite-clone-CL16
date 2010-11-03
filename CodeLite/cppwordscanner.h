@@ -29,6 +29,7 @@
 #include <vector>
 #include "cpptoken.h"
 #include "smart_ptr.h"
+#include "codelite_exports.h"
 
 struct ByteState {
 	short state;   // Holds the current byte state (one of CppWordScanner::STATE_*)
@@ -37,20 +38,24 @@ struct ByteState {
 	int   lineNo;  // the line number which holds this byte
 };
 
-class TextStates
+class WXDLLIMPEXP_CL TextStates
 {
 public:
 	wxString               text;
 	std::vector<ByteState> states;
 	std::vector<int>       lineToPos;
 	int                    pos;
-	int                    depthsID[512];
 
 public:
-	TextStates() : pos(wxNOT_FOUND) {
-		memset(depthsID, 0, sizeof(depthsID));
+	TextStates() 
+	: pos(wxNOT_FOUND) 
+	{
 	}
-
+	
+	virtual ~TextStates()
+	{
+	}
+	
 	void   SetPosition(int pos);
 	wxChar Previous();
 	wxChar Next();
@@ -65,7 +70,6 @@ public:
 
 	void SetState(size_t where, int state, int depth, int lineNo);
 
-	void IncDepthId(size_t where);
 	/**
 	 * @brief return the end of a given function
 	 * @param position function start position. This function searches for the first opening brace from position '{' and returns the position of the matching
@@ -81,7 +85,7 @@ public:
 
 typedef SmartPtr<TextStates> TextStatesPtr;
 
-class CppWordScanner
+class WXDLLIMPEXP_CL CppWordScanner
 {
 	wxSortedArrayString m_arr;
 	wxString            m_filename;

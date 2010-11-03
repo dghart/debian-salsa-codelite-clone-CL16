@@ -103,6 +103,26 @@ void WorkspaceTab::CreateGUIControls()
 	sz->Add(m_fileView, 1, wxEXPAND|wxTOP, 2);
 }
 
+void WorkspaceTab::FreezeThaw(bool freeze /*=true*/)
+{
+	// If the selected file is linked to which editor is displayed, the selection changes rapidly when a workspace is loaded
+	// Prevent this by temporarily unlinking, then relink after
+	static bool frozen = false;
+	static bool was_linked;
+
+	wxCHECK_RET(!(freeze && frozen), wxT("Trying to re-freeze a frozen workspace tab"));
+	wxCHECK_RET(!(!freeze && !frozen), wxT("Trying to thaw a warm workspace tab"));
+	frozen = freeze;
+
+	if (freeze) {
+		was_linked = m_isLinkedToEditor;
+		m_isLinkedToEditor = false;
+	} else {
+		m_isLinkedToEditor = was_linked;
+		// I expected we'd need to call OnActiveEditorChanged() here, but it doesn't seem necessary (atm)
+	}
+}
+
 void WorkspaceTab::ConnectEvents()
 {
 	Connect( XRCID("link_editor"),        wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler (WorkspaceTab::OnLinkEditor));
@@ -119,7 +139,6 @@ void WorkspaceTab::ConnectEvents()
 
     wxTheApp->Connect(XRCID("show_in_workspace"), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler (WorkspaceTab::OnShowFile),   NULL, this);
     wxTheApp->Connect(XRCID("show_in_workspace"), wxEVT_UPDATE_UI,             wxUpdateUIEventHandler(WorkspaceTab::OnShowFileUI), NULL, this);
-
     wxTheApp->Connect(wxEVT_WORKSPACE_LOADED,      wxCommandEventHandler(WorkspaceTab::OnWorkspaceLoaded),     NULL, this);
     wxTheApp->Connect(wxEVT_WORKSPACE_CLOSED,      wxCommandEventHandler(WorkspaceTab::OnWorkspaceClosed),     NULL, this);
     wxTheApp->Connect(wxEVT_PROJ_ADDED,            wxCommandEventHandler(WorkspaceTab::OnProjectAdded),        NULL, this);

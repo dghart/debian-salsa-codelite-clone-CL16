@@ -74,15 +74,11 @@ void ContextBase::DoApplySettings(LexerConfPtr lexPtr)
 	rCtrl.StyleSetBackground(CL_LINE_MODIFIED_STYLE, wxColour(wxT("ORANGE")));
 
 	// by default indicators are set to be opaque rounded box
-#if 0
-	rCtrl.IndicatorSetStyle(1, wxSCI_INDIC_BOX);
-	rCtrl.IndicatorSetStyle(2, wxSCI_INDIC_BOX);
-#else
 	rCtrl.IndicatorSetStyle(1, wxSCI_INDIC_ROUNDBOX);
 	rCtrl.IndicatorSetStyle(2, wxSCI_INDIC_ROUNDBOX);
+
 	rCtrl.IndicatorSetAlpha(1, 80);
 	rCtrl.IndicatorSetAlpha(2, 80);
-#endif
 
 	bool tooltip(false);
 
@@ -113,12 +109,17 @@ void ContextBase::DoApplySettings(LexerConfPtr lexPtr)
 		} else if ( sp.GetId() == SEL_TEXT_ATTR_ID ) {
 
 			// selection colour
-			rCtrl.SetSelBackground(true, sp.GetBgColour());
-			rCtrl.SetSelAlpha(alpha);
+			if(wxColour(sp.GetBgColour()).IsOk()) {
+				rCtrl.SetSelBackground(true, sp.GetBgColour());
+				rCtrl.SetSelAlpha(alpha);
+			}
 
 		} else if ( sp.GetId() == CARET_ATTR_ID ) {
+
 			// caret colour
-			rCtrl.SetCaretForeground(sp.GetFgColour());
+			if(wxColour(sp.GetFgColour()).IsOk()) {
+				rCtrl.SetCaretForeground(sp.GetFgColour());
+			}
 
 		} else {
 			int fontSize( size );

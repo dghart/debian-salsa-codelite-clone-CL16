@@ -112,6 +112,7 @@ struct VariableObjChild {
 	wxString gdbId;        // A unique name given by gdb which holds this node information for further queries
 	wxString value;
 	bool     isAFake;      // Sets to true of this variable object is a fake node
+	wxString type;
 	VariableObjChild() : numChilds(0), isAFake(false) {}
 };
 
@@ -134,6 +135,12 @@ struct LocalVariable {
 
 	LocalVariable() : updated(false) {}
 	~LocalVariable() {}
+};
+
+struct VariableObjectUpdateInfo
+{
+	wxArrayString removeIds;
+	wxArrayString refreshIds;
 };
 
 typedef std::vector<VariableObjChild> VariableObjChildren;
@@ -320,7 +327,7 @@ public:
 		arch.Read(wxT("Count"), bt_count);
 
 		for (size_t i=0; i<bt_count; i++) {
-			wxString name = wxString::Format(wxT("Breakpoint%d"), i);
+			wxString name = wxString::Format(wxT("Breakpoint%u"), (unsigned int)i);
 			BreakpointInfo bkpt;
 			arch.Read(name, (SerializedObject*)&bkpt);
 			m_breakpoints.push_back( bkpt );
@@ -331,7 +338,7 @@ public:
 
 		arch.Write(wxT("Count"), (size_t)m_breakpoints.size());
 		for (size_t i=0; i<m_breakpoints.size(); i++) {
-			wxString name = wxString::Format(wxT("Breakpoint%d"), i);
+			wxString name = wxString::Format(wxT("Breakpoint%u"), (unsigned int)i);
 			arch.Write(name, (SerializedObject*)&m_breakpoints.at(i));
 		}
 
@@ -357,6 +364,8 @@ public:
 	bool      resolveLocals;
 	bool      autoExpandTipItems;
 	bool      applyBreakpointsAfterProgramStarted;
+	wxString  cygwinPathCommand;
+
 public:
 	DebuggerInformation()
 			: name(wxEmptyString)
@@ -372,7 +381,7 @@ public:
 			, debugAsserts(false)
 			, startupCommands(wxEmptyString)
 			, maxDisplayStringSize(200)
-			, resolveLocals     (false)
+			, resolveLocals     (true)
 			, autoExpandTipItems(true)
 			, applyBreakpointsAfterProgramStarted(false)
 	{
@@ -397,6 +406,7 @@ public:
 		arch.Write(wxT("resolveLocals"),                       resolveLocals);
 		arch.Write(wxT("autoExpandTipItems"),                  autoExpandTipItems);
 		arch.Write(wxT("applyBreakpointsAfterProgramStarted"), applyBreakpointsAfterProgramStarted);
+		arch.Write(wxT("cygwinPathCommand"),                   cygwinPathCommand);
 	}
 
 	void DeSerialize(Archive &arch) {
@@ -418,6 +428,7 @@ public:
 		arch.Read(wxT("resolveLocals"),                       resolveLocals);
 		arch.Read(wxT("autoExpandTipItems"),                  autoExpandTipItems);
 		arch.Read(wxT("applyBreakpointsAfterProgramStarted"), applyBreakpointsAfterProgramStarted);
+		arch.Read(wxT("cygwinPathCommand"),                   cygwinPathCommand);
 	}
 };
 
@@ -732,6 +743,14 @@ public:
 	 */
 	virtual void BreakList() = 0;
 
+	/**
+	 * @brief assign new value to expression
+	 * @param expression expression
+	 * @param newValue new value
+	 * this method does not produce any output
+	 */
+	virtual void AssignValue(const wxString &expression, const wxString &newValue) = 0;
+	
 	// ----------------------------------------------------------------------------------------
 	// Variable object manipulation (GDB only)
 	// If you wish to implement a debugger other than
@@ -746,9 +765,10 @@ public:
 
 	/**
 	 * @brief create variable object from a given expression
-	 * @param expression
+	 * @param expression the expression to create a variable object for
+	 * @param persistent make a presistent watch, else create a floating watch which is not bound to the creation frame 
 	 */
-	virtual bool CreateVariableObject(const wxString &expression, int userReason) = 0;
+	virtual bool CreateVariableObject(const wxString &expression, bool persistent, int userReason) = 0;
 
 	/**
 	 * @brief delete variable object
@@ -760,7 +780,22 @@ public:
 	 * @brief evaluate variable object
 	 * @param name variable object
 	 */
-	virtual bool EvaluateVariableObject(const wxString &name, DisplayFormat displayFormat, int userReason) = 0;
+	virtual bool EvaluateVariableObject(const wxString &name, int userReason) = 0;
+
+	/**
+	 * @brief set the display format of a variable object
+	 * @param name
+	 * @param displayFormat
+	 * @return
+	 */
+	virtual bool SetVariableObbjectDisplayFormat(const wxString &name, DisplayFormat displayFormat) = 0;
+
+	/**
+	 * @brief update the variable object content
+	 * @param name
+	 * @return
+	 */
+	virtual bool UpdateVariableObject(const wxString& name, int userReason) = 0;
 };
 
 //-----------------------------------------------------------

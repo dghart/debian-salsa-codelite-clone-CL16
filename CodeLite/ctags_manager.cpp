@@ -25,8 +25,10 @@
 #include "precompiled_header.h"
 #include "processreaderthread.h"
 #include "cppwordscanner.h"
+#include "fileextmanager.h"
 #include <wx/frame.h>
 #include <wx/app.h>
+#include "codelite_exports.h"
 #include <wx/sizer.h>
 #include <wx/log.h>
 #include "parse_thread.h"
@@ -41,7 +43,6 @@
 #include <wx/file.h>
 #include <algorithm>
 #include <wx/progdlg.h>
-#include "dirtraverser.h"
 #include "wx/tokenzr.h"
 #include "wx/filename.h"
 #include <wx/wfstream.h>
@@ -57,6 +58,7 @@
 #include <wx/msgdlg.h>
 #include "code_completion_api.h"
 #include <wx/stdpaths.h>
+
 
 //#define __PERFORMANCE
 #include "performance.h"
@@ -98,7 +100,7 @@ struct tagParseResult {
 //------------------------------------------------------------------------------
 // Progress dialog
 //------------------------------------------------------------------------------
-class MyProgress : public wxProgressDialog
+class WXDLLIMPEXP_CL MyProgress : public wxProgressDialog
 {
 public:
 	MyProgress(const wxString &title, size_t count) :
@@ -110,6 +112,27 @@ public:
 	virtual ~MyProgress()
 	{}
 };
+
+//////////////////////////////////////
+// Adapter class to TagsManager
+//////////////////////////////////////
+static TagsManager* gs_TagsManager = NULL;
+
+void TagsManagerST::Free()
+{
+	if(gs_TagsManager) {
+		delete gs_TagsManager;
+	}
+	gs_TagsManager = NULL;
+}
+
+TagsManager* TagsManagerST::Get()
+{
+	if(gs_TagsManager == NULL)
+		gs_TagsManager = new TagsManager();
+
+	return gs_TagsManager;
+}
 
 //------------------------------------------------------------------------------
 // CTAGS Manager
@@ -367,6 +390,13 @@ void TagsManager::SourceToTags(const wxFileName& source, wxString& tags)
 	if(tags.empty()) {
 		tags = wxString::From8BitData(reply.getTags().c_str());
 	}
+
+#if 0
+	wxFFile fff(wxStandardPaths::Get().GetUserDataDir() + wxT("\\tmp_tags"), wxT("w+"));
+	if(fff.IsOpened()) {
+		fff.Write(tags);
+	}
+#endif
 }
 
 TagTreePtr TagsManager::TreeFromTags(const wxString& tags, int &count)
@@ -1107,7 +1137,7 @@ void TagsManager::RetagFiles(const std::vector<wxFileName> &files, bool quickRet
 		wxFrame *frame = dynamic_cast<wxFrame*>( wxTheApp->GetTopWindow() );
 		if (frame) {
 			wxCommandEvent retaggingCompletedEvent(wxEVT_PARSE_THREAD_RETAGGING_COMPLETED);
-			frame->AddPendingEvent(retaggingCompletedEvent);
+			frame->GetEventHandler()->AddPendingEvent(retaggingCompletedEvent);
 		}
 		return;
 	}
@@ -1121,7 +1151,7 @@ void TagsManager::RetagFiles(const std::vector<wxFileName> &files, bool quickRet
 		wxFrame *frame = dynamic_cast<wxFrame*>( wxTheApp->GetTopWindow() );
 		if (frame) {
 			wxCommandEvent retaggingCompletedEvent(wxEVT_PARSE_THREAD_RETAGGING_COMPLETED);
-			frame->AddPendingEvent(retaggingCompletedEvent);
+			frame->GetEventHandler()->AddPendingEvent(retaggingCompletedEvent);
 		}
 		return;
 	}
@@ -1377,7 +1407,6 @@ void TagsManager::TipsFromTags(const std::vector<TagEntryPtr> &tags, const wxStr
 		tip.erase(0, tip.find_first_not_of(trimString));
 		tip.erase(tip.find_last_not_of(trimString)+1);
 		tip.Replace(wxT("\t"), wxT(" "));
-		while (tip.Replace(wxT("  "), wxT(" "))) {}
 
 		// create a proper tooltip from the stripped pattern
 		TagEntryPtr t= tags.at(i);
@@ -1411,6 +1440,9 @@ void TagsManager::TipsFromTags(const std::vector<TagEntryPtr> &tags, const wxStr
 
 		// remove any extra spaces from the tip
 		while (tip.Replace(wxT("  "), wxT(" "))) {}
+
+		// BUG#3082954: limit the size of the 'match pattern' to a reasonable size (200 chars)
+		tip = WrapLines(tip);
 
 		// prepend any comment if exists
 		tips.push_back(tip);
@@ -2610,4 +2642,77 @@ void TagsManager::DoParseModifiedText(const wxString &text, std::vector<TagEntry
 		// Delete the modified file
 		wxRemoveFile( fileName );
 	}
+}
+
+bool TagsManager::IsBinaryFile(const wxString& filepath)
+{
+	// If the file is a C++ file, avoid testing the content return false based on the extension
+	FileExtManager::FileType type = FileExtManager::GetType(filepath);
+	if(type == FileExtManager::TypeHeader || type == FileExtManager::TypeSourceC || type == FileExtManager::TypeSourceCpp)
+		   return false;
+
+	// examine the file based on the content of the first 4K (max) bytes
+	FILE *fp = fopen(filepath.To8BitData(), "rb");
+	if(fp) {
+
+		char      buffer[1];
+		int       textLen(0);
+		const int maxTextToExamine(4096);
+
+		// examine up to maxTextToExamine first chars in the file and search for '\0'
+		while( fread(buffer, sizeof(char), sizeof(buffer), fp) == 1 && textLen < maxTextToExamine) {
+			textLen++;
+			// if we found a NULL, return true
+			if(buffer[0] == 0) {
+				fclose(fp);
+				return true;
+			}
+		}
+
+		fclose(fp);
+		return false;
+	}
+
+	// if we could not open it, return true
+	return true;
+}
+
+wxString TagsManager::WrapLines(const wxString& str)
+{
+	wxString wrappedString;
+
+	int curLineBytes(0);
+	wxString::const_iterator iter = str.begin();
+	for(; iter != str.end(); iter++) {
+		if(*iter == wxT('\t')) {
+			wrappedString << wxT(" ");
+
+		} else if(*iter == wxT('\n')) {
+			wrappedString << wxT("\n");
+			curLineBytes = 0;
+
+		} else if(*iter == wxT('\r')) {
+			// Skip it
+
+		} else {
+			wrappedString << *iter;
+		}
+		curLineBytes++;
+
+		if(curLineBytes == MAX_TIP_LINE_SIZE) {
+
+			// Wrap the lines
+			if(wrappedString.IsEmpty() == false && wrappedString.Last() != wxT('\n')) {
+				wrappedString << wxT("\n");
+
+			}
+			curLineBytes = 0;
+		}
+	}
+	return wrappedString;
+}
+
+void TagsManager::GetVariables(const std::string& in, VariableList& li, const std::map<std::string, std::string>& ignoreMap, bool isUsedWithinFunc)
+{
+	get_variables(in, li, ignoreMap, isUsedWithinFunc);
 }

@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version Aug 25 2009)
+// C++ code generated with wxFormBuilder (version Sep  8 2010)
 // http://www.wxformbuilder.org/
 //
 // PLEASE DO "NOT" EDIT THIS FILE!
@@ -23,9 +23,11 @@
 #include <wx/listbox.h>
 #include <wx/choice.h>
 #include <wx/checkbox.h>
-#include <wx/statbox.h>
-#include <wx/radiobut.h>
-#include <wx/statline.h>
+#include <wx/panel.h>
+#include <wx/bitmap.h>
+#include <wx/image.h>
+#include <wx/icon.h>
+#include <wx/notebook.h>
 #include <wx/dialog.h>
 
 ///////////////////////////////////////////////////////////////////////////
@@ -53,17 +55,19 @@ class FindInFilesDialogBase : public wxDialog
 		wxChoice* m_choiceEncoding;
 		
 		wxStaticText* m_staticText7;
+		wxNotebook* m_notebook1;
+		wxPanel* m_panel1;
 		wxCheckBox* m_matchCase;
 		wxCheckBox* m_matchWholeWord;
 		wxCheckBox* m_regualrExpression;
-		wxCheckBox* m_printScope;
 		wxCheckBox* m_checkBoxSaveFilesBeforeSearching;
+		wxCheckBox* m_checkBoxSeparateTab;
+		wxPanel* m_panel2;
+		wxCheckBox* m_printScope;
+		wxCheckBox* m_checkBoxSkipMatchesFoundInComments;
+		wxCheckBox* m_checkBoxSkipMatchesFoundInStrings;
+		wxCheckBox* m_checkBoxHighlighStringComments;
 		
-		wxStaticText* m_staticText6;
-		wxRadioButton* m_resInNewTab;
-		wxRadioButton* m_resInActiveTab;
-		
-		wxStaticLine* m_staticline1;
 		wxButton* m_find;
 		wxButton* m_replaceAll;
 		wxButton* m_stop;
@@ -77,12 +81,13 @@ class FindInFilesDialogBase : public wxDialog
 		virtual void OnClearPaths( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnClearPathsUI( wxUpdateUIEvent& event ) { event.Skip(); }
 		virtual void OnClick( wxCommandEvent& event ) { event.Skip(); }
+		virtual void OnUseDiffColourForCommentsUI( wxUpdateUIEvent& event ) { event.Skip(); }
 		virtual void OnFindWhatUI( wxUpdateUIEvent& event ) { event.Skip(); }
 		
 	
 	public:
 		
-		FindInFilesDialogBase( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Find in files"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( -1,-1 ), long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER );
+		FindInFilesDialogBase( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Find in files"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( -1,-1 ), long style = wxDEFAULT_DIALOG_STYLE );
 		~FindInFilesDialogBase();
 	
 };

@@ -28,6 +28,7 @@
 #include "wx/event.h"
 #include <wx/txtstrm.h>
 #include <wx/wfstream.h>
+#include "cppwordscanner.h"
 #include <iostream>
 #include <wx/tokenzr.h>
 #include <wx/dir.h>
@@ -230,14 +231,34 @@ void SearchThread::DoSearchFile(const wxString &fileName, const SearchData *data
 	wxCSConv fontEncConv(enc);
 	thefile.ReadAll(&fileData, fontEncConv);
 
+	// take a wild guess and see if we really need to construct 
+	// a TextStatesPtr object (it is quite an expensive operation)
+	bool shouldCreateStates (true);
+	if(data->IsMatchCase() && !data->IsRegularExpression()) {
+		shouldCreateStates = (fileData.Find(data->GetFindString()) != wxNOT_FOUND);
+		
+	} else if(!data->IsMatchCase() && !data->IsRegularExpression()) {
+		// !data->IsMatchCase()
+		wxString tmpData = fileData;
+		shouldCreateStates = (tmpData.MakeLower().Find(data->GetFindString()) != wxNOT_FOUND); 
+	}
+	
 	wxStringTokenizer tkz(fileData, wxT("\n"), wxTOKEN_RET_EMPTY_ALL);
+	
+	// Incase one of the C++ options is enabled,
+	// create a text states object
+	TextStatesPtr states(NULL);
+	if(data->HasCppOptions() && shouldCreateStates) {
+		CppWordScanner scanner(wxEmptyString, fileData, 0);
+		states = scanner.states();
+	}
 
 	if ( data->IsRegularExpression() ) {
 		// regular expression search
 		while (tkz.HasMoreTokens()) {
 			// Read the next line
 			wxString line = tkz.NextToken();
-			DoSearchLineRE(line, lineNumber, fileName, data);
+			DoSearchLineRE(line, lineNumber, fileName, data, states);
 			lineNumber++;
 		}
 	} else {
@@ -246,7 +267,7 @@ void SearchThread::DoSearchFile(const wxString &fileName, const SearchData *data
 
 			// Read the next line
 			wxString line = tkz.NextToken();
-			DoSearchLine(line, lineNumber, fileName, data);
+			DoSearchLine(line, lineNumber, fileName, data, states);
 			lineNumber++;
 		}
 	}
@@ -254,7 +275,7 @@ void SearchThread::DoSearchFile(const wxString &fileName, const SearchData *data
 	if ( m_results.empty() == false )
 		SendEvent(wxEVT_SEARCH_THREAD_MATCHFOUND, data->GetOwner());
 }
-void SearchThread::DoSearchLineRE(const wxString &line, const int lineNum, const wxString &fileName, const SearchData *data)
+void SearchThread::DoSearchLineRE(const wxString &line, const int lineNum, const wxString &fileName, const SearchData *data, TextStatesPtr statesPtr)
 {
 	wxRegEx &re = GetRegex(data->GetFindString(), data->IsMatchCase());
 	size_t col = 0;
@@ -266,8 +287,6 @@ void SearchThread::DoSearchLineRE(const wxString &line, const int lineNum, const
 			size_t start, len;
 			re.GetMatch(&start, &len);
 			col += start;
-
-			m_summary.SetNumMatchesFound(m_summary.GetNumMatchesFound() + 1);
 
 			// Notify our match
 			// correct search Pos and Length owing to non plain ASCII multibyte characters
@@ -283,7 +302,50 @@ void SearchThread::DoSearchLineRE(const wxString &line, const int lineNum, const
 			result.SetLen(iCorrectedLen);
 			result.SetFlags(data->m_flags);
 			result.SetFindWhat(data->GetFindString());
-			m_results.push_back(result);
+
+			// Make sure our match is not on a comment
+			int  position(wxNOT_FOUND);
+			bool canAdd(true);
+
+			if(statesPtr) {
+				position = statesPtr->LineToPos(lineNum-1);
+				position += iCorrectedCol;
+			}
+
+			if(statesPtr && position != wxNOT_FOUND && data->GetSkipComments()) {
+				if(statesPtr->states.size() > (size_t)position) {
+					short state = statesPtr->states.at(position).state;
+					if(state == CppWordScanner::STATE_CPP_COMMENT || state == CppWordScanner::STATE_C_COMMENT) {
+						canAdd = false;
+					}
+				}
+			}
+
+			if(statesPtr && position != wxNOT_FOUND && data->GetSkipStrings()) {
+				if(statesPtr->states.size() > (size_t)position) {
+					short state = statesPtr->states.at(position).state;
+					if(state == CppWordScanner::STATE_DQ_STRING || state == CppWordScanner::STATE_SINGLE_STRING) {
+						canAdd = false;
+					}
+				}
+			}
+
+			result.SetMatchState(CppWordScanner::STATE_NORMAL);
+			if(canAdd && statesPtr && position != wxNOT_FOUND && data->GetColourComments()) {
+				// set the match state
+				if(statesPtr->states.size() > (size_t)position) {
+					short state = statesPtr->states.at(position).state;
+					if(state == CppWordScanner::STATE_C_COMMENT || state == CppWordScanner::STATE_CPP_COMMENT) {
+						result.SetMatchState(state);
+					}
+				}
+			}
+
+			if(canAdd) {
+				m_results.push_back(result);
+				m_summary.SetNumMatchesFound(m_summary.GetNumMatchesFound() + 1);
+			}
+
 			col += len;
 
 			// adjust the line
@@ -294,14 +356,14 @@ void SearchThread::DoSearchLineRE(const wxString &line, const int lineNum, const
 	}
 }
 
-void SearchThread::DoSearchLine(const wxString &line, const int lineNum, const wxString &fileName, const SearchData *data)
+void SearchThread::DoSearchLine(const wxString &line, const int lineNum, const wxString &fileName, const SearchData *data, TextStatesPtr statesPtr)
 {
 	wxString findString = data->GetFindString();
 	wxString modLine = line;
 
 	if ( !data->IsMatchCase() ) {
-		modLine = modLine.MakeLower();
-		findString = findString.MakeLower();
+		modLine.MakeLower();
+		findString.MakeLower();
 	}
 
 	int pos = 0;
@@ -342,8 +404,6 @@ void SearchThread::DoSearchLine(const wxString &line, const int lineNum, const w
 				}
 			}
 
-			m_summary.SetNumMatchesFound(m_summary.GetNumMatchesFound() + 1);
-
 			// Notify our match
 			// correct search Pos and Length owing to non plain ASCII multibyte characters
 			iCorrectedCol = UTF8Length(line.c_str(), col);
@@ -359,7 +419,49 @@ void SearchThread::DoSearchLine(const wxString &line, const int lineNum, const w
 			result.SetFindWhat(data->GetFindString());
 			result.SetFlags(data->m_flags);
 
-			m_results.push_back(result);
+			int  position(wxNOT_FOUND);
+			bool canAdd(true);
+
+			if(statesPtr) {
+				position = statesPtr->LineToPos(lineNum-1);
+				position += iCorrectedCol;
+			}
+
+			// Make sure our match is not on a comment
+			if(statesPtr && position != wxNOT_FOUND && data->GetSkipComments()) {
+				if(statesPtr->states.size() > (size_t)position) {
+					short state = statesPtr->states.at(position).state;
+					if(state == CppWordScanner::STATE_CPP_COMMENT || state == CppWordScanner::STATE_C_COMMENT) {
+						canAdd = false;
+					}
+				}
+			}
+
+			if(statesPtr && position != wxNOT_FOUND && data->GetSkipStrings()) {
+				if(statesPtr->states.size() > (size_t)position) {
+					short state = statesPtr->states.at(position).state;
+					if(state == CppWordScanner::STATE_DQ_STRING || state == CppWordScanner::STATE_SINGLE_STRING) {
+						canAdd = false;
+					}
+				}
+			}
+
+			result.SetMatchState(CppWordScanner::STATE_NORMAL);
+			if(canAdd && statesPtr && position != wxNOT_FOUND && data->GetColourComments()) {
+				// set the match state
+				if(statesPtr->states.size() > (size_t)position) {
+					short state = statesPtr->states.at(position).state;
+					if(state == CppWordScanner::STATE_C_COMMENT || state == CppWordScanner::STATE_CPP_COMMENT) {
+						result.SetMatchState(state);
+					}
+				}
+			}
+
+			if(canAdd) {
+				m_results.push_back(result);
+				m_summary.SetNumMatchesFound(m_summary.GetNumMatchesFound() + 1);
+			}
+
 			if ( !AdjustLine(modLine, pos, findString) ) {
 				break;
 			}
@@ -455,3 +557,20 @@ void SearchThread::FilterFiles(wxArrayString& files, const SearchData* data)
 		}
 	}
 }
+
+static SearchThread* gs_SearchThread = NULL;
+void SearchThreadST::Free()
+{
+	if(gs_SearchThread) {
+		delete gs_SearchThread;
+	}
+	gs_SearchThread = NULL;
+}
+
+SearchThread* SearchThreadST::Get()
+{
+	if(gs_SearchThread == NULL)
+		gs_SearchThread = new SearchThread;
+	return gs_SearchThread;
+}
+
