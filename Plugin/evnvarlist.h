@@ -27,8 +27,10 @@
 
 #include "serialized_object.h"
 #include <wx/arrstr.h>
+#include "macros.h"
+#include "codelite_exports.h"
 
-class EnvMap
+class WXDLLIMPEXP_SDK EnvMap
 {
 	wxArrayString m_keys;
 	wxArrayString m_values;
@@ -46,7 +48,7 @@ public:
 	wxString String();
 };
 
-class EvnVarList : public SerializedObject
+class WXDLLIMPEXP_SDK EvnVarList : public SerializedObject
 {
 	std::map<wxString, wxString> m_envVarSets;
 	wxString                     m_activeSet;
@@ -59,7 +61,7 @@ public:
 	virtual ~EvnVarList();
 
 	void SetActiveSet(const wxString& activeSet) {
-		if(activeSet != wxT("<Use Active Set>"))
+		if(activeSet != wxT("<Use Active Set>") && activeSet != USE_GLOBAL_SETTINGS)
 			this->m_activeSet = activeSet;
 	}
 

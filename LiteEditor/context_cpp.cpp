@@ -29,6 +29,7 @@
 #include "clang_code_completion.h"
 #include "fileextmanager.h"
 #include "drawingutils.h"
+#include "findusagetab.h"
 #include "buildtabsettingsdata.h"
 #include "cl_editor_tip_window.h"
 #include "implement_parent_virtual_functions.h"
@@ -153,6 +154,7 @@ BEGIN_EVENT_TABLE(ContextCpp, wxEvtHandler)
 	EVT_MENU(XRCID("add_include_file"),             ContextCpp::OnAddIncludeFile)
 	EVT_MENU(XRCID("rename_symbol"),                ContextCpp::OnRenameGlobalSymbol)
 	EVT_MENU(XRCID("rename_local_variable"),        ContextCpp::OnRenameLocalSymbol)
+	EVT_MENU(XRCID("find_references"),              ContextCpp::OnFindReferences)
 
 	EVT_MENU(XRCID("retag_file"), ContextCpp::OnRetagFile)
 END_EVENT_TABLE()
@@ -235,13 +237,18 @@ void ContextCpp::OnDwellStart(wxScintillaEvent &event)
 	// display a tooltip
 	wxString tooltip;
 	if (tips.size() > 0) {
+		
 		tooltip << tips[0];
 		for ( size_t i=1; i<tips.size(); i++ )
 			tooltip << wxT("\n") << tips[i];
-
+		
 		// cancel any old calltip and display the new one
 		rCtrl.DoCancelCalltip();
-		rCtrl.DoShowCalltip(event.GetPosition(), tooltip, ct_function_hover);
+		
+		tooltip.Trim().Trim(false);
+		if(tooltip.IsEmpty() == false) { 
+			rCtrl.DoShowCalltip(event.GetPosition(), tooltip, ct_function_hover);
+		}
 	}
 }
 
@@ -931,7 +938,8 @@ bool ContextCpp::TryOpenFile(const wxFileName &fileName)
 	if (fileName.FileExists()) {
 		//we got a match
 		wxString proj = ManagerST::Get()->GetProjectNameByFile(fileName.GetFullPath());
-		return clMainFrame::Get()->GetMainBook()->OpenFile(fileName.GetFullPath(), proj);
+		return clMainFrame::Get()->GetMainBook()->OpenFile(fileName.GetFullPath(),
+								proj, wxNOT_FOUND, wxNOT_FOUND, (enum OF_extra)(OF_PlaceNextToCurrent | OF_AddJump));
 	}
 
 	//ok, the file does not exist in the current directory, try to find elsewhere
@@ -942,7 +950,8 @@ bool ContextCpp::TryOpenFile(const wxFileName &fileName)
 	for (size_t i=0; i<files.size(); i++) {
 		if (files.at(i).GetFullName() == fileName.GetFullName()) {
 			wxString proj = ManagerST::Get()->GetProjectNameByFile(files.at(i).GetFullPath());
-			return clMainFrame::Get()->GetMainBook()->OpenFile(files.at(i).GetFullPath(), proj);
+			return clMainFrame::Get()->GetMainBook()->OpenFile(files.at(i).GetFullPath(),
+								proj, wxNOT_FOUND, wxNOT_FOUND, (enum OF_extra)(OF_PlaceNextToCurrent | OF_AddJump));
 		}
 	}
 	return false;
@@ -1242,7 +1251,11 @@ void ContextCpp::OnDbgDwellEnd(wxScintillaEvent &event)
 void ContextCpp::OnDbgDwellStart(wxScintillaEvent & event)
 {
 	static wxRegEx reCppIndentifier(wxT("[a-zA-Z_][a-zA-Z0-9_]*"));
-
+	
+	// the tip is already up
+	if(ManagerST::Get()->GetDebuggerTip() && ManagerST::Get()->GetDebuggerTip()->IsShown())
+		return;
+	
 	wxPoint pt;
 	wxString word;
 	pt.x = event.GetX();
@@ -1299,7 +1312,7 @@ void ContextCpp::OnDbgDwellStart(wxScintillaEvent & event)
 
 		}
 	}
-	dbgr->CreateVariableObject( word, DBG_USERR_QUICKWACTH );
+	dbgr->CreateVariableObject( word, false, DBG_USERR_QUICKWACTH );
 }
 
 int ContextCpp::FindLineToAddInclude()
@@ -1746,7 +1759,7 @@ void ContextCpp::OnFileSaved()
 			const wxCharBuffer patbuf = _C(rCtrl.GetText());
 
 			// collect list of variables
-			get_variables( patbuf.data(), var_list, ignoreTokens, false);
+			TagsManagerST::Get()->GetVariables( patbuf.data(), var_list, ignoreTokens, false);
 
 		}
 
@@ -1767,7 +1780,7 @@ void ContextCpp::OnFileSaved()
 				wxString sig = tags.at(i)->GetSignature();
 				const wxCharBuffer cb = _C(sig);
 				VariableList vars_list;
-				get_variables(cb.data(), vars_list, ignoreTokens, true);
+				TagsManagerST::Get()->GetVariables(cb.data(), vars_list, ignoreTokens, true);
 				VariableList::iterator it = vars_list.begin();
 				for (; it != vars_list.end(); it++ ) {
 					Variable var = *it;
@@ -2067,12 +2080,21 @@ void ContextCpp::OnRenameGlobalSymbol(wxCommandEvent& e)
 
 	// display the refactor dialog
 	RenameSymbol *dlg = new RenameSymbol(&rCtrl, RefactoringEngine::Instance()->GetCandidates(), RefactoringEngine::Instance()->GetPossibleCandidates(), word);
-	if (dlg->ShowModal() == wxID_OK) {
+	while (dlg->ShowModal() == wxID_OK) {
 		std::list<CppToken> matches;
 
 		dlg->GetMatches( matches );
 		if (matches.empty() == false) {
+			if (dlg->GetWord() == word) {
+				int answer = wxMessageBox(_("The replacement symbol is the same as the original. Try again?"), wxT("CodeLite"), wxICON_QUESTION | wxYES_NO, dlg);
+				if (answer == wxYES) {
+					continue;
+				}
+				return;
+			}
+			
 			ReplaceInFiles(dlg->GetWord(), matches);
+			return;
 		}
 	}
 }
@@ -2081,10 +2103,20 @@ void ContextCpp::ReplaceInFiles ( const wxString &word, const std::list<CppToken
 {
 	int off = 0;
 	wxString fileName ( wxEmptyString );
+	bool success(false);
 
-	// Disable the "Limit opened bufferes" feature for during replacements
+	// Disable the "Limit opened buffers" feature for during replacements
 	clMainFrame::Get()->GetMainBook()->SetUseBuffereLimit(false);
 
+	// Try to maintain as far as possible the editor and line within it that the user started from.
+	// Otherwise a different editor may be selected, and the original one will have scrolled to the last replacement
+	int current_line = wxSCI_INVALID_POSITION;
+	LEditor* current = clMainFrame::Get()->GetMainBook()->GetActiveEditor();
+	if (current) {
+		current_line = current->GetCurrentLine();
+	}
+
+	LEditor* previous = NULL;
 	for ( std::list<CppToken>::const_iterator iter = li.begin(); iter != li.end(); iter++ ) {
 		CppToken cppToken = *iter;
 		if ( fileName == cppToken.getFilename() ) {
@@ -2100,6 +2132,14 @@ void ContextCpp::ReplaceInFiles ( const wxString &word, const std::list<CppToken
 		LEditor *editor = clMainFrame::Get()->GetMainBook()->GetActiveEditor();
 		if(!editor || editor->GetFileName().GetFullPath() != cppToken.getFilename()) {
 			editor = clMainFrame::Get()->GetMainBook()->OpenFile(cppToken.getFilename(), wxEmptyString, 0);
+			// We've loaded a new editor, so start a new bulk undo action for it
+			// (this can only be done per editor, not per refactor :( )
+			// First end any previous one
+			if (previous) {
+				previous->EndUndoAction();
+			}
+			editor->BeginUndoAction();
+			previous = editor;
 		}
 
 		if (editor) {
@@ -2107,12 +2147,29 @@ void ContextCpp::ReplaceInFiles ( const wxString &word, const std::list<CppToken
 			if ( editor->GetSelectionStart() != editor->GetSelectionEnd() ) {
 				editor->ReplaceSelection ( word );
 				off += word.Len() - cppToken.getName().Len();
+				success = true;	// Flag that there's been at least one replacement
 			}
+		}
+	}
+
+	// The last editor won't have this done otherwise
+	if (previous) {
+		previous->EndUndoAction();
+			}
+
+	if (current) {
+		clMainFrame::Get()->GetMainBook()->SelectPage(current);
+		if (current_line != wxSCI_INVALID_POSITION) {
+			current->GotoLine(current_line);
 		}
 	}
 
 	// re-enable the feature again
 	clMainFrame::Get()->GetMainBook()->SetUseBuffereLimit(true);
+
+	if (success) {
+		clMainFrame::Get()->SetStatusMessage(_("Symbol renamed"), 0);
+	}
 }
 
 void ContextCpp::OnRetagFile(wxCommandEvent& e)
@@ -2750,4 +2807,34 @@ wxString ContextCpp::GetExpression(long pos, bool onlyWord, LEditor *editor, boo
 		expression += wxT(" ");
 	}
 	return expression;
+}
+
+void ContextCpp::OnFindReferences(wxCommandEvent& e)
+{
+	VALIDATE_WORKSPACE();
+
+	LEditor &rCtrl = GetCtrl();
+	//get expression
+	int pos        = rCtrl.GetCurrentPos();
+	int word_start = rCtrl.WordStartPosition(pos, true);
+	int word_end   = rCtrl.WordEndPosition(pos, true);
+
+	// Read the word that we want to refactor
+	wxString word = rCtrl.GetTextRange(word_start, word_end);
+	if(word.IsEmpty())
+		return;
+
+	// Save all files before 'find usage'
+	if (!clMainFrame::Get()->GetMainBook()->SaveAll(true, false))
+		return;
+
+	// Get list of files to search in
+	wxFileList files;
+	ManagerST::Get()->GetWorkspaceFiles(files, true);
+
+	// Invoke the RefactorEngine
+	RefactoringEngine::Instance()->FindReferences(word, rCtrl.GetFileName(), rCtrl.LineFromPosition(pos+1), word_start, files);
+	
+	// Show the results
+	clMainFrame::Get()->GetOutputPane()->GetShowUsageTab()->ShowUsage( RefactoringEngine::Instance()->GetCandidates(), word);
 }

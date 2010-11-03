@@ -193,7 +193,7 @@ void MainBook::OnWorkspaceClosed(wxCommandEvent &e)
 
 bool MainBook::AskUserToSave(LEditor *editor)
 {
-	if (!editor || !editor->GetModify())
+	if (!editor || !editor->GetModify() || editor->GetFileName().FileExists() == false)
 		return true;
 
 	// unsaved changes
@@ -256,7 +256,8 @@ void MainBook::ShowNavBar(bool s)
 void MainBook::SaveSession(SessionEntry &session, wxArrayInt& intArr)
 {
 	std::vector<LEditor*> editors;
-	GetAllEditors(editors);
+	bool retain_order(true);
+	GetAllEditors(editors, retain_order);
 
 	session.SetSelectedTab(0);
 	std::vector<TabInfo> vTabInfoArr;
@@ -309,7 +310,13 @@ void MainBook::RestoreSession(SessionEntry &session)
 			}
 		}
 	}
-	SelectPage(m_book->GetPage(sel));
+	// We can't just use SelectPane() here.
+	// Notebook::DoPageChangedEvent has posted events to us,
+	// which have the effect of selecting back to page 0
+	// So post ourselves an event, so that it arrives after that one
+	NotebookEvent event(wxEVT_COMMAND_BOOK_PAGE_CHANGED, GetId());
+	event.SetSelection(sel);
+	m_book->GetEventHandler()->AddPendingEvent(event);
 }
 
 LEditor *MainBook::GetActiveEditor()
@@ -320,13 +327,25 @@ LEditor *MainBook::GetActiveEditor()
 	return dynamic_cast<LEditor*>(GetCurrentPage());
 }
 
-void MainBook::GetAllEditors(std::vector<LEditor*> &editors)
+void MainBook::GetAllEditors(std::vector<LEditor*> &editors, bool retain_order /*= false*/)
 {
 	editors.clear();
+	if (!retain_order) {
+		// Most of the time we don't care about the order the tabs are stored in
 	for (size_t i = 0; i < m_book->GetPageCount(); i++) {
 		LEditor *editor = dynamic_cast<LEditor*>(m_book->GetPage(i));
 		if (editor) {
 			editors.push_back(editor);
+		}
+	}
+	} else {
+		std::vector<wxWindow*> windows;
+		m_book->GetEditorsInOrder(windows);
+		for (size_t i = 0; i < windows.size(); i++) {
+			LEditor *editor = dynamic_cast<LEditor*>(windows.at(i));
+			if (editor) {
+				editors.push_back(editor);
+			}
 		}
 	}
 }
@@ -411,7 +430,7 @@ static bool IsFileExists(const wxFileName &filename) {
 #endif
 }
 
-LEditor *MainBook::OpenFile(const wxString &file_name, const wxString &projectName, int lineno, long position, bool addjump)
+LEditor *MainBook::OpenFile(const wxString &file_name, const wxString &projectName, int lineno, long position, enum OF_extra extra/*=OF_AddJump*/)
 {
 	wxFileName fileName(file_name);
 	fileName.MakeAbsolute();
@@ -452,7 +471,13 @@ LEditor *MainBook::OpenFile(const wxString &file_name, const wxString &projectNa
 		editor = new LEditor(m_book);
 		editor->Create(projName, fileName);
 
+		// If we're here from 'Swap Header/Implementation file', insert the new page next door
+		size_t sel = m_book->GetVisibleEditorIndex();
+		if ((extra & OF_PlaceNextToCurrent) && (sel != Notebook::npos)) {
+			AddPage(editor, fileName.GetFullName(), wxNullBitmap, false, sel+1);
+		} else {
 		AddPage(editor, fileName.GetFullName());
+		}
 		editor->SetSyntaxHighlight();
 
 		// mark the editor as read only if needed
@@ -509,7 +534,7 @@ LEditor *MainBook::OpenFile(const wxString &file_name, const wxString &projectNa
 	m_recentFiles.GetFiles ( files );
 	EditorConfigST::Get()->SetRecentItems( files, wxT("RecentFiles") );
 
-	if (addjump) {
+	if (extra & OF_AddJump) {
 		BrowseRecord jumpto = editor->CreateBrowseRecord();
 		NavMgr::Get()->AddJump(jumpfrom, jumpto);
 	}
@@ -522,7 +547,7 @@ LEditor *MainBook::OpenFile(const wxString &file_name, const wxString &projectNa
 	return editor;
 }
 
-bool MainBook::AddPage(wxWindow *win, const wxString &text, const wxBitmap &bmp, bool selected)
+bool MainBook::AddPage(wxWindow *win, const wxString &text, const wxBitmap &bmp, bool selected, size_t insert_at_index /*=wxNOT_FOUND*/)
 {
 	if (m_book->GetPageIndex(win) != Notebook::npos)
 		return false;
@@ -530,14 +555,18 @@ bool MainBook::AddPage(wxWindow *win, const wxString &text, const wxBitmap &bmp,
 	long MaxBuffers(15);
 	EditorConfigST::Get()->GetLongValue(wxT("MaxOpenedTabs"), MaxBuffers);
 
-#ifndef __WXMAC__
+#ifdef __WXMSW__
 	// On Mac adding this locker causes wierd behaviors like not showing the file content or
 	// hiding the welcome page
 	wxWindowUpdateLocker locker(m_book);
 #endif
 
 	bool closeLastTab = ((long)(m_book->GetPageCount()) >= MaxBuffers) && GetUseBuffereLimit();
+	if ((insert_at_index == (size_t)wxNOT_FOUND) || (insert_at_index >= m_book->GetPageCount())) {
 	m_book->AddPage(win, text, closeLastTab ? true : selected);
+	} else {
+		m_book->InsertPage(insert_at_index, win, text, closeLastTab ? true : selected);
+	}
 
 	if( closeLastTab ) {
 		// We have reached the limit of the number of open buffers
@@ -594,8 +623,10 @@ bool MainBook::SaveAll(bool askUser, bool includeUntitled)
 	for (size_t i = 0; i < editors.size(); i++) {
 		if (!editors[i]->GetModify())
 			continue;
-		if (!includeUntitled && editors[i]->GetFileName().GetFullPath().StartsWith(wxT("Untitled")))
+			
+		if (!includeUntitled && !editors[i]->GetFileName().FileExists())
 			continue; //don't save new documents that have not been saved to disk yet
+			
 		files.push_back(std::make_pair(editors[i]->GetFileName(), true));
 		editors[n++] = editors[i];
 	}
@@ -890,9 +921,9 @@ bool MainBook::DoSelectPage(wxWindow* win)
 	return true;
 }
 
-void MainBook::ShowMessage(const wxString &message, bool showHideButton, const wxBitmap &bmp, const ButtonDetails &btn1, const ButtonDetails &btn2, const ButtonDetails &btn3)
+void MainBook::ShowMessage(const wxString &message, bool showHideButton, const wxBitmap &bmp, const ButtonDetails &btn1, const ButtonDetails &btn2, const ButtonDetails &btn3, const CheckboxDetails &cb)
 {
-	m_messagePane->ShowMessage(message, showHideButton, bmp, btn1, btn2, btn3);
+	m_messagePane->ShowMessage(message, showHideButton, bmp, btn1, btn2, btn3, cb);
 }
 
 void MainBook::OnPageChanged(NotebookEvent& e)
@@ -941,9 +972,6 @@ void MainBook::DoPositionFindBar(int where)
 
 void MainBook::OnDebugEnded(wxCommandEvent& e)
 {
-	std::vector<LEditor*> editors;
-	GetAllEditors(editors);
-
 	ManagerST::Get()->GetDebuggerTip()->HideDialog();
 	e.Skip();
 }

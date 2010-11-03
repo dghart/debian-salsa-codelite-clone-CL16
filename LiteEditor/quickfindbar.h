@@ -33,11 +33,15 @@ class QuickFindBar : public QuickFindBarBase
 {
 	wxScintilla  *m_sci;
 	size_t        m_flags;
+	wxString      m_lastText;
+	wchar_t*      m_lastTextPtr;
+	
 protected:
-	void ShowReplaceControls(bool show = true);
-	void DoSearch(bool fwd, bool incr);
-	void DoMarkAll();
-
+	void     ShowReplaceControls(bool show = true);
+	void     DoSearch(bool fwd, bool incr);
+	void     DoMarkAll();
+	wchar_t* DoGetSearchStringPtr();
+	
 	wxTextCtrl *GetFocusedControl();
 	void DoShowControls();
 
@@ -78,6 +82,7 @@ protected:
 
 public:
 	QuickFindBar(wxWindow *parent, wxWindowID id = wxID_ANY);
+	virtual ~QuickFindBar();
 	int GetCloseButtonId();
 	bool Show(bool s = true);
 	bool Show(const wxString &findWhat);

@@ -29,8 +29,7 @@
 #include "findreplacedlg.h"
 #include "search_thread.h"
 
-class FindInFilesDialog : public FindInFilesDialogBase
-{
+class FindInFilesDialog : public FindInFilesDialogBase {
 	FindReplaceData m_data;
 
 	void       DoSearch();
@@ -50,11 +49,11 @@ class FindInFilesDialog : public FindInFilesDialogBase
 
 	virtual void OnFindWhatUI( wxUpdateUIEvent& event );
 
+	void OnUseDiffColourForCommentsUI(wxUpdateUIEvent& event);
+
 public:
 	FindInFilesDialog(wxWindow* parent, wxWindowID id, const FindReplaceData& data);
 	virtual ~FindInFilesDialog();
-
-	void SetSearchData(const SearchData &data);
 	void SetRootDir   (const wxString &rootDir);
 
 	FindReplaceData& GetData() {

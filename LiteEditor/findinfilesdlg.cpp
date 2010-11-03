@@ -34,9 +34,8 @@
 #include "replaceinfilespanel.h"
 
 FindInFilesDialog::FindInFilesDialog(wxWindow* parent, wxWindowID id, const FindReplaceData& data)
-		: FindInFilesDialogBase(parent, id)
-		, m_data(data)
-{
+	: FindInFilesDialogBase(parent, id)
+	, m_data(data) {
 	// DirPicker values
 	wxArrayString choices;
 	choices.Add(SEARCH_IN_PROJECT);
@@ -62,7 +61,10 @@ FindInFilesDialog::FindInFilesDialog(wxWindow* parent, wxWindowID id, const Find
 	m_regualrExpression->SetValue(m_data.GetFlags() & wxFRD_REGULAREXPRESSION);
 	m_printScope->SetValue(m_data.GetFlags() & wxFRD_DISPLAYSCOPE);
 	m_checkBoxSaveFilesBeforeSearching->SetValue(m_data.GetFlags() & wxFRD_SAVE_BEFORE_SEARCH);
-
+	m_checkBoxSkipMatchesFoundInComments->SetValue(m_data.GetFlags() & wxFRD_SKIP_COMMENTS);
+	m_checkBoxSkipMatchesFoundInStrings->SetValue(m_data.GetFlags() & wxFRD_SKIP_STRINGS);
+	m_checkBoxHighlighStringComments->SetValue(m_data.GetFlags() & wxFRD_COLOUR_COMMENTS);
+	
 	// Set encoding
 	wxArrayString  astrEncodings;
 	wxFontEncoding fontEnc;
@@ -102,64 +104,14 @@ FindInFilesDialog::FindInFilesDialog(wxWindow* parent, wxWindowID id, const Find
 	Centre();
 }
 
-FindInFilesDialog::~FindInFilesDialog()
-{
+FindInFilesDialog::~FindInFilesDialog() {
 }
 
-void FindInFilesDialog::SetSearchData(const SearchData &data)
-{
-	m_data.SetFindString(data.GetFindString());
-
-	size_t flags = 0;
-	flags |= data.IsMatchCase()         ? wxFRD_MATCHCASE         : 0;
-	flags |= data.IsMatchWholeWord()    ? wxFRD_MATCHWHOLEWORD    : 0;
-	flags |= data.IsRegularExpression() ? wxFRD_REGULAREXPRESSION : 0;
-	flags |= data.GetDisplayScope()     ? wxFRD_DISPLAYSCOPE      : 0;
-	m_data.SetFlags(flags);
-
-	m_findString->SetValue(data.GetFindString());
-	m_matchCase->SetValue(data.IsMatchCase());
-	m_matchWholeWord->SetValue(data.IsMatchWholeWord());
-	m_regualrExpression->SetValue(data.IsRegularExpression());
-
-	// Set encoding
-	int where = m_choiceEncoding->FindString(data.GetEncoding());
-
-	if(where != wxNOT_FOUND) {
-		m_choiceEncoding->SetSelection(where);
-
-	} else {
-		// try to locate the ISO-8859-1 encoding
-		where = m_choiceEncoding->FindString(wxT("ISO-8859-1"));
-		if(where != wxNOT_FOUND) {
-			m_choiceEncoding->SetSelection(where);
-
-		} else if(m_choiceEncoding->IsEmpty() == false) {
-			m_choiceEncoding->SetSelection(0);
-		}
-
-	}
-
-	m_printScope->SetValue(data.GetDisplayScope());
-	m_fileTypes->SetValue(data.GetExtensions());
-
-	m_listPaths->Clear();
-	const wxArrayString& rootDirs = data.GetRootDirs();
-	for (size_t i = 0; i < rootDirs.Count(); ++i) {
-		m_listPaths->Append(rootDirs.Item(i));
-	}
-	if (rootDirs.IsEmpty() == false) {
-		m_dirPicker->SetPath(rootDirs.Item(0));
-	}
-}
-
-void FindInFilesDialog::SetRootDir(const wxString &rootDir)
-{
+void FindInFilesDialog::SetRootDir(const wxString &rootDir) {
 	m_dirPicker->SetPath(rootDir);
 }
 
-void FindInFilesDialog::DoSearchReplace()
-{
+void FindInFilesDialog::DoSearchReplace() {
 	SearchData data = DoGetSearchData();
 	data.SetOwner(clMainFrame::Get()->GetOutputPane()->GetReplaceResultsTab());
 
@@ -170,8 +122,7 @@ void FindInFilesDialog::DoSearchReplace()
 	Hide();
 }
 
-void FindInFilesDialog::DoSearch()
-{
+void FindInFilesDialog::DoSearch() {
 	SearchData data = DoGetSearchData();
 	data.SetOwner(clMainFrame::Get()->GetOutputPane()->GetFindResultsTab());
 
@@ -183,21 +134,31 @@ void FindInFilesDialog::DoSearch()
 	Hide();
 }
 
-SearchData FindInFilesDialog::DoGetSearchData()
-{
+SearchData FindInFilesDialog::DoGetSearchData() {
 	SearchData data;
 	wxString findStr(m_data.GetFindString());
 	if (m_findString->GetValue().IsEmpty() == false) {
 		findStr = m_findString->GetValue();
 	}
 
-	data.SetFindString(findStr);
-	data.SetMatchCase( (m_data.GetFlags() & wxFRD_MATCHCASE) != 0);
-	data.SetMatchWholeWord((m_data.GetFlags() & wxFRD_MATCHWHOLEWORD) != 0);
-	data.SetRegularExpression((m_data.GetFlags() & wxFRD_REGULAREXPRESSION) != 0);
-	data.SetDisplayScope((m_data.GetFlags() & wxFRD_DISPLAYSCOPE) != 0);
-	data.SetEncoding(m_choiceEncoding->GetStringSelection());
+	data.SetFindString       (findStr);
 
+	size_t flags = m_data.GetFlags();
+
+	// If the 'Skip comments' is ON, remove the
+	// 'colour comments' flag
+	if(flags & wxFRD_SKIP_COMMENTS) {
+		flags &= ~wxFRD_COLOUR_COMMENTS;
+	}
+
+	data.SetMatchCase        ((flags & wxFRD_MATCHCASE) != 0);
+	data.SetMatchWholeWord   ((flags & wxFRD_MATCHWHOLEWORD) != 0);
+	data.SetRegularExpression((flags & wxFRD_REGULAREXPRESSION) != 0);
+	data.SetDisplayScope     ((flags & wxFRD_DISPLAYSCOPE) != 0);
+	data.SetEncoding         (m_choiceEncoding->GetStringSelection());
+	data.SetSkipComments     (flags & wxFRD_SKIP_COMMENTS);
+	data.SetSkipStrings      (flags & wxFRD_SKIP_STRINGS);
+	data.SetColourComments   ( flags & wxFRD_COLOUR_COMMENTS );
 	wxArrayString rootDirs;
 	for (size_t i = 0; i < m_listPaths->GetCount(); ++i) {
 		rootDirs.push_back(m_listPaths->GetString(i));
@@ -241,13 +202,12 @@ SearchData FindInFilesDialog::DoGetSearchData()
 	}
 	data.SetFiles(files);
 
-	data.UseNewTab(m_resInNewTab->GetValue());
+	data.UseNewTab(m_checkBoxSeparateTab->IsChecked());
 	data.SetExtensions(m_fileTypes->GetValue());
 	return data;
 }
 
-void FindInFilesDialog::OnClick(wxCommandEvent &event)
-{
+void FindInFilesDialog::OnClick(wxCommandEvent &event) {
 	wxObject *btnClicked = event.GetEventObject();
 	size_t flags = m_data.GetFlags();
 
@@ -320,21 +280,38 @@ void FindInFilesDialog::OnClick(wxCommandEvent &event)
 		} else {
 			flags &= ~(wxFRD_SAVE_BEFORE_SEARCH);
 		}
+	} else if (btnClicked == m_checkBoxSkipMatchesFoundInComments) {
+		if(m_checkBoxSkipMatchesFoundInComments->IsChecked()) {
+			flags |= wxFRD_SKIP_COMMENTS;
+		} else {
+			flags &= ~wxFRD_SKIP_COMMENTS;
+		}
+
+	} else if (btnClicked == m_checkBoxSkipMatchesFoundInStrings) {
+		if(m_checkBoxSkipMatchesFoundInStrings->IsChecked()) {
+			flags |= wxFRD_SKIP_STRINGS;
+		} else {
+			flags &= ~wxFRD_SKIP_STRINGS;
+		}
+	} else if (btnClicked == m_checkBoxHighlighStringComments) {
+		if(m_checkBoxHighlighStringComments->IsChecked()) {
+			flags |= wxFRD_COLOUR_COMMENTS;
+		} else {
+			flags &= ~wxFRD_COLOUR_COMMENTS;
+		}
 	}
 
 	// Set the updated flags
 	m_data.SetFlags(flags);
 }
 
-void FindInFilesDialog::OnClose(wxCloseEvent &e)
-{
+void FindInFilesDialog::OnClose(wxCloseEvent &e) {
 	wxUnusedVar(e);
 	DoSaveSearchPaths();
 	Hide();
 }
 
-void FindInFilesDialog::OnCharEvent(wxKeyEvent &event)
-{
+void FindInFilesDialog::OnCharEvent(wxKeyEvent &event) {
 	if (event.GetKeyCode() == WXK_ESCAPE) {
 		Hide();
 		return;
@@ -346,29 +323,25 @@ void FindInFilesDialog::OnCharEvent(wxKeyEvent &event)
 	event.Skip();
 }
 
-void FindInFilesDialog::OnAddPath( wxCommandEvent& event )
-{
+void FindInFilesDialog::OnAddPath( wxCommandEvent& event ) {
 	wxString path = m_dirPicker->GetPath();
 	if (m_listPaths->FindString(path) == wxNOT_FOUND) {
 		m_listPaths->Append(path);
 	}
 }
 
-void FindInFilesDialog::OnRemovePath( wxCommandEvent& event )
-{
+void FindInFilesDialog::OnRemovePath( wxCommandEvent& event ) {
 	int sel = m_listPaths->GetSelection();
 	if (sel != wxNOT_FOUND) {
 		m_listPaths->Delete(sel);
 	}
 }
 
-void FindInFilesDialog::OnClearPaths( wxCommandEvent& event )
-{
+void FindInFilesDialog::OnClearPaths( wxCommandEvent& event ) {
 	m_listPaths->Clear();
 }
 
-bool FindInFilesDialog::Show()
-{
+bool FindInFilesDialog::Show() {
 	bool res = IsShown() || wxDialog::Show();
 	if (res) {
 
@@ -392,8 +365,7 @@ bool FindInFilesDialog::Show()
 	return res;
 }
 
-void FindInFilesDialog::DoSaveSearchPaths()
-{
+void FindInFilesDialog::DoSaveSearchPaths() {
 	wxArrayString paths = m_dirPicker->GetValues();
 
 	int where = paths.Index(SEARCH_IN_PROJECT);
@@ -416,24 +388,25 @@ void FindInFilesDialog::DoSaveSearchPaths()
 	m_data.SetSearchPaths(paths);
 }
 
-void FindInFilesDialog::DoSaveOpenFiles()
-{
+void FindInFilesDialog::DoSaveOpenFiles() {
 	if (m_checkBoxSaveFilesBeforeSearching->IsChecked()) {
 		clMainFrame::Get()->GetMainBook()->SaveAll(false, false);
 	}
 }
 
-void FindInFilesDialog::OnClearPathsUI(wxUpdateUIEvent& event)
-{
+void FindInFilesDialog::OnClearPathsUI(wxUpdateUIEvent& event) {
 	event.Enable(m_listPaths->IsEmpty() == false);
 }
 
-void FindInFilesDialog::OnRemovePathUI(wxUpdateUIEvent& event)
-{
+void FindInFilesDialog::OnRemovePathUI(wxUpdateUIEvent& event) {
 	event.Enable(m_listPaths->GetSelection() != wxNOT_FOUND);
 }
 
-void FindInFilesDialog::OnFindWhatUI(wxUpdateUIEvent& event)
-{
+void FindInFilesDialog::OnFindWhatUI(wxUpdateUIEvent& event) {
 	event.Enable(m_findString->GetValue().IsEmpty() == false);
+}
+
+void FindInFilesDialog::OnUseDiffColourForCommentsUI(wxUpdateUIEvent& event)
+{
+	event.Enable(m_checkBoxSkipMatchesFoundInComments->IsChecked() == false);
 }

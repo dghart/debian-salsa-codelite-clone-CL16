@@ -1874,3 +1874,20 @@ void Language::DoExtractTemplateArgsFromSelf(ParsedToken* token)
 		token->SetIsTemplate     ( token->GetTemplateArgList().IsEmpty() == false );
 	}
 }
+
+// Adaptor to Language
+static Language* gs_Language = NULL;
+void LanguageST::Free()
+{
+	if(gs_Language) {
+		delete gs_Language;
+	}
+	gs_Language = NULL;
+}
+
+Language* LanguageST::Get()
+{
+	if(gs_Language == NULL)
+		gs_Language = new Language();
+	return gs_Language;
+}

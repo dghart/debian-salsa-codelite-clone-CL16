@@ -32,9 +32,11 @@
 #include "singleton.h"
 #include "wx/event.h"
 #include "wx/filename.h"
+#include "cppwordscanner.h"
 #include <wx/regex.h>
 #include "worker_thread.h"
 #include "stringsearcher.h"
+#include "codelite_exports.h"
 
 class wxEvtHandler;
 class SearchResult;
@@ -44,8 +46,7 @@ class SearchThread;
 // The searched data class to be passed to the search thread
 //----------------------------------------------------------
 
-class SearchData : public ThreadRequest
-{
+class WXDLLIMPEXP_SDK SearchData : public ThreadRequest {
 	wxArrayString m_rootDirs;
 	wxString      m_findString;
 	size_t        m_flags;
@@ -70,11 +71,11 @@ private:
 public:
 	// Ctor-Dtor
 	SearchData()
-			: ThreadRequest()
-			, m_findString(wxEmptyString)
-			, m_flags(0)
-			, m_newTab(false)
-			, m_owner(NULL) {}
+		: ThreadRequest()
+		, m_findString(wxEmptyString)
+		, m_flags(0)
+		, m_newTab(false)
+		, m_owner(NULL) {}
 
 	SearchData(const SearchData &rhs) {
 		*this = rhs;
@@ -83,7 +84,7 @@ public:
 	virtual ~SearchData() {}
 
 	SearchData& operator=(const SearchData &rhs) {
-		if (this == &rhs){
+		if (this == &rhs) {
 			return *this;
 		}
 
@@ -97,7 +98,7 @@ public:
 
 		m_files.clear();
 
-		for(size_t i=0; i<rhs.m_files.GetCount(); i++){
+		for(size_t i=0; i<rhs.m_files.GetCount(); i++) {
 			m_files.Add(rhs.m_files.Item(i).c_str());
 		}
 
@@ -189,26 +190,54 @@ public:
 	void SetOwner(wxEvtHandler* owner) {
 		this->m_owner = owner;
 	}
-	wxEvtHandler* GetOwner() const{
+	wxEvtHandler* GetOwner() const {
 		return m_owner;
 	}
 
+	bool HasCppOptions() const {
+		return (m_flags & wxSD_SKIP_COMMENTS) || (m_flags & wxSD_SKIP_STRINGS) || (m_flags & wxSD_COLOUR_COMMENTS);
+	}
+
+	void SetSkipComments(bool d) {
+		SetOption(wxSD_SKIP_COMMENTS, d);
+	}
+
+	void SetSkipStrings(bool d) {
+		SetOption(wxSD_SKIP_STRINGS, d);
+	}
+
+	void SetColourComments(bool d) {
+		SetOption(wxSD_COLOUR_COMMENTS, d);
+	}
+
+	bool GetSkipComments() const {
+		return (m_flags & wxSD_SKIP_COMMENTS);
+	}
+
+	bool GetSkipStrings() const {
+		return (m_flags & wxSD_SKIP_STRINGS);
+	}
+
+	bool GetColourComments() const {
+		return (m_flags & wxSD_COLOUR_COMMENTS);
+	}
 };
 
 //------------------------------------------
 // class containing the search result
 //------------------------------------------
-class SearchResult : public wxObject
-{
+class WXDLLIMPEXP_SDK SearchResult : public wxObject {
 	wxString m_pattern;
-	int m_lineNumber;
-	int m_column;
+	int      m_lineNumber;
+	int      m_column;
 	wxString m_fileName;
-	int m_len;
+	int      m_len;
 	wxString m_findWhat;
-	size_t m_flags;
-	int m_columnInChars;
-	int m_lenInChars;
+	size_t   m_flags;
+	int      m_columnInChars;
+	int      m_lenInChars;
+	short    m_matchState;
+	wxString m_scope;
 
 public:
 	//ctor-dtor, copy constructor and assignment operator
@@ -224,15 +253,17 @@ public:
 		if (this == &rhs)
 			return *this;
 
-		m_column = rhs.m_column;
-		m_lineNumber = rhs.m_lineNumber;
-		m_pattern = rhs.m_pattern.c_str();
-		m_fileName = rhs.m_fileName.c_str();
-		m_len = rhs.m_len;
-		m_findWhat = rhs.m_findWhat.c_str();
-		m_flags = rhs.m_flags;
+		m_column        = rhs.m_column;
+		m_lineNumber    = rhs.m_lineNumber;
+		m_pattern       = rhs.m_pattern.c_str();
+		m_fileName      = rhs.m_fileName.c_str();
+		m_len           = rhs.m_len;
+		m_findWhat      = rhs.m_findWhat.c_str();
+		m_flags         = rhs.m_flags;
 		m_columnInChars = rhs.m_columnInChars;
-		m_lenInChars = rhs.m_lenInChars;
+		m_lenInChars    = rhs.m_lenInChars;
+		m_matchState    = rhs.m_matchState;
+		m_scope         = rhs.m_scope.c_str();
 		return *this;
 	}
 
@@ -305,18 +336,31 @@ public:
 		return m_lenInChars;
 	}
 
+	void SetMatchState(short matchState) {
+		this->m_matchState = matchState;
+	}
+	short GetMatchState() const {
+		return m_matchState;
+	}
+
+	void SetScope(const wxString& scope) {
+		this->m_scope = scope.c_str();
+	}
+	const wxString& GetScope() const {
+		return m_scope;
+	}
 	// return a foramtted message
 	wxString GetMessage() const {
 		wxString msg;
 		msg << GetFileName()
-		<< wxT("(")
-		<< GetLineNumber()
-		<< wxT(",")
-		<< GetColumn()
-		<< wxT(",")
-		<< GetLen()
-		<< wxT("): ")
-		<< GetPattern();
+		    << wxT("(")
+		    << GetLineNumber()
+		    << wxT(",")
+		    << GetColumn()
+		    << wxT(",")
+		    << GetLen()
+		    << wxT("): ")
+		    << GetPattern();
 		return msg;
 	}
 };
@@ -324,17 +368,16 @@ public:
 typedef std::list<SearchResult> SearchResultList;
 
 
-class SearchSummary : public wxObject
-{
+class WXDLLIMPEXP_SDK SearchSummary : public wxObject {
 	int m_fileScanned;
 	int m_matchesFound;
 	int m_elapsed;
 
 public:
 	SearchSummary()
-			: m_fileScanned(0)
-			, m_matchesFound(0)
-			, m_elapsed(0) {
+		: m_fileScanned(0)
+		, m_matchesFound(0)
+		, m_elapsed(0) {
 	}
 
 	virtual ~SearchSummary() {}
@@ -387,9 +430,8 @@ public:
 // The search thread
 //----------------------------------------------------------
 
-class SearchThread : public WorkerThread
-{
-	friend class Singleton<SearchThread>;
+class WXDLLIMPEXP_SDK SearchThread : public WorkerThread {
+	friend class SearchThreadST;
 	wxString m_wordChars;
 	std::map<wxChar, bool> m_wordCharsMap; //< Internal
 	SearchResultList m_results;
@@ -464,10 +506,10 @@ private:
 	void DoSearchFile(const wxString &fileName, const SearchData *data);
 
 	// Perform search on a line
-	void DoSearchLine(const wxString &line, const int lineNum, const wxString &fileName, const SearchData *data);
+	void DoSearchLine(const wxString &line, const int lineNum, const wxString &fileName, const SearchData *data, TextStatesPtr statesPtr);
 
 	// Perform search on a line using regular expression
-	void DoSearchLineRE(const wxString &line, const int lineNum, const wxString &fileName, const SearchData *data);
+	void DoSearchLineRE(const wxString &line, const int lineNum, const wxString &fileName, const SearchData *data, TextStatesPtr statesPtr);
 
 	// Send an event to the notified window
 	void SendEvent(wxEventType type, wxEvtHandler *owner);
@@ -483,11 +525,16 @@ private:
 
 };
 
-typedef Singleton<SearchThread> SearchThreadST;
+class WXDLLIMPEXP_SDK SearchThreadST
+{
+public:
+	static SearchThread* Get();
+	static void Free();
+};
 
-extern const wxEventType wxEVT_SEARCH_THREAD_MATCHFOUND;
-extern const wxEventType wxEVT_SEARCH_THREAD_SEARCHEND;
-extern const wxEventType wxEVT_SEARCH_THREAD_SEARCHCANCELED;
-extern const wxEventType wxEVT_SEARCH_THREAD_SEARCHSTARTED;
+extern WXDLLIMPEXP_SDK const wxEventType wxEVT_SEARCH_THREAD_MATCHFOUND;
+extern WXDLLIMPEXP_SDK const wxEventType wxEVT_SEARCH_THREAD_SEARCHEND;
+extern WXDLLIMPEXP_SDK const wxEventType wxEVT_SEARCH_THREAD_SEARCHCANCELED;
+extern WXDLLIMPEXP_SDK const wxEventType wxEVT_SEARCH_THREAD_SEARCHSTARTED;
 
 #endif // SEARCH_THREAD_H

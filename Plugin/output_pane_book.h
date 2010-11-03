@@ -6,8 +6,9 @@
 #include <wx/imaglist.h>
 #include <vector>
 #include <wx/sizer.h>
+#include "codelite_exports.h"
 
-class OutputPaneBook : public wxChoicebook
+class WXDLLIMPEXP_SDK OutputPaneBook : public wxChoicebook
 {
 	std::vector<wxBitmap> m_bmps;
 protected:
@@ -23,6 +24,8 @@ public:
 	{
 		// Hide the tabs
 		GetControlSizer()->Hide((size_t)0);
+		SetInternalBorder(0);
+		GetControlSizer()->Layout();
 		
 		AssignImageList( new wxImageList(16, 16, true) );
 		Layout();

@@ -33,61 +33,93 @@ TagsOptionsBaseDlg::TagsOptionsBaseDlg( wxWindow* parent, wxWindowID id, const w
 	wxBoxSizer* bSizer4;
 	bSizer4 = new wxBoxSizer( wxVERTICAL );
 	
+	m_notebook3 = new wxNotebook( m_generalPage, wxID_ANY, wxDefaultPosition, wxDefaultSize, 0 );
+	m_panel8 = new wxPanel( m_notebook3, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
+	wxBoxSizer* bSizer19;
+	bSizer19 = new wxBoxSizer( wxVERTICAL );
+	
 	wxStaticBoxSizer* sbSizer2;
-	sbSizer2 = new wxStaticBoxSizer( new wxStaticBox( m_generalPage, wxID_ANY, wxT("General:") ), wxVERTICAL );
+	sbSizer2 = new wxStaticBoxSizer( new wxStaticBox( m_panel8, wxID_ANY, wxT("Display:") ), wxVERTICAL );
 	
-	wxFlexGridSizer* fgSizer31;
-	fgSizer31 = new wxFlexGridSizer( 5, 2, 0, 0 );
-	fgSizer31->SetFlexibleDirection( wxBOTH );
-	fgSizer31->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_SPECIFIED );
+	wxGridSizer* gSizer1;
+	gSizer1 = new wxGridSizer( 2, 2, 0, 0 );
 	
-	m_checkBoxMarkTagsFilesInBold = new wxCheckBox( m_generalPage, wxID_ANY, wxT("Mark files and dirs in file explorer that contribute tags in bold"), wxDefaultPosition, wxDefaultSize, 0 );
-	fgSizer31->Add( m_checkBoxMarkTagsFilesInBold, 0, wxALL, 5 );
+	m_checkBoxMarkTagsFilesInBold = new wxCheckBox( m_panel8, wxID_ANY, wxT("Mark files and dirs in file explorer that contribute tags in bold"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_checkBoxMarkTagsFilesInBold->SetToolTip( wxT("Mark files and dirs in file explorer that contribute tags in bold") );
 	
-	m_checkDisableParseOnSave = new wxCheckBox( m_generalPage, wxID_ANY, wxT("Disable auto parsing of saved files"), wxDefaultPosition, wxDefaultSize, 0 );
-	fgSizer31->Add( m_checkDisableParseOnSave, 0, wxALL, 5 );
+	gSizer1->Add( m_checkBoxMarkTagsFilesInBold, 0, wxALL, 5 );
 	
-	m_checkBoxretagWorkspaceOnStartup = new wxCheckBox( m_generalPage, wxID_ANY, wxT("Retag workspace on workspace startup"), wxDefaultPosition, wxDefaultSize, 0 );
-	fgSizer31->Add( m_checkBoxretagWorkspaceOnStartup, 0, wxALL, 5 );
+	m_checkDisplayTypeInfo = new wxCheckBox( m_panel8, wxID_ANY, wxT("Display type info tooltips"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_checkDisplayTypeInfo->SetToolTip( wxT("Display information about the hovered text") );
 	
-	m_checkDisplayTypeInfo = new wxCheckBox( m_generalPage, wxID_ANY, wxT("Display type info tooltips"), wxDefaultPosition, wxDefaultSize, 0 );
-	fgSizer31->Add( m_checkDisplayTypeInfo, 0, wxALL, 5 );
+	gSizer1->Add( m_checkDisplayTypeInfo, 0, wxALL, 5 );
 	
-	m_checkDisplayFunctionTip = new wxCheckBox( m_generalPage, wxID_ANY, wxT("Display function calltip"), wxDefaultPosition, wxDefaultSize, 0 );
-	fgSizer31->Add( m_checkDisplayFunctionTip, 0, wxALL, 5 );
+	m_checkDisplayFunctionTip = new wxCheckBox( m_panel8, wxID_ANY, wxT("Display function calltip"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_checkDisplayFunctionTip->SetToolTip( wxT("Display function argument list after typing an open brace '('") );
 	
-	m_checkCppKeywordAssist = new wxCheckBox( m_generalPage, wxID_ANY, wxT("Display completion box for language keywords"), wxDefaultPosition, wxDefaultSize, 0 );
-	fgSizer31->Add( m_checkCppKeywordAssist, 0, wxALL, 5 );
+	gSizer1->Add( m_checkDisplayFunctionTip, 0, wxALL, 5 );
 	
-	m_checkBoxDeepUsingNamespaceResolving = new wxCheckBox( m_generalPage, wxID_ANY, wxT("Scan all included files to locate 'using namespace' statements"), wxDefaultPosition, wxDefaultSize, 0 );
-	fgSizer31->Add( m_checkBoxDeepUsingNamespaceResolving, 0, wxALL, 5 );
+	m_checkCppKeywordAssist = new wxCheckBox( m_panel8, wxID_ANY, wxT("Display completion box for language keywords"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_checkCppKeywordAssist->SetToolTip( wxT("When enabled, codelite will auto show the code completion box for C/C++ keywords after typing 2 chars") );
 	
+	gSizer1->Add( m_checkCppKeywordAssist, 0, wxALL, 5 );
 	
-	fgSizer31->Add( 0, 0, 1, wxEXPAND, 5 );
+	sbSizer2->Add( gSizer1, 1, wxEXPAND|wxALL, 5 );
 	
-	sbSizer2->Add( fgSizer31, 0, wxEXPAND, 5 );
+	bSizer19->Add( sbSizer2, 0, wxEXPAND|wxALL, 5 );
 	
-	bSizer4->Add( sbSizer2, 0, wxEXPAND|wxALL, 5 );
+	wxStaticBoxSizer* sbSizer15;
+	sbSizer15 = new wxStaticBoxSizer( new wxStaticBox( m_panel8, wxID_ANY, wxT("Behavior:") ), wxVERTICAL );
+	
+	wxGridSizer* gSizer2;
+	gSizer2 = new wxGridSizer( 2, 2, 0, 0 );
+	
+	m_checkBoxretagWorkspaceOnStartup = new wxCheckBox( m_panel8, wxID_ANY, wxT("Retag workspace on workspace startup"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_checkBoxretagWorkspaceOnStartup->SetToolTip( wxT("Retag workspace once loaded") );
+	
+	gSizer2->Add( m_checkBoxretagWorkspaceOnStartup, 0, wxALL, 5 );
+	
+	m_checkDisableParseOnSave = new wxCheckBox( m_panel8, wxID_ANY, wxT("Disable auto parsing of saved files"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_checkDisableParseOnSave->SetToolTip( wxT("Do not trigger file parsing after saving a file") );
+	
+	gSizer2->Add( m_checkDisableParseOnSave, 0, wxALL, 5 );
+	
+	m_checkBoxDeepUsingNamespaceResolving = new wxCheckBox( m_panel8, wxID_ANY, wxT("Scan all included files to locate 'using namespace' statements"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_checkBoxDeepUsingNamespaceResolving->SetToolTip( wxT("Allways search for 'using namespace' statements in all included files") );
+	
+	gSizer2->Add( m_checkBoxDeepUsingNamespaceResolving, 0, wxALL, 5 );
+	
+	sbSizer15->Add( gSizer2, 1, wxEXPAND, 5 );
+	
+	bSizer19->Add( sbSizer15, 0, wxEXPAND|wxALL, 5 );
+	
+	m_panel8->SetSizer( bSizer19 );
+	m_panel8->Layout();
+	bSizer19->Fit( m_panel8 );
+	m_notebook3->AddPage( m_panel8, wxT("Display and Behavior"), true );
+	m_panel6 = new wxPanel( m_notebook3, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
+	wxBoxSizer* bSizer16;
+	bSizer16 = new wxBoxSizer( wxVERTICAL );
 	
 	wxStaticBoxSizer* sbSizer4;
-	sbSizer4 = new wxStaticBoxSizer( new wxStaticBox( m_generalPage, wxID_ANY, wxT("Keywords Highlight:") ), wxVERTICAL );
+	sbSizer4 = new wxStaticBoxSizer( new wxStaticBox( m_panel6, wxID_ANY, wxEmptyString ), wxVERTICAL );
 	
 	wxBoxSizer* bSizer11;
 	bSizer11 = new wxBoxSizer( wxHORIZONTAL );
 	
-	m_staticText72 = new wxStaticText( m_generalPage, wxID_ANY, wxT("Maixmum number of *workspace* symbols to colour:"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_staticText72 = new wxStaticText( m_panel6, wxID_ANY, wxT("Maixmum number of *workspace* symbols to colour:"), wxDefaultPosition, wxDefaultSize, 0 );
 	m_staticText72->Wrap( -1 );
 	bSizer11->Add( m_staticText72, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5 );
 	
-	m_spinCtrlMaxItemToColour = new wxSpinCtrl( m_generalPage, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS|wxSP_WRAP, 500, 10000, 1000 );
+	m_spinCtrlMaxItemToColour = new wxSpinCtrl( m_panel6, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS|wxSP_WRAP, 500, 10000, 1000 );
 	bSizer11->Add( m_spinCtrlMaxItemToColour, 1, wxALL|wxEXPAND, 5 );
 	
-	sbSizer4->Add( bSizer11, 1, wxEXPAND, 5 );
+	sbSizer4->Add( bSizer11, 0, wxEXPAND, 5 );
 	
-	m_checkColourLocalVars = new wxCheckBox( m_generalPage, wxID_ANY, wxT("Colour local variables"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_checkColourLocalVars = new wxCheckBox( m_panel6, wxID_ANY, wxT("Colour local variables"), wxDefaultPosition, wxDefaultSize, 0 );
 	sbSizer4->Add( m_checkColourLocalVars, 0, wxALL|wxEXPAND, 5 );
 	
-	m_checkColourProjTags = new wxCheckBox( m_generalPage, wxID_ANY, wxT("Colour workspace tags"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_checkColourProjTags = new wxCheckBox( m_panel6, wxID_ANY, wxT("Colour workspace tags"), wxDefaultPosition, wxDefaultSize, 0 );
 	sbSizer4->Add( m_checkColourProjTags, 0, wxALL|wxEXPAND, 5 );
 	
 	wxFlexGridSizer* fgSizer3;
@@ -95,50 +127,103 @@ TagsOptionsBaseDlg::TagsOptionsBaseDlg( wxWindow* parent, wxWindowID id, const w
 	fgSizer3->SetFlexibleDirection( wxBOTH );
 	fgSizer3->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_SPECIFIED );
 	
-	m_checkBoxClass = new wxCheckBox( m_generalPage, wxID_ANY, wxT("class"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_checkBoxClass = new wxCheckBox( m_panel6, wxID_ANY, wxT("class"), wxDefaultPosition, wxDefaultSize, 0 );
 	fgSizer3->Add( m_checkBoxClass, 0, wxALL, 5 );
 	
-	m_checkBoxStruct = new wxCheckBox( m_generalPage, wxID_ANY, wxT("struct"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_checkBoxStruct = new wxCheckBox( m_panel6, wxID_ANY, wxT("struct"), wxDefaultPosition, wxDefaultSize, 0 );
 	fgSizer3->Add( m_checkBoxStruct, 0, wxALL, 5 );
 	
-	m_checkBoxFunction = new wxCheckBox( m_generalPage, wxID_ANY, wxT("function"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_checkBoxFunction = new wxCheckBox( m_panel6, wxID_ANY, wxT("function"), wxDefaultPosition, wxDefaultSize, 0 );
 	fgSizer3->Add( m_checkBoxFunction, 0, wxALL, 5 );
 	
-	m_checkBoxEnum = new wxCheckBox( m_generalPage, wxID_ANY, wxT("enum"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_checkBoxEnum = new wxCheckBox( m_panel6, wxID_ANY, wxT("enum"), wxDefaultPosition, wxDefaultSize, 0 );
 	fgSizer3->Add( m_checkBoxEnum, 0, wxALL, 5 );
 	
-	m_checkBoxEnumerator = new wxCheckBox( m_generalPage, wxID_ANY, wxT("enumerator"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_checkBoxEnumerator = new wxCheckBox( m_panel6, wxID_ANY, wxT("enumerator"), wxDefaultPosition, wxDefaultSize, 0 );
 	fgSizer3->Add( m_checkBoxEnumerator, 0, wxALL, 5 );
 	
-	m_checkBoxUnion = new wxCheckBox( m_generalPage, wxID_ANY, wxT("union"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_checkBoxUnion = new wxCheckBox( m_panel6, wxID_ANY, wxT("union"), wxDefaultPosition, wxDefaultSize, 0 );
 	fgSizer3->Add( m_checkBoxUnion, 0, wxALL, 5 );
 	
-	m_checkBoxPrototype = new wxCheckBox( m_generalPage, wxID_ANY, wxT("prototype"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_checkBoxPrototype = new wxCheckBox( m_panel6, wxID_ANY, wxT("prototype"), wxDefaultPosition, wxDefaultSize, 0 );
 	fgSizer3->Add( m_checkBoxPrototype, 0, wxALL, 5 );
 	
-	m_checkBoxTypedef = new wxCheckBox( m_generalPage, wxID_ANY, wxT("typedef"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_checkBoxTypedef = new wxCheckBox( m_panel6, wxID_ANY, wxT("typedef"), wxDefaultPosition, wxDefaultSize, 0 );
 	fgSizer3->Add( m_checkBoxTypedef, 0, wxALL, 5 );
 	
-	m_checkBoxMacro = new wxCheckBox( m_generalPage, wxID_ANY, wxT("macro"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_checkBoxMacro = new wxCheckBox( m_panel6, wxID_ANY, wxT("macro"), wxDefaultPosition, wxDefaultSize, 0 );
 	fgSizer3->Add( m_checkBoxMacro, 0, wxALL, 5 );
 	
-	m_checkBoxNamespace = new wxCheckBox( m_generalPage, wxID_ANY, wxT("namespace"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_checkBoxNamespace = new wxCheckBox( m_panel6, wxID_ANY, wxT("namespace"), wxDefaultPosition, wxDefaultSize, 0 );
 	fgSizer3->Add( m_checkBoxNamespace, 0, wxALL, 5 );
 	
-	m_checkBoxMember = new wxCheckBox( m_generalPage, wxID_ANY, wxT("member"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_checkBoxMember = new wxCheckBox( m_panel6, wxID_ANY, wxT("member"), wxDefaultPosition, wxDefaultSize, 0 );
 	fgSizer3->Add( m_checkBoxMember, 0, wxALL, 5 );
 	
-	m_checkBoxVariable = new wxCheckBox( m_generalPage, wxID_ANY, wxT("variable"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_checkBoxVariable = new wxCheckBox( m_panel6, wxID_ANY, wxT("variable"), wxDefaultPosition, wxDefaultSize, 0 );
 	fgSizer3->Add( m_checkBoxVariable, 0, wxALL, 5 );
 	
 	sbSizer4->Add( fgSizer3, 0, wxEXPAND|wxRIGHT|wxLEFT, 15 );
 	
-	bSizer4->Add( sbSizer4, 0, wxEXPAND|wxALL, 5 );
+	bSizer16->Add( sbSizer4, 0, wxEXPAND|wxALL, 5 );
+	
+	m_panel6->SetSizer( bSizer16 );
+	m_panel6->Layout();
+	bSizer16->Fit( m_panel6 );
+	m_notebook3->AddPage( m_panel6, wxT("Colouring"), false );
+	m_panel7 = new wxPanel( m_notebook3, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
+	wxBoxSizer* bSizer17;
+	bSizer17 = new wxBoxSizer( wxVERTICAL );
+	
+	wxStaticBoxSizer* sbSizer7;
+	sbSizer7 = new wxStaticBoxSizer( new wxStaticBox( m_panel7, wxID_ANY, wxT("Automatic Word Completion:") ), wxVERTICAL );
+	
+	wxFlexGridSizer* fgSizer4;
+	fgSizer4 = new wxFlexGridSizer( 0, 2, 0, 0 );
+	fgSizer4->AddGrowableCol( 1 );
+	fgSizer4->SetFlexibleDirection( wxBOTH );
+	fgSizer4->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_SPECIFIED );
+	
+	m_checkWordAssist = new wxCheckBox( m_panel7, wxID_ANY, wxT("Auto-Display wordcompletion-box on typing"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_checkWordAssist->SetToolTip( wxT("When enabled, codelite will auto show the code completion box after N chars were typed") );
+	
+	fgSizer4->Add( m_checkWordAssist, 0, wxALL, 5 );
+	
+	
+	fgSizer4->Add( 0, 0, 1, wxEXPAND, 5 );
+	
+	m_staticTextMinWordLen = new wxStaticText( m_panel7, wxID_ANY, wxT("Minimum number of chars to type to show wordcompletion-box:"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_staticTextMinWordLen->Wrap( -1 );
+	m_staticTextMinWordLen->SetToolTip( wxT("Number of chars to type before showing the code completion box") );
+	
+	fgSizer4->Add( m_staticTextMinWordLen, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5 );
+	
+	m_sliderMinWordLen = new wxSlider( m_panel7, wxID_ANY, 3, 1, 25, wxDefaultPosition, wxDefaultSize, wxSL_AUTOTICKS|wxSL_HORIZONTAL|wxSL_LABELS );
+	m_sliderMinWordLen->SetToolTip( wxT("Number of chars to type before showing the code completion box") );
+	
+	fgSizer4->Add( m_sliderMinWordLen, 0, wxALIGN_CENTER_VERTICAL|wxEXPAND, 5 );
+	
+	m_checkAutoInsertSingleChoice = new wxCheckBox( m_panel7, wxID_ANY, wxT("Auto-Insert single match"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_checkAutoInsertSingleChoice->SetValue(true); 
+	m_checkAutoInsertSingleChoice->SetToolTip( wxT("When there is only a single match dont show the code completion box but rather insert the match") );
+	
+	fgSizer4->Add( m_checkAutoInsertSingleChoice, 0, wxALL, 5 );
+	
+	sbSizer7->Add( fgSizer4, 0, wxEXPAND|wxALL, 5 );
+	
+	bSizer17->Add( sbSizer7, 0, wxEXPAND|wxALL, 5 );
+	
+	m_panel7->SetSizer( bSizer17 );
+	m_panel7->Layout();
+	bSizer17->Fit( m_panel7 );
+	m_notebook3->AddPage( m_panel7, wxT("Triggering"), false );
+	
+	bSizer4->Add( m_notebook3, 1, wxEXPAND | wxALL, 5 );
 	
 	m_generalPage->SetSizer( bSizer4 );
 	m_generalPage->Layout();
 	bSizer4->Fit( m_generalPage );
-	m_mainBook->AddPage( m_generalPage, wxT("General"), false );
+	m_mainBook->AddPage( m_generalPage, wxT("General"), true );
 	m_panelParser = new wxPanel( m_mainBook, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
 	wxBoxSizer* bSizer7;
 	bSizer7 = new wxBoxSizer( wxVERTICAL );
@@ -367,6 +452,8 @@ TagsOptionsBaseDlg::TagsOptionsBaseDlg( wxWindow* parent, wxWindowID id, const w
 	m_checkBoxNamespace->Connect( wxEVT_UPDATE_UI, wxUpdateUIEventHandler( TagsOptionsBaseDlg::OnColourWorkspaceUI ), NULL, this );
 	m_checkBoxMember->Connect( wxEVT_UPDATE_UI, wxUpdateUIEventHandler( TagsOptionsBaseDlg::OnColourWorkspaceUI ), NULL, this );
 	m_checkBoxVariable->Connect( wxEVT_UPDATE_UI, wxUpdateUIEventHandler( TagsOptionsBaseDlg::OnColourWorkspaceUI ), NULL, this );
+	m_staticTextMinWordLen->Connect( wxEVT_UPDATE_UI, wxUpdateUIEventHandler( TagsOptionsBaseDlg::OnAutoShowWordAssitUI ), NULL, this );
+	m_sliderMinWordLen->Connect( wxEVT_UPDATE_UI, wxUpdateUIEventHandler( TagsOptionsBaseDlg::OnAutoShowWordAssitUI ), NULL, this );
 	m_buttonAddSearchPath->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TagsOptionsBaseDlg::OnAddSearchPath ), NULL, this );
 	m_buttonAddSearchPath->Connect( wxEVT_UPDATE_UI, wxUpdateUIEventHandler( TagsOptionsBaseDlg::OnAddSearchPathUI ), NULL, this );
 	m_buttonRemovePath->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TagsOptionsBaseDlg::OnRemoveSearchPath ), NULL, this );
@@ -399,6 +486,8 @@ TagsOptionsBaseDlg::~TagsOptionsBaseDlg()
 	m_checkBoxNamespace->Disconnect( wxEVT_UPDATE_UI, wxUpdateUIEventHandler( TagsOptionsBaseDlg::OnColourWorkspaceUI ), NULL, this );
 	m_checkBoxMember->Disconnect( wxEVT_UPDATE_UI, wxUpdateUIEventHandler( TagsOptionsBaseDlg::OnColourWorkspaceUI ), NULL, this );
 	m_checkBoxVariable->Disconnect( wxEVT_UPDATE_UI, wxUpdateUIEventHandler( TagsOptionsBaseDlg::OnColourWorkspaceUI ), NULL, this );
+	m_staticTextMinWordLen->Disconnect( wxEVT_UPDATE_UI, wxUpdateUIEventHandler( TagsOptionsBaseDlg::OnAutoShowWordAssitUI ), NULL, this );
+	m_sliderMinWordLen->Disconnect( wxEVT_UPDATE_UI, wxUpdateUIEventHandler( TagsOptionsBaseDlg::OnAutoShowWordAssitUI ), NULL, this );
 	m_buttonAddSearchPath->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TagsOptionsBaseDlg::OnAddSearchPath ), NULL, this );
 	m_buttonAddSearchPath->Disconnect( wxEVT_UPDATE_UI, wxUpdateUIEventHandler( TagsOptionsBaseDlg::OnAddSearchPathUI ), NULL, this );
 	m_buttonRemovePath->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TagsOptionsBaseDlg::OnRemoveSearchPath ), NULL, this );

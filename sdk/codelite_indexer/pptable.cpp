@@ -117,16 +117,18 @@ wxArrayString TokenizeWords(const wxString &str)
 	wxString nextChar;
 	wxString currentWord;
 	wxArrayString outputArr;
-	for(size_t i=0; i<str.Length(); i++) {
+	
+	wxString::const_iterator iter = str.begin();
+	for(; iter != str.end(); iter++) {
 		// Look ahead
-		if( str.Length() > i + 1 ) {
-			nextChar = str[i+1];
+		if( (iter + 1) != str.end() ) {
+			 nextChar = *(iter+1);
 		} else {
 			// we are at the end of buffer
 			nextChar = wxT('\0');
 		}
 
-		currChar = str[i];
+		currChar = *iter;
 		if(!IsWordChar( currChar, currentWord.Length() )) {
 			currentWord.Clear();
 
@@ -147,6 +149,8 @@ wxArrayString TokenizeWords(const wxString &str)
 	return outputArr;
 }
 
+static PPTable* ms_instance = NULL;
+	
 void PPToken::processArgs(const wxString &argsList)
 {
 	args = wxStringTokenize(argsList, wxT(","), wxTOKEN_STRTOK);
@@ -154,7 +158,18 @@ void PPToken::processArgs(const wxString &argsList)
 	// replace all occurances of 'arg' with %1, %2 etc
 	for(size_t i=0; i<args.GetCount(); i++) {
 		wxString replaceWith = wxString::Format(wxT("%%%d"), (int)i);
+#if wxVERSION_NUMBER < 2900
 		replacement = ReplaceWord(replacement, args.Item(i), replaceWith);
+#else
+		std::string res = ReplaceWordA(replacement.To8BitData().data(), args.Item(i).To8BitData().data(), replaceWith.To8BitData().data());
+		if(res.empty()) {
+			replacement.clear();
+			
+		} else {
+			replacement = wxString::From8BitData(res.c_str());
+			
+		}
+#endif
 	}
 }
 
@@ -401,8 +416,6 @@ wxString PPToken::signature() const
 
 ///////////////////////////////////////////////////
 
-PPTable* PPTable::ms_instance = 0;
-
 PPTable::PPTable()
 {
 }
@@ -413,7 +426,7 @@ PPTable::~PPTable()
 
 PPTable* PPTable::Instance()
 {
-	if(ms_instance == 0) {
+	if(ms_instance == NULL) {
 		ms_instance = new PPTable();
 	}
 	return ms_instance;
@@ -424,7 +437,7 @@ void PPTable::Release()
 	if(ms_instance) {
 		delete ms_instance;
 	}
-	ms_instance = 0;
+	ms_instance = NULL;
 }
 
 PPToken PPTable::Token(const wxString& name)

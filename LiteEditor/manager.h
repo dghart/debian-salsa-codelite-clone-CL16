@@ -47,6 +47,45 @@ extern const wxEventType wxEVT_CMD_RESTART_CODELITE;
 
 class DisplayVariableDlg;
 
+class DbgStackInfo
+{
+public:
+	size_t   depth;
+	wxString func;
+
+public:
+	DbgStackInfo()
+	: depth(wxString::npos)
+	, func(wxT(""))
+	{}
+
+	~DbgStackInfo()
+	{
+		Clear();
+	}
+
+	void Clear()
+	{
+		func.Clear();
+		depth = wxString::npos;
+	}
+
+	bool operator==(const DbgStackInfo& rhs)
+	{
+		return func == rhs.func && depth == rhs.depth;
+	}
+
+	bool operator!=(const DbgStackInfo& rhs)
+	{
+		return func != rhs.func || depth != rhs.depth;
+	}
+
+	bool IsValid() const
+	{
+		return !func.IsEmpty() && depth != wxString::npos;
+	}
+};
+
 class Manager : public wxEvtHandler, public IDebuggerObserver
 {
 	friend class Singleton<Manager>;
@@ -68,6 +107,8 @@ class Manager : public wxEvtHandler, public IDebuggerObserver
 	wxFileName              m_codeliteLauncher;
 	DisplayVariableDlg     *m_watchDlg;
 	bool                    m_retagInProgress;
+	bool                    m_repositionEditor; //flag used for debugging, should editor be repositioned after user updates like "add watch"
+	DbgStackInfo            m_dbgCurrentFrameInfo;
 
 protected:
 	Manager(void);
@@ -102,6 +143,13 @@ public:
 	}
 	void SetShutdownInProgress(bool b) {
 		m_isShutdown = b;
+	}
+
+	bool GetRepositionEditor() const {
+		return m_repositionEditor;
+	}
+	void SetRepositionEditor(bool b) {
+		m_repositionEditor = b;
 	}
 
 
@@ -246,6 +294,10 @@ public:
 	 */
 	void SetWorkspaceBuildMatrix(BuildMatrixPtr matrix);
 
+	/**
+	 * @brief user modified the project settings dialog
+	 */
+	void OnProjectSettingsModified(wxCommandEvent &event);
 
 	//--------------------------- Workspace Files Mgmt -----------------------------
 public:
@@ -280,6 +332,8 @@ public:
 	 * @param event
 	 */
 	void OnIncludeFilesScanDone(wxCommandEvent &event);
+
+	void OnDbContentCacherLoaded(wxCommandEvent &event);
 
 	/**
 	 * \brief retag a given file
@@ -506,38 +560,40 @@ protected:
 
 
 	//--------------------------- Debugger Support -----------------------------
+protected:
+	void DoUpdateDebuggerTabControl(wxAuiTabCtrl* tabControl);
+	
 public:
 	BreakptMgr* GetBreakpointsMgr() {
 		return m_breakptsmgr;
 	}
 
 	void UpdateDebuggerPane();
-
+	
 	void SetMemory(const wxString &address, size_t count, const wxString &hex_value);
 
 	//---------------------------------------------------
 	// Debugging API
 	//---------------------------------------------------
 
-	void DbgStart(long pid = wxNOT_FOUND);
-	void DbgStop();
-	void DbgMarkDebuggerLine(const wxString &fileName, int lineno);
-	void DbgUnMarkDebuggerLine();
-	void DbgDoSimpleCommand(int cmd);
-	void DbgSetFrame(int frame, int lineno);
-	void DbgSetThread(long threadId);
-	bool DbgCanInteract() {
-		return m_dbgCanInteract;
-	}
-	void DbgClearWatches();
-	void DbgRestoreWatches();
+	void         DbgStart(long pid = wxNOT_FOUND);
+	void         DbgStop();
+	void         DbgMarkDebuggerLine(const wxString &fileName, int lineno);
+	void         DbgUnMarkDebuggerLine();
+	void         DbgDoSimpleCommand(int cmd);
+	void         DbgSetFrame(int frame, int lineno);
+	void         DbgSetThread(long threadId);
+	bool         DbgCanInteract() { return m_dbgCanInteract;}
+	void         DbgClearWatches();
+	void         DbgRestoreWatches();
+	DbgStackInfo DbgGetCurrentFrameInfo() {return m_dbgCurrentFrameInfo; }
 
 	//---------------------------------------------------
 	// Internal implementaion for various debugger events
 	//---------------------------------------------------
 
 	void UpdateAddLine              (const wxString &line, const bool OnlyIfLoggingOn = false);
-	void UpdateFileLine             (const wxString &file, int lineno);
+	void UpdateFileLine             (const wxString &file, int lineno, bool repositionEditor = true);
 	void UpdateGotControl           (DebuggerReasons reason);
 	void UpdateLostControl          ();
 	void UpdateRemoteTargetConnected(const wxString &line);
@@ -611,6 +667,13 @@ public:
 	 * return true if the last buid ended successfully
 	 */
 	bool IsBuildEndedSuccessfully() const;
+
+	/**
+	 * @brief return the currently active project && configuration
+	 * @param project [output]
+	 * @param conf [output]
+	 */
+	void GetActiveProjectAndConf(wxString &project, wxString& conf);
 
 protected:
 	void DoBuildProject(const QueueCommand &buildInfo);

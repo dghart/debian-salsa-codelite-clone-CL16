@@ -27,6 +27,9 @@
 
 #include <wx/wx.h>
 #include <wx/aui/auibook.h>
+#include <vector>
+#include <set>
+#include "codelite_exports.h"
 
 enum {
 	wxVB_LEFT                   = wxAUI_NB_LEFT,
@@ -44,7 +47,7 @@ enum {
 class NotebookNavDialog;
 class wxMenu;
 
-class Notebook : public wxAuiNotebook
+class WXDLLIMPEXP_SDK Notebook : public wxAuiNotebook
 {
 	NotebookNavDialog *m_popupWin;
 	wxMenu*            m_contextMenu;
@@ -152,12 +155,30 @@ public:
 	size_t GetPageIndex(const wxString &text);
 
 	/**
+	 * \brief returns the index within its tabctrl of the selected editor
+	 * \return page index, or Notebook::npos if page does not exist in the notebook
+	 */
+	size_t GetVisibleEditorIndex();
+
+	/**
 	 * \brief set the text for page at a given index
 	 * \param index page's index
 	 * \param text new text
 	 */
 	bool SetPageText(size_t index, const wxString &text);
 
+	/**
+	 * \brief tries to get a list of displayed editors, in display order
+	 * \param vector in which to return the editors
+	 */
+	void GetEditorsInOrder(std::vector<wxWindow*> &editors);
+	
+	
+	/**
+	 * @brief return a set of the used wxAuiTabControl in the notebook
+	 */
+	std::set<wxAuiTabCtrl*> GetAllTabControls();
+	
 protected:
 	// Event handlers
 	void OnNavigationKey      (wxNavigationKeyEvent &e);
@@ -186,7 +207,7 @@ protected:
 
 };
 
-class NotebookEvent : public wxNotifyEvent
+class WXDLLIMPEXP_SDK NotebookEvent : public wxNotifyEvent
 {
 	size_t sel, oldsel;
 
@@ -227,13 +248,13 @@ public:
 	virtual wxEvent *Clone() const { return new NotebookEvent(*this); }
 };
 
-extern const wxEventType wxEVT_COMMAND_BOOK_PAGE_CHANGED;
-extern const wxEventType wxEVT_COMMAND_BOOK_PAGE_CHANGING;
-extern const wxEventType wxEVT_COMMAND_BOOK_PAGE_CLOSING;
-extern const wxEventType wxEVT_COMMAND_BOOK_PAGE_CLOSED;
-extern const wxEventType wxEVT_COMMAND_BOOK_PAGE_MIDDLE_CLICKED;
-extern const wxEventType wxEVT_COMMAND_BOOK_PAGE_X_CLICKED;
-extern const wxEventType wxEVT_COMMAND_BOOK_BG_DCLICK;
+extern WXDLLIMPEXP_SDK const wxEventType wxEVT_COMMAND_BOOK_PAGE_CHANGED;
+extern WXDLLIMPEXP_SDK const wxEventType wxEVT_COMMAND_BOOK_PAGE_CHANGING;
+extern WXDLLIMPEXP_SDK const wxEventType wxEVT_COMMAND_BOOK_PAGE_CLOSING;
+extern WXDLLIMPEXP_SDK const wxEventType wxEVT_COMMAND_BOOK_PAGE_CLOSED;
+extern WXDLLIMPEXP_SDK const wxEventType wxEVT_COMMAND_BOOK_PAGE_MIDDLE_CLICKED;
+extern WXDLLIMPEXP_SDK const wxEventType wxEVT_COMMAND_BOOK_PAGE_X_CLICKED;
+extern WXDLLIMPEXP_SDK const wxEventType wxEVT_COMMAND_BOOK_BG_DCLICK;
 
 typedef void (wxEvtHandler::*NotebookEventFunction)(NotebookEvent&);
 

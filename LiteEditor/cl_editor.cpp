@@ -100,7 +100,6 @@ extern const char *ConditionalBreakpt[];
 extern const char *ConditionalBreakptDisabled[];
 
 const wxEventType wxCMD_EVENT_REMOVE_MATCH_INDICATOR = XRCID("remove_match_indicator");
-
 extern unsigned int UTF8Length(const wchar_t *uptr, unsigned int tlen);
 
 BEGIN_EVENT_TABLE(LEditor, wxScintilla)
@@ -160,6 +159,7 @@ LEditor::LEditor(wxWindow* parent)
 		, m_lastCharEntered          (0)
 		, m_lastCharEnteredPos       (0)
 		, m_isFocused                (true)
+		, m_pluginInitializedRMenu   (false)
 {
 	ms_bookmarkShapes[wxT("Small Rectangle")]   = wxSCI_MARK_SMALLRECT;
 	ms_bookmarkShapes[wxT("Rounded Rectangle")] = wxSCI_MARK_ROUNDRECT;
@@ -341,10 +341,13 @@ void LEditor::SetProperties()
 	// Mark current line
 	SetCaretLineVisible(options->GetHighlightCaretLine());
 	SetCaretLineBackground(options->GetCaretLineColour());
+
 	SetCaretLineBackgroundAlpha(options->GetCaretLineAlpha());
 	MarkerSetAlpha(smt_bookmark, 30);
 
 	SetFoldFlags(options->GetUnderlineFoldLine() ? 16 : 0);
+
+	SetEndAtLastLine(!options->GetScrollBeyondLastLine());
 
 	//------------------------------------------
 	// Margin settings
@@ -390,7 +393,7 @@ void LEditor::SetProperties()
 	SetMarginWidth(NUMBER_MARGIN_ID, options->GetDisplayLineNumbers() ? pixelWidth : 0);
 
 	// Show the fold margin
-	SetMarginWidth(FOLD_MARGIN_ID, options->GetDisplayFoldMargin() ? 12 : 0);	// Fold margin
+	SetMarginWidth(FOLD_MARGIN_ID, options->GetDisplayFoldMargin() ? 16 : 0);	// Fold margin
 
 	// Mark fold margin & symbols margins as sensetive
 	SetMarginSensitive(FOLD_MARGIN_ID, true);
@@ -777,6 +780,13 @@ void LEditor::OnCharAdded(wxScintillaEvent& event)
 		if (GetWordAtCaret().Len() >= 2 && pos - startPos >= 2 ) {
 			m_context->OnUserTypedXChars(GetWordAtCaret());
 		}
+
+		if (TagsManagerST::Get()->GetCtagsOptions().GetFlags() & CC_WORD_ASSIST) {
+			if (GetWordAtCaret().Len() == (size_t)TagsManagerST::Get()->GetCtagsOptions().GetMinWordLen() &&
+					pos - startPos >= TagsManagerST::Get()->GetCtagsOptions().GetMinWordLen() ) {
+				CompleteWord();
+			}
+		}
 	}
 
 	if ( event.GetKey() !=  13 ) {
@@ -801,10 +811,13 @@ void LEditor::OnSciUpdateUI(wxScintillaEvent &event)
 	int beforeBefore = SafeGetChar(PositionBefore(PositionBefore(pos)));
 	int charCurrnt = SafeGetChar(pos);
 
-	wxString sel_text = GetSelectedText();
-	SetHighlightGuide(0);
+	bool hasSelection = (GetSelectionStart() != GetSelectionEnd());
+	
+	if(GetHighlightGuide() != wxNOT_FOUND)
+		SetHighlightGuide(0);
+		
 	if (m_hightlightMatchedBraces) {
-		if ( sel_text.IsEmpty() == false) {
+		if ( hasSelection ) {
 			wxScintilla::BraceHighlight(wxSCI_INVALID_POSITION, wxSCI_INVALID_POSITION);
 		} else if ( (charCurrnt == '<'   && charAfter  == '<')  ||  //<<
 		            (charCurrnt == '<'   && charBefore == '<')  ||  //<<
@@ -835,17 +848,12 @@ void LEditor::OnSciUpdateUI(wxScintillaEvent &event)
 	//update line number
 	wxString message;
 
-//	int foldLevel = (GetFoldLevel(curLine) & wxSCI_FOLDLEVELNUMBERMASK) - wxSCI_FOLDLEVELBASE;
 	message << wxT("Ln ")
 	<< curLine+1
 	<< wxT(",  Col ")
 	<< GetColumn(pos)
 	<< wxT(",  Pos ")
 	<< pos;
-//	<< wxT(",  Style ")
-//	<< GetStyleAt(pos)
-//	<< wxT(", Fold ")
-//	<< foldLevel;
 
 	// Always update the status bar with event, calling it directly causes performance degredation
 	DoSetStatusMessage(message, 1);
@@ -858,13 +866,16 @@ void LEditor::OnSciUpdateUI(wxScintillaEvent &event)
 		IndicatorClearRange(end, GetTextLength()-end);
 	}
 
-	if (sel_text.IsEmpty()) {
+	if ( !hasSelection ) {
 		// remove indicators
 		SetIndicatorCurrent(2);
-		IndicatorClearRange(0, GetLength());
-#ifdef __WXMAC__
+		int last = IndicatorEnd(2, 0);
+		if(last != wxNOT_FOUND) {
+			IndicatorClearRange(0, GetLength());	
+#if defined(__WXMAC__) || (wxVERSION_NUMBER >= 2900 && defined(__WXMSW__))
 		Refresh();
 #endif
+		}
 	}
 
 	RecalcHorizontalScrollbar();
@@ -960,7 +971,7 @@ void LEditor::DefineMarker(int marker, int markerType, wxColor fore, wxColor bac
 bool LEditor::SaveFile()
 {
 	if (this->GetModify()) {
-		if (GetFileName().GetFullName().Find(wxT("Untitled")) != -1 || GetFileName().GetFullName().IsEmpty()) {
+		if (GetFileName().FileExists() == false) {
 			return SaveFileAs();
 		}
 
@@ -2149,7 +2160,7 @@ void LEditor::ReloadFile()
 	HideCompletionBox();
 	DoCancelCalltip();
 
-	if (m_fileName.GetFullPath().IsEmpty() == true || m_fileName.GetFullPath().StartsWith(wxT("Untitled"))) {
+	if (m_fileName.GetFullPath().IsEmpty() == true || !m_fileName.FileExists()) {
 		SetEOLMode(GetEOLByOS());
 		SetReloadingFile( false );
 		return;
@@ -2180,6 +2191,7 @@ void LEditor::ReloadFile()
 
 	GotoLine(lineNumber);
 	EnsureVisible(lineNumber);
+	EnsureCaretVisible();
 
 	// mark read only files
 	clMainFrame::Get()->GetMainBook()->MarkEditorReadOnly(this, IsFileReadOnly(GetFileName()));
@@ -2313,13 +2325,13 @@ void LEditor::OnContextMenu(wxContextMenuEvent &event)
 		m_popupIsOn = true;
 
 		//let the plugins hook their content
-		PluginManager::Get()->HookPopupMenu(m_rightClickMenu, MenuTypeEditor);
+		if(!m_pluginInitializedRMenu) {
+			PluginManager::Get()->HookPopupMenu(m_rightClickMenu, MenuTypeEditor);
+			m_pluginInitializedRMenu = true;
+		}
 
 		//Popup the menu
 		PopupMenu(m_rightClickMenu);
-
-		//let the plugins remove their hooked content
-		PluginManager::Get()->UnHookPopupMenu(m_rightClickMenu, MenuTypeEditor);
 
 		m_popupIsOn = false;
 
@@ -2404,13 +2416,13 @@ void LEditor::OnLeftUp(wxMouseEvent& event)
 	if (!value) {
 		DoQuickJump(event, false);
 	}
+
+	PostCmdEvent(wxEVT_EDITOR_CLICKED);
 	event.Skip();
 }
 
 void LEditor::OnLeaveWindow(wxMouseEvent& event)
 {
-//    DoCancelCalltip();
-
 	m_hyperLinkIndicatroStart = wxNOT_FOUND;
 	m_hyperLinkIndicatroEnd = wxNOT_FOUND;
 	m_hyperLinkType = wxID_NONE;
@@ -2455,6 +2467,10 @@ void LEditor::OnMiddleDown(wxMouseEvent& event)
 
 void LEditor::OnLeftDown(wxMouseEvent &event)
 {
+#if wxVERSION_NUMBER >= 2900
+	HighlightWord(false);
+#endif
+
 	// hide completion box
 	HideCompletionBox();
 	GetFunctionTip()->Deactivate();
@@ -2468,8 +2484,7 @@ void LEditor::OnLeftDown(wxMouseEvent &event)
 	if (!value) {
 		DoMarkHyperlink(event, false);
 	}
-	
-	SendCmdEvent(wxEVT_EDITOR_CLICKED);
+
 	SetActive();
 	event.Skip();
 }
@@ -2864,7 +2879,10 @@ void LEditor::ShowCompletionBox(const std::vector<TagEntryPtr>& tags, const wxSt
 	}
 
 	m_ccBox->SetAutoHide(false);
-	m_ccBox->SetInsertSingleChoice(false);
+	if (TagsManagerST::Get()->GetCtagsOptions().GetFlags() & CC_AUTO_INSERT_SINGLE_CHOICE)
+		m_ccBox->SetInsertSingleChoice(true);
+	else
+		m_ccBox->SetInsertSingleChoice(false);
 
 	// Show extra info pane for C++ tags
 	bool showExtInfoPane = (tags.at(0)->GetKind() == wxT("function")  ||
@@ -2902,12 +2920,18 @@ void LEditor::ShowCompletionBox(const std::vector<TagEntryPtr>& tags, const wxSt
 		m_ccBox = new CCBox( this );
 	}
 
+	// hide any previous occurance of the completion box
+	HideCompletionBox();
+
 	if(tags.empty()) {
 		return;
 	}
 
 	m_ccBox->SetAutoHide(autoHide);
-	m_ccBox->SetInsertSingleChoice(autoInsertSingleChoice);
+	if (TagsManagerST::Get()->GetCtagsOptions().GetFlags() & CC_AUTO_INSERT_SINGLE_CHOICE)
+		m_ccBox->SetInsertSingleChoice(true);
+	else
+		m_ccBox->SetInsertSingleChoice(false);
 
 	// Show extra info pane for C++ tags
 	bool showExtInfoPane = (tags.at(0)->GetKind() == wxT("function")  ||
@@ -3224,8 +3248,9 @@ void LEditor::DoQuickJump(wxMouseEvent& event, bool isMiddle)
 
 void LEditor::TrimText()
 {
-	bool trim = GetOptions()->GetTrimLine();
-	bool appendLf = GetOptions()->GetAppendLF();
+	bool trim              = GetOptions()->GetTrimLine();
+	bool appendLf          = GetOptions()->GetAppendLF();
+	bool dontTrimCaretLine = GetOptions()->GetDontTrimCaretLine();
 
 	if (!trim && !appendLf) {
 		return;
@@ -3236,19 +3261,28 @@ void LEditor::TrimText()
 
 	if (trim) {
 		int maxLines = GetLineCount();
+		int currLine = GetCurrentLine();
 		for (int line = 0; line < maxLines; line++) {
-			int lineStart = PositionFromLine(line);
-			int lineEnd = GetLineEndPosition(line);
-			int i = lineEnd-1;
-			wxChar ch = (wxChar)(GetCharAt(i));
-			while ((i >= lineStart) && ((ch == _T(' ')) || (ch == _T('\t')))) {
-				i--;
-				ch = (wxChar)(GetCharAt(i));
-			}
-			if (i < (lineEnd-1)) {
-				SetTargetStart(i+1);
-				SetTargetEnd(lineEnd);
-				ReplaceTarget(_T(""));
+
+			// We can trim in the following cases:
+			// 1) line is is NOT the caret line OR
+			// 2) line is the caret line, however dontTrimCaretLine is FALSE
+			bool canTrim = ((line != currLine) || (line == currLine && !dontTrimCaretLine));
+
+			if ( canTrim ) {
+				int lineStart = PositionFromLine(line);
+				int lineEnd = GetLineEndPosition(line);
+				int i = lineEnd-1;
+				wxChar ch = (wxChar)(GetCharAt(i));
+				while ((i >= lineStart) && ((ch == _T(' ')) || (ch == _T('\t')))) {
+					i--;
+					ch = (wxChar)(GetCharAt(i));
+				}
+				if (i < (lineEnd-1)) {
+					SetTargetStart(i+1);
+					SetTargetEnd(lineEnd);
+					ReplaceTarget(_T(""));
+				}
 			}
 		}
 	}
@@ -3569,9 +3603,11 @@ bool LEditor::DoFindAndSelect(const wxString& _pattern, const wxString& what, in
 
 wxMenu* LEditor::DoCreateDebuggerWatchMenu(const wxString &word)
 {
-	DebuggerSettingsData data;
+	DebuggerSettingsPreDefMap data;
 	DebuggerConfigTool::Get()->ReadObject(wxT("DebuggerCommands"), &data);
-	std::vector<DebuggerCmdData> cmds = data.GetCmds();
+
+	DebuggerPreDefinedTypes preDefTypes = data.GetActiveSet();
+	DebuggerCmdDataVec      cmds        = preDefTypes.GetCmds();
 
 	wxMenu*      menu = new wxMenu();
 	wxMenuItem *item(NULL);
@@ -3584,7 +3620,6 @@ wxMenu* LEditor::DoCreateDebuggerWatchMenu(const wxString &word)
 		item = new wxMenuItem(menu, wxNewId(), menuItemText);
 		menu->Prepend(item);
 		Connect(item->GetId(), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(LEditor::OnDbgCustomWatch), NULL, this);
-//		m_dynItems.push_back(item);
 		m_customCmds[item->GetId()] = cmd.GetCommand();
 	}
 

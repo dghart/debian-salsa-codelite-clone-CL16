@@ -8,6 +8,7 @@
 #include <wx/choicebk.h>
 #include <wx/sizer.h>
 #include "cl_defs.h"
+#include "codelite_exports.h"
 #if USE_AUI_TOOLBAR
 #include <wx/pen.h>
 #include <wx/aui/auibar.h>
@@ -24,7 +25,7 @@
 #endif
 
 //--------------------------------------------------------
-class OutputViewControlBar : public wxPanel
+class WXDLLIMPEXP_SDK OutputViewControlBar : public wxPanel
 {
 	wxAuiManager *                  m_aui;
 	OutputPaneBook*                 m_book;
@@ -36,6 +37,7 @@ class OutputViewControlBar : public wxPanel
 #endif
 
 	std::vector<wxToolBarToolBase*> m_tools;
+	bool                            m_buildInProgress;
 
 protected:
 	void DoSetButtonState(int btnId);
@@ -53,6 +55,8 @@ public:
 	void OnPageChanged          (wxChoicebookEvent   &event);
 	void OnRender               (wxAuiManagerEvent   &event);
 	void OnEditorFocus          (wxCommandEvent      &event);
+	void OnBuildStarted         (wxCommandEvent      &event);
+	void OnBuildEnded           (wxCommandEvent      &event);
 
 protected:
 	void        DoTogglePane     (bool hide = true);

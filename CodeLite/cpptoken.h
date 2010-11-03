@@ -28,14 +28,16 @@
 #include <wx/string.h>
 #include <list>
 #include <map>
+#include "codelite_exports.h"
 
-class CppToken
+class WXDLLIMPEXP_CL CppToken
 {
 	int      m_id;
 	wxString name;    // the name of the token
 	size_t   offset;  // file offset
 	wxString filename;
-
+	size_t   lineNumber;
+	
 public:
 	CppToken();
 	~CppToken();
@@ -73,6 +75,15 @@ public:
 	const int& getId() const {
 		return m_id;
 	}
+	
+	size_t getLineNumber() const {
+		return lineNumber;
+	}
+	
+	void setLineNumber(size_t lineNo) {
+		lineNumber = lineNo;
+	}
+	
 	void print();
 
 	// Provide lower-than operator so we can use std::list::sort method
@@ -81,7 +92,7 @@ public:
 	}
 };
 
-class CppTokensMap
+class WXDLLIMPEXP_CL CppTokensMap
 {
 	std::map<wxString, std::list<CppToken>* > m_tokens;
 

@@ -53,13 +53,15 @@ extern void SetGccColourFunction ( int ( *colorfunc ) ( int, const char*, size_t
 BuildTab *BuildTab::s_bt;
 
 BuildTab::BuildTab ( wxWindow *parent, wxWindowID id, const wxString &name )
-		: OutputTabWindow ( parent, id, name )
-		, m_showMe ( BuildTabSettingsData::ShowOnStart )
-		, m_autoHide ( false )
-		, m_skipWarnings ( true )
-		, m_building ( false )
-		, m_errorCount ( 0 )
-		, m_warnCount ( 0 )
+		: OutputTabWindow   ( parent, id, name )
+		, m_showMe          ( BuildTabSettingsData::ShowOnStart )
+		, m_autoHide        ( false )
+		, m_autoShow        ( false )
+		, m_skipWarnings    ( true )
+		, m_building        ( false )
+		, m_errorCount      ( 0 )
+		, m_warnCount       ( 0 )
+		, m_buildInterrupted(false)
 {
 	m_tb->RemoveTool ( XRCID ( "repeat_output" ) );
 
@@ -90,6 +92,17 @@ BuildTab::~BuildTab()
 {
 	s_bt = NULL;
 	SetGccColourFunction ( NULL );
+	
+	wxTheApp->Disconnect ( wxEVT_SHELL_COMMAND_STARTED,         wxCommandEventHandler ( BuildTab::OnBuildStarted ),    NULL, this );
+	wxTheApp->Disconnect ( wxEVT_SHELL_COMMAND_STARTED_NOCLEAN, wxCommandEventHandler ( BuildTab::OnBuildStarted ),    NULL, this );
+	wxTheApp->Disconnect ( wxEVT_SHELL_COMMAND_ADDLINE,         wxCommandEventHandler ( BuildTab::OnBuildAddLine ),    NULL, this );
+	wxTheApp->Disconnect ( wxEVT_SHELL_COMMAND_PROCESS_ENDED,   wxCommandEventHandler ( BuildTab::OnBuildEnded ),      NULL, this );
+	wxTheApp->Disconnect ( wxEVT_WORKSPACE_LOADED,              wxCommandEventHandler ( BuildTab::OnWorkspaceLoaded ), NULL, this );
+	wxTheApp->Disconnect ( wxEVT_WORKSPACE_CLOSED,              wxCommandEventHandler ( BuildTab::OnWorkspaceClosed ), NULL, this );
+	wxTheApp->Disconnect ( wxEVT_EDITOR_CONFIG_CHANGED,         wxCommandEventHandler ( BuildTab::OnConfigChanged ),   NULL, this );
+	wxTheApp->Disconnect ( XRCID ( "next_error" ), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler ( BuildTab::OnNextBuildError ),   NULL, this );
+	wxTheApp->Disconnect ( XRCID ( "next_error" ), wxEVT_UPDATE_UI,             wxUpdateUIEventHandler ( BuildTab::OnNextBuildErrorUI ), NULL, this );
+	wxTheApp->Disconnect ( wxEVT_ACTIVE_EDITOR_CHANGED, wxCommandEventHandler ( BuildTab::OnActiveEditorChanged ), NULL, this );
 }
 
 int BuildTab::ColorLine ( int, const char *text, size_t &start, size_t &len )
@@ -120,11 +133,15 @@ void BuildTab::Initialize()
 	BuildTabSettingsData options;
 	EditorConfigST::Get()->ReadObject ( wxT ( "build_tab_settings" ), &options );
 
-	m_showMe       = options.GetShowBuildPane();
-	m_autoHide     = options.GetAutoHide();
-	m_skipWarnings = options.GetSkipWarnings();
+	m_showMe			= options.GetShowBuildPane();
+	m_autoHide			= options.GetAutoHide();
+	m_autoShow			= options.GetAutoShow();
+	m_skipWarnings		= options.GetSkipWarnings();
+    m_autoAppear		= (m_showMe == BuildTabSettingsData::ShowOnStart);
+	m_autoAppearErrors	= m_autoShow;
+	m_errorsFirstLine	= options.GetErrorsFirstLine();
 
-    m_autoAppear   = (m_showMe == BuildTabSettingsData::ShowOnStart);
+    m_autoAppear		= (m_showMe == BuildTabSettingsData::ShowOnStart);
 
 	SetStyles ( m_sci );
 }
@@ -184,6 +201,7 @@ void BuildTab::Clear()
     m_fileMap.clear();
 	m_errorCount = 0;
 	m_warnCount = 0;
+	m_buildInterrupted = false;
 	m_cmp.Reset ( NULL );
 	m_baseDir.Clear();
 	clMainFrame::Get()->GetOutputPane()->GetErrorsTab()->ClearLines();
@@ -445,8 +463,6 @@ void BuildTab::OnRepeatOutputUI ( wxUpdateUIEvent& e )
 
 void BuildTab::OnBuildStarted ( wxCommandEvent &e )
 {
-	e.Skip();
-
 	m_building = true;
 
 	// Clear all compiler parsing information
@@ -509,7 +525,7 @@ void BuildTab::OnBuildStarted ( wxCommandEvent &e )
 
 void BuildTab::OnBuildAddLine ( wxCommandEvent &e )
 {
-	e.Skip();
+//	e.Skip();
 	AppendText ( e.GetString() );
 //    if (e.GetInt() == QueueCommand::CustomBuild && e.GetString().Contains(BUILD_PROJECT_PREFIX) && !m_lineInfo.empty()) {
 //        // try to show more specific progress in custom builds
@@ -521,8 +537,6 @@ void BuildTab::OnBuildAddLine ( wxCommandEvent &e )
 
 void BuildTab::OnBuildEnded ( wxCommandEvent &e )
 {
-	e.Skip();
-
 	m_building = false;
 	AppendText (BUILD_END_MSG);
 
@@ -532,9 +546,15 @@ void BuildTab::OnBuildEnded ( wxCommandEvent &e )
 		long sec = elapsed % 60;
 		long hours = elapsed / 3600;
 		long minutes = ( elapsed % 3600 ) / 60;
-		term << wxString::Format ( wxT ( ", total time: %02d:%02d:%02d seconds" ), hours, minutes, sec );
+		term << wxString::Format ( wxT ( ", total time: %02ld:%02ld:%02ld seconds" ), hours, minutes, sec );
 
 	}
+	if(m_buildInterrupted) {
+		wxString InterruptedMsg;
+		InterruptedMsg << wxT("(Build Cancelled)\n") << wxT("\n");
+		AppendText ( InterruptedMsg );
+	}
+
 	term << wxT ( '\n' );
 	AppendText ( term );
 
@@ -543,21 +563,32 @@ void BuildTab::OnBuildEnded ( wxCommandEvent &e )
 	bool success = m_errorCount == 0 && ( m_skipWarnings || m_warnCount == 0 );
 	bool viewing = ManagerST::Get()->IsPaneVisible ( clMainFrame::Get()->GetOutputPane()->GetCaption() ) &&
 	               ( clMainFrame::Get()->GetOutputPane()->GetNotebook()->GetCurrentPage() == this ||
-	                 clMainFrame::Get()->GetOutputPane()->GetNotebook()->GetCurrentPage() ==
-	                 clMainFrame::Get()->GetOutputPane()->GetErrorsTab() );
+					 clMainFrame::Get()->GetOutputPane()->GetNotebook()->GetCurrentPage() ==
+							clMainFrame::Get()->GetOutputPane()->GetErrorsTab() );
 
-	if ( !success ) {
-		if ( viewing ) {
+	if ( !success || m_autoAppearErrors ) {
+		if ( !m_autoAppearErrors && viewing ) {
 			std::map<int,LineInfo>::iterator i = GetNextBadLine();
 			m_sci->GotoLine ( i->first-1 ); // minus one line so user can type F4 to open the first error
+
 		} else {
 			ManagerST::Get()->ShowOutputPane ( clMainFrame::Get()->GetOutputPane()->GetErrorsTab()->GetCaption() );
+			if (m_errorsFirstLine)
+				clMainFrame::Get()->GetOutputPane()->GetErrorsTab()->m_sci->GotoLine(0);
+			else
+				clMainFrame::Get()->GetOutputPane()->GetErrorsTab()->m_sci->GotoLine(
+					clMainFrame::Get()->GetOutputPane()->GetErrorsTab()->m_sci->GetLineCount() );
+
 		}
-	} else if ( m_autoHide && viewing ) {
+
+	} else if ( m_autoHide && viewing && !m_buildInterrupted) {
 		ManagerST::Get()->HidePane ( clMainFrame::Get()->GetOutputPane()->GetCaption() );
+
 	} else if ( m_showMe == BuildTabSettingsData::ShowOnEnd && !m_autoHide ) {
 		ManagerST::Get()->ShowOutputPane ( m_name );
+
 	}
+
 
 	MarkEditor ( clMainFrame::Get()->GetMainBook()->GetActiveEditor() );
 
@@ -747,6 +778,27 @@ void BuildTab::DoProcessLine(const wxString& text, int lineno)
 		// consider this line part of the currently building project
 		info.project       = m_lineInfo.rbegin()->second.project;
 		info.configuration = m_lineInfo.rbegin()->second.configuration;
+	}
+
+	if(info.project.IsEmpty()) {
+		// we still dont have a valid project, use the active project name + the current
+		// build configuration
+		ManagerST::Get()->GetActiveProjectAndConf(info.project, info.configuration);
+		ProjectPtr proj = ManagerST::Get()->GetProject ( info.project );
+		if ( proj ) {
+			ProjectSettingsPtr settings = proj->GetSettings();
+			if ( settings ) {
+				BuildConfigPtr bldConf = settings->GetBuildConfiguration ( info.configuration );
+				if ( !bldConf ) {
+					// no buildconf matching the named conf, so use first buildconf instead
+					ProjectSettingsCookie cookie;
+					bldConf = settings->GetFirstBuildConfiguration ( cookie );
+				}
+				if ( bldConf ) {
+					m_cmp = BuildSettingsConfigST::Get()->GetCompiler ( bldConf->GetCompilerType() );
+				}
+			}
+		}
 	}
 
 	// check for start-of-build or end-of-build messages

@@ -17,8 +17,19 @@ createVariables()
 {
 	## set the compiler name
 	#  Note the lack of -fPIC. Only use this for .so libs; strange and random bugs occur otherwise
+  # See if there's an alternative preference for the compilers
+  if [ -z "$CXX" ]; then
 	compiler_name="g++ "
+  else
+    compiler_name="$CXX "
+  fi
+  if [ -z "$CC" ]; then
 	c_compiler_name="gcc "
+  else
+    c_compiler_name="$CC "
+  fi
+
+	## set the executable name
 	exe_name="Runtime/codelite"
 	exe_name1="codelite"
 	is_so_lib=$1
@@ -46,7 +57,6 @@ createVariables()
 		rpaths="$rpaths -Wl,-rpath,$non_plugins_dir"
 	fi
 
-	## set the executable name
 	if [ "$enable_debug" = "yes" ]; then
 		objects_dir="Debug_gcc_unicode"
 		configuration="Debug_gcc_unicode"
@@ -174,13 +184,23 @@ createCodeLiteCppcheckMakefile ()
 	## remove old Makefile
 	rm -fr Makefile
 
+	# See if there's an alternative preference for the compilers
+	if [ -z "$CXX" ]; then
 	compiler_name="g++ "
+	else
+		compiler_name="$CXX "
+	fi
+	if [ -z "$CC" ]; then
 	c_compiler_name="gcc "
+	else
+		c_compiler_name="$CC "
+	fi
+
 	if [ "$is_64bit" = "yes" ]; then
 		compiler_name=${compiler_name}" -DON_64_BIT "
 		c_compiler_name=${c_compiler_name}" -DON_64_BIT "
 	fi
-	## set the executable name
+
 	if [ "$enable_debug" = "yes" ]; then
 		debug_flag=" -g "
 		configuration="Debug"
@@ -262,8 +282,18 @@ createCodeLiteIndexerMakefile ()
 	## remove old Makefile
 	rm -fr Makefile
 
+	# See if there's an alternative preference for the compilers
+	if [ -z "$CXX" ]; then
 	compiler_name="g++ "
+	else
+		compiler_name="$CXX "
+	fi
+	if [ -z "$CC" ]; then
 	c_compiler_name="gcc "
+	else
+		c_compiler_name="$CC "
+	fi
+
 	if [ "$is_64bit" = "yes" ]; then
 		compiler_name=${compiler_name}" -DON_64_BIT "
 		c_compiler_name=${c_compiler_name}" -DON_64_BIT "
@@ -395,7 +425,7 @@ createRules_sharedObject ()
 		echo "${rule_name}: \$(${object_list_name})" >> Makefile
 	fi
 
-	echo "	\$(CMP) -fPIC ${shared_obj_switch} -o ${base_dir}/\$(OUTPUT_DIR)/${libname}.so \$(${object_list_name}) \$(PLUGIN_LINK_FLAGS) ${additional_link_libs}" >> Makefile
+	echo "	\$(CMP) -fPIC ${shared_obj_switch} -o ${base_dir}/\$(OUTPUT_DIR)/${libname}.so \$(${object_list_name}) \$(PLUGIN_LINK_FLAGS) ${additional_link_libs} -lutil" >> Makefile
 	if [ $dont_copy != "dont_copy" ]; then
 		echo "	cp -f ${base_dir}/\$(OUTPUT_DIR)/${libname}.so ${runtime_path}/." >> Makefile
 	fi
@@ -611,8 +641,13 @@ createUnInstallTarget()
 	echo "	@\$(RM) -fr  \$(DESTDIR)$prefix/include/UnitTest++/" >> Makefile
 	echo "	@\$(RM) -fr  \$(DESTDIR)$prefix/lib/libUnitTest++.a" >> Makefile
 	echo "	@\$(RM) -fr  \$(DESTDIR)$prefix/share/codelite" >> Makefile
+	# Avoid deleting /usr/lib
+	if [ "$non_plugins_dir" != "/usr/lib" ] && [ "$non_plugins_dir" != "/usr/lib/" ] ; then
 	echo "	@\$(RM) -fr  \$(DESTDIR)$non_plugins_dir/" >> Makefile
+	fi
+	if [ "$plugins_dir" != "/usr/lib" ] && [ "$plugins_dir" != "/usr/lib/" ] ; then
 	echo "	@\$(RM) -fr  \$(DESTDIR)$plugins_dir/" >> Makefile
+    fi
     # Check write permission for /usr/share/applications, in case we're using a 'local' prefix and not doing sudo
 	echo "	@if test -w \$(DESTDIR)$prefix/share/applications ; then \\" >> Makefile
 	    echo "	  \$(RM) -fr \$(DESTDIR)$prefix/share/applications/codelite.desktop; \\" >> Makefile
@@ -627,9 +662,10 @@ Show_Help_and_Exit()
 	echo "Usage: ./configure [OPTION]..."
 	echo "Available options:"
 	echo "  --prefix=PREFIX         install files into the filepath PREFIX (the default is /usr)"
-	echo "  --plugins-dir=PREFIX    install plugins into the filepath PREFIX (the default is /usr/lib/codelite)"
+	echo "  --plugins-dir=PLUGINSDIR   install plugins into the filepath PLUGINSDIR (the default is \$PREFIX/lib/codelite)"
 	echo "  --enable-debug          create a debug build (the default is disable)"
 	echo "  --help                  show this help"
+	echo "To build with alternative C++ or C compilers, specify them in the environmental variables CXX and/or CC"
 	exit
 }
 
@@ -698,9 +734,12 @@ do
 			value=`echo $1 | cut -d= -f2`
 
 			if [ "$key" = "--prefix" ]; then
-				prefix=$value
+				prefix="$value"
+				# Make plugins_dir a subdir of this by default, though it may be altered below
+				plugins_dir="$value""/lib/codelite"
+
 			elif [ "$key" = "--plugins-dir" ]; then
-				plugins_dir=$value
+				plugins_dir="$value"
 			fi
 		fi
 	shift

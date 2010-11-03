@@ -211,6 +211,13 @@ void ParseThread::ProcessIncludes(ParseRequest* req)
 
 		// Before using the 'crawlerScan' we lock it, since it is not mt-safe
 		for(size_t i=0; i<filteredFileList.GetCount(); i++) {
+
+			// Skip binary files
+			if(TagsManagerST::Get()->IsBinaryFile(filteredFileList.Item(i))) {
+				DEBUG_MESSAGE( wxString::Format(wxT("Skipping binary file %s"), filteredFileList.Item(i).c_str()) );
+				continue;
+			}
+
 			const wxCharBuffer cfile = filteredFileList.Item(i).mb_str(wxConvUTF8);
 			crawlerScan(cfile.data());
 			if( TestDestroy() ) {
@@ -241,6 +248,12 @@ void ParseThread::ProcessSimple(ParseRequest* req)
 {
 	wxString      dbfile = req->getDbfile();
 	wxString      file   = req->getFile();
+
+	// Skip binary file
+	if(TagsManagerST::Get()->IsBinaryFile(file)) {
+		DEBUG_MESSAGE( wxString::Format(wxT("Skipping binary file %s"), file.c_str()) );
+		return;
+	}
 
 	// convert the file to tags
 	TagsManager *tagmgr = TagsManagerST::Get();
@@ -402,6 +415,12 @@ void ParseThread::GetFileListToParse(const wxString& filename, wxArrayString& ar
 		// Invoke the crawler
 		const wxCharBuffer cfile = filename.mb_str(wxConvUTF8);
 
+		// Skip binary files
+		if(TagsManagerST::Get()->IsBinaryFile(filename)) {
+			DEBUG_MESSAGE( wxString::Format(wxT("Skipping binary file %s"), filename.c_str()) );
+			return;
+		}
+
 		// Before using the 'crawlerScan' we lock it, since it is not mt-safe
 		crawlerScan( cfile.data() );
 
@@ -503,14 +522,23 @@ void ParseThread::ProcessParseAndStore(ParseRequest* req)
 
 		wxFileName curFile(wxString(req->_workspaceFiles.at(i).c_str(), wxConvUTF8));
 
+		// Skip binary files
+		if(TagsManagerST::Get()->IsBinaryFile(curFile.GetFullPath())) {
+			DEBUG_MESSAGE( wxString::Format(wxT("Skipping binary file %s"), curFile.GetFullPath().c_str()) );
+			continue;
+		}
+
 		// Send notification to the main window with our progress report
 		precent = (int)((i / maxVal) * 100);
 
-		if( lastPercentageReported !=  precent) {
+		if( m_notifiedWindow && lastPercentageReported !=  precent) {
 			lastPercentageReported = precent;
 			wxCommandEvent retaggingProgressEvent(wxEVT_PARSE_THREAD_RETAGGING_PROGRESS);
 			retaggingProgressEvent.SetInt( (int)precent );
 			m_notifiedWindow->AddPendingEvent(retaggingProgressEvent);
+			
+		} else if(lastPercentageReported !=  precent) {
+			wxPrintf(wxT("parsing: %%%d completed\n"), precent);
 		}
 
 		TagTreePtr tree = TagsManagerST::Get()->ParseSourceFile(curFile);
@@ -549,8 +577,11 @@ void ParseThread::ProcessParseAndStore(ParseRequest* req)
 		std::vector<std::string> *arrFiles = new std::vector<std::string>;
 		*arrFiles = req->_workspaceFiles;
 		retaggingCompletedEvent.SetClientData( arrFiles );
-
 		m_notifiedWindow->AddPendingEvent(retaggingCompletedEvent);
+		
+	} else {
+		wxPrintf(wxT("parsing: done\n"), precent);
+		
 	}
 
 	// Close the database
@@ -595,4 +626,22 @@ void ParseRequest::setFile(const wxString& file)
 
 ParseRequest::~ParseRequest()
 {
+}
+
+// Adaptor to the parse thread 
+static ParseThread* gs_theParseThread = NULL;
+
+void ParseThreadST::Free()
+{
+	if(gs_theParseThread) {
+		delete gs_theParseThread;
+	}
+	gs_theParseThread = NULL;
+}
+
+ParseThread* ParseThreadST::Get()
+{
+	if(gs_theParseThread == NULL)
+		gs_theParseThread = new ParseThread;
+	return gs_theParseThread;
 }

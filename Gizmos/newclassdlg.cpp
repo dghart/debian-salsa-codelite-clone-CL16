@@ -35,13 +35,25 @@
 #include "globals.h"
 #include "wx/dir.h"
 #include "workspace.h"
+#include "editor_config.h"
+#include "new_class_dlg_data.h"
 
 NewClassDlg::NewClassDlg( wxWindow* parent, IManager *mgr )
 		: NewClassBaseDlg( parent )
 		, m_selectedItem(wxNOT_FOUND)
 		, m_mgr(mgr)
 {
-	m_bmp->SetBitmap(wxXmlResource::Get()->LoadBitmap(wxT("new_class_title")));
+
+	NewClassDlgData data;
+	EditorConfigST::Get()->ReadObject(wxT("NewClassDlgData"), &data);
+
+	m_checkBoxCopyable->SetValue       ( data.GetFlags() & NewClassDlgData::NonCopyable);
+	m_checkBoxImplPureVirtual->SetValue( data.GetFlags() & NewClassDlgData::ImplAllPureVirtualFuncs);
+	m_checkBoxImplVirtual->SetValue    ( data.GetFlags() & NewClassDlgData::ImplAllVirtualFuncs);
+	m_checkBoxInline->SetValue         ( data.GetFlags() & NewClassDlgData::FileIniline);
+	m_checkBoxSingleton->SetValue      ( data.GetFlags() & NewClassDlgData::Singleton);
+	m_checkBoxUseUnderscores->SetValue ( data.GetFlags() & NewClassDlgData::UseUnderscores);
+	m_checkBoxVirtualDtor->SetValue    ( data.GetFlags() & NewClassDlgData::VirtualDtor);
 
 	//set two columns to our list
 	m_listCtrl1->InsertColumn(0, wxT("Name"));
@@ -169,6 +181,35 @@ void NewClassDlg::OnButtonOK(wxCommandEvent &e)
 	if (!ValidateInput()) {
 		return;
 	}
+
+	// Save the check boxes ticked
+	size_t flags(0);
+
+	if(m_checkBoxCopyable->IsChecked())
+		flags |= NewClassDlgData::NonCopyable;
+
+	if(m_checkBoxImplPureVirtual->IsChecked())
+		flags |= NewClassDlgData::ImplAllPureVirtualFuncs;
+
+	if(m_checkBoxImplVirtual->IsChecked())
+		flags |= NewClassDlgData::ImplAllVirtualFuncs;
+
+	if(m_checkBoxInline->IsChecked())
+		flags |= NewClassDlgData::FileIniline;
+
+	if(m_checkBoxSingleton->IsChecked())
+		flags |= NewClassDlgData::Singleton;
+
+	if(m_checkBoxUseUnderscores->IsChecked())
+		flags |= NewClassDlgData::UseUnderscores;
+
+	if(m_checkBoxVirtualDtor->IsChecked())
+		flags |= NewClassDlgData::VirtualDtor;
+
+	NewClassDlgData data;
+	data.SetFlags( flags );
+	EditorConfigST::Get()->WriteObject(wxT("NewClassDlgData"), &data);
+
 	EndModal(wxID_OK);
 }
 
@@ -260,37 +301,28 @@ void NewClassDlg::GetNewClassInfo(NewClassInfo &info)
 
 wxString NewClassDlg::GetClassFile()
 {
-	if(m_checkBoxEnterFileName->IsChecked()) {
-		return m_textCtrlFileName->GetValue();
-	} else {
-		wxString fileName(m_textClassName->GetValue());
-		fileName.MakeLower();
-		return fileName;
-	}
-}
-
-void NewClassDlg::OnCheckEnterFileNameManually(wxCommandEvent &e)
-{
-	if(e.IsChecked()) {
-		m_textCtrlFileName->Enable(true);
-		m_textCtrlFileName->SetFocus();
-		m_textCtrlFileName->SelectAll();
-
-	} else {
-		wxString file_name( m_textClassName->GetValue() );
-		file_name.MakeLower();
-		m_textCtrlFileName->SetValue( file_name );
-		m_textCtrlFileName->Enable(false);
-	}
+	return m_textCtrlFileName->GetValue();
 }
 
 void NewClassDlg::OnTextEnter(wxCommandEvent &e)
 {
-	if(m_checkBoxEnterFileName->IsChecked() == false) {
-		wxString file_name( m_textClassName->GetValue() );
-		file_name.MakeLower();
-		m_textCtrlFileName->SetValue( file_name );
+	wxString file_name( m_textClassName->GetValue() );
+	if(m_checkBoxUseUnderscores->IsChecked()) {
+		file_name = doSpliteByCaptilization(m_textClassName->GetValue());
 	}
+
+	file_name.MakeLower();
+	m_textCtrlFileName->SetValue( file_name );
+}
+
+void NewClassDlg::OnUseUnderscores(wxCommandEvent& e)
+{
+	wxString file_name( m_textClassName->GetValue() );
+	if(e.IsChecked()) {
+		file_name = doSpliteByCaptilization(file_name);
+	}
+	file_name.MakeLower();
+	m_textCtrlFileName->SetValue( file_name );
 }
 
 void NewClassDlg::OnCheckImpleAllVirtualFunctions(wxCommandEvent &e)
@@ -358,7 +390,7 @@ void NewClassDlg::GetNamespacesList(wxArrayString& namespacesArray)
 		return;
 
 	int prevPos = 0;
-	unsigned int pos = textNamespaces.find (wxT("::"), prevPos);
+	size_t pos = textNamespaces.find (wxT("::"), prevPos);
 
 	while (pos != wxString::npos) {
 		wxString token = textNamespaces.Mid(prevPos, pos-prevPos);
@@ -378,10 +410,47 @@ void NewClassDlg::OnCheckInline(wxCommandEvent &e)
 	// Inline implementation conflict with singleton implementation
 	// so disable the relative checkbox
 	if (e.IsChecked()) {
-		if (m_checkBox6->IsEnabled())
-			m_checkBox6->Enable (false);
+		if (m_checkBoxSingleton->IsEnabled())
+			m_checkBoxSingleton->Enable (false);
 	} else {
-		if (!m_checkBox6->IsEnabled())
-			m_checkBox6->Enable (true);
+		if (!m_checkBoxSingleton->IsEnabled())
+			m_checkBoxSingleton->Enable (true);
 	}
+}
+
+wxString NewClassDlg::doSpliteByCaptilization(const wxString& str)
+{
+	if(str.IsEmpty())
+		return wxT("");
+
+	wxString output;
+	bool lastWasLower(true);
+
+	for(int i=str.length()-1; i >= 0; i--) {
+
+		int cur  = (int)str[i];
+		if(!isalpha(cur)) {
+			output.Prepend((wxChar)cur);
+			continue;
+		}
+
+		if(isupper(cur) && lastWasLower) {
+			output.Prepend((wxChar)cur);
+			output.Prepend(wxT('_'));
+
+		} else {
+			output.Prepend((wxChar)cur);
+		}
+
+		lastWasLower = islower(cur);
+	}
+
+	// replace any double underscores with single one
+	while(output.Replace(wxT("__"), wxT("_"))) {}
+
+	// remove any underscore from the start of the word
+	if(output.StartsWith(wxT("_"))) {
+		output.Remove(0, 1);
+	}
+	return output;
 }

@@ -23,10 +23,11 @@
 #include <wx/toolbar.h>
 
 OutputViewControlBar::OutputViewControlBar(wxWindow* win, OutputPaneBook *book, wxAuiManager *aui, wxWindowID id)
-		: wxPanel  (win, id, wxDefaultPosition, wxSize(-1, -1))
-		, m_aui    (aui)
-		, m_book   (book)
-		, m_buttons(NULL)
+		: wxPanel          (win, id, wxDefaultPosition, wxSize(-1, -1))
+		, m_aui            (aui)
+		, m_book           (book)
+		, m_buttons        (NULL)
+		, m_buildInProgress(false)
 {
 	wxBoxSizer *mainSizer = new wxBoxSizer(wxHORIZONTAL);
 	SetSizer( mainSizer );
@@ -45,13 +46,18 @@ OutputViewControlBar::OutputViewControlBar(wxWindow* win, OutputPaneBook *book, 
 	if ( m_aui ) {
 		m_aui->Connect(wxEVT_AUI_RENDER, wxAuiManagerEventHandler(OutputViewControlBar::OnRender), NULL, this);
 	}
-	wxTheApp->Connect ( wxEVT_EDITOR_CLICKED         , wxCommandEventHandler ( OutputViewControlBar::OnEditorFocus          ), NULL, this );
+	wxTheApp->Connect ( wxEVT_EDITOR_CLICKED , wxCommandEventHandler ( OutputViewControlBar::OnEditorFocus  ), NULL, this );
+	wxTheApp->Connect ( wxEVT_BUILD_STARTED  , wxCommandEventHandler ( OutputViewControlBar::OnBuildStarted ), NULL, this );
+	wxTheApp->Connect ( wxEVT_BUILD_ENDED    , wxCommandEventHandler ( OutputViewControlBar::OnBuildEnded   ), NULL, this );
 	mainSizer->Add(m_buttons, 1, wxEXPAND);
 	mainSizer->Layout();
 }
 
 OutputViewControlBar::~OutputViewControlBar()
 {
+	wxTheApp->Disconnect ( wxEVT_EDITOR_CLICKED , wxCommandEventHandler ( OutputViewControlBar::OnEditorFocus  ), NULL, this );
+	wxTheApp->Disconnect ( wxEVT_BUILD_STARTED  , wxCommandEventHandler ( OutputViewControlBar::OnBuildStarted ), NULL, this );
+	wxTheApp->Disconnect ( wxEVT_BUILD_ENDED    , wxCommandEventHandler ( OutputViewControlBar::OnBuildEnded   ), NULL, this );
 }
 
 void OutputViewControlBar::AddButton(const wxString& text, const wxBitmap& bmp, bool selected)
@@ -232,15 +238,33 @@ void OutputViewControlBar::OnEditorFocus(wxCommandEvent& event)
 
 	if (EditorConfigST::Get()->GetOptions()->GetHideOutpuPaneOnUserClick()) {
 
-		// Optionally don't hide the Debug pane: it's irritating during a debug session, you click to set a breakpoint...
-		if (EditorConfigST::Get()->GetOptions()->GetHideOutputPaneNotIfDebug()) {
-			// Find if it's 'Debug' that's visible
-			int cursel = m_book->GetSelection();
-			if ( cursel != wxNOT_FOUND && m_book->GetPageText(cursel) == wxT("Debug") ) {
+		// Optionally don't hide the various panes (sometimes it's irritating, you click to do something and...)
+		int cursel(m_book->GetSelection());
+		if (cursel != wxNOT_FOUND) {
+			if (EditorConfigST::Get()->GetOptions()->GetHideOutputPaneNotIfBuild() && m_book->GetPageText(cursel) == wxT("Build") )
 				return;
-			}
+			if (EditorConfigST::Get()->GetOptions()->GetHideOutputPaneNotIfErrors() && m_book->GetPageText(cursel) == wxT("Errors") )
+				return;
+			if (EditorConfigST::Get()->GetOptions()->GetHideOutputPaneNotIfSearch() && m_book->GetPageText(cursel) == wxT("Search") )
+				return;
+			if (EditorConfigST::Get()->GetOptions()->GetHideOutputPaneNotIfReplace() && m_book->GetPageText(cursel) == wxT("Replace") )
+				return;
+			if (EditorConfigST::Get()->GetOptions()->GetHideOutputPaneNotIfReferences() && m_book->GetPageText(cursel) == wxT("References") )
+				return;
+			if (EditorConfigST::Get()->GetOptions()->GetHideOutputPaneNotIfOutput() && m_book->GetPageText(cursel) == wxT("Output") )
+				return;
+			if (EditorConfigST::Get()->GetOptions()->GetHideOutputPaneNotIfDebug() && m_book->GetPageText(cursel) == wxT("Debug") )
+				return;
+			if (EditorConfigST::Get()->GetOptions()->GetHideOutputPaneNotIfTrace() && m_book->GetPageText(cursel) == wxT("Trace") )
+				return;
+			if (EditorConfigST::Get()->GetOptions()->GetHideOutputPaneNotIfTasks() && m_book->GetPageText(cursel) == wxT("Tasks") )
+				return;
 		}
 
+		// avoid auto-hiding when build is in progress
+		if (m_buildInProgress)
+			return;
+		
 		// and hide the output view
 		DoTogglePane(true);
 	}
@@ -294,3 +318,16 @@ void OutputViewControlBar::DoSetButtonState(const wxString& label)
 #endif
 	DoSetButtonState(wxNOT_FOUND);
 }
+
+void OutputViewControlBar::OnBuildEnded(wxCommandEvent& event)
+{
+	m_buildInProgress = false;
+	event.Skip();
+}
+
+void OutputViewControlBar::OnBuildStarted(wxCommandEvent& event)
+{
+	m_buildInProgress = true;
+	event.Skip();
+}
+

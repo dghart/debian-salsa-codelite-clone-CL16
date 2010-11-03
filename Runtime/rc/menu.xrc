@@ -1,4 +1,4 @@
-<resource>
+<resource version="2.0">
     <object class="wxMenuBar" name="main_menu">
         <object class="wxMenu" name="file_tool_or_menuitem">
             <label>&amp;File</label>
@@ -107,6 +107,9 @@
 			 </object>
 			<object class="wxMenuItem" name="move_line_down">
 				 <label>Move Line Down</label>
+			 </object>
+			<object class="wxMenuItem" name="center_line">
+				 <label>Center &amp;Line in Editor</label>
 			 </object>
 			<object class="wxMenuItem" name="wxID_SEPARATOR"/>
 			<object class="wxMenuItem" name="to_upper">
@@ -561,6 +564,9 @@
             <label>Show In Explorer</label>
         </object>
         <object class="wxMenuItem" name="wxID_SEPARATOR"/>
+		<object class="wxMenuItem" name="copy_file_name_only">
+            <label>Copy File Name to Clipboard</label>
+        </object>
 		<object class="wxMenuItem" name="copy_file_name">
             <label>Copy Full Path to Clipboard</label>
         </object>
@@ -586,13 +592,17 @@
         </object>
 		<object class="wxMenuItem" name="wxID_SEPARATOR"/>
 		<object class="wxMenu" name="editor_search">
-			<label>Navigation</label>
+			<label>Search</label>
 			<style>wxMENU_TEAROFF</style>
 			<object class="wxMenuItem" name="go_to_function_start">
 				<label>Goto Begining of Current Function</label>
 			</object>
 			<object class="wxMenuItem" name="go_to_next_function">
 				<label>Goto Begining of Next Function</label>
+			</object>
+			<object class="wxMenuItem" name="wxID_SEPARATOR"/>
+			<object class="wxMenuItem" name="find_references">
+				<label>Find References...</label>
 			</object>
 		</object>
 		<object class="wxMenuItem" name="wxID_SEPARATOR"/>
@@ -704,7 +714,18 @@
         </object>
 	</object>
     <!-- File Tree -->
-
+	
+	<!-- Workspace View Context menu where there is no
+	     workspace opened -->
+	<object class="wxMenu" name="file_view_empty">
+		<object class="wxMenuItem" name="new_workspace">
+            <label>Create new workspace...</label>
+        </object>
+        <object class="wxMenuItem" name="switch_to_workspace">
+            <label>Switch to workspace...</label>
+        </object>
+	</object>
+	
     <!-- Folder Menu -->
     <object class="wxMenu" name="file_tree_folder">
         <label>Project</label>
@@ -899,16 +920,12 @@
     </object>
 
 	<object class="wxMenu" name="dbg_watch_rmenu">
-		<object class="wxMenuItem" name="copy_expr">
-            <label>Copy Expression</label>
+		<object class="wxMenuItem" name="copy_both">
+            <label>Copy</label>
         </object>
 		<object class="wxMenuItem" name="copy_value">
-            <label>Copy Value</label>
+            <label>Copy Value Only</label>
         </object>
-		<object class="wxMenuItem" name="copy_both">
-            <label>Copy Both</label>
-        </object>
-
 		<object class="wxMenuItem" name="wxID_SEPARATOR"/>
 		<object class="wxMenuItem" name="edit_expr">
             <label>Edit</label>
@@ -920,13 +937,25 @@
         <object class="wxMenuItem" name="del_expr_all">
             <label>Delete All</label>
         </object>
-        <object class="wxMenuItem" name="expand_expr">
-            <label>Expand</label>
-        </object>
         <object class="wxMenuItem" name="wxID_SEPARATOR"/>
-        <object class="wxMenuItem" name="dereference_expr">
-            <label>Dereference</label>
-        </object>
+		<object class="wxMenu" name="display_format">
+			<label>Display Format</label>
+			<object class="wxMenuItem" name="watches_df_natural">
+				<label>Natural</label>
+			</object>
+			<object class="wxMenuItem" name="watches_df_hex">
+				<label>Hexadecimal</label>
+			</object>
+			<object class="wxMenuItem" name="watches_df_bin">
+				<label>Binary</label>
+			</object>
+			<object class="wxMenuItem" name="watches_df_octal">
+				<label>Octal</label>
+			</object>
+			<object class="wxMenuItem" name="watches_df_decimal">
+				<label>Decimal</label>
+			</object>
+		</object>
 	</object>
 
 	//File explorer

@@ -26,9 +26,11 @@
 #define __stringaccessor__
 
 #include <wx/string.h>
+#include "codelite_exports.h"
+#include <string>
 
-class StringAccessor {
-	wxString m_str;
+class WXDLLIMPEXP_CL StringAccessor {
+	std::wstring m_str;
 	
 public:
 	StringAccessor(const wxString &str);
@@ -38,8 +40,8 @@ public:
 	char safeAt(size_t pos);
 	bool isWordChar(char ch);
 	
-	void setStr(const wxString& str) {this->m_str = str;}
-	const wxString& getStr() const {return m_str;}
+	void setStr(const wxString& str) {this->m_str = str.c_str();}
+	wxChar* getStr() const {return (wchar_t*)m_str.c_str();}
 	bool match(const char *str, size_t from);
 };
 #endif // __stringaccessor__

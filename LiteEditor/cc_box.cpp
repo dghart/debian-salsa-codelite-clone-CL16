@@ -738,6 +738,9 @@ void CCBox::DoShowTagTip()
 		while(matchPattern.Replace(wxT("  "), wxT(" "))) {}
 
 		matchPattern.Trim().Trim(false);
+
+		// BUG#3082954: limit the size of the 'match pattern' to a reasonable size (200 chars)
+		matchPattern = TagsManagerST::Get()->WrapLines(matchPattern);
 		prefix << matchPattern << wxT("\n");
 
 	} else {
@@ -768,7 +771,10 @@ void CCBox::DoShowTagTip()
 	}
 
 	if( foundComment ) {
+		
 		wxString theComment(comment.c_str(), wxConvUTF8);
+		theComment = TagsManagerST::Get()->WrapLines(theComment);
+		
 		theComment.Trim(false);
 		tagComment = wxString::Format(wxT("%s\n"), theComment.c_str());
 		if(prefix.IsEmpty() == false) {
@@ -786,6 +792,7 @@ void CCBox::DoShowTagTip()
 	if(prefix.IsEmpty()) {
 		return;
 	}
+	
 	editor->CallTipShowExt( m_startPos, prefix);
 	int hightlightFrom = prefix.Find(tag.GetName());
 	if(hightlightFrom != wxNOT_FOUND) {

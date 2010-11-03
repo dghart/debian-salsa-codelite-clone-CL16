@@ -34,9 +34,12 @@
 #include "filehistory.h"
 #include "message_pane.h"
 
+enum OF_extra{ OF_None = 0x00000001, OF_AddJump = 0x00000002, OF_PlaceNextToCurrent = 0x00000004 };
+
 class MessagePane;
 class MainBook : public wxPanel
 {
+
 private:
 	FileHistory   m_recentFiles;
 	NavBar       *m_navBar;
@@ -83,7 +86,7 @@ public:
 	void ShowQuickBar (const wxString &findWhat) {
 		m_quickFindBar->Show(findWhat);
 	}
-	void ShowMessage  (const wxString &message, bool showHideButton = true, const wxBitmap &bmp = wxNullBitmap, const ButtonDetails &btn1 = ButtonDetails(), const ButtonDetails &btn2 = ButtonDetails(), const ButtonDetails &btn3 = ButtonDetails());
+	void ShowMessage  (const wxString &message, bool showHideButton = true, const wxBitmap &bmp = wxNullBitmap, const ButtonDetails &btn1 = ButtonDetails(), const ButtonDetails &btn2 = ButtonDetails(), const ButtonDetails &btn3 = ButtonDetails(), const CheckboxDetails &cb = CheckboxDetails());
 
 	void ShowNavBar   (bool s = true);
 	void UpdateNavBar (LEditor *editor);
@@ -95,7 +98,7 @@ public:
 	void RestoreSession(SessionEntry &session);
 
 	LEditor *GetActiveEditor();
-	void     GetAllEditors  (std::vector<LEditor*> &editors);
+	void     GetAllEditors  (std::vector<LEditor*> &editors, bool retain_order = false);
 	LEditor *FindEditor     (const wxString &fileName);
 	bool     CloseEditor    (const wxString &fileName) {
 		return ClosePage(FindEditor(fileName));
@@ -107,12 +110,12 @@ public:
 	LEditor *NewEditor();
 
 	LEditor *OpenFile(const wxString &file_name, const wxString &projectName = wxEmptyString,
-	                  int lineno = wxNOT_FOUND, long position = wxNOT_FOUND, bool addjump = true);
+	                  int lineno = wxNOT_FOUND, long position = wxNOT_FOUND, enum OF_extra extra = OF_AddJump);
 	LEditor *OpenFile(const BrowseRecord &rec) {
-		return OpenFile(rec.filename, rec.project, rec.lineno, rec.position, false);
+		return OpenFile(rec.filename, rec.project, rec.lineno, rec.position, OF_None);
 	}
 
-	bool AddPage   (wxWindow *win, const wxString &text, const wxBitmap &bmp = wxNullBitmap, bool selected = false);
+	bool AddPage   (wxWindow *win, const wxString &text, const wxBitmap &bmp = wxNullBitmap, bool selected = false, size_t insert_at_index = wxNOT_FOUND);
 	bool SelectPage(wxWindow *win);
 
 	bool UserSelectFiles(std::vector<std::pair<wxFileName,bool> > &files, const wxString &title, const wxString &caption,

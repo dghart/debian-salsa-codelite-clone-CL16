@@ -27,6 +27,7 @@
 
 #include "wx/string.h"
 #include "list"
+#include <wx/colour.h>
 
 // Set default font size per-OS
 #if   defined(__WXGTK__)
@@ -113,10 +114,12 @@ public:
 	int GetAlpha() const {
 		return m_alpha;
 	}
-	const wxString& GetFgColour() const {
+
+	wxString GetFgColour() const {
 		return m_fgColour;
 	}
-	const wxString& GetBgColour() const {
+
+	wxString GetBgColour() const {
 		return m_bgColour;
 	}
 

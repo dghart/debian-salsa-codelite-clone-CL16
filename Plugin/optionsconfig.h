@@ -31,12 +31,14 @@
 #include "wx/colour.h"
 #include "wx/font.h"
 #include "configuration_object.h"
+#include "codelite_exports.h"
 
-class OptionsConfig : public ConfObject
+class WXDLLIMPEXP_SDK OptionsConfig : public ConfObject
 {
 protected:
 	bool           m_displayFoldMargin;
 	bool           m_underlineFoldLine;
+	bool           m_scrollBeyondLastLine;
 	wxString       m_foldStyle;
 	bool           m_displayBookmarkMargin;
 	wxString       m_bookmarkShape;
@@ -68,7 +70,15 @@ protected:
 	wxString       m_eolMode;
 	bool           m_hideChangeMarkerMargin;
 	bool           m_hideOutpuPaneOnUserClick;
+	bool           m_hideOutputPaneNotIfBuild;
+	bool           m_hideOutputPaneNotIfErrors;
+	bool           m_hideOutputPaneNotIfSearch;
+	bool           m_hideOutputPaneNotIfReplace;
+	bool           m_hideOutputPaneNotIfReferences;
+	bool           m_hideOutputPaneNotIfOutput;
 	bool           m_hideOutputPaneNotIfDebug;
+	bool           m_hideOutputPaneNotIfTrace;
+	bool           m_hideOutputPaneNotIfTasks;
 	bool           m_findBarAtBottom;
 	bool           m_TrimLine;
 	bool           m_AppendLF;
@@ -76,7 +86,9 @@ protected:
 	bool           m_disableSemicolonShift;
 	int            m_caretLineAlpha;
 	bool           m_outputPaneDockable;
+	bool           m_showDebugOnRun;
 	bool           m_caretUseCamelCase;
+	bool           m_dontTrimCaretLine;
 
 public:
 	OptionsConfig() {}
@@ -98,6 +110,12 @@ public:
 	}
 	bool GetOutputPaneDockable() const {
 		return m_outputPaneDockable;
+	}
+	void SetShowDebugOnRun(bool showDebugOnRun) {
+		this->m_showDebugOnRun = showDebugOnRun;
+	}
+	bool GetShowDebugOnRun() const {
+		return m_showDebugOnRun;
 	}
 	bool GetDisableSemicolonShift() const {
 		return m_disableSemicolonShift;
@@ -135,11 +153,59 @@ public:
 	const bool& GetHideOutpuPaneOnUserClick() const {
 		return m_hideOutpuPaneOnUserClick;
 	}
+	void SetHideOutputPaneNotIfBuild(const bool& HideOutpuPaneNotIfBuild) {
+		this->m_hideOutputPaneNotIfBuild = HideOutpuPaneNotIfBuild;
+	}
+	const bool& GetHideOutputPaneNotIfBuild() const {
+		return m_hideOutputPaneNotIfBuild;
+	}
+	void SetHideOutputPaneNotIfErrors(const bool& HideOutpuPaneNotIfErrors) {
+		this->m_hideOutputPaneNotIfErrors = HideOutpuPaneNotIfErrors;
+	}
+	const bool& GetHideOutputPaneNotIfErrors() const {
+		return m_hideOutputPaneNotIfErrors;
+	}
+	void SetHideOutputPaneNotIfSearch(const bool& HideOutpuPaneNotIfSearch) {
+		this->m_hideOutputPaneNotIfSearch = HideOutpuPaneNotIfSearch;
+	}
+	const bool& GetHideOutputPaneNotIfSearch() const {
+		return m_hideOutputPaneNotIfSearch;
+	}
+	void SetHideOutputPaneNotIfReplace(const bool& HideOutpuPaneNotIfReplace) {
+		this->m_hideOutputPaneNotIfReplace = HideOutpuPaneNotIfReplace;
+	}
+	const bool& GetHideOutputPaneNotIfReplace() const {
+		return m_hideOutputPaneNotIfReplace;
+	}
+	void SetHideOutputPaneNotIfReferences(const bool& HideOutpuPaneNotIfReferences) {
+		this->m_hideOutputPaneNotIfReferences = HideOutpuPaneNotIfReferences;
+	}
+	const bool& GetHideOutputPaneNotIfReferences() const {
+		return m_hideOutputPaneNotIfReferences;
+	}
+	void SetHideOutputPaneNotIfOutput(const bool& HideOutpuPaneNotIfOutput) {
+		this->m_hideOutputPaneNotIfOutput = HideOutpuPaneNotIfOutput;
+	}
+	const bool& GetHideOutputPaneNotIfOutput() const {
+		return m_hideOutputPaneNotIfOutput;
+	}
 	void SetHideOutputPaneNotIfDebug(const bool& HideOutpuPaneNotIfDebug) {
 		this->m_hideOutputPaneNotIfDebug = HideOutpuPaneNotIfDebug;
 	}
 	const bool& GetHideOutputPaneNotIfDebug() const {
 		return m_hideOutputPaneNotIfDebug;
+	}
+	void SetHideOutputPaneNotIfTrace(const bool& HideOutpuPaneNotIfTrace) {
+		this->m_hideOutputPaneNotIfTrace= HideOutpuPaneNotIfTrace;
+	}
+	const bool& GetHideOutputPaneNotIfTrace() const {
+		return m_hideOutputPaneNotIfTrace;
+	}
+	void SetHideOutputPaneNotIfTasks(const bool& HideOutpuPaneNotIfTasks) {
+		this->m_hideOutputPaneNotIfTasks= HideOutpuPaneNotIfTasks;
+	}
+	const bool& GetHideOutputPaneNotIfTasks() const {
+		return m_hideOutputPaneNotIfTasks;
 	}
 	void SetHideChangeMarkerMargin(bool hideChangeMarkerMargin) {
 		this->m_hideChangeMarkerMargin = hideChangeMarkerMargin;
@@ -154,6 +220,9 @@ public:
 	}
 	bool GetUnderlineFoldLine() const {
 		return m_underlineFoldLine;
+	}
+	bool GetScrollBeyondLastLine() const {
+		return m_scrollBeyondLastLine;
 	}
 	wxString GetFoldStyle() const {
 		return m_foldStyle;
@@ -189,6 +258,9 @@ public:
 	}
 	void SetUnderlineFoldLine(bool b) {
 		m_underlineFoldLine = b;
+	}
+	void SetScrollBeyondLastLine(bool b) {
+		m_scrollBeyondLastLine = b;
 	}
 	void SetFoldStyle(wxString s) {
 		m_foldStyle = s;
@@ -352,6 +424,9 @@ public:
 	}
 	int GetCaretLineAlpha() const {
 		return m_caretLineAlpha;
+	}
+	bool GetDontTrimCaretLine() const {
+		return m_dontTrimCaretLine;
 	}
 	/**
 	 * Return an XML representation of this object
