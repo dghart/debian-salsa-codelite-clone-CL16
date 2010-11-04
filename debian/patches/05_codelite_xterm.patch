@@ -3,7 +3,7 @@ Description:
  Don't rely on xterm, try to use the user's preferred terminal emulator first.
  The option to change the window title differ between terminal emulators, try
  to set the right one.
-Forwarded: no
+Forwarded: https://sourceforge.net/support/tracker.php?aid=3102910
 ---
  Runtime/codelite_xterm |   20 ++++++++++++++++++--
  1 file changed, 18 insertions(+), 2 deletions(-)

@@ -1,3 +1,7 @@
+Author: Alessio Treglia <alessio@debian.org>
+Description: Locate x-terminal-emulator and use it as terminal emulator
+ if found.
+Forwarded: https://sourceforge.net/support/tracker.php?aid=3102910
 ---
  CodeLite/procutils.cpp   |    4 +++-
  LiteEditor/manager.cpp   |    4 ++--
