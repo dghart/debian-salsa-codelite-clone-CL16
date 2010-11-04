@@ -11,7 +11,7 @@ Description: Fix codelite_indexer path.
 
 --- codelite.orig/LiteEditor/manager.cpp
 +++ codelite/LiteEditor/manager.cpp
-@@ -1241,7 +1241,7 @@ wxString Manager::GetProjectExecutionCom
+@@ -1256,7 +1256,7 @@ wxString Manager::GetProjectExecutionCom
  		if ( bldConf->GetPauseWhenExecEnds() ) {
  			wxString ld_lib_path;
  			wxFileName exePath ( wxStandardPaths::Get().GetExecutablePath() );
@@ -22,7 +22,7 @@ Description: Fix codelite_indexer path.
  				command << wxT ( "/bin/sh -f " ) << exeWrapper.GetFullPath() << wxT ( " LD_LIBRARY_PATH=" ) << ld_lib_path << wxT ( " " );
 --- codelite.orig/LiteEditor/frame.cpp
 +++ codelite/LiteEditor/frame.cpp
-@@ -783,7 +783,7 @@ void clMainFrame::CreateGUIControls(void
+@@ -804,7 +804,7 @@ void clMainFrame::CreateGUIControls(void
  #else
  	// set the path to codelite_indexer
  	wxFileName exePath( wxStandardPaths::Get().GetExecutablePath() );
@@ -45,7 +45,7 @@ Description: Fix codelite_indexer path.
  #else
 --- codelite.orig/cppchecker/cppchecker.cpp
 +++ codelite/cppchecker/cppchecker.cpp
-@@ -464,8 +464,7 @@ wxString CppCheckPlugin::DoGetCommand()
+@@ -430,8 +430,7 @@ wxString CppCheckPlugin::DoGetCommand()
  	path = wxStandardPaths::Get().GetDataDir();
  
  #else // Linux / Windows
@@ -57,7 +57,7 @@ Description: Fix codelite_indexer path.
  
 --- codelite.orig/CodeLite/unixprocess_impl.cpp
 +++ codelite/CodeLite/unixprocess_impl.cpp
-@@ -231,8 +231,7 @@ void UnixProcessImpl::Cleanup()
+@@ -238,8 +238,7 @@ void UnixProcessImpl::Cleanup()
  	// Kill the child process
  	if ( IsAlive() ) {
  		wxString cmd;
@@ -67,7 +67,7 @@ Description: Fix codelite_indexer path.
  		cmd << wxT("/bin/sh -f ") << script.GetFullPath();
  		cmd << GetPid();
  
-@@ -406,8 +405,7 @@ void UnixProcessImpl::Terminate()
+@@ -387,8 +386,7 @@ void UnixProcessImpl::Terminate()
  	// Kill the child process
  	if ( IsAlive() ) {
  		wxString cmd;
