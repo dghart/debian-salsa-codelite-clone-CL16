@@ -1,7 +1,3 @@
-Description: Rely on codelite_xterm to run external terminal window.
- Find x-terminal-emulator before looking for gnome-terminal,konsole.
-Author: Alessio Treglia <alessio@debian.org>
-Forwarded: no
 ---
  CodeLite/procutils.cpp   |    4 +++-
  LiteEditor/manager.cpp   |    4 ++--
