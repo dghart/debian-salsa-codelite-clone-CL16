@@ -1,3 +1,13 @@
+codelite (2.8.0.4537~dfsg-1) experimental; urgency=low
+
+  * New upstream release.
+  * Update debian/gbp.conf.
+  * Rename and refresh 01_x-terminal-emulator.patch.
+  * Refresh debian/patches/03_move-helper-binaries.patch
+  * Refresh debian/patches/04_configure.patch.
+
+ -- Alessio Treglia <alessio@debian.org>  Thu, 04 Nov 2010 13:45:10 +0100
+
 codelite (2.7.0.4375~dfsg-2) experimental; urgency=low
 
   * Fix CodeLite/unixprocess_impl.cpp, codelite_kill_children is located
