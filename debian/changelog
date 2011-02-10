@@ -1,3 +1,11 @@
+codelite (2.8.0.4537~dfsg-2) unstable; urgency=low
+
+  * Upload to unstable.
+  * Patches have been forwarded.
+  * Update debian/gbp.conf.
+
+ -- Alessio Treglia <alessio@debian.org>  Thu, 10 Feb 2011 09:42:05 +0100
+
 codelite (2.8.0.4537~dfsg-1) experimental; urgency=low
 
   * New upstream release.
