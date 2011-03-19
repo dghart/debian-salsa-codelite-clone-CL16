@@ -1,3 +1,14 @@
+codelite (2.8.0.4537~dfsg-3) unstable; urgency=low
+
+  * debian/patches/04_configure.patch:
+    - Link against libwxsqlite3-2.8-0.
+  * debian/control:
+    - Build-depend on libwxsqlite3-2.8-dev.
+  * debian/rules:
+    - Update get-orig-source to strip wxsqlite3 out of the tarball.
+
+ -- Alessio Treglia <alessio@debian.org>  Sat, 19 Mar 2011 13:42:07 +0100
+
 codelite (2.8.0.4537~dfsg-2) unstable; urgency=low
 
   * Upload to unstable.
