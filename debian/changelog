@@ -1,3 +1,9 @@
+codelite (2.8.0.4537~dfsg-4) unstable; urgency=low
+
+  * Orphaning this.
+
+ -- Alessio Treglia <alessio@debian.org>  Tue, 30 Aug 2011 11:40:05 +0200
+
 codelite (2.8.0.4537~dfsg-3) unstable; urgency=low
 
   * debian/patches/04_configure.patch:
