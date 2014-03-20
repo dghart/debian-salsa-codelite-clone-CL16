@@ -1,3 +1,10 @@
+codelite (5.4+dfsg-1) UNRELEASED; urgency=medium
+
+  * New maintainer (Closes: #639782)
+  * New upstream release.
+
+ -- James Cowgill <james410@cowgill.org.uk>  Thu, 20 Mar 2014 18:15:28 +0000
+
 codelite (2.8.0.4537~dfsg-4) unstable; urgency=low
 
   * Orphaning this.
