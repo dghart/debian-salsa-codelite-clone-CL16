@@ -22,39 +22,60 @@
 //
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-
+#include "precompiled_header.h"
+#include <wx/ffile.h>
 #include <wx/dcmemory.h>
+#include "bitmap_loader.h"
 #include <wx/xrc/xmlres.h>
+#include <wx/settings.h>
 #include "aboutdlg.h"
 #include "contributers.h"
 #include "windowattrmanager.h"
+#include "manager.h"
 
 AboutDlg::AboutDlg( wxWindow* parent, const wxString &mainTitle )
-		: AboutDlgBase( parent )
+    : AboutDlgBase( parent )
 {
-	m_bmp = wxXmlResource::Get()->LoadBitmap(wxT("About"));
-	m_bitmap->SetBitmap(m_bmp);
+    // set the page content
+    m_htmlWin3->SetPage(wxString::FromUTF8(about_hex));
+    m_buttonOk->SetFocus();
+    wxFileName license(ManagerST::Get()->GetInstallDir() + wxFileName::GetPathSeparator() + wxT("LICENSE"));
+    wxString licenseFullname = license.GetFullPath();
 
-	// set the page content
-	m_htmlWin3->SetPage(wxString::FromUTF8(about_hex));
-	m_buttonOk->SetFocus();
-	GetSizer()->Fit(this);
+    if(license.FileExists()) {
+        wxFFile fp(licenseFullname);
+        if(fp.IsOpened()) {
+            wxString content;
+            fp.ReadAll(&content, wxConvUTF8);
+            fp.Close();
 
-	WindowAttrManager::Load(this, wxT("AboutDialog"), NULL);
+            m_textCtrlLicense->SetEditable(true);
+            wxFont font = wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT);
+            font.SetFamily(wxFONTFAMILY_TELETYPE);
+            m_textCtrlLicense->SetFont(font);
+
+            m_textCtrlLicense->ChangeValue(content);
+            m_textCtrlLicense->SetEditable(false);
+        }
+    }
+    CentreOnScreen();
 }
 
 AboutDlg::~AboutDlg()
 {
-	WindowAttrManager::Save(this, wxT("AboutDialog"), NULL);
 }
-
 
 void AboutDlg::SetInfo(const wxString& info)
 {
-	m_staticTextInformation->SetLabel(info);
+    m_staticTextInformation->SetLabel(info);
 }
 
 wxString AboutDlg::GetInfo() const
 {
-	return m_staticTextInformation->GetLabelText();
+    return m_staticTextInformation->GetLabelText();
+}
+
+void AboutDlg::OnOK(wxCommandEvent& event)
+{
+    EndModal(wxID_OK);
 }

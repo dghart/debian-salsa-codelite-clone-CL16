@@ -35,50 +35,56 @@ EditorSettingsDialogs::EditorSettingsDialogs( wxWindow* parent )
 	long buildBeforeDebug(0);
 	long createSwappedFile(0);
 	long reloadAlteredWorkspace(0);
+	long ccTooManyMatches(0);
 
-	bAdjustCPUNumber = EditorConfigST::Get()->GetLongValue(wxT("AdjustCPUNumber"), adjustCpuNumber);
-	bReplaceWrapAroundAnswer = EditorConfigST::Get()->GetLongValue(wxT("ReplaceWrapAroundAnswer"), replaceWrapAround);
-	bFindNextWrapAroundAnswer = EditorConfigST::Get()->GetLongValue(wxT("FindNextWrapAroundAnswer"), findNextWrapAround);
-	bBuildBeforeDebug = EditorConfigST::Get()->GetLongValue(wxT("BuildBeforeDebug"), buildBeforeDebug);
-	bCreateSwappedFile = EditorConfigST::Get()->GetLongValue(wxT("CreateSwappedFile"), createSwappedFile);
-	bReloadAlteredWorkspace = EditorConfigST::Get()->GetLongValue(wxT("ReloadWorkspaceWhenAltered"), reloadAlteredWorkspace);
+	bAdjustCPUNumber          = EditorConfigST::Get()->GetLongValue(wxT("AdjustCPUNumber"),              adjustCpuNumber);
+	bReplaceWrapAroundAnswer  = EditorConfigST::Get()->GetLongValue(wxT("ReplaceWrapAroundAnswer"),      replaceWrapAround);
+	bFindNextWrapAroundAnswer = EditorConfigST::Get()->GetLongValue(wxT("FindNextWrapAroundAnswer"),     findNextWrapAround);
+	bBuildBeforeDebug         = EditorConfigST::Get()->GetLongValue(wxT("BuildBeforeDebug"),             buildBeforeDebug);
+	bCreateSwappedFile        = EditorConfigST::Get()->GetLongValue(wxT("CreateSwappedFile"),            createSwappedFile);
+	bReloadAlteredWorkspace   = EditorConfigST::Get()->GetLongValue(wxT("ReloadWorkspaceWhenAltered"),   reloadAlteredWorkspace);
+	bCcTooManyMatches         = EditorConfigST::Get()->GetLongValue(wxT("CodeCompletionTooManyMatches"), ccTooManyMatches);
 
 	// the value stored is 0 / 1
 	if (bAdjustCPUNumber) {
-		AdjustCPUNumber_idx = m_checkListAnswers->Append(wxT("Adjust number of build processes according to CPU"));
+		AdjustCPUNumber_idx = m_checkListAnswers->Append(_("Don't offer to adjust the number of build processes according to CPU"));
 		m_checkListAnswers->Check((unsigned int)AdjustCPUNumber_idx, adjustCpuNumber ? true : false);
 	}
 
 	// the value stored is wxID_OK / wxID_NO
 	if (bReplaceWrapAroundAnswer) {
-		ReplaceWrapAroundAnswer_idx = m_checkListAnswers->Append(wxT("Wrap around 'Replace' operation"));
+		ReplaceWrapAroundAnswer_idx = m_checkListAnswers->Append(_("Wrap around 'Replace' operation"));
 		m_checkListAnswers->Check((unsigned int)ReplaceWrapAroundAnswer_idx, replaceWrapAround == wxID_OK);
 	}
 
 	// the value stored is wxID_OK / wxID_NO
 	if (bFindNextWrapAroundAnswer) {
-		FindNextWrapAroundAnswer_idx = m_checkListAnswers->Append(wxT("Wrap around 'Find' operation"));
+		FindNextWrapAroundAnswer_idx = m_checkListAnswers->Append(_("Wrap around 'Find' operation"));
 		m_checkListAnswers->Check((unsigned int)FindNextWrapAroundAnswer_idx, findNextWrapAround == wxID_OK);
 	}
 
 	if (bBuildBeforeDebug) {
-		BuildBeforeDebug_idx = m_checkListAnswers->Append(wxT("Always Build before debugging"));
+		BuildBeforeDebug_idx = m_checkListAnswers->Append(_("Always Build before debugging"));
 		m_checkListAnswers->Check((unsigned int)BuildBeforeDebug_idx, buildBeforeDebug == wxID_OK);
 	}
 
 	if (bCreateSwappedFile) {
-		CreateSwappedFile_idx = m_checkListAnswers->Append(wxT("If swapped file does not exist, create one"));
+		CreateSwappedFile_idx = m_checkListAnswers->Append(_("If swapped file does not exist, create one"));
 		m_checkListAnswers->Check((unsigned int)CreateSwappedFile_idx, createSwappedFile == wxID_OK);
 	}
 
 	// reloadAlteredWorkspace may be 0 (ask each time) 1 (never reload) or 2 (always reload)
 	// Only show the item if it's currently set to one of the auto-responses, so it'll always start unticked
 	if (bReloadAlteredWorkspace && (reloadAlteredWorkspace > 0)) {
-		ReloadAlteredWorkspace_idx = m_checkListAnswers->Append(wxT("Always offer to Reload an externally-modified workspace"));
+		ReloadAlteredWorkspace_idx = m_checkListAnswers->Append(_("Always offer to Reload an externally-modified workspace"));
 	} else {
 		ReloadAlteredWorkspace_idx = wxNOT_FOUND;
 	}
 
+	if (bCcTooManyMatches) {
+		CcTooManyMatches_idx = m_checkListAnswers->Append(_("Don't show the 'code completion found too many matches' tip message"));
+		m_checkListAnswers->Check((unsigned int)CcTooManyMatches_idx, ccTooManyMatches == 1);
+	}
 }
 
 EditorSettingsDialogs::~EditorSettingsDialogs()
@@ -102,6 +108,9 @@ void EditorSettingsDialogs::Save(OptionsConfigPtr)
 
 	if(bCreateSwappedFile)
 		EditorConfigST::Get()->SaveLongValue(wxT("CreateSwappedFile"), m_checkListAnswers->IsChecked(CreateSwappedFile_idx) ? wxID_OK : wxID_NO);
+
+	if(bCcTooManyMatches)
+		EditorConfigST::Get()->SaveLongValue(wxT("CodeCompletionTooManyMatches"), m_checkListAnswers->IsChecked(CcTooManyMatches_idx));
 
 	// We only want to change this one if the box became unticked
 	if(bReloadAlteredWorkspace && (ReloadAlteredWorkspace_idx != wxNOT_FOUND) && m_checkListAnswers->IsChecked(ReloadAlteredWorkspace_idx))

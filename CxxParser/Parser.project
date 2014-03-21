@@ -24,6 +24,7 @@
     <File Name="expression_result.h"/>
     <File Name="function.h"/>
     <File Name="cl_typedef.h"/>
+    <File Name="code_completion_api.h"/>
   </VirtualDirectory>
   <VirtualDirectory Name="grammar">
     <File Name="cpp.l"/>
@@ -40,8 +41,17 @@
   </VirtualDirectory>
   <Dependencies Name="Release"/>
   <Settings Type="Executable">
+    <GlobalSettings>
+      <Compiler Options="" C_Options="">
+        <IncludePath Value="."/>
+      </Compiler>
+      <Linker Options="">
+        <LibraryPath Value="."/>
+      </Linker>
+      <ResourceCompiler Options=""/>
+    </GlobalSettings>
     <Configuration Name="Release" CompilerType="gnu g++" DebuggerType="GNU gdb debugger" Type="Executable" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
-      <Compiler Options="-g;" Required="yes" PreCompiledHeader="">
+      <Compiler Options="-g;-O0" C_Options="-g;" Required="yes" PreCompiledHeader="" PCHInCommandLine="no" UseDifferentPCHFlags="no" PCHFlags="">
         <IncludePath Value="."/>
       </Compiler>
       <Linker Options="-O2" Required="yes">
@@ -49,8 +59,12 @@
         <LibraryPath Value="./Release"/>
       </Linker>
       <ResourceCompiler Options="" Required="yes"/>
-      <General OutputFile="./Release/CppParser" IntermediateDirectory="./Release" Command="CppParser" CommandArguments="" WorkingDirectory="./Release" PauseExecWhenProcTerminates="yes"/>
+      <General OutputFile="./Release/CppParser" IntermediateDirectory="./Release" Command="CppParser" CommandArguments="" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="./Release" PauseExecWhenProcTerminates="yes"/>
+      <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
+        <![CDATA[]]>
+      </Environment>
       <Debugger IsRemote="no" RemoteHostName="" RemoteHostPort="" DebuggerPath="">
+        <DebuggerSearchPaths/>
         <PostConnectCommands/>
         <StartupCommands/>
       </Debugger>
@@ -79,7 +93,7 @@ scope_parser.cpp: cpp_scope_grammar.y
 
 cpp_lexer.cpp: cpp.l
 	flex -L  -Pcl_scope_ cpp.l
-	mv lex.cl_scope_.c cpp_lexer.cpp
+	sed  -e "s/YY_BUF_SIZE 16384/YY_BUF_SIZE 16384*5/g" lex.cl_scope_.c &gt; cpp_lexer.cpp
 
 typedef_parser.cpp: typedef_grammar.y
 	yacc -l  -t -v -pcl_typedef_  typedef_grammar.y
@@ -91,7 +105,7 @@ var_parser.cpp: cpp_variables_grammar.y
 
 cpp_expr_lexer.cpp: expr_lexer.l
 	flex -L  -Pcl_expr_ expr_lexer.l
-	mv lex.cl_expr_.c cpp_expr_lexer.cpp
+	sed  -e "s/YY_BUF_SIZE 16384/YY_BUF_SIZE 16384*5/g" lex.cl_expr_.c &gt; cpp_expr_lexer.cpp
 
 cpp_expr_parser.cpp: expr_grammar.y
 	yacc -l  -t -v -pcl_expr_ expr_grammar.y
@@ -102,15 +116,12 @@ cpp_func_parser.cpp: cpp_func_parser.y
 	mv y.tab.c cpp_func_parser.cpp
 </CustomPreBuild>
       </AdditionalRules>
+      <Completion EnableCpp11="no">
+        <ClangCmpFlagsC/>
+        <ClangCmpFlags/>
+        <ClangPP/>
+        <SearchPaths/>
+      </Completion>
     </Configuration>
-    <GlobalSettings>
-      <Compiler Options="">
-        <IncludePath Value="."/>
-      </Compiler>
-      <Linker Options="">
-        <LibraryPath Value="."/>
-      </Linker>
-      <ResourceCompiler Options=""/>
-    </GlobalSettings>
   </Settings>
 </CodeLite_Project>

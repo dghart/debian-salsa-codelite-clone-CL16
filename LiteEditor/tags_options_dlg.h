@@ -31,47 +31,42 @@
 #include "wx/filename.h"
 #include "tags_options_data.h"
 
-///////////////////////////////////////////////////////////////////////////
-
 ///////////////////////////////////////////////////////////////////////////////
 /// Class TagsOptionsDlg
 ///////////////////////////////////////////////////////////////////////////////
 class TagsOptionsDlg : public TagsOptionsBaseDlg
 {
-	TagsOptionsData m_data;
-	size_t m_colour_flags;
-
+    TagsOptionsData     m_data;
+    size_t              m_colour_flags;
+    
+    void SetFlag(CodeCompletionOpts flag, bool set);
+    void SetColouringFlag(CodeCompletionColourOpts flag, bool set);
+    void CopyData();
 protected:
-	void SetFlag(CodeCompletionOpts flag, bool set);
-	void SetColouringFlag(CodeCompletionColourOpts flag, bool set);
-
-	void InitValues              ();
-	void CopyData                ();
-	void OnButtonOK              (wxCommandEvent &event);
-	void OnButtonAdd             (wxCommandEvent &event);
-	void OnColourWorkspaceUI     (wxUpdateUIEvent &e);
-	void OnClearAll              (wxCommandEvent &e);
-	void OnClearAllUI            (wxUpdateUIEvent &e);
-	void OnAddSearchPath         (wxCommandEvent &e);
-	void OnAddSearchPathUI       (wxUpdateUIEvent &e);
-	void OnRemoveSearchPath      (wxCommandEvent &e);
-	void OnRemoveSearchPathUI    (wxUpdateUIEvent &e);
-	void OnClearAllExcludePaths  (wxCommandEvent &e);
-	void OnClearAllExcludePathsUI(wxUpdateUIEvent &e);
-	void OnAddExcludePath        (wxCommandEvent &e);
-	void OnAddExcludePathUI      (wxUpdateUIEvent &e);
-	void OnRemoveExcludePath     (wxCommandEvent &e);
-	void OnRemoveExcludePathUI   (wxUpdateUIEvent &e);
-	void OnFileSelectedUI        (wxUpdateUIEvent& event);
-	void OnParse                 (wxCommandEvent& event);
-	void OnAutoShowWordAssitUI   (wxUpdateUIEvent& event);
+    wxArrayString GetCTagsSearchPaths() const;
+    
+protected:
+    virtual void OnAddExcludePath(wxCommandEvent& event);
+    virtual void OnAddSearchPath(wxCommandEvent& event);
+    virtual void OnAutoShowWordAssitUI(wxUpdateUIEvent& event);
+    virtual void OnClangCCEnabledUI(wxUpdateUIEvent& event);
+    virtual void OnClearClangCache(wxCommandEvent& event);
+    virtual void OnClearClangCacheUI(wxUpdateUIEvent& event);
+    virtual void OnColourWorkspaceUI(wxUpdateUIEvent& event);
+    virtual void OnFileSelectedUI(wxUpdateUIEvent& event);
+    virtual void OnParse(wxCommandEvent& event);
+    virtual void OnSuggestSearchPaths(wxCommandEvent& event);
+    virtual void OnButtonOK(wxCommandEvent &event);
 
 public:
-	TagsOptionsDlg( wxWindow* parent, const TagsOptionsData& data);
-	virtual ~TagsOptionsDlg();
-	TagsOptionsData &GetData() {
-		return m_data;
-	}
+    void Parse();
+
+public:
+    TagsOptionsDlg( wxWindow* parent, const TagsOptionsData& data);
+    virtual ~TagsOptionsDlg();
+    TagsOptionsData &GetData() {
+        return m_data;
+    }
 };
 
 #endif //__tags_options_dlg__

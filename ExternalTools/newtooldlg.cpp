@@ -30,11 +30,18 @@
 #include <wx/dirdlg.h>
 #include <wx/filedlg.h>
 #include "macrosdlg.h"
+#include "workspace.h"
 
 NewToolDlg::NewToolDlg( wxWindow* parent, IManager *mgr, ExternalToolData *data)
 		: NewToolBase( parent )
 		, m_mgr(mgr)
 {
+	// Don't use wxFB to load translated versions of these strings: the translations wouldn't be very sensible, and it might break things
+	const wxString IdChoices[] = { wxT("external_tool_0"), wxT("external_tool_1"), wxT("external_tool_2"), wxT("external_tool_3"), wxT("external_tool_4"),
+									wxT("external_tool_5"), wxT("external_tool_6"), wxT("external_tool_7"), wxT("external_tool_8"), wxT("external_tool_9") };
+	wxArrayString choices(10, IdChoices);
+	m_choiceId->Clear();
+	m_choiceId->Append(choices);
 	m_choiceId->SetFocus();
 	if( data ) {
 		m_textCtrlArguments->SetValue(data->m_args);
@@ -53,7 +60,7 @@ void NewToolDlg::OnButtonBrowsePath( wxCommandEvent& event )
 {
 	wxUnusedVar(event);
 	wxString path = m_textCtrlPath->GetValue();
-	wxString new_path = wxFileSelector(wxT("Select a program:"), path.c_str(), wxT(""), wxT(""), wxFileSelectorDefaultWildcardStr, 0, this);
+	wxString new_path = wxFileSelector(_("Select a program:"), path.c_str(), wxT(""), wxT(""), wxFileSelectorDefaultWildcardStr, 0, this);
 	if (new_path.IsEmpty() == false) {
 		m_textCtrlPath->SetValue(new_path);
 	}
@@ -63,7 +70,7 @@ void NewToolDlg::OnButtonBrowseWD( wxCommandEvent& event )
 {
 	wxUnusedVar(event);
 	wxString path(m_textCtrlWd->GetValue());
-	wxString new_path = wxDirSelector(wxT("Select working directory:"), path, wxDD_DEFAULT_STYLE, wxDefaultPosition, this);
+	wxString new_path = wxDirSelector(_("Select working directory:"), path, wxDD_DEFAULT_STYLE, wxDefaultPosition, this);
 	if(new_path.IsEmpty() == false){
 		m_textCtrlWd->SetValue(new_path);
 	}
@@ -72,7 +79,13 @@ void NewToolDlg::OnButtonBrowseWD( wxCommandEvent& event )
 void NewToolDlg::OnButtonHelp( wxCommandEvent& event )
 {
 	wxUnusedVar(event);
-	MacrosDlg dlg(this, MacrosDlg::MacrosExternalTools);
+
+	wxString errMsg = wxT("");
+	wxString projectName = m_mgr->GetWorkspace()->GetActiveProjectName();
+	ProjectPtr project = m_mgr->GetWorkspace()->FindProjectByName(projectName, errMsg);
+	IEditor* editor = m_mgr->GetActiveEditor();
+
+	MacrosDlg dlg(this, MacrosDlg::MacrosExternalTools, project, editor);
 	dlg.ShowModal();
 }
 
@@ -80,20 +93,20 @@ void NewToolDlg::OnButtonOk( wxCommandEvent& event )
 {
 	wxUnusedVar(event);
 	int rc(wxID_OK);
-	
+
 	// load all the tools
 	ExternalToolsData inData;
 	m_mgr->GetConfigTool()->ReadObject(wxT("ExternalTools"), &inData);
 	for(size_t i=0; i<inData.GetTools().size(); i++){
 		if(GetToolId() == inData.GetTools().at(i).GetId()){
-			int answer = wxMessageBox(wxString::Format(wxT("Continue updating tool ID '%s'"), GetToolId().c_str()), wxT("CodeLite"), wxYES_NO|wxCANCEL, this);
+			int answer = wxMessageBox(wxString::Format(_("Continue updating tool ID '%s'"), GetToolId().c_str()), _("CodeLite"), wxYES_NO|wxCANCEL, this);
 			if(answer != wxYES){
 				rc = wxID_CANCEL;
 			}
 			break;
 		}
 	}
-	
+
 	EndModal(rc);
 }
 
@@ -106,7 +119,7 @@ void NewToolDlg::OnButtonBrowseIcon16(wxCommandEvent& event)
 {
 	wxUnusedVar(event);
 	wxString path = m_textCtrlIcon16->GetValue();
-	wxString new_path = wxFileSelector(wxT("Select an icon:"), path.c_str(), wxT(""), wxT(""), wxFileSelectorDefaultWildcardStr, 0, this);
+	wxString new_path = wxFileSelector(_("Select an icon:"), path.c_str(), wxT(""), wxT(""), wxFileSelectorDefaultWildcardStr, 0, this);
 	if (new_path.IsEmpty() == false) {
 		m_textCtrlIcon16->SetValue(new_path);
 	}
@@ -116,7 +129,7 @@ void NewToolDlg::OnButtonBrowseIcon24(wxCommandEvent& event)
 {
 	wxUnusedVar(event);
 	wxString path = m_textCtrlIcon24->GetValue();
-	wxString new_path = wxFileSelector(wxT("Select an icon:"), path.c_str(), wxT(""), wxT(""), wxFileSelectorDefaultWildcardStr, 0, this);
+	wxString new_path = wxFileSelector(_("Select an icon:"), path.c_str(), wxT(""), wxT(""), wxFileSelectorDefaultWildcardStr, 0, this);
 	if (new_path.IsEmpty() == false) {
 		m_textCtrlIcon24->SetValue(new_path);
 	}

@@ -54,12 +54,28 @@ public:
 	static void UpdateProperty(wxXmlNode *node, const wxString &name, const wxString &value);
 
 	/**
-	 * Find the first child node of parent with a given name. NULL if no childs exist
-	 * \param the parent node whom to be searched
+	 * Find the first child node of parent with a given name. NULL if no children exist
+	 * \param the parent node to be searched
 	 * \param the element's tag name
 	 */
 	static wxXmlNode *FindFirstByTagName(const wxXmlNode *parent, const wxString &tagName);
 
+	/**
+	 * Read all of the child nodes (presumed to be textnodes) of the passed node, optionally with a given tagname
+	 * \param node the node to be searched
+	 * \param tagName the child tag name to find and read their contents. If empty, read all children
+	 * \return a wxArrayString
+	 */
+	static wxArrayString ChildNodesContentToArray(const wxXmlNode* node, const wxString& tagName = wxT(""));
+
+	/**
+	 * Read all of the child nodes (presumed to be textnodes) of the passed node, optionally with a given tagname
+	 * \param node the node to be searched
+	 * \param tagName the child tag name to find and read their contents. If empty, read all children
+	 * \param separator the string to use to separate each child's content, ';' by default
+	 * \return a wxString containing the content of each child, separated by 'separator'
+	 */
+	static wxString ChildNodesContentToString(const wxXmlNode* node, const wxString& tagName = wxT(""),  const wxString& separator = wxT(";"));
 
 	/**
 	 * Set the content of node. This function replaces any existing content of node
@@ -80,14 +96,14 @@ public:
 	 * \param propName the property name
 	 * \param defaultValue default value to return if no property exist
 	 */
-	static wxString ReadString(wxXmlNode *node, const wxString &propName, const wxString &defaultValue = wxEmptyString);
+	static wxString ReadString(const wxXmlNode *node, const wxString &propName, const wxString &defaultValue = wxEmptyString);
 
 	/**
 	 * Read long property from the given node
 	 * \param propName the property name
 	 * \param defaultValue default value to return if no property exist
 	 */
-	static long ReadLong(wxXmlNode *node, const wxString &propName, long defaultValue = -1);
+	static long ReadLong(const wxXmlNode *node, const wxString &propName, long defaultValue = -1);
 	
 	/**
 	 * Try to read long property from the given node
@@ -96,23 +112,23 @@ public:
 	 * \param answer will contain the result if found
 	 * \return true if answer is valid, false if not found
 	 */
-	static bool ReadLongIfExists(wxXmlNode *node, const wxString &propName, long& answer);
+	static bool ReadLongIfExists(const wxXmlNode *node, const wxString &propName, long& answer);
 
 	/**
 	 * Read a boolean property from the given node
 	 * \param propName the property name
 	 * \param defaultValue default value to return if no property exist
 	 */
-	static bool ReadBool(wxXmlNode *node, const wxString &propName, bool defaultValue = false);
+	static bool ReadBool(const wxXmlNode *node, const wxString &propName, bool defaultValue = false);
 
 	/**
-	 * Try to read a boolean property from the given node.
+	 * Try to read a string property from the given node.
 	 * If it doesn't exist, don't provide a default value.
 	 * \param propName the property name
 	 * \param value will contain the result if found
 	 * \return true if answer is valid, false if not found
 	 */
-	static bool ReadStringIfExists(wxXmlNode* node, const wxString& propName, wxString& value);
+	static bool ReadStringIfExists(const wxXmlNode* node, const wxString& propName, wxString& value);
 
 	/**
 	 * Try to read a boolean property from the given node.
@@ -121,7 +137,7 @@ public:
 	 * \param answer will contain the result if found
 	 * \return true if answer is valid, false if not found
 	 */
-	static bool ReadBoolIfExists(wxXmlNode* node, const wxString& propName, bool& answer);
+	static bool ReadBoolIfExists(const wxXmlNode* node, const wxString& propName, bool& answer);
 
 	/**
 	 * Remove all children of xml node

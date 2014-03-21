@@ -179,6 +179,8 @@ unsigned            {PA_KEYWORD_RETURN(LE_UNSIGNED);}
 void                {PA_KEYWORD_RETURN(LE_VOID);}
 volatile            {PA_KEYWORD_RETURN(LE_VOLATILE);}
 while               {PA_KEYWORD_RETURN(LE_WHILE);}
+time_t              {PA_KEYWORD_RETURN(LE_TIME_T);}
+size_t              {PA_KEYWORD_RETURN(LE_SIZE_T);}
 
 
 class               {CPP_KEYWORD_RETURN(LE_CLASS);}
@@ -282,7 +284,6 @@ dllexport			{CPP_KEYWORD_RETURN(LE_DLLIEXPORT);}
 .						{return yytext[0];}
 <PREPR>\n			{
 						defineFound = false;
-						cl_scope_lineno++;
 						BEGIN INITIAL;
 					}
 <PREPR>\\			{
@@ -292,7 +293,6 @@ dllexport			{CPP_KEYWORD_RETURN(LE_DLLIEXPORT);}
 						defineFound = true;
 					}
 <WRAP_PREP>\n		{
-						cl_scope_lineno++;
 						BEGIN PREPR;
 					}
 <WRAP_PREP>{identifier}   {

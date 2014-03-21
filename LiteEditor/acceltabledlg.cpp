@@ -30,7 +30,10 @@
 #include "newkeyshortcutdlg.h"
 #include "acceltabledlg.h"
 #include "manager.h"
+#include <wx/imaglist.h>
 #include <algorithm>
+#include <wx/imaglist.h>
+#include "windowattrmanager.h"
 
 //-------------------------------------------------------------------------------
 //Helper classes for sorting
@@ -52,19 +55,43 @@ struct ParentSorter {
 		return rEnd.parent.CmpNoCase(rStart.parent) < 0;
 	}
 };
+struct AccelRSorter {
+	bool operator()(const MenuItemData &rStart, const MenuItemData &rEnd) {
+		return rEnd.accel.CmpNoCase(rStart.accel) > 0;
+	}
+};
+
+struct ActionRSorter {
+	bool operator()(const MenuItemData &rStart, const MenuItemData &rEnd) {
+		return rEnd.action.CmpNoCase(rStart.action) > 0;
+	}
+};
+
+struct ParentRSorter {
+	bool operator()(const MenuItemData &rStart, const MenuItemData &rEnd) {
+		return rEnd.parent.CmpNoCase(rStart.parent) > 0;
+	}
+};
 //-------------------------------------------------------------------------------
 //-------------------------------------------------------------------------------
 //-------------------------------------------------------------------------------
 
 AccelTableDlg::AccelTableDlg( wxWindow* parent )
-		:
-		AccelTableBaseDlg( parent )
+		: AccelTableBaseDlg( parent )
 {
-	//add two columns to the list ctrl
-	m_listCtrl1->InsertColumn(0, wxT("ID"));
-	m_listCtrl1->InsertColumn(1, wxT("Menu"));
-	m_listCtrl1->InsertColumn(2, wxT("Action"));
-	m_listCtrl1->InsertColumn(3, wxT("Accelerator"));
+	wxImageList* imageList= new wxImageList(16, 16);
+	imageList->Add(PluginManager::Get()->GetStdIcons()->LoadBitmap(wxT("list-control/16/sort_down")));
+	imageList->Add(PluginManager::Get()->GetStdIcons()->LoadBitmap(wxT("list-control/16/sort_up")));
+	
+	m_listCtrl1->AssignImageList(imageList, wxIMAGE_LIST_SMALL);
+
+	m_listCtrl1->InsertColumn(LC_Menu, _("Menu"));
+	m_listCtrl1->InsertColumn(LC_Action, _("Action"));
+	m_listCtrl1->InsertColumn(LC_Accel, _("Accelerator"));
+
+	// By default sort the items according to the parent
+	m_SortCol = LC_Menu;
+	m_direction = 0;
 
 	MenuItemDataMap accelMap;
 	PluginManager::Get()->GetKeyboardManager()->GetAccelerators(accelMap);
@@ -74,6 +101,8 @@ AccelTableDlg::AccelTableDlg( wxWindow* parent )
 	Centre();
 
 	m_textCtrlFilter->SetFocus();
+	
+	WindowAttrManager::Load(this, "AccelTableDlg", NULL);
 }
 
 void AccelTableDlg::OnItemActivated( wxListEvent& event )
@@ -91,8 +120,9 @@ void AccelTableDlg::PopulateTable(MenuItemDataMap *accelMap)
 {
 	m_listCtrl1->Freeze();
 	m_listCtrl1->DeleteAllItems();
+	m_IDarray.Clear();
 
-	// If we got an accelerator map, replace the current one
+	// If we have an accelerator map, replace the current one
 	if(accelMap) {
 		MenuItemDataMap::const_iterator iter = accelMap->begin();
 		m_itemsVec.clear();
@@ -101,10 +131,23 @@ void AccelTableDlg::PopulateTable(MenuItemDataMap *accelMap)
 		for (; iter != accelMap->end(); iter++ ) {
 			m_itemsVec.push_back( iter->second );
 		}
-
-		// By default sort the items according to the parent
-		std::sort(m_itemsVec.begin(), m_itemsVec.end(), ParentSorter());
 	}
+
+	if (!m_direction) {
+	switch(m_SortCol) {
+		case LC_Action:		std::sort(m_itemsVec.begin(), m_itemsVec.end(), ActionRSorter()); break;
+		case LC_Accel:		std::sort(m_itemsVec.begin(), m_itemsVec.end(), AccelRSorter()); break;
+		 default:			std::sort(m_itemsVec.begin(), m_itemsVec.end(), ParentRSorter());
+		}
+	} else {
+	switch(m_SortCol) {
+		case LC_Action:		std::sort(m_itemsVec.begin(), m_itemsVec.end(), ActionSorter()); break;
+		case LC_Accel:		std::sort(m_itemsVec.begin(), m_itemsVec.end(), AccelSorter()); break;
+		 default:			std::sort(m_itemsVec.begin(), m_itemsVec.end(), ParentSorter());
+		}
+	}
+
+	DisplayCorrectColumnImage();
 
 	wxString filterString = m_textCtrlFilter->GetValue();
 	filterString.MakeLower().Trim().Trim(false);
@@ -112,45 +155,56 @@ void AccelTableDlg::PopulateTable(MenuItemDataMap *accelMap)
 	for (size_t i=0; i< m_itemsVec.size(); i++) {
 		MenuItemData item = m_itemsVec.at(i);
 		wxString action = item.action;
+		wxString accel = item.accel;
 
 		action.MakeLower();
-		if(filterString.IsEmpty() == false && action.Find(filterString) != wxNOT_FOUND) {
+		accel.MakeLower();
+		if(filterString.IsEmpty() || action.Find(filterString) != wxNOT_FOUND || accel.Find(filterString) != wxNOT_FOUND) {
 			long row = AppendListCtrlRow(m_listCtrl1);
 
 			// We got a filter and there is a match, show this item
-			SetColumnText(m_listCtrl1, row, 0, item.id);
-			SetColumnText(m_listCtrl1, row, 1, item.parent);
-			SetColumnText(m_listCtrl1, row, 2, item.action);
-			SetColumnText(m_listCtrl1, row, 3, item.accel);
+			SetColumnText(m_listCtrl1, row, LC_Menu, item.parent);
+			SetColumnText(m_listCtrl1, row, LC_Action, item.action);
+			SetColumnText(m_listCtrl1, row, LC_Accel, item.accel);
 
-		} else if(filterString.IsEmpty()) {
-			long row = AppendListCtrlRow(m_listCtrl1);
-
-			// No filter provided, show all
-			SetColumnText(m_listCtrl1, row, 0, item.id);
-			SetColumnText(m_listCtrl1, row, 1, item.parent);
-			SetColumnText(m_listCtrl1, row, 2, item.action);
-			SetColumnText(m_listCtrl1, row, 3, item.accel);
+			// Store the id, which we'll need to identify the item later
+			m_IDarray.Add(item.id);
 
 		}
 		// else hide this entry
 
 	}
 
-	m_listCtrl1->SetColumnWidth(0, 0);
-	m_listCtrl1->SetColumnWidth(1, wxLIST_AUTOSIZE);
-	m_listCtrl1->SetColumnWidth(2, wxLIST_AUTOSIZE);
-	m_listCtrl1->SetColumnWidth(3, wxLIST_AUTOSIZE);
+	m_listCtrl1->SetColumnWidth(LC_Menu, wxLIST_AUTOSIZE);
+	m_listCtrl1->SetColumnWidth(LC_Action, wxLIST_AUTOSIZE);
+	m_listCtrl1->SetColumnWidth(LC_Accel, wxLIST_AUTOSIZE);
 
+	if (m_listCtrl1->GetItemCount()) { // Protect against all the items being filtered away
 	m_listCtrl1->SetItemState(0, wxLIST_STATE_SELECTED, wxLIST_STATE_SELECTED);
 	m_listCtrl1->SetItemState(0, wxLIST_STATE_FOCUSED, wxLIST_STATE_FOCUSED);
+	}
 
 	m_listCtrl1->Thaw();
 }
 
 void AccelTableDlg::OnColClicked(wxListEvent &event)
 {
-	wxUnusedVar(event);
+	ListctrlCols col = (ListctrlCols)event.GetColumn();
+	if (col >= LC_End) { 
+		// Protect against a click in the spare space after the last real column
+		return;
+	}
+	
+	if (col == m_SortCol) {
+		// Subsequent click on same col, so toggle direction
+		m_direction = !m_direction;
+	} else {
+		// Different col, so direction is down again
+		m_direction = 0;
+	}
+	
+	m_SortCol = col;
+	PopulateTable(NULL);
 }
 
 void AccelTableDlg::OnButtonOk(wxCommandEvent &e)
@@ -170,7 +224,7 @@ void AccelTableDlg::OnButtonOk(wxCommandEvent &e)
 	}
 
 	wxString fileName;
-	fileName = wxStandardPaths::Get().GetUserDataDir() + wxFileName::GetPathSeparator() + wxT("config/accelerators.conf");
+	fileName = clStandardPaths::Get().GetUserDataDir() + wxFileName::GetPathSeparator() + wxT("config/accelerators.conf");
 
 	wxFFile file;
 	if (!file.Open(fileName, wxT("w+b"))) {
@@ -204,26 +258,28 @@ void AccelTableDlg::OnEditButton(wxCommandEvent& e)
 
 void AccelTableDlg::DoItemActivated()
 {
+	wxCHECK_RET(((size_t)m_selectedItem) < m_IDarray.GetCount(), wxT("listctrl selection not in IDarray"));
+	
 	//build the selected entry
 	MenuItemData mid;
-	mid.id     = GetColumnText(m_listCtrl1, m_selectedItem, 0);
-	mid.parent = GetColumnText(m_listCtrl1, m_selectedItem, 1);
-	mid.action = GetColumnText(m_listCtrl1, m_selectedItem, 2);
-	mid.accel  = GetColumnText(m_listCtrl1, m_selectedItem, 3);
+	mid.id     = m_IDarray.Item(m_selectedItem);
+	mid.parent = GetColumnText(m_listCtrl1, m_selectedItem, LC_Menu);
+	mid.action = GetColumnText(m_listCtrl1, m_selectedItem, LC_Action);
+	mid.accel  = GetColumnText(m_listCtrl1, m_selectedItem, LC_Accel);
 
 	if (PluginManager::Get()->GetKeyboardManager()->PopupNewKeyboardShortcutDlg(this, mid) == wxID_OK) {
 		// search the list for similar accelerator
 		for (size_t i=0; i<m_itemsVec.size(); i++) {
 			if (Compare(m_itemsVec.at(i).accel, mid.accel) && m_selectedItem != static_cast<int>(i) && mid.accel.IsEmpty() == false) {
 				wxString action = m_itemsVec.at(i).action;
-				wxMessageBox(wxString::Format(wxT("'%s' is already assigned to: '%s'"), mid.accel.c_str(), action.c_str()), wxT("CodeLite"), wxOK|wxCENTER|wxICON_WARNING, this);
+				wxMessageBox(wxString::Format(_("'%s' is already assigned to: '%s'"), mid.accel.c_str(), action.c_str()), _("CodeLite"), wxOK|wxCENTER|wxICON_WARNING, this);
 				return;
 			}
 		}
 
 		// Update the acceleration table
-		SetColumnText(m_listCtrl1, m_selectedItem, 3, mid.accel);
-		m_listCtrl1->SetColumnWidth(3, wxLIST_AUTOSIZE);
+		SetColumnText(m_listCtrl1, m_selectedItem, LC_Accel, mid.accel);
+		m_listCtrl1->SetColumnWidth(LC_Accel, wxLIST_AUTOSIZE);
 
 		// Update the vector as well
 		for (size_t i=0; i<m_itemsVec.size(); i++) {
@@ -256,4 +312,25 @@ void AccelTableDlg::OnText(wxCommandEvent& event)
 {
 	wxUnusedVar(event);
 	PopulateTable(NULL);
+}
+
+void AccelTableDlg::DisplayCorrectColumnImage() const
+{
+    // Set an 'up' or 'down' image to the clicked column
+	// Unset any existing image
+
+
+	for (int n = LC_Start; n < LC_End; ++n) {
+		int image = ( (n==m_SortCol) ? m_direction : wxNOT_FOUND );
+
+		wxListItem item;
+		item.SetMask(wxLIST_MASK_IMAGE);
+		item.SetImage(image);
+		m_listCtrl1->SetColumn(n, item);
+	}
+}
+
+AccelTableDlg::~AccelTableDlg()
+{
+	WindowAttrManager::Save(this, "AccelTableDlg", NULL);
 }

@@ -25,16 +25,47 @@
 #ifndef GLOBALS_H
 #define GLOBALS_H
 
+#include <wx/ctrlsub.h>
 #include <wx/string.h>
 #include <wx/colour.h>
 #include <wx/arrstr.h>
 #include "codelite_exports.h"
-
+#include "window_locker.h"
 #include "workspace.h"
+#include <wx/variant.h>
+#include <wx/bitmap.h>
+#include <wx/brush.h>
+#include <wx/dcgraph.h>
+#include <wx/dc.h>
 
 class wxListCtrl;
 class IEditor;
 class IManager;
+
+typedef void (wxObject::*clEventFunc_t)(wxClientData* arg);
+
+class WXDLLIMPEXP_SDK BOM
+{
+    wxMemoryBuffer m_bom;
+
+public:
+    BOM(const char* buffer, size_t len);
+    BOM();
+    ~BOM();
+
+    void Clear();
+    int Len() const;
+    wxFontEncoding Encoding();
+    static wxFontEncoding Encoding(const char* buff);
+    void SetData(const char* buffer, size_t len);
+};
+
+class WXDLLIMPEXP_SDK clEventDisabler
+{
+public:
+    clEventDisabler();
+    ~clEventDisabler();
+};
 
 /**
  * \brief send command event to the application (wxTheApp),
@@ -93,7 +124,7 @@ WXDLLIMPEXP_SDK long AppendListCtrlRow(wxListCtrl *list);
  * \param encoding
  * \return true on success, false otherwise
  */
-WXDLLIMPEXP_SDK bool ReadFileWithConversion(const wxString &fileName, wxString &content, wxFontEncoding encoding = wxFONTENCODING_DEFAULT);
+WXDLLIMPEXP_SDK bool ReadFileWithConversion(const wxString &fileName, wxString &content, wxFontEncoding encoding = wxFONTENCODING_DEFAULT, BOM *bom = NULL);
 
 /**
  * \brief write file using UTF8 converter
@@ -244,5 +275,124 @@ WXDLLIMPEXP_SDK void GetProjectTemplateList( IManager *manager, std::list<Projec
  */
 WXDLLIMPEXP_SDK bool ExtractFileFromZip(const wxString &zipPath, const wxString& filename, const wxString &targetDir, wxString &targetFileName);
 
-#endif //GLOBALS_H
 
+/**
+ * @brief set the native Windows theme for the application
+ * @param win [input]
+ */
+WXDLLIMPEXP_SDK void MSWSetNativeTheme(wxWindow* win, const wxString &theme = wxT("Explorer"));
+
+
+/**
+ * @brief make relative only if a subpath of reference_path (or is reference_path itself)
+ * @brief also, make normalise first, and abolish any symlink
+ * @param fn wxFileName to alter
+ * @param reference_path the path to which to make relative
+ */
+WXDLLIMPEXP_SDK bool MakeRelativeIfSensible(wxFileName& fn, const wxString& reference_path);
+
+/**
+ * @brief joins array element into a string using 'glue' as the array elements
+ * separator
+ */
+WXDLLIMPEXP_SDK wxString wxImplode(const wxArrayString &arr, const wxString &glue = wxT("\n"));
+
+/**
+ * @brief executes a command under the proper shell and return string as the output
+ */
+WXDLLIMPEXP_SDK wxString wxShellExec(const wxString &cmd, const wxString &projectName);
+
+/**
+ * @class StringManager
+ * @brief Stores unlocalised strings for serialisation, while managing localised ones in the gui
+ */
+class WXDLLIMPEXP_SDK StringManager
+{
+protected:
+    wxArrayString m_unlocalisedStringArray;
+    wxControlWithItems* p_control;
+    size_t m_size;
+public:
+    StringManager() : m_size(0) {}
+
+    /**
+     * @brief Store the data, and load the strings into the control, localised
+     * @param size size of the string array
+     * @param strings the string array
+     * @param current the option currently used
+     * @param control the gui element, probably a wxChoice
+     */
+    void AddStrings(size_t size, const wxString* const strings, const wxString& current, wxControlWithItems* control);
+    /**
+     * @brief Returns the unlocalised string corresponding to the selection
+     * @return an unlocalised string
+     */
+    wxString GetStringSelection() const;
+    /**
+     * @brief Sets m_control's selection to that corresponding to the unlocalised string
+     * @param str an unlocalised string
+     * @param dfault the default used if str is not found
+     */
+    void SetStringSelection(const wxString& str, size_t dfault = 0);
+};
+
+/**
+ * @brief Prepends the wxString to the wxArrayString, first removing any matching entry
+ * @param oldarray contains any entries
+ * @param str the new entry
+ * @param maxsize the maximum number of items allowed in the arraystring. 0 means no maximum
+ * @return the amended entries
+ */
+WXDLLIMPEXP_SDK wxArrayString ReturnWithStringPrepended(const wxArrayString& oldarray, const wxString& str, const size_t maxsize);
+
+/**
+ * @brief return true if filename is a symbolic link
+ */
+WXDLLIMPEXP_SDK bool wxIsFileSymlink(const wxFileName &filename);
+
+/**
+ * @brief convert filename to the real path if filename is a symbolic link
+ */
+WXDLLIMPEXP_SDK wxFileName wxReadLink(const wxFileName &filename);
+
+/**
+ * @brief makes-absolute filepath, and dereferences it and any symlinked dirs in the path
+ */
+WXDLLIMPEXP_SDK wxString CLRealPath(const wxString& filepath);
+
+/**
+ * @brief convert string to integer using range validation and default value
+ */
+WXDLLIMPEXP_SDK int wxStringToInt(const wxString &str, int defval, int min = -1, int max = -1);
+
+/**
+ * @brief convert integer to string
+ */
+WXDLLIMPEXP_SDK wxString wxIntToString(int val);
+
+WXDLLIMPEXP_SDK unsigned int UTF8Length(const wchar_t *uptr, unsigned int tlen);
+
+WXDLLIMPEXP_SDK wxString DbgPrependCharPtrCastIfNeeded(const wxString &expr, const wxString &exprType);
+
+/**
+ * @brief create wxVariant from wxString + wxBitmap
+ */
+WXDLLIMPEXP_SDK wxVariant MakeIconText(const wxString& text, const wxBitmap& bmp);
+
+/**
+ * @brief queue a call to a function to be executed on the next event loop
+ */
+WXDLLIMPEXP_SDK void PostCall(wxObject *instance, clEventFunc_t func, wxClientData* arg);
+WXDLLIMPEXP_SDK void PostCall(wxObject *instance, clEventFunc_t func);
+
+/**
+ * @brief split lines (using CR|LF as the separator), taking into considertaion line continuation
+ * @param trim trim the lines with set to true
+ */
+WXDLLIMPEXP_SDK wxArrayString SplitString(const wxString &inString, bool trim = true);
+
+/**
+ * @brief make an execution command for running cmd under a shell and optionally prompt the user with the 'press any to key to continue...' message
+ */
+WXDLLIMPEXP_SDK  wxString MakeExecInShellCommand(const wxString& cmd, const wxString& wd, bool waitForAnyKey);
+#endif //GLOBALS_H

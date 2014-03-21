@@ -1,8 +1,9 @@
+#include <wx/sizer.h>
 #include <wx/tokenzr.h>
 #include "svnblameeditor.h"
 #include "drawingutils.h"
 #include "svnblamedialog.h"
-#include "wx/wxscintilla.h"
+#include <wx/stc/stc.h>
 #include <map>
 
 SvnBlameDialog::SvnBlameDialog(wxWindow* window, const wxString &content)

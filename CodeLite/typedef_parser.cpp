@@ -167,6 +167,8 @@ extern void  setUseIgnoreMacros(bool ignore);
 #define LE_STATIC_CAST 346
 #define LE_CONST_CAST 347
 #define LE_REINTERPRET_CAST 348
+#define LE_SIZE_T 349
+#define LE_TIME_T 350
 #define YYERRCODE 256
 short cl_typedef_lhs[] = {                                        -1,
     1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
@@ -289,7 +291,7 @@ short cl_typedef_check[] = {                                      60,
 #ifndef YYDEBUG
 #define YYDEBUG 1
 #endif
-#define YYMAXTOKEN 348
+#define YYMAXTOKEN 350
 #if YYDEBUG
 char *cl_typedef_name[] = {
 "end-of-file",0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -315,7 +317,7 @@ char *cl_typedef_name[] = {
 "LE_MULTassign","LE_DIVassign","LE_MODassign","LE_PLUSassign","LE_MINUSassign",
 "LE_LSassign","LE_RSassign","LE_ANDassign","LE_ERassign","LE_ORassign",
 "LE_MACRO","LE_DYNAMIC_CAST","LE_STATIC_CAST","LE_CONST_CAST",
-"LE_REINTERPRET_CAST",
+"LE_REINTERPRET_CAST","LE_SIZE_T","LE_TIME_T",
 };
 char *cl_typedef_rule[] = {
 "$accept : translation_unit",
@@ -493,7 +495,7 @@ void do_clean_up()
 	setUseIgnoreMacros(true);
 	g_isUsedWithinFunc = false;
 	gs_typedefs.clear();
-	
+
     //do the lexer cleanup
 	cl_scope_lex_clean();
 }
@@ -502,12 +504,12 @@ void do_clean_up()
 void get_typedefs(const std::string &in, clTypedefList &li)
 {
 	std::map<std::string, std::string> dummy;
-	
+
     // provide the lexer with new input
 	if( !setLexerInput(in, dummy) ){
     	return;
     }
-	
+
 	// set the parser local output to our variable list
 	cl_typedef_parse();
 	li = gs_typedefs;
@@ -716,7 +718,7 @@ case 21:
 							gs_currentTypedef.m_realType.m_templateDecl = s_templateInitList;
 						s_templateInitList.clear();
 						gs_typedefs.push_back(gs_currentTypedef);
-						
+
 					}
 break;
 case 22:
@@ -729,7 +731,7 @@ case 22:
 					 }
 break;
 case 23:
-{ 
+{
 				gs_currentTypedef.m_realType = curr_var;
 				gs_currentTypedef.m_realType.m_isPtr = (yyvsp[0].find("*") != std::string::npos);
 			}
@@ -748,18 +750,18 @@ case 27:
 break;
 case 28:
 {
-                            yyval = yyvsp[-3] +  yyvsp[-2] + yyvsp[-1] +yyvsp[0];
-                        }
+						yyval = yyvsp[-2] + yyvsp[-1] +yyvsp[0];
+					}
 break;
 case 29:
 {
-                            yyval = yyvsp[-3] +  yyvsp[-2] + yyvsp[-1] +yyvsp[0];
-                        }
+						yyval = yyvsp[-2] + yyvsp[-1] +yyvsp[0];
+					}
 break;
 case 30:
 {
-                            yyval = yyvsp[-6] + yyvsp[-5] + yyvsp[-4] +yyvsp[-3] + yyvsp[-2] + yyvsp[-1] + yyvsp[0] + " " ;
-                        }
+						yyval = yyvsp[-5] + yyvsp[-4] +yyvsp[-3] + yyvsp[-2] + yyvsp[-1] + yyvsp[0] + " " ;
+					}
 break;
 case 31:
 {yyval = yyvsp[-1]+ yyvsp[0]; }

@@ -26,8 +26,9 @@
 #include <wx/textbuf.h>
 #include <wx/dirdlg.h>
 #include <wx/textfile.h>
-#include "virtualdirectoryselector.h"
+#include "VirtualDirectorySelectorDlg.h"
 #include <wx/filefn.h>
+#include "editor_config.h"
 #include "project.h"
 #include "templateclassdlg.h"
 #include <wx/msgdlg.h>
@@ -77,7 +78,7 @@ void TemplateClassDlg::Initialize()
 	}
 	TreeItemInfo item = m_pManager->GetSelectedTreeItemInfo( TreeFileView );
 	if ( item.m_item.IsOk() && item.m_itemType == ProjectItem::TypeVirtualDirectory ) {
-		m_virtualFolder = VirtualDirectorySelector::DoGetPath( m_pManager->GetTree( TreeFileView ), item.m_item, false );
+		m_virtualFolder = VirtualDirectorySelectorDlg::DoGetPath( m_pManager->GetTree( TreeFileView ), item.m_item, false );
 		m_projectPath =  item.m_fileName.GetPath( wxPATH_GET_VOLUME | wxPATH_GET_SEPARATOR );
 	}
 	m_textCtrlVD->SetValue( m_virtualFolder );
@@ -105,7 +106,7 @@ void TemplateClassDlg::OnClassNameEntered( wxCommandEvent& event )
 void TemplateClassDlg::OnBrowseVD( wxCommandEvent& event )
 {
 	wxUnusedVar( event );
-	VirtualDirectorySelector dlg( this, m_pManager->GetWorkspace(), m_textCtrlVD->GetValue() );
+	VirtualDirectorySelectorDlg dlg( this, m_pManager->GetWorkspace(), m_textCtrlVD->GetValue() );
 	if ( dlg.ShowModal() == wxID_OK ) {
 		m_textCtrlVD->SetValue( dlg.GetVirtualDirectoryPath() );
 		m_staticProjectTreeFolder->SetForegroundColour(wxColour(0,128,0));
@@ -121,7 +122,7 @@ void TemplateClassDlg::OnBrowseFilePath( wxCommandEvent& event )
 		dir = m_projectPath;
 	}
 
-	dir = wxDirSelector( wxT( "Select output folder" ), dir, wxDD_DEFAULT_STYLE, wxDefaultPosition, this);
+	dir = wxDirSelector( _("Select output folder"), dir, wxDD_DEFAULT_STYLE, wxDefaultPosition, this);
 	if ( !dir.IsEmpty() ) {
 		m_projectPath = dir;
 		m_textCtrlFilePath->SetValue(m_projectPath);
@@ -158,18 +159,21 @@ void TemplateClassDlg::OnGenerate( wxCommandEvent& event )
 		wxString msg;
 		msg << wxString::Format( wxT( "%s%s" ), files.Item(0).c_str(), eol[m_curEol].c_str())
 		<< wxString::Format( wxT( "%s%s%s" ), files.Item(1).c_str(), eol[m_curEol].c_str(), eol[m_curEol].c_str())
-		<< wxT( "Files successfully created." );
+		<< _( "Files successfully created." );
 		// We have a .cpp and an .h file, and there may well be a :src and an :include folder available
 		// So try to place the files appropriately. If that fails, dump both in the selected folder
-		if ( m_pManager->AddFilesToVirtualFolderIntelligently( m_textCtrlVD->GetValue(), files )
-				|| m_pManager->AddFilesToVirtualFolder( m_textCtrlVD->GetValue(), files ) ) {
-			wxMessageBox(msg, wxT("Add template class"), wxOK|wxCENTER|wxICON_INFORMATION, this);
+		
+		bool smartAddFiles = EditorConfigST::Get()->GetOptions()->GetOptions() & OptionsConfig::Opt_SmartAddFiles;
+		
+		if ( (smartAddFiles && m_pManager->AddFilesToVirtualFolderIntelligently( m_textCtrlVD->GetValue(), files )) || m_pManager->AddFilesToVirtualFolder( m_textCtrlVD->GetValue(), files ) ) 
+		{
+			wxMessageBox(msg, _("Add template class"), wxOK|wxCENTER|wxICON_INFORMATION, this);
 			EndModal(wxID_OK);
 			return;
 		}
 	}
 
-	wxMessageBox(wxT("Adding the template class failed"), wxT("Oops"), wxOK|wxCENTER|wxICON_ERROR, this);
+	wxMessageBox(_("Adding the template class failed"), _("Oops"), wxOK|wxCENTER|wxICON_WARNING, this);
 	EndModal(wxID_CANCEL);	// The return value isn't actually used at present, but send Cancel on failure for future-proofing
 }
 
@@ -208,7 +212,7 @@ void TemplateClassDlg::OnButtonAdd( wxCommandEvent& event )
 	wxString set = m_comboxTemplates->GetValue();
 	bool isSet = GetStringDb()->IsSet( set );
 	if ( isSet ) {
-		int ret = wxMessageBox( wxT( "Class exists!\nOverwrite?" ), wxT( "Add class" ), wxYES_NO | wxICON_QUESTION );
+		int ret = wxMessageBox( _("Class exists!\nOverwrite?"), _("Add class"), wxYES_NO | wxICON_QUESTION );
 		if ( ret == wxNO )
 			return;
 	}
@@ -236,7 +240,7 @@ void TemplateClassDlg::OnButtonChange( wxCommandEvent& event )
 	wxString set = m_comboxTemplates->GetValue();
 	bool isSet = GetStringDb()->IsSet( set );
 	if ( !isSet ) {
-		int ret = ::wxMessageBox( wxT( "Class doesn't exists!\nAdd new?" ), wxT( "Change class" ), wxYES_NO | wxICON_QUESTION );
+		int ret = ::wxMessageBox( _("That class doesn't exist!\nTry again?"), _("Change class"), wxYES_NO | wxICON_QUESTION );
 		if ( ret == wxNO )
 			return;
 	}

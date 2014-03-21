@@ -6,122 +6,207 @@
 #include "cpp_comment_creator.h"
 #include "windowattrmanager.h"
 #include "context_cpp.h"
+#include <wx/settings.h>
+
+class ImplFuncModel : public FunctionsModel
+{
+public:
+    ImplFuncModel() {}
+    virtual ~ImplFuncModel() {}
+
+
+    virtual bool GetAttr(const wxDataViewItem &item,
+                         unsigned int col,
+                         wxDataViewItemAttr & attr) const {
+        if ( col == 1 ) {
+            clFunctionImplDetails *cd = dynamic_cast<clFunctionImplDetails*>( GetClientObject(item));
+            if ( !cd->IsSelected() ) {
+                attr.SetColour( wxSystemSettings::GetColour(wxSYS_COLOUR_GRAYTEXT ) );
+                attr.SetBold(false);
+
+            } else {
+                attr.SetBold(true);
+
+            }
+            return true;
+        } else {
+            return false;
+        }
+    }
+};
 
 ImplementParentVirtualFunctionsDialog::ImplementParentVirtualFunctionsDialog( wxWindow* parent, const wxString &scopeName, const std::vector<TagEntryPtr> &tags, wxChar doxyPrefix, ContextCpp *contextCpp )
-		: ImplementParentVirtualFunctionsBase(parent    )
-		, m_tags                             (tags      )
-		, m_doxyPrefix                       (doxyPrefix)
-		, m_contextCpp                       (contextCpp)
-		, m_scope                            (scopeName )
+    : ImplementParentVirtualFunctionsBase(parent    )
+    , m_tags                             (tags      )
+    , m_doxyPrefix                       (doxyPrefix)
+    , m_contextCpp                       (contextCpp)
+    , m_scope                            (scopeName )
 {
-	WindowAttrManager::Load(this, wxT("ImplementParentVirtualFunctionsDialog"), NULL);
-	ImplParentVirtualFunctionsData data;
-	EditorConfigST::Get()->ReadObject(wxT("ImplParentVirtualFunctionsData"), &data);
+    unsigned int colCount = m_dataviewModel->GetColumnCount();
+    m_dataviewModel = new ImplFuncModel();
+    m_dataviewModel->SetColCount(colCount);
+    m_dataview->AssociateModel( m_dataviewModel.get() );
 
-	m_checkBoxFormat->SetValue(data.GetFlags() & ImplParentVirtualFunctionsData::FormatText);
-	m_checkBoxAddDoxy->SetValue(data.GetFlags() & ImplParentVirtualFunctionsData::InsertDoxygenComment);
-	m_checkBoxAddVirtualKeyword->SetValue(data.GetFlags() & ImplParentVirtualFunctionsData::PrependVirtual);
-	DoInitialize(false);
+    WindowAttrManager::Load(this, wxT("ImplementParentVirtualFunctionsDialog"), NULL);
+    ImplParentVirtualFunctionsData data;
+    EditorConfigST::Get()->ReadObject(wxT("ImplParentVirtualFunctionsData"), &data);
+
+    m_checkBoxFormat->SetValue(data.GetFlags() & ImplParentVirtualFunctionsData::FormatText);
+    DoInitialize(false);
 }
 
 ImplementParentVirtualFunctionsDialog::~ImplementParentVirtualFunctionsDialog()
 {
-	ImplParentVirtualFunctionsData data;
+    ImplParentVirtualFunctionsData data;
 
-	size_t flags(0);
-	if(m_checkBoxAddDoxy->IsChecked())
-		flags |= ImplParentVirtualFunctionsData::InsertDoxygenComment;
+    size_t flags(0);
 
-	if(m_checkBoxFormat->IsChecked())
-		flags |= ImplParentVirtualFunctionsData::FormatText;
-	
-	if(m_checkBoxAddVirtualKeyword->IsChecked())
-		flags |= ImplParentVirtualFunctionsData::PrependVirtual;
-	
-	data.SetFlags(flags);
-	EditorConfigST::Get()->WriteObject(wxT("ImplParentVirtualFunctionsData"), &data);
-	WindowAttrManager::Save(this, wxT("ImplementParentVirtualFunctionsDialog"), NULL);
-}
+    if(m_checkBoxFormat->IsChecked())
+        flags |= ImplParentVirtualFunctionsData::FormatText;
 
-void ImplementParentVirtualFunctionsDialog::OnAddDoxy(wxCommandEvent& event)
-{
-	wxUnusedVar(event);
-	DoInitialize(true);
+    data.SetFlags(flags);
+    EditorConfigST::Get()->WriteObject(wxT("ImplParentVirtualFunctionsData"), &data);
+    WindowAttrManager::Save(this, wxT("ImplementParentVirtualFunctionsDialog"), NULL);
 }
 
 void ImplementParentVirtualFunctionsDialog::DoInitialize(bool updateDoxyOnly)
 {
-	m_textCtrlProtos->Clear();
+    m_dataviewModel->Clear();
 
-	wxString decl;
-	bool addComments    = m_checkBoxAddDoxy->IsChecked();
-	bool virtualKeyword = m_checkBoxAddVirtualKeyword->IsChecked();
-	
-	// Add declration
-	//////////////////////////////////////////////////////
-	for (size_t i=0; i<m_tags.size(); i++) {
-		TagEntryPtr tag = m_tags.at(i);
-		if (addComments) {
-			// Add doxygen comment
-			CppCommentCreator commentCreator(tag, m_doxyPrefix);
-			DoxygenComment dc;
-			dc.comment = commentCreator.CreateComment();
-			dc.name    = tag->GetName();
-			m_contextCpp->DoMakeDoxyCommentString( dc );
+    wxVector<wxVariant> cols;
 
-			// Format the comment
-			wxString textComment = dc.comment;
-			textComment.Replace(wxT("\r"), wxT("\n"));
-			wxArrayString lines = wxStringTokenize(textComment, wxT("\n"), wxTOKEN_STRTOK);
-			textComment.Clear();
+    // Add declration
+    //////////////////////////////////////////////////////
+    for (size_t i=0; i<m_tags.size(); ++i) {
+        cols.clear();
+        cols.push_back(true);                    // generate it
+        cols.push_back(m_tags.at(i)->GetDisplayName()); // function name
+        cols.push_back("public");                // visibility
+        cols.push_back(true);                   // virtual
+        cols.push_back(false);                   // doxy
 
-			for (size_t i=0; i<lines.GetCount(); i++)
-				textComment << lines.Item(i) << wxT("\n");
-
-			if(decl.EndsWith(wxT("\n")) == false)
-				decl << wxT("\n");
-
-			decl << textComment;
-		}
-
-		tag->SetScope(m_scope);
-		decl << TagsManagerST::Get()->FormatFunction(tag, virtualKeyword ? FunctionFormat_WithVirtual : 0);
-		decl.Trim().Trim(false);
-		decl << wxT("\n");
-	}
-	decl.Trim().Trim(false);
-	m_textCtrlProtos->SetValue(decl);
-
-	if ( !updateDoxyOnly ) {
-		// Add Implementations
-		//////////////////////////////////////////////////////
-		wxString impl;
-		m_textCtrlImpl->Clear();
-		for (size_t i=0; i<m_tags.size(); i++) {
-			TagEntryPtr tag = m_tags.at(i);
-			tag->SetScope(m_scope);
-			impl << TagsManagerST::Get()->FormatFunction(tag, FunctionFormat_Impl) << wxT("\n");
-		}
-		m_textCtrlImpl->SetValue(impl);
-	}
+        clFunctionImplDetails *cd = new clFunctionImplDetails();
+        cd->SetTag( m_tags.at(i) );
+        m_dataviewModel->AppendItem(wxDataViewItem(0), cols, cd);
+    }
 }
 
-wxString ImplementParentVirtualFunctionsDialog::GetDecl()
+wxString ImplementParentVirtualFunctionsDialog::GetDecl(const wxString& visibility)
 {
-	wxString decl ( m_textCtrlProtos->GetValue() );
-	decl.Trim().Trim(false);
-	decl.Prepend(wxT("\n"));
-	decl.Append(wxT("\n"));
-	return decl;
+    wxString decl;
+    wxDataViewItemArray children;
+    m_dataviewModel->GetChildren(wxDataViewItem(0), children);
+
+    for(size_t i=0; i<children.GetCount(); ++i) {
+        clFunctionImplDetails *cd = dynamic_cast<clFunctionImplDetails*>( m_dataviewModel->GetClientObject(children.Item(i)));
+        if ( cd->GetVisibility() == visibility ) {
+            decl << cd->GetDecl(this);
+        }
+    }
+    return decl;
 }
 
 wxString ImplementParentVirtualFunctionsDialog::GetImpl()
 {
-	return m_textCtrlImpl->GetValue();
+    wxString impl;
+    wxDataViewItemArray children;
+    m_dataviewModel->GetChildren(wxDataViewItem(0), children);
+
+    for(size_t i=0; i<children.GetCount(); ++i) {
+        clFunctionImplDetails *cd = dynamic_cast<clFunctionImplDetails*>( m_dataviewModel->GetClientObject(children.Item(i)));
+        impl << cd->GetImpl(this);
+    }
+    return impl;
 }
 
-void ImplementParentVirtualFunctionsDialog::OnAddVirtual(wxCommandEvent& event)
+wxString ImplementParentVirtualFunctionsDialog::DoMakeCommentForTag(TagEntryPtr tag) const
 {
-	wxUnusedVar(event);
-	DoInitialize(true);
+    // Add doxygen comment
+    CppCommentCreator commentCreator(tag, m_doxyPrefix);
+    DoxygenComment dc;
+    dc.comment = commentCreator.CreateComment();
+    dc.name    = tag->GetName();
+    m_contextCpp->DoMakeDoxyCommentString( dc );
+
+    // Format the comment
+    wxString textComment = dc.comment;
+    textComment.Replace("\r", "\n");
+    wxArrayString lines = wxStringTokenize(textComment, "\n", wxTOKEN_STRTOK);
+    textComment.Clear();
+
+    for (size_t i=0; i<lines.GetCount(); ++i)
+        textComment << lines.Item(i) << wxT("\n");
+    return textComment;
+}
+
+void ImplementParentVirtualFunctionsDialog::SetTargetFile(const wxString& file)
+{
+    m_textCtrlImplFile->ChangeValue( file );
+}
+
+void ImplementParentVirtualFunctionsDialog::OnValueChanged(wxDataViewEvent& event)
+{
+    event.Skip();
+    clFunctionImplDetails *cd = dynamic_cast<clFunctionImplDetails*>( m_dataviewModel->GetClientObject(event.GetItem()) );
+    wxVector<wxVariant> cols = m_dataviewModel->GetItemColumnsData(event.GetItem());
+    cd->SetVisibility( cols.at(2).GetString() );
+    cd->SetPrependVirtualKeyword( cols.at(3).GetBool() );
+    cd->SetSelected( cols.at(0).GetBool() );
+    cd->SetDoxygen( cols.at(4).GetBool() );
+}
+
+void ImplementParentVirtualFunctionsDialog::OnCheckAll(wxCommandEvent& event)
+{
+    wxDataViewItemArray items;
+    m_dataviewModel->GetChildren(wxDataViewItem(0), items);
+    
+    for( size_t i=0; i<items.GetCount(); ++i ) {
+        wxVector<wxVariant> cols = m_dataviewModel->GetItemColumnsData(items.Item(i));
+        cols.at(0) = true;
+        m_dataviewModel->UpdateItem(items.Item(i), cols);
+    }
+}
+
+void ImplementParentVirtualFunctionsDialog::OnUnCheckAll(wxCommandEvent& event)
+{
+    wxDataViewItemArray items;
+    m_dataviewModel->GetChildren(wxDataViewItem(0), items);
+    
+    for( size_t i=0; i<items.GetCount(); ++i ) {
+        wxVector<wxVariant> cols = m_dataviewModel->GetItemColumnsData(items.Item(i));
+        cols.at(0) = false;
+        m_dataviewModel->UpdateItem(items.Item(i), cols);
+    }
+}
+
+// -----------------------------------------------------------------------------------------
+wxString clFunctionImplDetails::GetImpl(ImplementParentVirtualFunctionsDialog* dlg) const
+{
+    if( !IsSelected() )
+        return "";
+
+    wxString impl;
+    m_tag->SetScope( dlg->m_scope );
+    impl << TagsManagerST::Get()->FormatFunction(m_tag, FunctionFormat_Impl) << wxT("\n");
+    impl.Trim().Trim(false);
+    impl << "\n\n";
+
+    return impl;
+}
+
+wxString clFunctionImplDetails::GetDecl(ImplementParentVirtualFunctionsDialog* dlg) const
+{
+    if( !IsSelected() )
+        return "";
+
+    wxString decl;
+    if ( IsDoxygen() ) {
+        decl << dlg->DoMakeCommentForTag( m_tag );
+    }
+
+    m_tag->SetScope(dlg->m_scope);
+    decl << TagsManagerST::Get()->FormatFunction(m_tag, IsPrependVirtualKeyword() ? FunctionFormat_WithVirtual : 0);
+    decl.Trim().Trim(false);
+    decl << "\n";
+    return decl;
 }

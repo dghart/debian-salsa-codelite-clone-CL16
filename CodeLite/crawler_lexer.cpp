@@ -113,7 +113,7 @@
 #define YY_END_OF_BUFFER_CHAR 0
 
 /* Size of default input buffer. */
-#define YY_BUF_SIZE 16384
+#define YY_BUF_SIZE 16384*5
 
 typedef struct yy_buffer_state *YY_BUFFER_STATE;
 
@@ -520,7 +520,7 @@ char *yytext;
 /**
  * the "incl" state is used for picking up the name
  * of an include file
- */
+ */  
 #define incl 1
 
 #define c_comment 2
@@ -852,7 +852,11 @@ YY_RULE_SETUP
 
 		// Open the new file
 		FILE * new_file(NULL);
-		if ( fcFileOpener::Instance()->getDepth() < fcFileOpener::Instance()->getMaxDepth() ) {
+        
+        // keep the include statement
+        fcFileOpener::Instance()->AddIncludeStatement( yytext );
+        
+        if ( fcFileOpener::Instance()->getDepth() < fcFileOpener::Instance()->getMaxDepth() ) {
 			new_file = fcFileOpener::Instance()->OpenFile(yytext);
 		}
 

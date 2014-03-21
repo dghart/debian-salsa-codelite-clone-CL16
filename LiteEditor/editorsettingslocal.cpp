@@ -23,9 +23,10 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 
+#include "globals.h"
 #include "editorsettingslocal.h"
 #include "windowattrmanager.h"
-#include <wx/wxscintilla.h>
+#include <wx/stc/stc.h>
 #include <wx/fontmap.h>
 
 EditorSettingsLocal::EditorSettingsLocal( OptionsConfigPtr hrOptions, wxXmlNode* nde, enum prefsLevel level /*=pLevel_dunno*/, wxWindow* parent /*=NULL*/, wxWindowID id /*=wxID_ANY*/, const wxString& title /*=wxT("Local Preferences")*/)
@@ -71,22 +72,23 @@ void EditorSettingsLocal::DisplayHigherValues( const OptionsConfigPtr options )
 	m_checkBoxDisplayFoldMargin->SetValue( options->GetDisplayFoldMargin() );
 	m_displayBookmarkMargin->SetValue( options->GetDisplayBookmarkMargin() );
 
+	const wxString WhitespaceStyle[] = { wxTRANSLATE("Invisible"), wxTRANSLATE("Visible always"), wxTRANSLATE("Visible after indentation"), wxTRANSLATE("Indentation only") };
+	wxString currentWhitespace;
 	switch (options->GetShowWhitspaces()) {
-	case wxSCI_WS_VISIBLEALWAYS:
-		m_whitespaceStyle->SetStringSelection(wxT("Visible always"));
+	case wxSTC_WS_VISIBLEALWAYS:
+		currentWhitespace = wxT("Visible always");
 		break;
-	case wxSCI_WS_VISIBLEAFTERINDENT:
-		m_whitespaceStyle->SetStringSelection(wxT("Visible after indentation"));
-		break;
-	case wxSCI_WS_INDENTVISIBLE:
-		m_whitespaceStyle->SetStringSelection(wxT("Indentation only"));
+	case wxSTC_WS_VISIBLEAFTERINDENT:
+		currentWhitespace = wxT("Visible after indentation");
 		break;
 	default:
-		m_whitespaceStyle->SetStringSelection(wxT("Invisible"));
+		currentWhitespace = wxT("Invisible");
 		break;
 	}
+	m_WSstringManager.AddStrings(sizeof(WhitespaceStyle)/sizeof(wxString), WhitespaceStyle, currentWhitespace, m_whitespaceStyle);
 
-	m_choiceEOL->SetStringSelection(options->GetEolMode());
+	const wxString EOLChoices[] = { wxTRANSLATE("Default"), wxT("Mac (CR)"), wxT("Windows (CRLF)"), wxT("Unix (LF)") };
+	m_EOLstringManager.AddStrings(sizeof(EOLChoices)/sizeof(wxString), EOLChoices, options->GetEolMode(), m_choiceEOL);
 
 	wxArrayString astrEncodings;
 	wxFontEncoding fontEnc;
@@ -159,24 +161,21 @@ void EditorSettingsLocal::DisplayLocalValues( const LocalOptionsConfigPtr option
 
 	if (options->ShowWhitespacesIsValid()) {
 		switch (options->GetShowWhitespaces()) {
-		case wxSCI_WS_VISIBLEALWAYS:
-			m_whitespaceStyle->SetStringSelection(wxT("Visible always"));
+		case wxSTC_WS_VISIBLEALWAYS:
+			m_WSstringManager.SetStringSelection(wxT("Visible always"));
 			break;
-		case wxSCI_WS_VISIBLEAFTERINDENT:
-			m_whitespaceStyle->SetStringSelection(wxT("Visible after indentation"));
-			break;
-		case wxSCI_WS_INDENTVISIBLE:
-			m_whitespaceStyle->SetStringSelection(wxT("Indentation only"));
+		case wxSTC_WS_VISIBLEAFTERINDENT:
+			m_WSstringManager.SetStringSelection(wxT("Visible after indentation"));
 			break;
 		default:
-			m_whitespaceStyle->SetStringSelection(wxT("Invisible"));
+			m_WSstringManager.SetStringSelection(wxT("Invisible"));
 			break;
 		}
 		m_whitespaceStyleEnable->SetValue(false);
 	}
 
 	if (options->EolModeIsValid()) {
-		m_choiceEOL->SetStringSelection( options->GetEolMode() );
+		m_EOLstringManager.SetStringSelection( options->GetEolMode() );
 		m_choiceEOLEnable->SetValue(false);
 	}
 
@@ -234,18 +233,19 @@ void EditorSettingsLocal::OnOK( wxCommandEvent& event )
 		GetLocalOpts()->SetDisplayBookmarkMargin( m_displayBookmarkMargin->GetValue() );
 	}
 	if (m_whitespaceStyle->IsEnabled()) {
-		int style(wxSCI_WS_INVISIBLE);
-		if (m_whitespaceStyle->GetStringSelection() == wxT("Visible always")) {
-			style = wxSCI_WS_VISIBLEALWAYS;
-		} else if (m_whitespaceStyle->GetStringSelection() == wxT("Visible after indentation")) {
-			style = wxSCI_WS_VISIBLEAFTERINDENT;
-		} else if (m_whitespaceStyle->GetStringSelection() == wxT("Indentation only")) {
-			style = wxSCI_WS_INDENTVISIBLE;
+		wxString Whitespace = m_WSstringManager.GetStringSelection();
+		int style(wxSTC_WS_INVISIBLE); // invisible
+		if (Whitespace == wxT("Visible always")) {
+			style = wxSTC_WS_VISIBLEALWAYS;
+		} else if (Whitespace == wxT("Visible after indentation")) {
+			style = wxSTC_WS_VISIBLEAFTERINDENT;
+		} else if (Whitespace == wxT("Indentation only")) {
+			style = wxSTC_WS_VISIBLEAFTERINDENT;
 		}
 		GetLocalOpts()->SetShowWhitespaces(style);
 	}
 	if (m_choiceEOL->IsEnabled()) {
-		GetLocalOpts()->SetEolMode( m_choiceEOL->GetStringSelection() );
+		GetLocalOpts()->SetEolMode(m_EOLstringManager.GetStringSelection());
 	}
 	if (m_fileEncoding->IsEnabled()) {
 		GetLocalOpts()->SetFileFontEncoding( m_fileEncoding->GetStringSelection() );

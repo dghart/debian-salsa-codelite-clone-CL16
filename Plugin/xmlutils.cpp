@@ -36,7 +36,7 @@ wxXmlNode *XmlUtils::FindNodeByName(const wxXmlNode *parent, const wxString &tag
 	wxXmlNode *child = parent->GetChildren();
 	while( child ){
 		if( child->GetName() == tagName){
-			if( child->GetPropVal(wxT("Name"), wxEmptyString) == name){
+			if( (child->GetPropVal(wxT("Name"), wxEmptyString) == name) || (child->GetPropVal(wxT("name"), wxEmptyString) == name)) {
 				return child;
 			}
 		}
@@ -89,17 +89,17 @@ void XmlUtils::UpdateProperty(wxXmlNode *node, const wxString &name, const wxStr
 	node->AddProperty(name, value);
 }
 
-wxString XmlUtils::ReadString(wxXmlNode *node, const wxString &propName, const wxString &defaultValue)
+wxString XmlUtils::ReadString(const wxXmlNode *node, const wxString &propName, const wxString &defaultValue)
 {
 	return node->GetPropVal(propName, defaultValue);
 }
 
-bool XmlUtils::ReadStringIfExists(wxXmlNode* node, const wxString& propName, wxString& value)
+bool XmlUtils::ReadStringIfExists(const wxXmlNode* node, const wxString& propName, wxString& value)
 {
 	return node->GetPropVal(propName, &value);
 }
 
-long XmlUtils::ReadLong(wxXmlNode *node, const wxString &propName, long defaultValue)
+long XmlUtils::ReadLong(const wxXmlNode *node, const wxString &propName, long defaultValue)
 {
 	wxString val = node->GetPropVal(propName, wxEmptyString);
 	if( val.IsEmpty() ){
@@ -117,7 +117,7 @@ long XmlUtils::ReadLong(wxXmlNode *node, const wxString &propName, long defaultV
 	return retVal;
 }
 
-bool XmlUtils::ReadLongIfExists(wxXmlNode *node, const wxString &propName, long& answer)
+bool XmlUtils::ReadLongIfExists(const wxXmlNode *node, const wxString &propName, long& answer)
 {
 	wxString value;
 	if( ! node->GetPropVal(propName, &value) ) {
@@ -135,7 +135,7 @@ bool XmlUtils::ReadLongIfExists(wxXmlNode *node, const wxString &propName, long&
 	return retVal;
 }
 
-bool XmlUtils::ReadBool(wxXmlNode *node, const wxString &propName, bool defaultValue)
+bool XmlUtils::ReadBool(const wxXmlNode *node, const wxString &propName, bool defaultValue)
 {
 	wxString val = node->GetPropVal(propName, wxEmptyString);
 
@@ -152,7 +152,7 @@ bool XmlUtils::ReadBool(wxXmlNode *node, const wxString &propName, bool defaultV
 	return retVal;
 }
 
-bool XmlUtils::ReadBoolIfExists(wxXmlNode* node, const wxString& propName, bool& answer)
+bool XmlUtils::ReadBoolIfExists(const wxXmlNode* node, const wxString& propName, bool& answer)
 {
 	wxString value;
 	if( ! node->GetPropVal(propName, &value) ) {
@@ -165,6 +165,48 @@ bool XmlUtils::ReadBoolIfExists(wxXmlNode* node, const wxString& propName, bool&
 		answer = false;
 	}
 	return true;
+}
+
+wxArrayString XmlUtils::ChildNodesContentToArray(const wxXmlNode* node, const wxString& tagName/* = wxT("")*/)
+{
+	wxArrayString arr;
+
+    if(!node){
+		return arr;
+	}
+
+	wxXmlNode* child = node->GetChildren();
+	while (child) {
+		if(tagName.empty() || child->GetName() == tagName){
+			arr.Add(child->GetNodeContent());
+		}
+		child = child->GetNext();
+	}
+
+	return arr;
+}
+
+wxString XmlUtils::ChildNodesContentToString(const wxXmlNode* node, const wxString& tagName/* = wxT("")*/,  const wxString& separator/* = wxT(";")*/)
+{
+	wxString str;
+
+    if(!node){
+		return str;
+	}
+
+	wxXmlNode* child = node->GetChildren();
+	while (child) {
+		if(tagName.empty() || child->GetName() == tagName){
+			str << child->GetNodeContent() << separator;
+		}
+		child = child->GetNext();
+	}
+
+    if (!str.empty()) {
+        str.RemoveLast(separator.Len());
+    }
+
+	return str;
 }
 
 void XmlUtils::SetNodeContent(wxXmlNode *node, const wxString &text)

@@ -1,5 +1,5 @@
 @echo off
-if not exist wxWidgets-2.8.10 mkdir wxWidgets-2.8.10
-xcopy C:\wxWidgets-2.8.10\lib\gcc_dll\* "wxWidgets-2.8.10\lib\gcc_dll\" /E /I /H /Y
-xcopy C:\wxWidgets-2.8.10\include\* "wxWidgets-2.8.10\include\" /E /I /H /Y
-xcopy C:\wxWidgets-2.8.10\build\msw\config.gcc "wxWidgets-2.8.10\build\msw\config.gcc" /Y
+if not exist wxWidgets-3.0.0 mkdir wxWidgets-3.0.0
+xcopy D:\src\wxWidgets-3.0.0\lib\gcc_dll\* "wxWidgets-3.0.0\lib\gcc_dll\" /E /I /H /Y /EXCLUDE:wx_excludes
+xcopy D:\src\wxWidgets-3.0.0\include\* "wxWidgets-3.0.0\include\" /E /I /H /Y /EXCLUDE:wx_excludes
+xcopy D:\src\wxWidgets-3.0.0\build\msw\config.gcc "wxWidgets-3.0.0\build\msw\config.gcc" /Y /EXCLUDE:wx_excludes

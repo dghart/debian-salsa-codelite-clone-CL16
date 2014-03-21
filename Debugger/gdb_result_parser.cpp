@@ -38,6 +38,9 @@ static char yysccsid[] = "@(#)yaccpar	1.9 (Berkeley) 02/21/93";
 #include <vector>
 #include <map>
 #include <cstdio>
+#include "gdb_parser_incl.h"
+#include <stdlib.h>
+
 #define YYSTYPE std::string
 #define YYDEBUG 0        /* get the pretty debugging code to compile*/
 
@@ -54,9 +57,9 @@ int  gdb_result_parse();
 void cleanup();
 
 extern std::string gdb_result_lval;
-static std::map<std::string, std::string>               sg_attributes;
-static std::vector<std::map<std::string, std::string> > sg_children;
-static std::vector<std::string>                         sg_locals;
+static GdbStringMap_t            sg_attributes;
+static GdbChildrenInfo           sg_children;
+static std::vector<std::string>  sg_locals;
 #define GDB_DONE 257
 #define GDB_RUNNING 258
 #define GDB_CONNECTED 259
@@ -95,160 +98,195 @@ static std::vector<std::string>                         sg_locals;
 #define GDB_TIME 292
 #define GDB_REASON 293
 #define GDB_CHANGELIST 294
+#define GDB_DISPLAYHINT 295
+#define GDB_HAS_MORE 296
+#define GDB_NEW_NUM_CHILDREN 297
+#define GDB_NEW_CHILDREN 298
+#define GDB_FUNC_NAME 299
+#define GDB_OFFSET 300
+#define GDB_INSTRUCTION 301
+#define GDB_ADDRESS 302
+#define GDB_ASM_INSTS 303
+#define GDB_THREAD_GROUPS 304
 #define YYERRCODE 256
 short gdb_result_lhs[] = {                                        -1,
-    0,    0,    3,    1,    1,    2,    8,    2,    2,    2,
-    2,    2,    2,    2,    2,    2,   13,   15,   13,   11,
-   16,   16,   17,   17,   12,   18,   19,   18,   10,   20,
-   10,    9,   21,    9,    4,    4,    6,    6,    5,   22,
-    5,    7,   24,    7,   14,   14,   23,   23,   23,   23,
-   23,   23,   23,
+    0,    0,    3,    1,    1,    4,    4,    2,    2,    9,
+    2,    2,    2,    2,    2,    2,    2,    2,    2,    2,
+    2,    2,   14,   17,   14,   15,   18,   15,   12,   12,
+   20,   20,   19,   19,   21,   21,   13,   13,   22,   23,
+   22,   11,   11,   10,   10,    5,    5,    7,    7,    6,
+    6,    8,   25,    8,    8,   26,    8,    8,   16,   16,
+   24,   24,   24,   24,   24,   24,   24,   24,   24,   24,
+   24,   24,   24,   24,
 };
 short gdb_result_len[] = {                                         2,
-    1,    2,    0,    2,    1,   12,    0,    9,    8,    8,
-   20,   20,    9,    8,    8,    1,    3,    0,    6,   13,
-    3,    5,    3,    5,    6,    5,    0,    8,    5,    0,
-    8,    3,    0,    6,    1,    1,    1,    1,    5,    0,
-    8,    3,    0,    6,   11,    5,    1,    1,    1,    1,
-    1,    1,    1,
+    1,    2,    0,    2,    1,    0,    4,   13,   17,    0,
+    9,    8,    6,    8,    8,   20,   20,    9,    8,    8,
+    8,    1,    3,    0,    6,    3,    0,    6,   13,    5,
+    1,    3,    3,    5,    3,    5,    6,    2,    5,    0,
+    8,    5,    7,    3,    5,    1,    1,    1,    1,    5,
+    7,    3,    0,    6,    3,    0,    6,    5,   11,    5,
+    1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
+    1,    1,    1,    1,
 };
 short gdb_result_defred[] = {                                      0,
-    5,    0,    1,    0,    2,    0,    0,    4,   16,    0,
+    5,    0,    1,    0,    2,    0,    0,    4,   22,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,   46,    0,    0,    0,    0,    0,
-    0,    0,   50,   47,   53,   52,   48,   49,   51,    0,
-    0,   36,   35,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    7,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,    0,   38,   37,   14,
-    0,    0,    0,    9,   10,    0,    0,    0,    0,    0,
-   15,    0,    0,    0,    8,    0,    0,    0,    0,    0,
-   13,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,   45,   44,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,   34,    0,    6,    0,    0,    0,   19,
-    0,    0,    0,    0,    0,   25,    0,   31,    0,    0,
+    0,    0,    0,    0,    0,    0,   60,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,   64,   61,   67,   66,
+   62,   63,   65,    0,   68,   69,   70,    0,   73,   74,
+   72,   71,    0,    0,    0,   47,   46,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,   41,    0,    0,    0,
-    0,    0,    0,    0,   20,   28,   11,   12,    0,    0,
-    0,    0,    0,   22,   24,
+    0,    0,    0,    0,   10,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,   55,   56,
+    0,    0,    0,   12,   49,   48,   19,    0,    0,    0,
+    0,   14,    0,   15,    0,    0,    0,    0,    0,    0,
+    0,   21,    0,   20,    0,    0,    0,    0,    0,   11,
+    0,   44,    0,    0,    0,    0,    0,    0,    0,    0,
+   38,   18,    0,    0,   58,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,   57,   59,   54,    0,   42,   45,    0,    0,    0,
+    0,    0,    0,   30,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,   32,    0,    0,   28,   25,
+    0,   43,    0,    0,    0,    8,    0,    0,   37,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,   50,    0,
+    0,    0,    0,    0,    0,    0,    7,    0,    0,   41,
+    0,    0,   51,    9,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,   29,   16,   17,    0,    0,    0,    0,
+    0,   34,   36,
 };
 short gdb_result_dgoto[] = {                                       2,
-    3,    8,    4,   63,  108,   70,   40,   71,   58,   59,
-   62,   79,   64,    9,  101,  149,  154,  119,  144,  113,
-   97,  137,   41,   83,
+    3,    8,    4,  186,   84,  160,   97,   54,   98,   78,
+   79,   83,  110,   87,   85,    9,  151,  150,  219,  147,
+  223,  131,  197,   55,  118,  116,
 };
-short gdb_result_sindex[] = {                                   -243,
-    0, -243,    0,  -94,    0,  -23, -233,    0,    0, -255,
-  -18,  -32,  -29, -213,  -84, -227,  -20,  -19,  -14,  -10,
-   -7,   -1,    4, -148,    0,  -79,  -79, -224,  -79, -206,
-  -79,  -79,    0,    0,    0,    0,    0,    0,    0,  -63,
-    7,    0,    0, -196, -148,   26, -120,   29, -212,  -79,
-   32, -189,   21,  -75,    0,   22, -148,  -75,  -75, -197,
-   25,   43, -148,  -75, -205,    0,  -79,    0,    0,    0,
- -148,  -34,  -33,    0,    0,   38, -167, -183,  -75,  -75,
-    0,   52,   70, -152,    0, -148,    0,  -79,   75,   60,
-    0,    0, -144, -148,   63,    5,   81, -150, -154,  -79,
-   90,    0,    0, -132,    0,   13,   76,  -75,   77, -151,
-  -79,   96,   98,    0,   20,    0, -123,   84,  -75,    0,
- -118, -137, -148,  104,  -79,    0,   88,    0,   27, -138,
- -148,  -79,    0,   92,  -75, -120,  107,  -79,    0,  -75,
-  -75, -150,  -79,  110,  -75,  -75,    0, -119,  -75, -151,
-  -75,  -75,   94,  -75,    0,    0,    0,    0, -110,  114,
-  115,  -79, -119,    0,    0,
+short gdb_result_sindex[] = {                                   -241,
+    0, -241,    0,  -94,    0,  -13, -237,    0,    0, -255,
+   -9,  -17,  -11, -143,  -70, -212,   -4,   -1,    4,    5,
+   11,   13,   15,   17,   18,  -87,    0,  -82, -205,  -82,
+ -204,  -82, -187,  -82,  -82,  -82,    0,    0,    0,    0,
+    0,    0,    0,   20,    0,    0,    0,   21,    0,    0,
+    0,    0,   22,  -39,   26,    0,    0, -177,   45,  -87,
+   46, -116,   48, -252,  -82,  -82,  -19,    9,   19,   67,
+ -155,   52,  -87,  -79,    0,   53,  -87,  -26,  -23, -262,
+   56,   57,   77,  -87,  -79,  -87,  -79,  -87,    0,    0,
+ -164,    0,  -82,    0,    0,    0,    0,  -87,    7,    6,
+   12,    0, -150,    0,   71,   76, -129,  -82, -250,  -79,
+  -79,    0,  -79,    0,   14,   97,   82,  101, -122,    0,
+  -87,    0,  -87,   86,  -82, -119,  108, -111,  103,  104,
+    0,    0,    0,    0,    0,  -87, -105,  -87,  105,   42,
+   44,   49, -109,  127, -112,  133,  -79,  -82,  -82,  134,
+  136,    0,    0,    0,  -85,    0,    0,  -87,  122,  -22,
+  -97,  125, -111,    0, -103,  -87,  -82,  -82,  149,   69,
+   72,  -86,  154,  138,  -67,    0,  -79,  -79,    0,    0,
+  -63,    0,  -87,  142,  -92,    0,  -82,  163,    0,    0,
+  155,   93,   96,  159, -109,  -65,  177,  -82,    0,  -87,
+  -45,  -22,  164, -103, -116,   99,    0,  154,  -82,    0,
+  -26,  -23,    0,    0,  -82,  -79,  -79,  -49,  -79,  -79,
+  -79,  166,  -79,    0,    0,    0,  -38,  184,  186,  -82,
+  -49,    0,    0,
 };
-short gdb_result_rindex[] = {                                    -92,
-    0,  -92,    0,    0,    0,    0,    0,    0,    0,    0,
+short gdb_result_rindex[] = {                                    -89,
+    0,  -89,    0,    0,    0,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    1,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,  -35,    0,    0,    0,
-    0,  -27,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,  -22,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    2,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,  -16,    0,    0,    0,    0,    0,  -13,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,    0,    0,    0,  -70,
-  -66,    0,    0,    0,    0,
+    0,    1,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,  -20,  -18,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,  -66,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    3,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,  -16,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    3,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,  -64,  -61,    0,
+    0,    0,    0,
 };
 short gdb_result_gindex[] = {                                      0,
-  158,    0,    0,  -21,   19,  -44,  -38,    0, -102, -106,
-    0,    0,   51,    0,    0,    3,    6,   16,    0,    0,
-    0,    0,    0,    0,
+  229,    0,    0,   24,  -24,   38,  -62,  -30,    0,   29,
+   30,    0,    0,   68,   70,    0,    0,    0,    8,   78,
+   16, -152,    0,    0,    0,    0,
 };
-#define YYTABLESIZE 292
+#define YYTABLESIZE 294
 short gdb_result_table[] = {                                       7,
-   42,    3,   57,  114,   44,   45,   54,   47,   33,   49,
-   50,   43,    1,   74,   75,  128,   18,   69,   73,   81,
-   10,   30,   21,   11,   80,   14,   23,   40,   15,  141,
-   27,   16,   85,  140,   91,   92,   12,   13,   24,   25,
-   26,   27,   46,   42,   43,   84,   28,   96,   17,   68,
-   29,   18,   19,   30,   21,  103,   20,   32,   23,   31,
-   48,   51,   21,  116,   32,   17,   98,   52,   53,   55,
-   29,   22,   60,   61,  126,   65,   39,   66,  110,   26,
-   23,   67,   72,   76,  129,   77,   78,   82,   86,   32,
-  139,   87,  135,   42,   42,  145,  146,   17,   88,   89,
-  151,  152,   29,  131,  155,   90,  157,  158,   39,  160,
-  136,   26,   93,   94,   33,   95,  143,   34,   99,   35,
-  100,  148,  102,  104,  106,   42,   36,   37,   38,  105,
-   39,  107,  109,  111,  112,   57,  115,  117,  118,  121,
-  148,  122,  123,  124,  125,  127,   56,  130,  132,  134,
-  142,  133,  138,  150,  159,  153,  161,  162,  163,    5,
-  147,  120,    0,   56,  164,  156,    0,    0,  165,    0,
+   52,   13,    6,   58,    3,   60,   77,   62,   57,   64,
+   65,   66,  177,   96,    1,  102,  104,  101,  105,   11,
+  103,  172,  112,   27,  114,   24,   31,   40,   33,   74,
+   10,   35,  106,   81,   14,   82,   12,   13,  129,  130,
+   56,   86,   94,   15,   53,   95,  100,  132,  133,   16,
+  134,  210,   26,  111,   27,  113,   28,  115,   31,   29,
+   33,   59,   61,   35,   30,   31,   96,  120,  119,   96,
+   96,   32,   26,   33,   23,   34,   39,   35,   36,   63,
+   67,   68,   69,  128,  164,   70,   71,   72,   73,   75,
+  140,   80,  141,   52,   52,   13,    6,  173,   95,   89,
+  143,   95,   95,   88,   26,  152,   23,  154,   39,   90,
+   91,   92,   93,   99,  189,  190,  107,  108,   17,   18,
+  109,   19,   20,  165,  166,   52,   21,  170,  117,  121,
+  122,  125,   22,  124,  123,  178,  126,  127,  135,  208,
+  136,   23,  137,   86,  138,  139,  142,  144,  216,  217,
+   24,  145,  192,  220,  221,  146,  224,  225,  226,   25,
+  228,  153,  195,  148,  149,  155,  156,   76,  157,  206,
+  161,  158,  159,  205,  162,   37,  163,  167,   38,  168,
+   39,  169,  171,  174,  215,  175,  130,   40,   41,   42,
+  218,   43,  181,  182,  183,  184,    6,  185,  187,  188,
+  191,    3,  193,  194,   44,  218,  196,   45,   46,   47,
+   48,   49,   50,   51,   52,  198,   53,  199,  200,  201,
+  204,  207,  203,  213,  209,  222,  227,  230,  229,  231,
+    5,  214,  202,  211,  212,  180,  179,  232,    0,    0,
+  176,    0,    0,    0,    0,    0,  233,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,   52,   13,    6,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,    6,    0,    3,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,   42,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,   42,
+    0,   52,   13,    6,
 };
 short gdb_result_check[] = {                                      94,
-    0,   94,  123,  106,   26,   27,   45,   29,   44,   31,
-   32,   91,  256,   58,   59,  122,   44,   93,   57,   64,
-   44,   44,   93,  257,   63,   44,   93,   44,   61,  136,
-   44,   61,   71,  136,   79,   80,  292,  293,  123,  267,
-   61,   61,  267,  123,   44,   67,   61,   86,  262,  125,
-   61,  265,  266,   61,  125,   94,  270,   93,  125,   61,
-  267,  125,  276,  108,   61,   93,   88,   61,  265,   44,
-   93,  285,   44,  286,  119,   44,   93,  267,  100,   93,
-  294,   61,   61,  281,  123,   61,   44,  293,  123,  125,
-  135,  125,  131,   93,   94,  140,  141,  125,   61,  267,
-  145,  146,  125,  125,  149,  289,  151,  152,  125,  154,
-  132,  125,   61,   44,  263,  268,  138,  266,   44,  268,
-   61,  143,  267,   61,   44,  125,  275,  276,  277,  125,
-  279,  282,  287,   44,  267,  123,   61,   61,  290,   44,
-  162,   44,  123,  267,   61,  264,  284,   44,   61,  288,
-   44,  125,   61,   44,   61,  275,  267,   44,   44,    2,
-  142,  111,   -1,  284,  162,  150,   -1,   -1,  163,   -1,
+    0,    0,    0,   28,   94,   30,  123,   32,   91,   34,
+   35,   36,  165,   93,  256,   78,   79,   44,  281,  257,
+   44,   44,   85,   44,   87,   44,   93,   44,   93,   60,
+   44,   93,  295,  286,   44,  288,  292,  293,  289,  290,
+  123,   66,   73,   61,   44,  125,   77,  110,  111,   61,
+  113,  204,  123,   84,  267,   86,   61,   88,  125,   61,
+  125,  267,  267,  125,   61,   61,   93,   98,   93,   93,
+   93,   61,   93,   61,   93,   61,   93,   61,   61,  267,
+   61,   61,   61,  108,  147,  125,   61,  265,   44,   44,
+  121,   44,  123,   93,   94,   94,   94,  160,  125,   91,
+  125,  125,  125,  123,  125,  136,  125,  138,  125,   91,
+   44,  267,   61,   61,  177,  178,   61,   61,  262,  263,
+   44,  265,  266,  148,  149,  125,  270,  158,  293,  123,
+  125,   61,  276,  284,  123,  166,   61,  267,  125,  202,
+   44,  285,   61,  168,   44,  268,   61,  267,  211,  212,
+  294,   44,  183,  216,  217,  267,  219,  220,  221,  303,
+  223,  267,  187,   61,   61,   61,  125,  284,  125,  200,
+   44,  123,  282,  198,  287,  263,   44,   44,  266,   44,
+  268,  267,   61,  281,  209,   61,  290,  275,  276,  277,
+  215,  279,   44,  125,  123,  282,  291,   44,   61,  267,
+  264,  291,   61,  296,  292,  230,   44,  295,  296,  297,
+  298,  299,  300,  301,  302,   61,  304,  125,  123,   61,
+   44,  267,  288,  125,   61,  275,   61,   44,  267,   44,
+    2,  208,  195,  205,  205,  168,  167,  230,   -1,   -1,
+  163,   -1,   -1,   -1,   -1,   -1,  231,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,  256,  256,  256,   -1,
    -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
    -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
-   -1,   -1,   -1,   -1,   -1,   -1,  291,   -1,  291,   -1,
    -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
-   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
-   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
-   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
-   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
-   -1,   -1,   -1,   -1,   -1,   -1,  256,   -1,   -1,   -1,
-   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
-   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
-   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
-   -1,  291,
+   -1,  291,  291,  291,
 };
 #define YYFINAL 2
 #ifndef YYDEBUG
 #define YYDEBUG 1
 #endif
-#define YYMAXTOKEN 294
+#define YYMAXTOKEN 304
 #if YYDEBUG
 char *gdb_result_name[] = {
 "end-of-file",0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -265,6 +303,9 @@ char *gdb_result_name[] = {
 "GDB_ADDR","GDB_ASCII","GDB_CHILDREN","GDB_CHILD","GDB_MORE","GDB_VAROBJ",
 "GDB_BREAKPOINT_TABLE","GDB_NR_ROWS","GDB_NR_COLS","GDB_HDR","GDB_BODY",
 "GDB_BKPT","GDB_STOPPED","GDB_TIME","GDB_REASON","GDB_CHANGELIST",
+"GDB_DISPLAYHINT","GDB_HAS_MORE","GDB_NEW_NUM_CHILDREN","GDB_NEW_CHILDREN",
+"GDB_FUNC_NAME","GDB_OFFSET","GDB_INSTRUCTION","GDB_ADDRESS","GDB_ASM_INSTS",
+"GDB_THREAD_GROUPS",
 };
 char *gdb_result_rule[] = {
 "$accept : parse",
@@ -273,45 +314,59 @@ char *gdb_result_rule[] = {
 "$$1 :",
 "children_list : $$1 child_pattern",
 "children_list : error",
-"child_pattern : '^' GDB_DONE ',' GDB_NUMCHILD '=' GDB_STRING ',' GDB_CHILDREN '=' list_open children list_close",
+"has_more_attr :",
+"has_more_attr : ',' GDB_HAS_MORE '=' GDB_STRING",
+"child_pattern : '^' GDB_DONE ',' GDB_NUMCHILD '=' GDB_STRING ',' GDB_CHILDREN '=' list_open children list_close has_more_attr",
+"child_pattern : '^' GDB_DONE ',' GDB_NUMCHILD '=' GDB_STRING ',' GDB_DISPLAYHINT '=' GDB_STRING ',' GDB_CHILDREN '=' list_open children list_close has_more_attr",
 "$$2 :",
 "child_pattern : '^' GDB_DONE ',' GDB_NAME '=' GDB_STRING ',' $$2 child_attributes",
+"child_pattern : '^' GDB_DONE ',' GDB_VALUE '=' GDB_STRING ',' child_attributes",
+"child_pattern : '^' GDB_DONE ',' GDB_VALUE '=' GDB_STRING",
 "child_pattern : '^' GDB_DONE ',' GDB_LOCALS '=' list_open locals list_close",
 "child_pattern : '^' GDB_DONE ',' GDB_LOCALS '=' list_open mac_locals list_close",
 "child_pattern : '^' GDB_DONE ',' GDB_STACK_ARGS '=' list_open GDB_FRAME '=' list_open GDB_LEVEL '=' GDB_STRING ',' GDB_ARGS '=' list_open locals list_close list_close list_close",
 "child_pattern : '^' GDB_DONE ',' GDB_STACK_ARGS '=' list_open GDB_FRAME '=' list_open GDB_LEVEL '=' GDB_STRING ',' GDB_ARGS '=' list_open mac_locals list_close list_close list_close",
 "child_pattern : '^' GDB_DONE ',' GDB_BREAKPOINT_TABLE '=' list_open bpt_table_hdr bpt_table_body list_close",
 "child_pattern : '^' GDB_DONE ',' GDB_FRAME '=' list_open child_attributes list_close",
+"child_pattern : '^' GDB_DONE ',' GDB_ASM_INSTS '=' list_open asm_insts list_close",
 "child_pattern : '^' GDB_DONE ',' GDB_CHANGELIST '=' list_open change_set list_close",
 "child_pattern : stop_statement",
-"change_set : list_open child_attributes list_close",
+"asm_insts : list_open child_attributes list_close",
 "$$3 :",
-"change_set : list_open child_attributes list_close $$3 ',' change_set",
+"asm_insts : list_open child_attributes list_close $$3 ',' asm_insts",
+"change_set : list_open child_attributes list_close",
+"$$4 :",
+"change_set : list_open child_attributes list_close $$4 ',' change_set",
 "bpt_table_hdr : GDB_NR_ROWS '=' GDB_STRING ',' GDB_NR_COLS '=' GDB_STRING ',' GDB_HDR '=' list_open bpt_hdr_table_description list_close",
+"bpt_table_hdr : GDB_HDR '=' list_open comma_separated_strings list_close",
+"comma_separated_strings : GDB_STRING",
+"comma_separated_strings : GDB_STRING ',' comma_separated_strings",
 "bpt_hdr_table_description : list_open bpt_table_description_attr list_close",
 "bpt_hdr_table_description : list_open bpt_table_description_attr list_close ',' bpt_hdr_table_description",
 "bpt_table_description_attr : GDB_IDENTIFIER '=' GDB_STRING",
 "bpt_table_description_attr : GDB_IDENTIFIER '=' GDB_STRING ',' bpt_table_description_attr",
 "bpt_table_body : ',' GDB_BODY '=' list_open breakpoints list_close",
+"bpt_table_body : ',' breakpoints",
 "breakpoints : GDB_BKPT '=' list_open child_attributes list_close",
-"$$4 :",
-"breakpoints : GDB_BKPT '=' list_open child_attributes list_close $$4 ',' breakpoints",
-"mac_locals : GDB_VAROBJ '=' '{' child_attributes '}'",
 "$$5 :",
-"mac_locals : GDB_VAROBJ '=' '{' child_attributes '}' $$5 ',' mac_locals",
+"breakpoints : GDB_BKPT '=' list_open child_attributes list_close $$5 ',' breakpoints",
+"mac_locals : GDB_VAROBJ '=' '{' child_attributes '}'",
+"mac_locals : mac_locals ',' GDB_VAROBJ '=' '{' child_attributes '}'",
 "locals : '{' child_attributes '}'",
-"$$6 :",
-"locals : '{' child_attributes '}' $$6 ',' locals",
+"locals : locals ',' '{' child_attributes '}'",
 "list_open : '['",
 "list_open : '{'",
 "list_close : ']'",
 "list_close : '}'",
 "children : GDB_CHILD '=' '{' child_attributes '}'",
-"$$7 :",
-"children : GDB_CHILD '=' '{' child_attributes '}' $$7 ',' children",
+"children : children ',' GDB_CHILD '=' '{' child_attributes '}'",
 "child_attributes : child_key '=' GDB_STRING",
-"$$8 :",
-"child_attributes : child_key '=' GDB_STRING $$8 ',' child_attributes",
+"$$6 :",
+"child_attributes : child_key '=' GDB_STRING $$6 ',' child_attributes",
+"child_attributes : GDB_NEW_CHILDREN '=' '['",
+"$$7 :",
+"child_attributes : GDB_THREAD_GROUPS '=' '[' $$7 ',' child_attributes",
+"child_attributes : GDB_TIME '=' '{' child_attributes '}'",
 "stop_statement : GDB_STOPPED ',' GDB_TIME '=' '{' child_attributes '}' ',' GDB_REASON '=' GDB_STRING",
 "stop_statement : GDB_STOPPED ',' GDB_REASON '=' GDB_STRING",
 "child_key : GDB_NAME",
@@ -321,6 +376,13 @@ char *gdb_result_rule[] = {
 "child_key : GDB_ADDR",
 "child_key : GDB_IDENTIFIER",
 "child_key : GDB_LEVEL",
+"child_key : GDB_DISPLAYHINT",
+"child_key : GDB_HAS_MORE",
+"child_key : GDB_NEW_NUM_CHILDREN",
+"child_key : GDB_ADDRESS",
+"child_key : GDB_INSTRUCTION",
+"child_key : GDB_FUNC_NAME",
+"child_key : GDB_OFFSET",
 };
 #endif
 #ifndef YYSTYPE
@@ -348,22 +410,41 @@ YYSTYPE yylval;
 short yyss[YYSTACKSIZE];
 YYSTYPE yyvs[YYSTACKSIZE];
 #define yystacksize YYSTACKSIZE
+
 void cleanup()
 {
-	sg_attributes.clear();
-	sg_children.clear();
-	sg_locals.clear();
+    sg_attributes.clear();
+    sg_children.clear();
+    sg_locals.clear();
 }
 
-void gdbParseListChildren( const std::string &in, std::vector<std::map<std::string, std::string> > &children)
+void gdbConsumeList()
 {
-	cleanup();
+    int depth = 1;
+    while(depth > 0) {
+        int ch = gdb_result_lex();
+        if(ch == 0) {
+            break;
+        }
+        if(ch == ']') {
+            depth--;
+            continue;
+        } else if(ch == ']') {
+            depth ++ ;
+            continue;
+        }
+    }
+}
 
-	setGdbLexerInput(in, true, false);
-	gdb_result_parse();
+void gdbParseListChildren( const std::string &in, GdbChildrenInfo &children)
+{
+    cleanup();
 
-	children = sg_children;
-	gdb_result_lex_clean();
+    setGdbLexerInput(in, true, false);
+    gdb_result_parse();
+
+    children = sg_children;
+    gdb_result_lex_clean();
 }
 #define YYABORT goto yyabort
 #define YYREJECT goto yyabort
@@ -510,103 +591,171 @@ case 3:
 break;
 case 5:
 {
-				/*printf("CodeLite: syntax error, unexpected token '%s' found\n", gdb_result_lval.c_str());*/
-				}
+                /*printf("CodeLite: syntax error, unexpected token '%s' found\n", gdb_result_lval.c_str());*/
+                }
 break;
 case 7:
+{
+                  sg_children.has_more = (yyvsp[0] == "\"1\"");
+              }
+break;
+case 10:
 {sg_attributes[yyvsp[-3]] = yyvsp[-1];}
 break;
-case 8:
+case 11:
 {
-					sg_children.push_back( sg_attributes );
-					sg_attributes.clear();
-				}
+                    sg_children.push_back( sg_attributes );
+                    sg_attributes.clear();
+                }
 break;
-case 14:
+case 12:
 {
-					sg_children.push_back( sg_attributes );
-					sg_attributes.clear();
-				}
+                    sg_attributes[yyvsp[-4]] = yyvsp[-2];
+                    sg_children.push_back( sg_attributes );
+                    sg_attributes.clear();
+                }
 break;
-case 17:
+case 13:
 {
-					sg_children.push_back( sg_attributes );
-					sg_attributes.clear();
-				}
+                    sg_attributes[yyvsp[-2]] = yyvsp[0];
+                    sg_children.push_back( sg_attributes );
+                    sg_attributes.clear();
+                }
 break;
-case 18:
+case 19:
+{
+                    sg_children.push_back( sg_attributes );
+                    sg_attributes.clear();
+                }
+break;
+case 20:
+{
+                    sg_children.push_back( sg_attributes );
+                    sg_attributes.clear();
+                }
+break;
+case 23:
+{
+                    sg_children.push_back( sg_attributes );
+                    sg_attributes.clear();
+                }
+break;
+case 24:
 {sg_children.push_back( sg_attributes ); sg_attributes.clear(); }
 break;
 case 26:
-{ sg_children.push_back( sg_attributes ); sg_attributes.clear();}
+{
+                    sg_children.push_back( sg_attributes );
+                    sg_attributes.clear();
+                }
 break;
 case 27:
-{ sg_children.push_back( sg_attributes ); sg_attributes.clear();}
-break;
-case 29:
-{
-				sg_children.push_back( sg_attributes );
-				sg_attributes.clear();
-			}
-break;
-case 30:
-{sg_children.push_back( sg_attributes ); sg_attributes.clear(); }
-break;
-case 32:
-{
-				sg_children.push_back( sg_attributes );
-				sg_attributes.clear();
-			}
-break;
-case 33:
 {sg_children.push_back( sg_attributes ); sg_attributes.clear(); }
 break;
 case 39:
-{
-					sg_children.push_back( sg_attributes );
-					sg_attributes.clear();
-				}
+{ sg_children.push_back( sg_attributes ); sg_attributes.clear();}
 break;
 case 40:
-{sg_children.push_back( sg_attributes ); sg_attributes.clear(); }
+{ sg_children.push_back( sg_attributes ); sg_attributes.clear();}
 break;
 case 42:
-{ sg_attributes[yyvsp[-2]] = yyvsp[0]; }
+{
+                sg_children.push_back( sg_attributes );
+                sg_attributes.clear();
+            }
 break;
 case 43:
-{ sg_attributes[yyvsp[-2]] = yyvsp[0]; }
+{sg_children.push_back( sg_attributes ); sg_attributes.clear(); }
+break;
+case 44:
+{
+                sg_children.push_back( sg_attributes );
+                sg_attributes.clear();
+            }
 break;
 case 45:
-{
-					sg_attributes["reason"] = yyvsp[0];
-					sg_children.push_back( sg_attributes );
-				}
-break;
-case 46:
-{
-					sg_attributes["reason"] = yyvsp[0];
-					sg_children.push_back( sg_attributes );
-				}
-break;
-case 47:
-{yyval = yyvsp[0];}
-break;
-case 48:
-{yyval = yyvsp[0];}
-break;
-case 49:
-{yyval = yyvsp[0];}
+{sg_children.push_back( sg_attributes ); sg_attributes.clear(); }
 break;
 case 50:
-{yyval = yyvsp[0];}
+{
+                    sg_children.push_back( sg_attributes );
+                    sg_attributes.clear();
+                }
 break;
 case 51:
-{yyval = yyvsp[0];}
+{sg_children.push_back( sg_attributes ); sg_attributes.clear(); }
 break;
 case 52:
-{yyval = yyvsp[0];}
+{
+                       if ( yyvsp[-2] == "has_more" ) {
+                           sg_children.has_more = (yyvsp[0] == "\"1\"");
+
+                       } else if (!yyvsp[0].empty()) {
+                           sg_attributes[yyvsp[-2]] = yyvsp[0];
+                       }
+                   }
 break;
 case 53:
+{ sg_attributes[yyvsp[-2]] = yyvsp[0];}
+break;
+case 55:
+{ gdbConsumeList(); }
+break;
+case 56:
+{ gdbConsumeList(); }
+break;
+case 59:
+{
+                    sg_attributes["reason"] = yyvsp[0];
+                    sg_children.push_back( sg_attributes );
+                }
+break;
+case 60:
+{
+                    sg_attributes["reason"] = yyvsp[0];
+                    sg_children.push_back( sg_attributes );
+                }
+break;
+case 61:
+{yyval = yyvsp[0];}
+break;
+case 62:
+{yyval = yyvsp[0];}
+break;
+case 63:
+{yyval = yyvsp[0];}
+break;
+case 64:
+{yyval = yyvsp[0];}
+break;
+case 65:
+{yyval = yyvsp[0];}
+break;
+case 66:
+{yyval = yyvsp[0];}
+break;
+case 67:
+{yyval = yyvsp[0];}
+break;
+case 68:
+{yyval = yyvsp[0];}
+break;
+case 69:
+{yyval = yyvsp[0];}
+break;
+case 70:
+{yyval = yyvsp[0];}
+break;
+case 71:
+{yyval = yyvsp[0];}
+break;
+case 72:
+{yyval = yyvsp[0];}
+break;
+case 73:
+{yyval = yyvsp[0];}
+break;
+case 74:
 {yyval = yyvsp[0];}
 break;
     }

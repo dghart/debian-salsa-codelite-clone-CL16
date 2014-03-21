@@ -27,6 +27,7 @@
 #define SVNCOMMITHANDLER_H
 
 #include "svn_default_command_handler.h" // Base class
+#include "project.h"
 
 //----------------------------------------------------
 // Commit Handler
@@ -74,9 +75,14 @@ public:
 //----------------------------------------------------
 
 class SvnPatchHandler : public SvnDefaultCommandHandler {
-
+	bool     delFileWhenDone;
+	wxString patchFile;
 public:
-	SvnPatchHandler(Subversion2 *plugin, int commandId, wxEvtHandler *owner) : SvnDefaultCommandHandler(plugin, commandId, owner) {};
+	SvnPatchHandler(Subversion2 *plugin, int commandId, wxEvtHandler *owner, bool d, const wxString &pf) 
+	: SvnDefaultCommandHandler(plugin, commandId, owner) 
+	, delFileWhenDone(d)
+	, patchFile(pf)
+	{};
 	virtual ~SvnPatchHandler(){};
 
 public:
@@ -88,9 +94,15 @@ public:
 //----------------------------------------------------
 
 class SvnPatchDryRunHandler : public SvnDefaultCommandHandler {
-
+	bool     delFileWhenDone;
+	wxString patchFile;
+	
 public:
-	SvnPatchDryRunHandler(Subversion2 *plugin, int commandId, wxEvtHandler *owner) : SvnDefaultCommandHandler(plugin, commandId, owner) {};
+	SvnPatchDryRunHandler(Subversion2 *plugin, int commandId, wxEvtHandler *owner, bool d, const wxString &pf) 
+	: SvnDefaultCommandHandler(plugin, commandId, owner) 
+	, delFileWhenDone(d)
+	, patchFile(pf)
+	{}
 	virtual ~SvnPatchDryRunHandler(){};
 
 public:
@@ -155,6 +167,31 @@ class SvnBlameHandler : public SvnCommandHandler {
 public:
 	SvnBlameHandler(Subversion2 *plugin, int commandId, wxEvtHandler *owner) : SvnCommandHandler(plugin, commandId, owner){};
 	virtual ~SvnBlameHandler(){};
+
+public:
+	virtual void Process(const wxString &output);
+};
+
+//----------------------------------------------------
+// Svn Repo List handler
+//----------------------------------------------------
+
+class SvnRepoListHandler : public SvnDefaultCommandHandler {
+    ProjectPtr m_proj;
+    wxString m_workDir;
+    bool m_excludeBin;
+    wxString m_excludeExtensions;
+    
+public:
+	SvnRepoListHandler(Subversion2 *plugin, 
+                       ProjectPtr proj, const wxString& workDir, bool excludeBin, const wxString& excludeExtensions,
+                       int commandId, wxEvtHandler *owner) : SvnDefaultCommandHandler(plugin, commandId, owner)
+                       , m_proj(proj)
+                       , m_workDir(workDir)
+                       , m_excludeBin(excludeBin)
+                       , m_excludeExtensions(excludeExtensions)
+                       {};
+	virtual ~SvnRepoListHandler(){};
 
 public:
 	virtual void Process(const wxString &output);

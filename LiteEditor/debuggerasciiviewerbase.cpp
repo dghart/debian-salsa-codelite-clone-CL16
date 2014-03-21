@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version Apr 16 2008)
+// C++ code generated with wxFormBuilder (version Nov 18 2010)
 // http://www.wxformbuilder.org/
 //
 // PLEASE DO "NOT" EDIT THIS FILE!
@@ -34,7 +34,7 @@ DebuggerAsciiViewerBase::DebuggerAsciiViewerBase( wxWindow* parent, wxWindowID i
 	
 	mainSizer->Add( bSizer2, 0, wxEXPAND, 5 );
 	
-	m_textView = new wxScintilla(this);
+	m_textView = new wxStyledTextCtrl(this);
 	mainSizer->Add( m_textView, 1, wxALL|wxEXPAND, 5 );
 	
 	this->SetSizer( mainSizer );
@@ -48,4 +48,5 @@ DebuggerAsciiViewerBase::~DebuggerAsciiViewerBase()
 {
 	// Disconnect Events
 	m_buttonClear->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DebuggerAsciiViewerBase::OnClearView ), NULL, this );
+	
 }

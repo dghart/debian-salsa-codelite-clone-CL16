@@ -43,8 +43,8 @@ struct NameSorter {
 };
 
 AttachDbgProcDlg::AttachDbgProcDlg( wxWindow* parent )
-		: AttachDbgProcBaseDlg( parent )
-		, m_selectedItem(wxNOT_FOUND)
+	: AttachDbgProcBaseDlg( parent )
+	, m_selectedItem(wxNOT_FOUND)
 {
 	wxArrayString choices = DebuggerMgr::Get().GetAvailableDebuggers();
 	m_choiceDebugger->Append(choices);
@@ -53,8 +53,8 @@ AttachDbgProcDlg::AttachDbgProcDlg( wxWindow* parent )
 		m_choiceDebugger->SetSelection(0);
 	}
 
-	m_listCtrlProcesses->InsertColumn(0, wxT("PID"));
-	m_listCtrlProcesses->InsertColumn(1, wxT("Name"));
+	m_listCtrlProcesses->InsertColumn(0, _("PID"));
+	m_listCtrlProcesses->InsertColumn(1, _("Name"));
 
 	RefreshProcessesList(wxEmptyString);
 	m_textCtrlFilter->SetFocus();
@@ -81,14 +81,14 @@ void AttachDbgProcDlg::RefreshProcessesList(wxString filter, int colToSort)
 		std::sort(proclist.begin(), proclist.end(), NameSorter());
 
 	}
-	
+
 	filter.MakeLower();
 	for (size_t i=0; i<proclist.size(); i++) {
-		
+
 		// Use case in-sensitive match for the filter
 		wxString entryName (proclist.at(i).name);
 		entryName.MakeLower();
-		
+
 		// Append only processes that matches the filter string
 		if ( filter.IsEmpty() || entryName.Contains(filter) ) {
 			long item = AppendListCtrlRow(m_listCtrlProcesses);

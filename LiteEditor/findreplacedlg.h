@@ -25,8 +25,8 @@
 #ifndef FIND_REPLACE_DLG_H
 #define FIND_REPLACE_DLG_H
 
-#include "wx/dialog.h"
-#include "serialized_object.h"
+#include <wx/dialog.h>
+#include "cl_config.h"
 
 class wxTextCtrl;
 class wxCheckBox;
@@ -44,6 +44,7 @@ class wxStaticText;
 #define wxFRD_SKIP_COMMENTS         0x00000200
 #define wxFRD_SKIP_STRINGS          0x00000400
 #define wxFRD_COLOUR_COMMENTS       0x00000800
+#define wxFRD_SEPARATETAB_DISPLAY   0x00001000
 
 #define FIND_DLG 0
 #define REPLACE_DLG 1
@@ -65,92 +66,85 @@ DECLARE_EXPORTED_EVENT_TYPE(WXDLLIMPEXP_LE, wxEVT_FRD_REPLACEALL, -1)
 DECLARE_EXPORTED_EVENT_TYPE(WXDLLIMPEXP_LE, wxEVT_FRD_BOOKMARKALL, -1)
 DECLARE_EXPORTED_EVENT_TYPE(WXDLLIMPEXP_LE, wxEVT_FRD_CLEARBOOKMARKS, -1)
 
-class FindReplaceData : public SerializedObject
+class FindReplaceData : public clConfigItem
 {
-	wxArrayString  m_replaceString;
-	wxArrayString  m_findString;
-	size_t         m_flags;
-	wxArrayString  m_searchPaths;
-	wxString       m_encoding;
-	wxArrayString  m_fileMask;
-	wxString       m_selectedMask;
-
-private:
-	void TruncateArray(wxArrayString &arr, size_t maxSize);
-
+    wxArrayString  m_replaceString;
+    wxArrayString  m_findString;
+    size_t         m_flags;
+    wxArrayString  m_searchPaths;
+    wxString       m_encoding;
+    wxArrayString  m_fileMask;
+    wxString       m_selectedMask;
+    int            m_searchScope;
+    
+protected:
+    void TruncateArray(wxArrayString& arr, size_t maxSize);
+    
 public:
-	FindReplaceData() : m_flags(0)
-	{}
-
-	virtual ~FindReplaceData()
-	{}
-
-	// Setters/Getters
-	const size_t GetFlags() const {
-		return m_flags;
-	}
-	void SetFlags(size_t flags) {
-		m_flags = flags;
-	}
-
-	void SetSelectedMask(const wxString& selectedMask) {
-		this->m_selectedMask = selectedMask;
-	}
-	const wxString& GetSelectedMask() const {
-		return m_selectedMask;
-	}
-	wxArrayString &GetFindStringArr() {
-		return m_findString;
-	}
-	wxArrayString &GetReplaceStringArr() {
-		return m_replaceString;
-	}
-
-	void SetEncoding(const wxString& encoding) {
-		this->m_encoding = encoding;
-	}
-	void SetFileMask(const wxArrayString& fileMask) {
-		this->m_fileMask = fileMask;
-	}
-	const wxString& GetEncoding() const {
-		return m_encoding;
-	}
-	const wxArrayString& GetFileMask() const {
-		return m_fileMask;
-	}
-	/**
-	 * \brief return the first find string on the array
-	 */
-	wxString GetFindString() const ;
-
-	/**
-	 * \brief return the first replace string from the array
-	 */
-	wxString GetReplaceString() const;
-
-	/**
-	 * \brief add find string to the array and make it first item on the array as well
-	 * \param str find string to add
-	 */
-	void SetFindString(const wxString &str);
-
-	/**
-	 * \brief add replace string to the array and make it first item on the array as well
-	 * \param str replace string to add
-	 */
-	void SetReplaceString(const wxString &str);
-
-	void SetSearchPaths(const wxArrayString& searchPaths) {
-		this->m_searchPaths = searchPaths;
-	}
-	const wxArrayString& GetSearchPaths() const {
-		return m_searchPaths;
-	}
-
-	//implement the serialization API
-	void Serialize(Archive &arch);
-
-	void DeSerialize(Archive &arch);
+    /**
+     * @brief
+     * @param json
+     */
+    virtual void FromJSON(const JSONElement& json);
+    /**
+     * @brief
+     * @return
+     */
+    virtual JSONElement ToJSON() const;
+    
+    FindReplaceData()
+        : clConfigItem("FindReplaceData")
+        , m_flags(0)
+        , m_searchScope(1)
+    {}
+    virtual ~FindReplaceData()
+    {}
+    
+    wxString GetFindString() const;
+    wxString GetReplaceString() const;
+    void SetFindString(const wxString& str);
+    void SetReplaceString(const wxString& str);
+    
+    wxArrayString GetFindStringArr() const ;
+    
+    wxArrayString GetReplaceStringArr() const ;
+    
+    void SetEncoding(const wxString& encoding) {
+        this->m_encoding = encoding;
+    }
+    void SetFileMask(const wxArrayString& fileMask) {
+        this->m_fileMask = fileMask;
+    }
+    void SetFlags(size_t flags) {
+        this->m_flags = flags;
+    }
+    void SetSearchPaths(const wxArrayString& searchPaths) {
+        this->m_searchPaths = searchPaths;
+    }
+    void SetSearchScope(int searchScope) {
+        this->m_searchScope = searchScope;
+    }
+    void SetSelectedMask(const wxString& selectedMask) {
+        this->m_selectedMask = selectedMask;
+    }
+    const wxString& GetEncoding() const {
+        return m_encoding;
+    }
+    const wxArrayString& GetFileMask() const {
+        return m_fileMask;
+    }
+    size_t GetFlags() const {
+        return m_flags;
+    }
+    const wxArrayString& GetSearchPaths() const {
+        return m_searchPaths;
+    }
+    int GetSearchScope() const {
+        return m_searchScope;
+    }
+    const wxString& GetSelectedMask() const {
+        return m_selectedMask;
+    }
 };
 
 class wxStaticText;
@@ -162,92 +156,94 @@ enum frd_showzero { frd_dontshowzeros, frd_showzeros };
 
 class FindReplaceDialog : public wxDialog
 {
-	wxEvtHandler *m_owner;
+    wxEvtHandler *m_owner;
 
-	FindReplaceData m_data;
+    FindReplaceData m_data;
 
-	// Options
-	wxComboBox *m_findString;
-	wxComboBox *m_replaceString;
-	wxCheckBox *m_matchCase;
-	wxCheckBox *m_matchWholeWord;
-	wxCheckBox *m_regualrExpression;
-	wxCheckBox *m_searchUp;
-	wxCheckBox *m_selectionOnly;
+    // Options
+    wxComboBox *m_findString;
+    wxComboBox *m_replaceString;
+    wxCheckBox *m_matchCase;
+    wxCheckBox *m_matchWholeWord;
+    wxCheckBox *m_regualrExpression;
+    wxCheckBox *m_searchUp;
+    wxCheckBox *m_selectionOnly;
 
-	// Buttons
-	wxButton *m_find;
-	wxButton *m_replace;
-	wxButton *m_replaceAll;
-	wxButton *m_markAll;
-	wxButton *m_clearBookmarks;
-	wxButton *m_cancel;
-	wxStaticText *m_replacementsMsg;
-	wxStaticText *m_replaceWithLabel;
-	wxGridBagSizer *gbSizer;
-	wxStaticBoxSizer *sz;
-	int m_kind;
-	unsigned int m_replacedCount;
+    // Buttons
+    wxButton *m_find;
+    wxButton *m_replace;
+    wxButton *m_replaceAll;
+    wxButton *m_markAll;
+    wxButton *m_clearBookmarks;
+    wxButton *m_cancel;
+    wxStaticText *m_replacementsMsg;
+    wxStaticText *m_replaceWithLabel;
+    wxGridBagSizer *gbSizer;
+    wxStaticBoxSizer *sz;
+    int m_kind;
+    unsigned int m_replacedCount;
 
 public:
-	virtual ~FindReplaceDialog( );
-	FindReplaceDialog();
-	FindReplaceDialog(	wxWindow* parent,
-	                   const FindReplaceData& data,
-	                   wxWindowID id = wxID_ANY,
-	                   const wxString& caption = wxT("Find / Replace"),
-	                   const wxPoint& pos = wxDefaultPosition,
-	                   const wxSize& size = wxDefaultSize,
-	                   long style = wxDEFAULT_DIALOG_STYLE);
+    virtual ~FindReplaceDialog( );
+    FindReplaceDialog();
+    FindReplaceDialog(	wxWindow* parent,
+                        const FindReplaceData& data,
+                        wxWindowID id = wxID_ANY,
+                        const wxString& caption = _("Find / Replace"),
+                        const wxPoint& pos = wxDefaultPosition,
+                        const wxSize& size = wxDefaultSize,
+                        long style = wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER);
 
-	// Creation
-	bool Create(wxWindow* parent,
-	            const FindReplaceData& data,
-	            wxWindowID id = wxID_ANY,
-	            const wxString& caption = wxT("Find / Replace"),
-	            const wxPoint& pos = wxDefaultPosition,
-	            const wxSize& size = wxDefaultSize,
-	            long style = wxDEFAULT_DIALOG_STYLE
-	           );
+    // Creation
+    bool Create(wxWindow* parent,
+                const FindReplaceData& data,
+                wxWindowID id = wxID_ANY,
+                const wxString& caption = _("Find / Replace"),
+                const wxPoint& pos = wxDefaultPosition,
+                const wxSize& size = wxDefaultSize,
+                long style = wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER
+               );
 
-	// Return the data
-	FindReplaceData& GetData() {
-		return m_data;
-	}
+    // Return the data
+    FindReplaceData& GetData() {
+        return m_data;
+    }
 
-	virtual bool Show(int kind);
+    virtual bool Show(int kind);
 
-	void SetEventOwner(wxEvtHandler *owner) {
-		m_owner = owner;
-	}
-	wxEvtHandler *GetEventOwner() const {
-		return m_owner;
-	}
+    void SetEventOwner(wxEvtHandler *owner) {
+        m_owner = owner;
+    }
+    wxEvtHandler *GetEventOwner() const {
+        return m_owner;
+    }
 
-	// Set the replacements message
-	void SetReplacementsMessage( enum frd_showzero showzero = frd_showzeros );
-	unsigned int GetReplacedCount() {
-		return m_replacedCount;
-	}
-	void IncReplacedCount() {
-		++m_replacedCount;
-	}
-	void ResetReplacedCount() {
-		m_replacedCount = 0;
-	}
-	void ResetSelectionOnlyFlag();
-	void SetFindReplaceData(FindReplaceData& data, bool focus);
+    // Set the replacements message
+    void SetReplacementsMessage( enum frd_showzero showzero = frd_showzeros );
+    unsigned int GetReplacedCount() {
+        return m_replacedCount;
+    }
+    void IncReplacedCount() {
+        ++m_replacedCount;
+    }
+    void ResetReplacedCount() {
+        m_replacedCount = 0;
+    }
+    void ResetSelectionOnlyFlag();
+    void SetFindReplaceData(FindReplaceData& data, bool focus);
 
 protected:
-	void ShowReplaceControls(bool show);
-	void CreateGUIControls();
-	void ConnectEvents();
-	void OnClick(wxCommandEvent &event);
-	void SendEvent(wxEventType type);
+    void ShowReplaceControls(bool show);
+    void CreateGUIControls();
+    void ConnectEvents();
+    void OnClick(wxCommandEvent &event);
+    void OnFindEvent(wxCommandEvent &event);
+    void OnSelectionOnlyUI(wxUpdateUIEvent &event);
+    void SendEvent(wxEventType type);
 
-	void OnKeyDown(wxKeyEvent &event);
-	DECLARE_EVENT_TABLE()
-	void OnClose(wxCloseEvent &event);
+    void OnKeyDown(wxKeyEvent &event);
+    DECLARE_EVENT_TABLE()
+    void OnClose(wxCloseEvent &event);
 
 };
 

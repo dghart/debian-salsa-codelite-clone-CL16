@@ -107,6 +107,16 @@ stopped                                                    {RETURN_VAL(GDB_STOPP
 time                                                       {RETURN_VAL(GDB_TIME);}
 reason                                                     {RETURN_VAL(GDB_REASON);}
 changelist                                                 {RETURN_VAL(GDB_CHANGELIST);}
+has_more                                                   {RETURN_VAL(GDB_HAS_MORE);}
+new_children                                               {RETURN_VAL(GDB_NEW_CHILDREN);}
+thread-groups                                              {RETURN_VAL(GDB_THREAD_GROUPS);}
+new_num_children                                           {RETURN_VAL(GDB_NEW_NUM_CHILDREN);}
+displayhint                                                {RETURN_VAL(GDB_DISPLAYHINT);}
+func-name                                                  {RETURN_VAL(GDB_FUNC_NAME);}
+offset                                                     {RETURN_VAL(GDB_OFFSET);}
+inst                                                       {RETURN_VAL(GDB_INSTRUCTION);}
+address                                                    {RETURN_VAL(GDB_ADDRESS);}
+asm_insns                                                  {RETURN_VAL(GDB_ASM_INSTS);}
 {identifier}                                               {RETURN_VAL(GDB_IDENTIFIER);}
 "^"                                                        {RETURN_VAL((int)*yytext);}
 "="                                                        {RETURN_VAL((int)*yytext);}
@@ -137,7 +147,7 @@ changelist                                                 {RETURN_VAL(GDB_CHANG
 <string_state>"\\\\\\"["]                                  { gs_string += "\\\""; }
 <string_state>"\\\\\\\\"                                   { gs_string += "\\"; }
 <string_state>"\\"["]{1}                                   { gs_string += "\\\"";}
-
+<string_state>"\\\\"                                         { gs_string += "\\";}
 <string_state>["]                                          {
 	gs_string += "\"";
 	gdb_result_string = gs_string;

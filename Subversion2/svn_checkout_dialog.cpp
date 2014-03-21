@@ -1,5 +1,6 @@
 #include "svn_checkout_dialog.h"
 #include <wx/dirdlg.h>
+#include "wx/msgdlg.h"
 #include "subversion2.h"
 #include "imanager.h"
 #include "windowattrmanager.h"
@@ -59,7 +60,7 @@ void SvnCheckoutDialog::OnOK(wxCommandEvent& event)
 	// Check the target directory
 	wxString targetDir = GetTargetDir();
 	if(wxFileName::DirExists(targetDir)) {
-		if(wxMessageBox(wxString::Format(wxT("The checkout directory '%s' already exists\ncontinue with the checkout?"), targetDir.c_str()), wxT("Confirm"), wxYES_NO|wxICON_WARNING) == wxNO) {
+		if(wxMessageBox(wxString::Format(_("The checkout directory '%s' already exists\ncontinue with the checkout?"), targetDir.c_str()), _("Confirm"), wxYES_NO|wxICON_WARNING) == wxNO) {
 			return;
 		}
 	}

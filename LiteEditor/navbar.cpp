@@ -29,52 +29,32 @@
 #include "manager.h"
 #include "frame.h"
 #include "navbar.h"
+#include "event_notifier.h"
 
 NavBar::NavBar(wxWindow* parent)
-    : NavBarBase(parent)
+    : NavBarControlBaseClass(parent)
 {
-	long sashPos(150);
-	EditorConfigST::Get()->GetLongValue(wxT("NavBarSashPos"), sashPos);
-	m_splitter->SetSashPosition(sashPos);
-
 #ifdef __WXMAC__
-	m_scope->SetWindowVariant(wxWINDOW_VARIANT_SMALL);
-	m_func->SetWindowVariant(wxWINDOW_VARIANT_SMALL);
+    m_scope->SetWindowVariant(wxWINDOW_VARIANT_SMALL);
+    m_func->SetWindowVariant(wxWINDOW_VARIANT_SMALL);
 #endif
+
+    long sashPos = -1;
+    EditorConfigST::Get()->GetLongValue(wxT("NavBarSashPos"), sashPos);
+
+    if ( sashPos != wxNOT_FOUND ) {
+        m_splitter->SetSashPosition(sashPos);
+    }
+
+    EventNotifier::Get()->Connect(wxEVT_FILE_SAVED, wxCommandEventHandler(NavBar::OnFileSaved), NULL, this);
+    EventNotifier::Get()->Connect(wxEVT_ACTIVE_EDITOR_CHANGED, wxCommandEventHandler(NavBar::OnEditorChanged), NULL, this);
 }
 
 NavBar::~NavBar()
 {
-	// Save the sash position
-	EditorConfigST::Get()->SaveLongValue(wxT("NavBarSashPos"), m_splitter->GetSashPosition());
-}
-
-void NavBar::OnScopeListMouseDown(wxMouseEvent& e)
-{
-    if (!ManagerST::Get()->IsWorkspaceOpen())
-        return;
-
-    LEditor *editor = clMainFrame::Get()->GetMainBook()->GetActiveEditor();
-    if (!editor)
-        return;
-
-    std::vector<wxString> scopes;
-    TagsManagerST::Get()->GetScopesFromFile(editor->GetFileName(), scopes);
-
-    m_scope->Freeze();
-
-    wxString cursel = m_scope->GetStringSelection();
-    m_scope->Clear();
-    for (unsigned i = 0; i < scopes.size(); i++) {
-        m_scope->AppendString(scopes[i]);
-    }
-    if (!cursel.IsEmpty()) {
-        m_scope->SetStringSelection(cursel);
-    }
-
-    m_scope->Thaw();
-
-    e.Skip();
+    EditorConfigST::Get()->SaveLongValue(wxT("NavBarSashPos"), m_splitter->GetSashPosition());
+    EventNotifier::Get()->Disconnect(wxEVT_FILE_SAVED, wxCommandEventHandler(NavBar::OnFileSaved), NULL, this);
+    EventNotifier::Get()->Disconnect(wxEVT_ACTIVE_EDITOR_CHANGED, wxCommandEventHandler(NavBar::OnEditorChanged), NULL, this);
 }
 
 void NavBar::OnScope(wxCommandEvent& e)
@@ -84,38 +64,9 @@ void NavBar::OnScope(wxCommandEvent& e)
         m_tags.clear();
         m_func->Clear();
     }
-}
 
-void NavBar::OnFuncListMouseDown(wxMouseEvent& e)
-{
-    if (!ManagerST::Get()->IsWorkspaceOpen())
-        return;
-
-    LEditor *editor = clMainFrame::Get()->GetMainBook()->GetActiveEditor();
-    if (!editor)
-        return;
-
-    wxString scope = m_scope->GetStringSelection();
-    if (scope.IsEmpty())
-        return;
-
-    m_tags.clear();
-    TagsManagerST::Get()->TagsFromFileAndScope(editor->GetFileName(), scope, m_tags);
-
-    m_func->Freeze();
-
-    wxString cursel = m_func->GetStringSelection();
-    m_func->Clear();
-    for (size_t i = 0; i < m_tags.size(); i++) {
-        m_func->AppendString(m_tags[i]->GetDisplayName());
-    }
-    if (!cursel.IsEmpty()) {
-        m_func->SetStringSelection(cursel);
-    }
-
-    m_func->Thaw();
-
-    e.Skip();
+    wxString scope = m_scope->GetString(sel);
+    DoPopulateFunctions(DoGetCurFileName(), scope);
 }
 
 void NavBar::OnFunction(wxCommandEvent& e)
@@ -124,8 +75,8 @@ void NavBar::OnFunction(wxCommandEvent& e)
     if (!editor)
         return;
 
-	size_t sel = e.GetSelection();
-	if (sel >= m_tags.size())
+    size_t sel = e.GetSelection();
+    if (sel >= m_tags.size())
         return;
 
     wxString pattern = m_tags[sel]->GetPattern();
@@ -147,7 +98,7 @@ void NavBar::UpdateScope(TagEntryPtr tag)
     if (tag && sel < m_tags.size() && *m_tags[sel] == *tag)
         return;
 
-    Freeze();
+    wxWindowUpdateLocker locker(this);
 
     m_tags.clear();
     m_scope->Clear();
@@ -159,7 +110,97 @@ void NavBar::UpdateScope(TagEntryPtr tag)
         m_func->AppendString(tag->GetDisplayName());
         m_scope->SetSelection(0);
         m_func->SetSelection(0);
+
+        DoPopulateTags(DoGetCurFileName());
+    }
+}
+
+void NavBar::OnFileSaved(wxCommandEvent& e)
+{
+    e.Skip();
+
+    // sanity
+    if (!ManagerST::Get()->IsWorkspaceOpen())
+        return;
+
+    // get the active editor
+    LEditor *editor = clMainFrame::Get()->GetMainBook()->GetActiveEditor();
+    if (!editor)
+        return;
+
+    // is this the current file?
+    wxFileName fn( e.GetString() );
+    if ( fn != editor->GetFileName() ) {
+        return;
     }
 
-    Thaw();
+    // The save was for the active file, re-popuplate the tags in the navigation bar
+    DoPopulateTags(fn);
+
+}
+
+void NavBar::DoPopulateTags(const wxFileName& fn)
+{
+    std::vector<wxString> scopes;
+    TagsManagerST::Get()->GetScopesFromFile(fn, scopes);
+
+    m_scope->Freeze();
+
+    wxString cursel = m_scope->GetStringSelection();
+    m_scope->Clear();
+    for (unsigned i = 0; i < scopes.size(); i++) {
+        m_scope->AppendString(scopes[i]);
+    }
+    if (!cursel.IsEmpty()) {
+        m_scope->SetStringSelection(cursel);
+    }
+
+    m_scope->Thaw();
+
+    wxString scope = m_scope->GetStringSelection();
+    if (scope.IsEmpty())
+        return;
+    DoPopulateFunctions(fn, scope);
+}
+
+void NavBar::OnEditorChanged(wxCommandEvent& e)
+{
+    e.Skip();
+    IEditor* editor = reinterpret_cast<IEditor*>(e.GetClientData());
+    if ( !editor ) {
+        return;
+    }
+
+    const wxFileName& fn = editor->GetFileName();
+    DoPopulateTags(fn);
+}
+
+void NavBar::DoPopulateFunctions(const wxFileName& fn, const wxString& scope)
+{
+    m_tags.clear();
+    TagsManagerST::Get()->TagsFromFileAndScope(fn, scope, m_tags);
+
+    m_func->Freeze();
+
+    wxString func_cursel = m_func->GetStringSelection();
+    m_func->Clear();
+    for (size_t i = 0; i < m_tags.size(); i++) {
+        m_func->AppendString(m_tags.at(i)->GetDisplayName());
+    }
+    if (!func_cursel.IsEmpty()) {
+        m_func->SetStringSelection(func_cursel);
+    }
+
+    m_func->Thaw();
+
+}
+
+wxFileName NavBar::DoGetCurFileName() const
+{
+    LEditor *editor = clMainFrame::Get()->GetMainBook()->GetActiveEditor();
+    if (!editor)
+        return wxFileName();
+
+    const wxFileName& fn = editor->GetFileName();
+    return fn;
 }

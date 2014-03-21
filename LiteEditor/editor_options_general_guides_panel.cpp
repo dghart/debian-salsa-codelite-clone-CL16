@@ -23,71 +23,87 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 
-#include <wx/wxscintilla.h>
+#include "globals.h"
+#include <wx/stc/stc.h>
 #include "editor_options_general_guides_panel.h"
 
 EditorOptionsGeneralGuidesPanel::EditorOptionsGeneralGuidesPanel( wxWindow* parent )
-		: EditorOptionsGeneralGuidesPanelBase( parent )
-		, TreeBookNode<EditorOptionsGeneralGuidesPanel>()
+    : EditorOptionsGeneralGuidesPanelBase( parent )
+    , TreeBookNode<EditorOptionsGeneralGuidesPanel>()
 {
-	OptionsConfigPtr options = EditorConfigST::Get()->GetOptions();
+    OptionsConfigPtr options = EditorConfigST::Get()->GetOptions();
 
-	m_displayLineNumbers->SetValue(options->GetDisplayLineNumbers());
-	m_checkBoxMatchBraces->SetValue(options->GetHighlightMatchedBraces());
-	m_showIndentationGuideLines->SetValue(options->GetShowIndentationGuidelines());
-	m_checkBoxAutoCompleteBraces->SetValue(options->GetAutoAddMatchedBraces());
-	
-	m_highlightCaretLine->SetValue(options->GetHighlightCaretLine());
-	m_caretLineColourPicker->SetColour(options->GetCaretLineColour());
-	m_choiceEOL->SetStringSelection(options->GetEolMode());
-	m_checkBoxHideChangeMarkerMargin->SetValue( options->GetHideChangeMarkerMargin() );
-	m_checkBoxDisableSemicolonShift->SetValue( options->GetDisableSemicolonShift() );
-	m_sliderCaretLineAlpha->SetValue(options->GetCaretLineAlpha());
-	
-	switch (options->GetShowWhitspaces()) {
-	case wxSCI_WS_VISIBLEALWAYS:
-		m_whitespaceStyle->SetStringSelection(wxT("Visible always"));
-		break;
-	case wxSCI_WS_VISIBLEAFTERINDENT:
-		m_whitespaceStyle->SetStringSelection(wxT("Visible after indentation"));
-		break;
-	case wxSCI_WS_INDENTVISIBLE:
-		m_whitespaceStyle->SetStringSelection(wxT("Indentation only"));
-		break;
-	default:
-		m_whitespaceStyle->SetStringSelection(wxT("Invisible"));
-		break;
-	}
+    m_displayLineNumbers->SetValue(options->GetDisplayLineNumbers());
+    m_checkBoxMatchBraces->SetValue(options->GetHighlightMatchedBraces());
+    m_showIndentationGuideLines->SetValue(options->GetShowIndentationGuidelines());
+    m_checkBoxAutoCompleteCurlyBraces->SetValue(options->GetAutoAddMatchedCurlyBraces());
+    m_checkBoxAutoCompleteNormalBraces->SetValue(options->GetAutoAddMatchedNormalBraces());
+    m_highlightCaretLine->SetValue(options->GetHighlightCaretLine());
+    m_caretLineColourPicker->SetColour(options->GetCaretLineColour());
+    const wxString EOLChoices[] = { wxTRANSLATE("Default"), wxT("Mac (CR)"), wxT("Windows (CRLF)"), wxT("Unix (LF)") };
+    m_EOLstringManager.AddStrings(sizeof(EOLChoices)/sizeof(wxString), EOLChoices, options->GetEolMode(), m_choiceEOL);
+    m_checkBoxHideChangeMarkerMargin->SetValue( options->GetHideChangeMarkerMargin() );
+    m_checkBoxDisableSemicolonShift->SetValue( options->GetDisableSemicolonShift() );
+
+    m_checkBoxDoubleQuotes->SetValue(options->GetAutoCompleteDoubleQuotes());
+    m_checkBoxMarkdebuggerLine->SetValue(options->HasOption(OptionsConfig::Opt_Mark_Debugger_Line));
+    m_colourPickerDbgLine->SetColour(options->GetDebuggerMarkerLine());
+
+    const wxString WhitespaceStyle[] = { wxTRANSLATE("Invisible"), wxTRANSLATE("Visible always"), wxTRANSLATE("Visible after indentation") };
+    wxString currentWhitespace;
+    switch (options->GetShowWhitspaces()) {
+    case wxSTC_WS_VISIBLEALWAYS:
+        currentWhitespace = wxT("Visible always");
+        break;
+    case wxSTC_WS_VISIBLEAFTERINDENT:
+        currentWhitespace = wxT("Visible after indentation");
+        break;
+    default:
+        currentWhitespace = wxT("Invisible");
+        break;
+    }
+    m_WSstringManager.AddStrings(sizeof(WhitespaceStyle)/sizeof(wxString), WhitespaceStyle, currentWhitespace, m_whitespaceStyle);
 
 }
 
 
 void EditorOptionsGeneralGuidesPanel::Save(OptionsConfigPtr options)
 {
-	options->SetDisplayLineNumbers( m_displayLineNumbers->IsChecked() );
-	options->SetHighlightMatchedBraces(m_checkBoxMatchBraces->IsChecked());
-	options->SetShowIndentationGuidelines( m_showIndentationGuideLines->IsChecked() );
-	options->SetHighlightCaretLine( m_highlightCaretLine->IsChecked() );
-	options->SetCaretLineColour(m_caretLineColourPicker->GetColour());
-	options->SetAutoAddMatchedBraces(m_checkBoxAutoCompleteBraces->IsChecked());
-	options->SetEolMode(m_choiceEOL->GetStringSelection());
-	options->SetHideChangeMarkerMargin( m_checkBoxHideChangeMarkerMargin->IsChecked() );
-	options->SetDisableSemicolonShift( m_checkBoxDisableSemicolonShift->IsChecked() );
-	options->SetCaretLineAlpha(m_sliderCaretLineAlpha->GetValue());
-	
-	// save the whitespace visibility
-	int style(wxSCI_WS_INVISIBLE); // inivisble
-	if (m_whitespaceStyle->GetStringSelection() == wxT("Visible always")) {
-		style = wxSCI_WS_VISIBLEALWAYS;
-	} else if (m_whitespaceStyle->GetStringSelection() == wxT("Visible after indentation")) {
-		style = wxSCI_WS_VISIBLEAFTERINDENT;
-	} else if (m_whitespaceStyle->GetStringSelection() == wxT("Indentation only")) {
-		style = wxSCI_WS_INDENTVISIBLE;
-	}
-	options->SetShowWhitspaces(style);
+    options->SetDisplayLineNumbers( m_displayLineNumbers->IsChecked() );
+    options->SetHighlightMatchedBraces(m_checkBoxMatchBraces->IsChecked());
+    options->SetShowIndentationGuidelines( m_showIndentationGuideLines->IsChecked() );
+    options->SetHighlightCaretLine( m_highlightCaretLine->IsChecked() );
+    options->SetCaretLineColour(m_caretLineColourPicker->GetColour());
+    options->SetAutoAddMatchedCurlyBraces(m_checkBoxAutoCompleteCurlyBraces->IsChecked());
+    options->SetAutoAddMatchedNormalBraces(m_checkBoxAutoCompleteNormalBraces->IsChecked());
+    options->SetEolMode(m_EOLstringManager.GetStringSelection());
+    options->SetHideChangeMarkerMargin( m_checkBoxHideChangeMarkerMargin->IsChecked() );
+    options->SetDisableSemicolonShift( m_checkBoxDisableSemicolonShift->IsChecked() );
+
+    options->SetAutoCompleteDoubleQuotes(m_checkBoxDoubleQuotes->IsChecked());
+    options->SetDebuggerMarkerLine( m_colourPickerDbgLine->GetColour() );
+    
+    options->EnableOption( OptionsConfig::Opt_Mark_Debugger_Line, m_checkBoxMarkdebuggerLine->IsChecked() );
+    
+    // save the whitespace visibility
+    wxString Whitespace = m_WSstringManager.GetStringSelection();
+    int style(wxSTC_WS_INVISIBLE); // invisible
+    if (Whitespace == wxT("Visible always")) {
+        style = wxSTC_WS_VISIBLEALWAYS;
+    } else if (Whitespace == wxT("Visible after indentation")) {
+        style = wxSTC_WS_VISIBLEAFTERINDENT;
+    } else if (Whitespace == wxT("Indentation only")) {
+        style = wxSTC_WS_VISIBLEAFTERINDENT;
+    }
+    options->SetShowWhitspaces(style);
 }
 
 void EditorOptionsGeneralGuidesPanel::OnhighlightCaretLineUI(wxUpdateUIEvent& event)
 {
-	event.Enable(m_highlightCaretLine->IsChecked());
+    event.Enable(m_highlightCaretLine->IsChecked());
+}
+
+void EditorOptionsGeneralGuidesPanel::OnDebuggerLineUI(wxUpdateUIEvent& event)
+{
+    event.Enable( m_checkBoxMarkdebuggerLine->IsChecked() );
 }

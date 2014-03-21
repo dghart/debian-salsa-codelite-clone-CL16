@@ -28,55 +28,97 @@
 #include "configurationtoolbase.h"
 #include "archive.h"
 #include "evnvarlist.h"
+#include <wx/utils.h>
+#include "macros.h"
 
 class EnvSetter;
+
+/// A helper class that makes sure that escpaed $ signs
+/// are kept unharmed
+class WXDLLIMPEXP_SDK DollarEscaper
+{
+    wxString &m_str;
+public:
+    DollarEscaper(wxString &str) ;
+    
+    ~DollarEscaper() ;
+};
+
+
 class WXDLLIMPEXP_SDK EnvironmentConfig : public ConfigurationToolBase
 {
-	// Allow access to Apply/UnApply Env
-	friend class EnvSetter;
-	
-	StringMap m_envSnapshot;
-	int       m_envApplied;
+    // Allow access to Apply/UnApply Env
+    friend class EnvSetter;
+    
+    wxStringMap_t m_envSnapshot;
+    int           m_envApplied;
 
 protected:
-	wxString    DoExpandVariables(const wxString &in);
-	void        ApplyEnv(StringMap *overrideMap);
-	void        UnApplyEnv();
+    wxString    DoExpandVariables(const wxString &in);
+    void        ApplyEnv(wxStringMap_t *overrideMap, const wxString &project);
+    void        UnApplyEnv();
 
 public:
-	static EnvironmentConfig* Instance();
-	static void Release();
-	bool        Load();
-	wxString    ExpandVariables(const wxString &in, bool applyEnvironment);
-	EvnVarList  GetSettings();
-	void        SetSettings(EvnVarList &vars);
+    static EnvironmentConfig* Instance();
+    static void Release();
+    bool        Load();
+    wxString    ExpandVariables(const wxString &in, bool applyEnvironment);
+    EvnVarList  GetSettings();
+    void        SetSettings(EvnVarList &vars);
 
 private:
-	EnvironmentConfig();
-	virtual ~EnvironmentConfig();
+    EnvironmentConfig();
+    virtual ~EnvironmentConfig();
 
 public:
-	virtual wxString GetRootName();
+    virtual wxString GetRootName();
 };
 
 class EnvSetter
 {
-	EnvironmentConfig *m_env;
+    EnvironmentConfig *m_env;
+    wxString           m_envName;
+    wxString           m_oldEnvValue;
+    bool               m_restoreOldValue;
+    
 public:
-	EnvSetter(StringMap *om = NULL) : m_env(EnvironmentConfig::Instance()) {
-		m_env->ApplyEnv(om);
-	}
+    EnvSetter(wxStringMap_t *om = NULL) : m_env(EnvironmentConfig::Instance()) {
+        m_env->ApplyEnv(om, wxEmptyString);
+    }
 
-	EnvSetter(EnvironmentConfig *conf, StringMap *om = NULL) : m_env(conf) {
-		if (m_env) {
-			m_env->ApplyEnv(om);
-		}
-	}
-	~EnvSetter() {
-		if (m_env) {
-			m_env->UnApplyEnv();
-			m_env = NULL;
-		}
-	}
+    EnvSetter(EnvironmentConfig *conf, wxStringMap_t *om = NULL) : m_env(conf ? conf : EnvironmentConfig::Instance()) {
+        if (m_env) {
+            m_env->ApplyEnv(om, wxEmptyString);
+        }
+    }
+    EnvSetter(EnvironmentConfig *conf, wxStringMap_t *om, const wxString &project) : m_env(conf ? conf : EnvironmentConfig::Instance()) {
+        if (m_env) {
+            m_env->ApplyEnv(om, project);
+        }
+    }
+    
+    EnvSetter(const wxString &var, const wxString &value) {
+        m_envName = var;
+        // keep old value
+        m_restoreOldValue = ::wxGetEnv(m_envName, &m_oldEnvValue);
+        ::wxSetEnv(m_envName, value);
+    }
+    
+    ~EnvSetter() {
+        if (m_env) {
+            m_env->UnApplyEnv();
+            m_env = NULL;
+        }
+        
+        if ( m_restoreOldValue ) {
+            // restore old env variable value
+            ::wxSetEnv(m_envName, m_oldEnvValue);
+            
+        } else if ( !m_envName.IsEmpty() ) {
+            // we applied a single evn variable without old value
+            // uset it
+            ::wxUnsetEnv( m_envName );
+        }
+    }
 };
 #endif // __environmentconfig__

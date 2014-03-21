@@ -37,8 +37,8 @@ ContextDiff::ContextDiff()
 ContextDiff::ContextDiff(LEditor *container)
     : ContextBase(container)
 {
-    SetName(wxT("Diff"));
-	ApplySettings();
+    SetName(wxT("diff"));
+    ApplySettings();
 }
 
 ContextDiff::~ContextDiff()
@@ -56,7 +56,7 @@ void ContextDiff::ApplySettings()
 	if (EditorConfigST::Get()->IsOk()) {
 		lexPtr = EditorConfigST::Get()->GetLexer(GetName());
 	}
-	GetCtrl().SetLexer(lexPtr ? lexPtr->GetLexerId() : wxSCI_LEX_NULL);
+	GetCtrl().SetLexer(lexPtr ? lexPtr->GetLexerId() : wxSTC_LEX_NULL);
 	DoApplySettings(lexPtr);
 }
 
@@ -101,6 +101,7 @@ void ContextDiff::GoHyperlink(int start, int end, int type, bool alt)
         // FIXME: search backwards for "+++ filename", since this could be a directory diff
         rCtrl.GetFileName().GetFullName().EndsWith(wxT(".diff"), &fileName);
     }
+	
     wxFileName fn = ManagerST::Get()->FindFile(fileName);
     if (fn.IsOk()) {
         clMainFrame::Get()->GetMainBook()->OpenFile(fn.GetFullPath(), wxEmptyString, lineNum);

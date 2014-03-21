@@ -37,7 +37,22 @@ JobQueueWorker::~JobQueueWorker()
 }
 void JobQueueWorker::Stop()
 {
-	wxThread::Delete();
+#if wxVERSION_NUMBER < 2904
+    if(IsAlive()) {
+        Delete();
+    }
+    Wait();
+#else    
+    // Notify the thread to exit and 
+    // wait for it
+    if ( IsAlive() ) {
+        Delete(NULL, wxTHREAD_WAIT_BLOCK);
+        
+    } else {
+        Wait(wxTHREAD_WAIT_BLOCK);
+        
+    }
+#endif
 }
 
 void JobQueueWorker::Start(int priority)

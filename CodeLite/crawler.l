@@ -1,7 +1,7 @@
 /**
  * the "incl" state is used for picking up the name
  * of an include file
- */
+ */  
 %x incl
 %x c_comment
 %x cpp_comment
@@ -68,7 +68,11 @@ include                 {BEGIN(incl);}
 
 		// Open the new file
 		FILE * new_file(NULL);
-		if ( fcFileOpener::Instance()->getDepth() < fcFileOpener::Instance()->getMaxDepth() ) {
+        
+        // keep the include statement
+        fcFileOpener::Instance()->AddIncludeStatement( yytext );
+        
+        if ( fcFileOpener::Instance()->getDepth() < fcFileOpener::Instance()->getMaxDepth() ) {
 			new_file = fcFileOpener::Instance()->OpenFile(yytext);
 		}
 

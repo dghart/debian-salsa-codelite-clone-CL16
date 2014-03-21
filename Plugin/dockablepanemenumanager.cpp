@@ -30,8 +30,31 @@
 #include "dockablepanemenumanager.h"
 #include <wx/log.h>
 
-//const wxEventType wxEVT_CMD_HIDE_PANE = wxNewEventType();
-//const wxEventType wxEVT_CMD_SHOW_PANE = wxNewEventType();
+void DockablePaneMenuManager::HackShowPane(wxAuiPaneInfo &pane_info, wxAuiManager *pAui)
+{
+	if ( pane_info.IsOk() && pAui ) {
+		pane_info.MinSize(pane_info.best_size);    // saved while hiding
+		pane_info.Show();
+		pAui->Update();
+		pane_info.MinSize(10,5);	// so it can't disappear if undocked
+		pAui->Update();
+	}
+}
+
+void DockablePaneMenuManager::HackHidePane(bool commit, wxAuiPaneInfo &pane_info, wxAuiManager *pAui)
+{
+	if ( pane_info.IsOk() && pAui ) {
+		int width = 0;
+		int height = 0;
+		pane_info.window->GetClientSize(&width, &height);
+		pane_info.BestSize(width,height);    // save for later subsequent show
+		pane_info.Hide();
+
+		if ( commit ) {
+			pAui->Update();
+		}
+	}
+}
 
 DockablePaneMenuManager::DockablePaneMenuManager(wxMenuBar* mb, wxAuiManager *aui)
 		: m_mb(mb)
@@ -82,13 +105,11 @@ void DockablePaneMenuManager::OnDockpaneMenuItem(wxCommandEvent& e)
 	wxString name = NameById(e.GetId());
 	wxAuiPaneInfo &info = m_aui->GetPane(name);
 	if ( info.IsOk() ) {
-		if (e.IsChecked()) {
-			// need to show the item
-			info.Show();
+		if ( e.IsChecked() ) {
+			HackShowPane(info, m_aui);
 		} else {
-			info.Hide();
+			HackHidePane(true, info, m_aui);
 		}
-		m_aui->Update();
 	}
 }
 

@@ -66,7 +66,7 @@ public:
 				wxWindowID id = wxID_ANY,
 				const wxString &buttonCaption = wxT("..."),
 				const wxString &defaultPos = wxEmptyString,
-				const wxString &message = wxT("Select a folder:"),
+				const wxString &message = _("Select a folder:"),
 				const wxPoint& pos = wxDefaultPosition,
 				const wxSize& size = wxDefaultSize,
 				long style = wxDP_USE_TEXTCTRL);
@@ -85,9 +85,15 @@ public:
 	void SetPath(const wxString &path);
 
 	/**
-	 * Set combox values, this option is vailable only when using wxDP_USE_COMBOBOX
+	 * Set combobox values, this option is available only when using wxDP_USE_COMBOBOX
 	 */
 	void SetValues(const wxArrayString &values, int sel=0);
+
+	/**
+	 * Get combobox selection as int; this option is available only when using wxDP_USE_COMBOBOX
+	 * \return the current selection's index, or wxNOT_FOUND if there's none
+	 */
+	int GetCurrentSelection() const;
 
 	wxArrayString GetValues() const;
 	DECLARE_EVENT_TABLE()
