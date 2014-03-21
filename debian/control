@@ -1,8 +1,8 @@
 Source: codelite
 Section: devel
 Priority: optional
-Maintainer: Debian QA Group <packages@qa.debian.org>
-Build-Depends: debhelper (>= 7.0.50~),
+Maintainer: James Cowgill <james410@cowgill.org.uk>
+Build-Depends: debhelper (>= 9),
  autotools-dev,
  libgtk2.0-dev,
  libwxgtk2.8-dev,
@@ -15,8 +15,7 @@ Vcs-Browser: http://git.debian.org/?p=collab-maint/codelite.git
 
 Package: codelite
 Architecture: any
-Depends: ${shlibs:Depends},
- ${misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}
 Recommends: gdb,
  qt4-qmake,
  wx-common,
@@ -39,8 +38,7 @@ Description: Powerful and lightweight C/C++ IDE
 
 Package: codelite-plugins
 Architecture: any
-Depends: ${shlibs:Depends},
- ${misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}
 Breaks: codelite-plugins-abbreviation (<< 2.3.0.3833+dfsg-1),
  codelite-plugins-codeformatter (<< 2.3.0.3833+dfsg-1),
  codelite-plugins-continuousbuild (<< 2.3.0.3833+dfsg-1),
