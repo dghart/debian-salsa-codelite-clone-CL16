@@ -12,6 +12,7 @@
 #include "changelogpage.h"
 #include "imanager.h"
 #include "ieditor.h"
+#include "event_notifier.h"
 
 void SvnCommitHandler::Process(const wxString& output)
 {
@@ -31,7 +32,7 @@ void SvnUpdateHandler::Process(const wxString& output)
 
 	// Reload any modified files
 	wxCommandEvent e(wxEVT_COMMAND_MENU_SELECTED, wxEVT_CMD_RELOAD_EXTERNALLY_MODIFIED_NOPROMPT);
-	GetPlugin()->GetManager()->GetTheApp()->GetTopWindow()->GetEventHandler()->AddPendingEvent(e);
+	EventNotifier::Get()->TopFrame()->GetEventHandler()->AddPendingEvent(e);
 
 	// After 'Update' we usually want to do the following:
 	// Reload workspace (if a project file or the workspace were modified)
@@ -57,14 +58,11 @@ void SvnDiffHandler::Process(const wxString& output)
 	if(GetPlugin()->GetSettings().GetFlags() & SvnUseExternalDiff)
 		return;
 
-	wxString compactMsg (output);
-	compactMsg.Replace(wxT("\r"), wxT(""));
-
 	IEditor *editor = GetPlugin()->GetManager()->NewEditor();
 	if(editor) {
 		// Set the lexer name to 'Diff'
 		editor->SetLexerName(wxT("Diff"));
-		editor->AppendText(compactMsg);
+		editor->AppendText(output);
 	}
 }
 
@@ -74,7 +72,11 @@ void SvnPatchHandler::Process(const wxString& output)
 	GetPlugin()->GetConsole()->EnsureVisible();
 	GetPlugin()->GetConsole()->AppendText(output);
 	GetPlugin()->GetConsole()->AppendText(wxT("-----\n"));
-
+	
+	if(delFileWhenDone) {
+		wxRemoveFile(patchFile);
+	}
+	
 	// Retag workspace only if no conflict were found
 	// send an event to the main frame indicating that a re-tag is required
 	if( GetPlugin()->GetSettings().GetFlags() & SvnRetagWorkspace ) {
@@ -89,9 +91,14 @@ void SvnPatchHandler::Process(const wxString& output)
 void SvnPatchDryRunHandler::Process(const wxString& output)
 {
 	GetPlugin()->GetConsole()->EnsureVisible();
-	GetPlugin()->GetConsole()->AppendText(wxT("===== APPLYING PATCH - DRY RUN =====\n"));
+	GetPlugin()->GetConsole()->AppendText(_("===== APPLYING PATCH - DRY RUN =====\n"));
 	GetPlugin()->GetConsole()->AppendText(output);
-	GetPlugin()->GetConsole()->AppendText(wxT("===== OUTPUT END =====\n"));
+	GetPlugin()->GetConsole()->AppendText(_("===== OUTPUT END =====\n"));
+	
+	if(delFileWhenDone) {
+		// delete the patch file
+		wxRemoveFile(patchFile);
+	}
 }
 
 void SvnVersionHandler::Process(const wxString& output)
@@ -121,7 +128,7 @@ void SvnLogHandler::Process(const wxString& output)
 	ChangeLogPage *page = new ChangeLogPage(GetPlugin()->GetManager()->GetTheApp()->GetTopWindow(), GetPlugin());
 	page->SetUrl(m_url);
 	page->AppendText( changeLog );
-	GetPlugin()->GetManager()->AddPage( page, wxT("Change Log"), wxNullBitmap, true );
+	GetPlugin()->GetManager()->AddPage( page, _("Change Log"), wxNullBitmap, true );
 }
 
 wxString SvnLogHandler::Compact(const wxString& message)
@@ -172,8 +179,19 @@ void SvnBlameHandler::Process(const wxString& output)
 		return;
 	}
 
-	GetPlugin()->GetConsole()->AppendText(wxT("Loading Svn blame dialog...\n"));
+	GetPlugin()->GetConsole()->AppendText(_("Loading Svn blame dialog...\n"));
 	GetPlugin()->GetConsole()->AppendText(wxT("--------\n"));
 	SvnBlameDialog dlg(GetPlugin()->GetManager()->GetTheApp()->GetTopWindow(), output);
 	dlg.ShowModal();
+}
+
+void SvnRepoListHandler::Process(const wxString& output)
+{
+	if(output.StartsWith(wxT("svn:"))) {
+		// error occured
+		GetPlugin()->GetConsole()->AppendText(output);
+		GetPlugin()->GetConsole()->AppendText(wxT("--------\n"));
+		return;
+	}
+	GetPlugin()->FinishSyncProcess(m_proj, m_workDir, m_excludeBin, m_excludeExtensions, output);
 }

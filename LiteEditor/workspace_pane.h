@@ -41,7 +41,6 @@ class WorkspacePane : public wxPanel
 {
 private:
 	wxString          m_caption;
-	wxChoice         *m_workspaceConfig;
 	wxAuiManager     *m_mgr;
 	wxGauge          *m_parsingProgress;
 	wxStaticText     *m_staticText;
@@ -53,29 +52,26 @@ private:
 
 	void CreateGUIControls();
     void Connect();
-
-    // Workspace event handlers
-    void OnWorkspaceConfig    (wxCommandEvent &e);
-    void OnWorkspaceClosed    (wxCommandEvent &e);
-
-	// Configuration mgr handlers
-	void OnConfigurationManager      (wxCommandEvent  &e);
-	void OnConfigurationManagerUI    (wxUpdateUIEvent &e);
-	void OnConfigurationManagerChoice(wxCommandEvent &event);
-
+	void DoShowTab(bool show, const wxString &title);
+	wxWindow* DoGetControlByName(const wxString &title);
+	
 public:
 	WorkspacePane(wxWindow *parent, const wxString &caption, wxAuiManager *mgr);
 	~WorkspacePane();
 
-	void           UpdateProgress(int val);
-	void           ClearProgress ();
-
+	void UpdateProgress(int val);
+	void ClearProgress ();
+	void UpdateTabs();
+	void ApplySavedTabOrder() const;
+    void SaveWorkspaceViewTabOrder() const;
+	bool IsTabVisible(int flag);
+	
 	// Getters
 	const wxString &GetCaption      () const    { return m_caption;      }
 	Notebook       *GetNotebook     ()          { return m_book;         }
     WorkspaceTab   *GetWorkspaceTab ()          { return m_workspaceTab; }
 	FileExplorer   *GetFileExplorer ()          { return m_explorer;     }
-	TabgroupsPane  *GetTabgroupsTab()          { return m_TabgroupsPane;}
+	TabgroupsPane  *GetTabgroupsTab()           { return m_TabgroupsPane;}
 };
 
 #endif // WORKSPACE_PANE_H

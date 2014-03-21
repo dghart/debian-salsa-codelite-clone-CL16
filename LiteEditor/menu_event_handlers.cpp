@@ -23,6 +23,7 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 #include "menu_event_handlers.h"
+#include "manager.h"
 #include "cl_editor.h"
 #include "frame.h"
 
@@ -31,121 +32,190 @@
 //------------------------------------
 void EditHandler::ProcessCommandEvent(wxWindow *owner, wxCommandEvent &event)
 {
-	wxUnusedVar(event);
-	LEditor *editor = (LEditor*)owner;
+    wxUnusedVar(event);
+    LEditor *editor = (LEditor*)owner;
+    
+    OptionsConfigPtr options = editor->GetOptions();
+    // hide completion box
+    editor->HideCompletionBox();
+    bool isSelectionEmpty = editor->GetSelectedText().IsEmpty();
+    
+    if (event.GetId() == wxID_COPY) {
+        
+        // reset the 'full line' copy/cut flag
+        editor->SetFullLineCopyCut(false);
+        
+        if ( isSelectionEmpty && options->HasOption( OptionsConfig::Opt_CopyNothing) ) {
+            // do nothing
+            
+        } else if ( isSelectionEmpty && options->HasOption( OptionsConfig::Opt_CopyLineIfLineNotEmpty ) ) {
+            // Copy the line content only when the caret line is not empty
+            int lineNumber = editor->GetCurrentLine();
+            wxString lineContent = editor->GetLine(lineNumber);
+            if ( !lineContent.Trim().Trim(false).IsEmpty() ) {
+                editor->CopyAllowLine();
+                editor->SetFullLineCopyCut(true);
+            }
+        } else if ( isSelectionEmpty ) {
+            // default behavior
+            editor->CopyAllowLine();
+            editor->SetFullLineCopyCut(true);
 
-	// hide completion box
-	editor->HideCompletionBox();
+        } else {
+            editor->Copy();
+        }
 
-	if (event.GetId() == wxID_COPY) {
-		// if the selection is empty, copy the line content
-		if(editor->GetSelectedText().IsEmpty()) {
-			editor->CopyAllowLine();
+    } else if (event.GetId() == wxID_CUT) {
+        
+        // reset the 'full line' copy/cut flag
+        editor->SetFullLineCopyCut(false);
+        
+        if ( isSelectionEmpty && options->HasOption( OptionsConfig::Opt_CopyNothing) ) {
+            // do nothing
+            
+        } else if ( isSelectionEmpty && options->HasOption( OptionsConfig::Opt_CopyLineIfLineNotEmpty ) ) {
+            // Copy the line content only when the caret line is not empty
+            int lineNumber = editor->GetCurrentLine();
+            wxString lineContent = editor->GetLine(lineNumber);
+            if ( !lineContent.Trim().Trim(false).IsEmpty() ) {
+                editor->CopyAllowLine();
+                editor->LineDelete();
+                editor->SetFullLineCopyCut(true);
+            }
+        } else if ( isSelectionEmpty ) {
+            
+            // default behavior
+            editor->CopyAllowLine();
+            editor->LineDelete();
+            editor->SetFullLineCopyCut(true);
+        
+        } else {
+            editor->Cut();
+        }
 
-		} else {
-			editor->Copy();
-		}
+    } else if (event.GetId() == wxID_PASTE) {
+        if ( editor->IsFullLineCopyCut() ) {
+            // paste one line above the caret
+            editor->PasteLineAbove();
+            
+        } else {
+            // paste at caret position
+            editor->Paste();
+            
+        }
 
-	} else if (event.GetId() == wxID_CUT) {
-		editor->Cut();
+    } else if (event.GetId() == wxID_UNDO) {
+        editor->Undo();
 
-	} else if (event.GetId() == wxID_PASTE) {
-		editor->Paste();
+    } else if (event.GetId() == wxID_REDO) {
+        editor->Redo();
 
-	} else if (event.GetId() == wxID_UNDO) {
-		editor->Undo();
+    } else if (event.GetId() == wxID_SELECTALL) {
+        editor->SelectAll();
 
-	} else if (event.GetId() == wxID_REDO) {
-		editor->Redo();
+    } else if (event.GetId() == wxID_DUPLICATE) {
+        editor->SelectionDuplicate();
 
-	} else if (event.GetId() == wxID_SELECTALL) {
-		editor->SelectAll();
+    } else if (event.GetId() == XRCID("delete_line_end")) {
+        editor->DelLineRight();
 
-	} else if (event.GetId() == wxID_DUPLICATE) {
-		editor->SelectionDuplicate();
+    } else if (event.GetId() == XRCID("delete_line_start")) {
+        editor->DelLineLeft();
 
-	} else if (event.GetId() == XRCID("delete_line_end")) {
-		editor->DelLineRight();
+    } else if (event.GetId() == XRCID("delete_line")) {
+        editor->LineDelete();
 
-	} else if (event.GetId() == XRCID("delete_line_start")) {
-		editor->DelLineLeft();
+    } else if (event.GetId() == XRCID("trim_trailing")) {
+        editor->TrimText(true, false);
 
-	} else if (event.GetId() == XRCID("delete_line")) {
-		editor->LineDelete();
+    } else if (event.GetId() == XRCID("to_lower")) {
+        editor->ChangeCase(true);
 
-	} else if (event.GetId() == XRCID("to_lower")) {
-		editor->ChangeCase(true);
+    } else if (event.GetId() == XRCID("to_upper")) {
+        editor->ChangeCase(false);
 
-	} else if (event.GetId() == XRCID("to_upper")) {
-		editor->ChangeCase(false);
+    } else if (event.GetId() == XRCID("transpose_lines")) {
+        editor->LineTranspose();
 
-	} else if (event.GetId() == XRCID("transpose_lines")) {
-		editor->LineTranspose();
+    } else if (event.GetId() == wxID_DELETE) {
+        editor->DeleteBack();
 
-	} else if (event.GetId() == wxID_DELETE) {
-		editor->DeleteBack();
+    } else if (event.GetId() == XRCID("move_line_down")) {
 
-	} else if (event.GetId() == XRCID("move_line_down")) {
+        int curline  = editor->GetCurrentLine();
+        int lastline = editor->LineFromPosition(editor->GetLength()-1);
 
-		int curline  = editor->GetCurrentLine();
-		int lastline = editor->LineFromPosition(editor->GetLength()-1);
-		// Dont transpose if we reached end of the document
-		if(curline == lastline)
-			return;
+        if (editor->GetSelection().empty()
+                ||  (editor->LineFromPos(editor->GetSelectionStart() == editor->LineFromPos(editor->GetSelectionEnd())))) {
+            // No selection (or only a trivial 1-line one)
+            if (curline != lastline) {
+                editor->LineDown();              
+                editor->LineTranspose();
+            }
 
-		editor->LineDown();
-		editor->LineTranspose();
+        } else {
+            editor->MoveSelectedLinesDown();  // There is a selection, so we can move it direct
+        }
 
-	} else if (event.GetId() == XRCID("move_line_up")) {
-		editor->LineTranspose();
-		editor->LineUp();
-		
-	} else if (event.GetId() == XRCID("center_line")) {
-		int here    = editor->GetCurrentLine();
-		int top     = editor->GetFirstVisibleLine();
-		int count   = editor->LinesOnScreen();
-		int center  = top + (count / 2);
-		if (here < center) {
-			for (int lnIterator = 0; lnIterator < center - here; lnIterator++)
-				editor->LineScrollUp();   //roll up until we get to center
-				
-		} else if (here > center) {
-			for (int lnIterator = 0; lnIterator < here - center; lnIterator++)
-				editor->LineScrollDown(); //roll down until we get to center
-				
-		}
+    } else if (event.GetId() == XRCID("move_line_up")) {
 
-	}
+        if (editor->GetSelection().empty()
+                ||  (editor->LineFromPos(editor->GetSelectionStart() == editor->LineFromPos(editor->GetSelectionEnd())))) {
+            // No selection (or only a trivial 1-line one)
+            editor->LineTranspose();
+            editor->LineUp();
+
+        } else {
+            editor->MoveSelectedLinesUp();  // There is a selection, so we can move it direct
+        }
+
+    } else if (event.GetId() == XRCID("center_line")) {
+        //editor->VerticalCentreCaret();
+
+    } else if (event.GetId() == XRCID("center_line_roll")) {
+        int here    = editor->GetCurrentLine();
+        int top     = editor->GetFirstVisibleLine();
+        int count   = editor->LinesOnScreen();
+        int center  = top + (count / 2);
+        if (here < center) {
+            for (int lnIterator = 0; lnIterator < center - here; lnIterator++)
+                editor->LineScrollUp();   //roll up until we get to center
+        } else if (here > center) {
+            for (int lnIterator = 0; lnIterator < here - center; lnIterator++)
+                editor->LineScrollDown(); //roll down until we get to center
+        }
+
+    }
 }
 
 void EditHandler::ProcessUpdateUIEvent(wxWindow *owner, wxUpdateUIEvent &event)
 {
-	LEditor *editor = dynamic_cast<LEditor*>(owner);
+    LEditor *editor = dynamic_cast<LEditor*>(owner);
 
-	if (event.GetId() == wxID_COPY || event.GetId() == XRCID("to_lower") || event.GetId() == XRCID("to_upper")) {
-		event.Enable(editor);
+    if (event.GetId() == wxID_COPY || event.GetId() == XRCID("trim_trailing") || event.GetId() == XRCID("to_lower") || event.GetId() == XRCID("to_upper")) {
+        event.Enable(editor);
 
-	} else if (event.GetId() == wxID_CUT) {
-		event.Enable(editor && ( editor->GetSelectionStart() - editor->GetSelectionEnd() != 0 ));
+    } else if (event.GetId() == wxID_CUT) {
+        event.Enable(editor);
 
-	} else if (event.GetId() == wxID_PASTE) {
+    } else if (event.GetId() == wxID_PASTE) {
 #ifdef __WXGTK__
-		event.Enable(editor);
+        event.Enable(editor);
 #else
-		event.Enable(editor && editor->CanPaste());
+        event.Enable(editor && editor->CanPaste());
 #endif
-	} else if (event.GetId() == wxID_UNDO) {
-		event.Enable(editor && editor->CanUndo());
-	} else if (event.GetId() == wxID_REDO) {
-		event.Enable(editor && editor->CanRedo());
-	} else if (event.GetId() == wxID_SELECTALL) {
-		event.Enable(editor && editor->GetLength() > 0);
-	} else if (event.GetId() == wxID_DUPLICATE || event.GetId() == wxID_DELETE) {
-		event.Enable(true);
-	} else {
-		event.Enable(false);
-	}
-	event.Skip(false);
+    } else if (event.GetId() == wxID_UNDO) {
+        event.Enable(editor && editor->CanUndo());
+    } else if (event.GetId() == wxID_REDO) {
+        event.Enable(editor && editor->CanRedo());
+    } else if (event.GetId() == wxID_SELECTALL) {
+        event.Enable(editor && editor->GetLength() > 0);
+    } else if (event.GetId() == wxID_DUPLICATE || event.GetId() == wxID_DELETE) {
+        event.Enable(true);
+    } else {
+        event.Enable(false);
+    }
+    event.Skip(false);
 }
 
 //------------------------------------
@@ -153,22 +223,22 @@ void EditHandler::ProcessUpdateUIEvent(wxWindow *owner, wxUpdateUIEvent &event)
 //------------------------------------
 void BraceMatchHandler::ProcessCommandEvent(wxWindow *owner, wxCommandEvent &event)
 {
-	LEditor *editor = dynamic_cast<LEditor*>(owner);
-	if ( !editor ) {
-		return;
-	}
+    LEditor *editor = dynamic_cast<LEditor*>(owner);
+    if ( !editor ) {
+        return;
+    }
 
-	if (event.GetId() == XRCID("select_to_brace")) {
-		editor->MatchBraceAndSelect(true);
-	} else {
-		editor->MatchBraceAndSelect(false);
-	}
+    if (event.GetId() == XRCID("select_to_brace")) {
+        editor->MatchBraceAndSelect(true);
+    } else {
+        editor->MatchBraceAndSelect(false);
+    }
 }
 
 void BraceMatchHandler::ProcessUpdateUIEvent(wxWindow *owner, wxUpdateUIEvent &event)
 {
-	LEditor *editor = dynamic_cast<LEditor*>(owner);
-	event.Enable(editor &&editor->GetLength() > 0);
+    LEditor *editor = dynamic_cast<LEditor*>(owner);
+    event.Enable(editor &&editor->GetLength() > 0);
 }
 
 
@@ -177,24 +247,25 @@ void BraceMatchHandler::ProcessUpdateUIEvent(wxWindow *owner, wxUpdateUIEvent &e
 //------------------------------------
 void FindReplaceHandler::ProcessCommandEvent(wxWindow *owner, wxCommandEvent &event)
 {
-	LEditor *editor = dynamic_cast<LEditor*>(owner);
-	if ( !editor ) {
-		return;
-	}
+    LEditor *editor = dynamic_cast<LEditor*>(owner);
+    if ( editor ) {
+        if ( event.GetId() == wxID_FIND ) {
+            clMainFrame::Get()->GetMainBook()->ShowQuickBar( editor ? editor->GetSelectedText() : "" );
 
-	if ( event.GetId() == wxID_FIND ) {
-		clMainFrame::Get()->GetMainBook()->ShowQuickBar( editor->GetSelectedText() );
+        } else if ( event.GetId() == wxID_REPLACE ) {
+            editor->DoFindAndReplace(true);
 
-	} else if ( event.GetId() == wxID_REPLACE ) {
-		editor->DoFindAndReplace(true);
+        }
 
-	}
+    } else if ( event.GetId() == wxID_FIND ) {
+        clMainFrame::Get()->GetMainBook()->ShowQuickBarForPlugins();
+    }
 }
 
 void FindReplaceHandler::ProcessUpdateUIEvent(wxWindow *owner, wxUpdateUIEvent &event)
 {
-	wxUnusedVar(owner);
-	wxUnusedVar(event);
+    wxUnusedVar(owner);
+    wxUnusedVar(event);
 }
 
 //----------------------------------
@@ -203,57 +274,59 @@ void FindReplaceHandler::ProcessUpdateUIEvent(wxWindow *owner, wxUpdateUIEvent &
 
 void GotoHandler::ProcessCommandEvent(wxWindow *owner, wxCommandEvent &event)
 {
-	wxUnusedVar(event);
-	LEditor *editor = dynamic_cast<LEditor*>(owner);
-	if ( !editor ) {
-		return;
-	}
+    wxUnusedVar(event);
+    LEditor *editor = dynamic_cast<LEditor*>(owner);
+    if ( !editor ) {
+        return;
+    }
 
-	wxString msg;
-	msg.Printf(wxT("Go to line number (1 - %d):"), editor->GetLineCount());
+    wxString msg;
+    msg.Printf(_("Go to line number (1 - %d):"), editor->GetLineCount());
 
-	while ( 1 ) {
-		wxTextEntryDialog dlg(editor, msg, wxT("Go To Line"));
-		dlg.SetTextValidator(wxFILTER_NUMERIC);
+    while ( 1 ) {
+        wxTextEntryDialog dlg(editor, msg, _("Go To Line"));
+        dlg.SetTextValidator(wxFILTER_NUMERIC);
 
-		if (dlg.ShowModal() == wxID_OK) {
-			wxString val = dlg.GetValue();
-			long line;
-			if (!val.ToLong(&line)) {
-				wxString err;
-				err.Printf(wxT("'%s' is not a valid line number"), val.GetData());
-				wxMessageBox (err, wxT("Go To Line"), wxOK | wxICON_INFORMATION);
-				continue;
-			}
+        if (dlg.ShowModal() == wxID_OK) {
+            wxString val = dlg.GetValue();
+            long line;
+            if (!val.ToLong(&line)) {
+                wxString err;
+                err.Printf(_("'%s' is not a valid line number"), val.GetData());
+                wxMessageBox (err, _("Go To Line"), wxOK | wxICON_INFORMATION);
+                continue;
+            }
 
-			if (line > editor->GetLineCount()) {
-				wxString err;
-				err.Printf(wxT("Please insert a line number in the range of (1 - %ld)"), editor->GetLineCount());
-				wxMessageBox (err, wxT("Go To Line"), wxOK | wxICON_INFORMATION);
-				continue;
-			}
+            if (line > editor->GetLineCount()) {
+                wxString err;
+                err.Printf(_("Please insert a line number in the range of (1 - %ld)"), editor->GetLineCount());
+                wxMessageBox (err, _("Go To Line"), wxOK | wxICON_INFORMATION);
+                continue;
+            }
 
-			if (line > 0) {
-				editor->GotoLine(line - 1);
-				editor->EnsureVisible(line - 1);
-				editor->EnsureCaretVisible();
-				break;
-			} else {
-				editor->GotoLine(0);
-				break;
-			}
-		} else {
-			// wxID_CANCEL
-			return;
-		}
-	}
-	editor->SetActive();
+            if (line > 0) {
+                int pos = editor->PositionFromLine(line - 1);
+                // Clear any existing selection, which otherwise becomes the Goto target
+                editor->SetSelectionStart(pos);
+                editor->SetSelectionEnd(pos);
+                editor->SetEnsureCaretIsVisible(pos);
+                break;
+            } else {
+                editor->GotoLine(0);
+                break;
+            }
+        } else {
+            // wxID_CANCEL
+            return;
+        }
+    }
+    editor->SetActive();
 }
 
 void GotoHandler::ProcessUpdateUIEvent(wxWindow *owner, wxUpdateUIEvent &event)
 {
-	wxUnusedVar(event);
-	wxUnusedVar(owner);
+    wxUnusedVar(event);
+    wxUnusedVar(owner);
 }
 
 //------------------------------------
@@ -261,26 +334,28 @@ void GotoHandler::ProcessUpdateUIEvent(wxWindow *owner, wxUpdateUIEvent &event)
 //------------------------------------
 void BookmarkHandler::ProcessCommandEvent(wxWindow *owner, wxCommandEvent &event)
 {
-	LEditor *editor = dynamic_cast<LEditor*>(owner);
-	if ( !editor ) {
-		return;
-	}
+    LEditor *editor = dynamic_cast<LEditor*>(owner);
+    if ( !editor ) {
+        return;
+    }
 
-	if		 (event.GetId() == XRCID("toggle_bookmark")) {
-		editor->ToggleMarker();
-	} else if (event.GetId() == XRCID("next_bookmark")) {
-		editor->FindNextMarker();
-	} else if (event.GetId() == XRCID("previous_bookmark")) {
-		editor->FindPrevMarker();
-	} else if (event.GetId() == XRCID("removeall_bookmarks")) {
-		editor->DelAllMarkers();
-	}
+    if (event.GetId() == XRCID("toggle_bookmark")) {
+        editor->ToggleMarker();
+    } else if (event.GetId() == XRCID("next_bookmark")) {
+        editor->FindNextMarker();
+    } else if (event.GetId() == XRCID("previous_bookmark")) {
+        editor->FindPrevMarker();
+    } else if (event.GetId() == XRCID("removeall_current_bookmarks")) {
+        editor->DelAllMarkers(0);   //  0 == only the currently-active type
+    } else if (event.GetId() == XRCID("removeall_bookmarks")) {
+        editor->DelAllMarkers(-1);  // -1 == all types
+    }
 }
 
 void BookmarkHandler::ProcessUpdateUIEvent(wxWindow *owner, wxUpdateUIEvent &event)
 {
-	wxUnusedVar(owner);
-	wxUnusedVar(event);
+    wxUnusedVar(owner);
+    wxUnusedVar(event);
 }
 
 
@@ -289,27 +364,23 @@ void BookmarkHandler::ProcessUpdateUIEvent(wxWindow *owner, wxUpdateUIEvent &eve
 //------------------------------------
 void GotoDefinitionHandler::ProcessCommandEvent(wxWindow *owner, wxCommandEvent &event)
 {
-	LEditor *editor = dynamic_cast<LEditor*>(owner);
-	if ( !editor ) {
-		return;
-	}
-
-	if (event.GetId() == XRCID("goto_definition")) {
-		editor->GotoDefinition();
-	} else if (event.GetId() == XRCID("goto_previous_definition")) {
-		editor->GotoPreviousDefintion();
-	}
-
+    LEditor *editor = dynamic_cast<LEditor*>(owner);
+    if ( !editor ) {
+        return;
+    }
+    if (event.GetId() == XRCID("goto_definition")) {
+        editor->GotoDefinition();
+    }
 }
 
 void GotoDefinitionHandler::ProcessUpdateUIEvent(wxWindow *owner, wxUpdateUIEvent &event)
 {
-	LEditor *editor = dynamic_cast<LEditor*>(owner);
-	if (event.GetId() == XRCID("goto_previous_definition")) {
-		event.Enable(editor && editor->CanGotoPreviousDefintion());
-	} else {
-		event.Enable(editor != NULL);
-	}
+    LEditor *editor = dynamic_cast<LEditor*>(owner);
+    if (event.GetId() == XRCID("goto_previous_definition")) {
+        event.Enable(editor && editor->CanGotoPreviousDefintion());
+    } else {
+        event.Enable(editor != NULL);
+    }
 }
 
 //-------------------------------------------------
@@ -318,27 +389,31 @@ void GotoDefinitionHandler::ProcessUpdateUIEvent(wxWindow *owner, wxUpdateUIEven
 
 void ViewAsHandler::ProcessCommandEvent(wxWindow *owner, wxCommandEvent &event)
 {
-	LEditor *editor = dynamic_cast<LEditor*>(owner);
-	if ( !editor ) {
-		return;
-	}
+    LEditor *editor = dynamic_cast<LEditor*>(owner);
+    if ( !editor ) {
+        return;
+    }
 
-	wxString lexName = clMainFrame::Get()->GetViewAsLanguageById(event.GetInt());
-	if (lexName.IsEmpty() == false) {
-		editor->SetSyntaxHighlight(lexName);
-	}
+    wxString lexName = clMainFrame::Get()->GetViewAsLanguageById(event.GetInt());
+    if (lexName.IsEmpty() == false) {
+        editor->SetSyntaxHighlight(lexName);
+    }
 }
 
 void ViewAsHandler::ProcessUpdateUIEvent(wxWindow *owner, wxUpdateUIEvent &event)
 {
-	LEditor *editor = dynamic_cast<LEditor*>(owner);
-	if ( !editor ) {
-		return;
-	}
+    LEditor *editor = dynamic_cast<LEditor*>(owner);
+    if ( !editor ) {
+        return;
+    }
 
-	event.Enable(true);
-	wxString lexName = clMainFrame::Get()->GetViewAsLanguageById(event.GetInt());
-	event.Check(editor->GetContext()->GetName() == lexName);
+    event.Enable(true);
+    wxString lexName = clMainFrame::Get()->GetViewAsLanguageById(event.GetInt());
+    
+    wxString contextName = editor->GetContext()->GetName();
+    contextName.MakeLower();
+    
+    event.Check(contextName == lexName);
 }
 
 //----------------------------------------------------
@@ -347,24 +422,24 @@ void ViewAsHandler::ProcessUpdateUIEvent(wxWindow *owner, wxUpdateUIEvent &event
 
 void WordWrapHandler::ProcessUpdateUIEvent(wxWindow *owner, wxUpdateUIEvent &event)
 {
-	LEditor *editor = dynamic_cast<LEditor*>(owner);
-	if ( !editor ) {
-		event.Enable(false);
-		return;
-	}
+    LEditor *editor = dynamic_cast<LEditor*>(owner);
+    if ( !editor ) {
+        event.Enable(false);
+        return;
+    }
 
-	event.Enable(true);
-	event.Check(editor->GetWrapMode() != wxSCI_WRAP_NONE);
+    event.Enable(true);
+    event.Check(editor->GetWrapMode() != wxSTC_WRAP_NONE);
 }
 
 void WordWrapHandler::ProcessCommandEvent(wxWindow *owner, wxCommandEvent &event)
 {
-	LEditor *editor = dynamic_cast<LEditor*>(owner);
-	if ( !editor ) {
-		return;
-	}
+    LEditor *editor = dynamic_cast<LEditor*>(owner);
+    if ( !editor ) {
+        return;
+    }
 
-	editor->SetWrapMode(event.IsChecked() ? wxSCI_WRAP_WORD : wxSCI_WRAP_NONE);
+    editor->SetWrapMode(event.IsChecked() ? wxSTC_WRAP_WORD : wxSTC_WRAP_NONE);
 }
 //----------------------------------------------------
 // Fold handler
@@ -372,58 +447,83 @@ void WordWrapHandler::ProcessCommandEvent(wxWindow *owner, wxCommandEvent &event
 
 void FoldHandler::ProcessCommandEvent(wxWindow *owner, wxCommandEvent &event)
 {
-	wxUnusedVar(event);
-	LEditor *editor = dynamic_cast<LEditor*>(owner);
-	if ( !editor ) {
-		return;
-	}
+    wxUnusedVar(event);
+    LEditor *editor = dynamic_cast<LEditor*>(owner);
+    if ( !editor ) {
+        return;
+    }
 
-	if (event.GetId() == XRCID("toggle_fold")) editor->ToggleCurrentFold();
-	  else editor->FoldAll();
+    if (event.GetId() == XRCID("toggle_fold")) editor->ToggleCurrentFold();
+     else if (event.GetId() == XRCID("fold_all_in_selection")) editor->ToggleAllFoldsInSelection();
+     else if (event.GetId() == XRCID("fold_topmost_in_selection")) editor->ToggleTopmostFoldsInSelection();
+     else editor->FoldAll();
 }
 
-void FoldHandler::ProcessUpdateUIEvent(wxWindow *owner, wxUpdateUIEvent &event)
+void FoldHandler::ProcessUpdateUIEvent(wxWindow *owner, wxUpdateUIEvent &event) // Used for ToggleAllFoldsInSelection() etc
 {
-	wxUnusedVar(owner);
-	wxUnusedVar(event);
+    LEditor *editor = dynamic_cast<LEditor*>(owner);
+    if ( !editor ) {
+        event.Enable(false);
+        return;
+    }
+
+    bool hasSelection = !editor->GetSelection().empty();
+    if (hasSelection) {
+        // Even if there is a selection, check it's not a trivial amount i.e. spans at least 2 lines
+        hasSelection = editor->LineFromPos(editor->GetSelectionStart()) != editor->LineFromPos(editor->GetSelectionEnd());
+    }
+    event.Enable(hasSelection);
 }
 
 void DebuggerMenuHandler::ProcessCommandEvent(wxWindow *owner, wxCommandEvent &event)
 {
-	LEditor *editor = dynamic_cast<LEditor*>(owner);
-	if ( !editor ) {
-		return;
-	}
+    LEditor *editor = dynamic_cast<LEditor*>(owner);
+    if ( !editor ) {
+        return;
+    }
 
-	if (event.GetId() == XRCID("add_breakpoint")) {
-		editor->AddBreakpoint();
-	}
-	if (event.GetId() == XRCID("insert_breakpoint")) {
-		editor->ToggleBreakpoint();
-	}
-	if ((event.GetId() == XRCID("insert_temp_breakpoint"))
-			|| (event.GetId() == XRCID("insert_cond_breakpoint"))) {
-		editor->AddOtherBreakpointType(event);
-	}
-	if (event.GetId() == XRCID("delete_breakpoint")) {
-		editor->DelBreakpoint();
-	}
+    if (event.GetId() == XRCID("add_breakpoint")) {
+        editor->AddBreakpoint();
+    }
+    if (event.GetId() == XRCID("insert_breakpoint")) {
+        editor->ToggleBreakpoint();
+    }
+    if ((event.GetId() == XRCID("insert_temp_breakpoint"))
+        || (event.GetId() == XRCID("insert_disabled_breakpoint"))
+        || (event.GetId() == XRCID("insert_cond_breakpoint"))) {
+        editor->AddOtherBreakpointType(event);
+    }
+    if (event.GetId() == XRCID("delete_breakpoint")) {
+        editor->DelBreakpoint();
+    }
 
-	if (event.GetId() == XRCID("toggle_breakpoint_enabled_status")) {
-		editor->ToggleBreakpointEnablement();
-	}
+    if (event.GetId() == XRCID("toggle_breakpoint_enabled_status")) {
+        editor->ToggleBreakpointEnablement();
+    }
 
-	if (event.GetId() == XRCID("ignore_breakpoint")) {
-		editor->OnIgnoreBreakpoint();
-	}
+    if (event.GetId() == XRCID("ignore_breakpoint")) {
+        editor->OnIgnoreBreakpoint();
+    }
 
-	if (event.GetId() == XRCID("edit_breakpoint")) {
-		editor->OnEditBreakpoint();
-	}
+    if (event.GetId() == XRCID("edit_breakpoint")) {
+        editor->OnEditBreakpoint();
+    }
+
+    if (event.GetId() == XRCID("disable_all_breakpoints")) {
+        ManagerST::Get()->GetBreakpointsMgr()->SetAllBreakpointsEnabledState(false);
+    }
+
+    if (event.GetId() == XRCID("enable_all_breakpoints")) {
+        ManagerST::Get()->GetBreakpointsMgr()->SetAllBreakpointsEnabledState(true);
+    }
+
+    if (event.GetId() == XRCID("delete_all_breakpoints")) {
+        ManagerST::Get()->GetBreakpointsMgr()->DelAllBreakpoints();
+    }
 }
 
 void DebuggerMenuHandler::ProcessUpdateUIEvent(wxWindow *owner, wxUpdateUIEvent &event)
 {
-	wxUnusedVar(owner);
-	wxUnusedVar(event);
+    wxUnusedVar(owner);
+    wxUnusedVar(event);
 }

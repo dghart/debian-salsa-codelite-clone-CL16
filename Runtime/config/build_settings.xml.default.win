@@ -1,6 +1,115 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<BuildSettings Version="2.0.6">
+<BuildSettings Version="2.1">
   <Compilers>
+      <Compiler Name="clang++">
+      <Switch Name="ArchiveOutput" Value=" "/>
+      <Switch Name="Debug" Value="-gstab"/>
+      <Switch Name="Include" Value="-I"/>
+      <Switch Name="Library" Value="-l"/>
+      <Switch Name="LibraryPath" Value="-L"/>
+      <Switch Name="Object" Value="-o "/>
+      <Switch Name="Output" Value="-o "/>
+      <Switch Name="Preprocessor" Value="-D"/>
+      <Switch Name="PreprocessOnly" Value="-E "/>
+      <Switch Name="Source" Value="-c "/>
+      <Tool Name="AR" Value="ar rcus"/>
+      <Tool Name="CXX" Value="clang++"/>
+      <Tool Name="CC" Value="clang"/>
+      <Tool Name="LinkerName" Value="clang++"/>
+      <Tool Name="ResourceCompiler" Value="windres"/>
+      <Tool Name="SharedObjectLinkerName" Value="clang++ -shared -fPIC"/>
+      <Tool Name="AS" Value="llvm-as"/>
+      <Option Name="ObjectSuffix" Value=".o"/>
+      <Pattern Name="Error" FileNameIndex="1" LineNumberIndex="3">^([^ ][a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([0-9]*)([:0-9]*)(: )((fatal error)|(error)|(undefined reference))</Pattern>
+      <Pattern Name="Error" FileNameIndex="3" LineNumberIndex="1">^([^ ][a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([^ ][a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)(\(\.text\+[0-9a-fx]*\))</Pattern>
+      <Pattern Name="Error" FileNameIndex="3" LineNumberIndex="1">^([^ ][a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([^ ][a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([0-9]+)(:)</Pattern>
+      <Pattern Name="Error" FileNameIndex="1" LineNumberIndex="2">^windres: ([a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+) *:([0-9]+): syntax error</Pattern>
+      <Pattern Name="Error" FileNameIndex="-1" LineNumberIndex="-1">undefined reference to</Pattern>
+      <Pattern Name="Error" FileNameIndex="-1" LineNumberIndex="-1">\\*\\*\\* \\[[a-zA-Z\\-_0-9 ]+\\] (Error)</Pattern>
+      <Pattern Name="Warning" FileNameIndex="1" LineNumberIndex="3">([a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([0-9]+ *)(:)([0-9:]*)?( warning)</Pattern>
+      <Pattern Name="Warning" FileNameIndex="1" LineNumberIndex="3">([a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([0-9]+ *)(:)([0-9:]*)?( note)</Pattern>
+      <Pattern Name="Warning" FileNameIndex="1" LineNumberIndex="3">([a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([0-9]+ *)(:)([0-9:]*)?([ ]+instantiated)</Pattern>
+      <Pattern Name="Warning" FileNameIndex="2" LineNumberIndex="4">(In file included from *)([a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([0-9]+ *)(:)([0-9:]*)?</Pattern>
+      <GlobalIncludePath></GlobalIncludePath>
+      <GlobalLibPath></GlobalLibPath>
+      <PathVariable></PathVariable>
+      <CompilerOption Name="-g">Produce debugging information.</CompilerOption>
+      <CompilerOption Name="-pg">Profile code when executed.</CompilerOption>
+      <CompilerOption Name="-ansi">In C mode, support all ISO C90 programs. In C++ mode, remove GNU extensions that conflict with ISO C++.</CompilerOption>
+      <CompilerOption Name="-Wall">Enable all compiler warnings.</CompilerOption>
+      <CompilerOption Name="-W">Enable standard compiler warnings</CompilerOption>
+      <CompilerOption Name="-Wfatal-errors">Stop compiling after first error</CompilerOption>
+      <CompilerOption Name="-w">Inhibit all warning messages</CompilerOption>
+      <CompilerOption Name="-pedantic">Enable warnings demanded by strict ISO C and ISO C++</CompilerOption>
+      <CompilerOption Name="-pedantic-errors">Treat as errors the warnings demanded by strict ISO C and ISO C++</CompilerOption>
+      <CompilerOption Name="-Wmain">Warn if main() is not conformant</CompilerOption>
+      <CompilerOption Name="-O">Optimize generated code (for speed)</CompilerOption>
+      <CompilerOption Name="-O1">Optimize more (for speed)</CompilerOption>
+      <CompilerOption Name="-O2">Optimize even more (for speed)</CompilerOption>
+      <CompilerOption Name="-O3">Optimize fully (for speed)</CompilerOption>
+      <CompilerOption Name="-Os">Optimize generated code (for size)</CompilerOption>
+      <CompilerOption Name="-fexpensive-optimizations">Expensive optimizations</CompilerOption>
+      <CompilerOption Name="-fopenmp">Enable OpenMP (compilation).</CompilerOption>
+      <LinkerOption Name="-s">Remove all symbol table and relocation information from the executable.</LinkerOption>
+      <LinkerOption Name="-fopenmp">Enable OpenMP (linkage).</LinkerOption>
+      <LinkerOption Name="-pg">Profile code when executed.</LinkerOption>
+      <LinkerOption Name="-mwindows">Prevent a useless terminal console appearing with MSWindows GUI programs.</LinkerOption>
+    </Compiler>
+      <Compiler Name="clang">
+      <Switch Name="ArchiveOutput" Value=" "/>
+      <Switch Name="Debug" Value="-gstab"/>
+      <Switch Name="Include" Value="-I"/>
+      <Switch Name="Library" Value="-l"/>
+      <Switch Name="LibraryPath" Value="-L"/>
+      <Switch Name="Object" Value="-o "/>
+      <Switch Name="Output" Value="-o "/>
+      <Switch Name="Preprocessor" Value="-D"/>
+      <Switch Name="PreprocessOnly" Value="-E "/>
+      <Switch Name="Source" Value="-c "/>
+      <Tool Name="AR" Value="ar rcus"/>
+      <Tool Name="CXX" Value="clang++"/>
+      <Tool Name="CC" Value="clang"/>
+      <Tool Name="LinkerName" Value="clang"/>
+      <Tool Name="ResourceCompiler" Value="windres"/>
+      <Tool Name="SharedObjectLinkerName" Value="clang -shared -fPIC"/>
+      <Tool Name="AS" Value="llvm-as"/>
+      <Option Name="ObjectSuffix" Value=".o"/>
+      <Pattern Name="Error" FileNameIndex="1" LineNumberIndex="2">^windres: ([a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+) *:([0-9]+): syntax error</Pattern>
+      <Pattern Name="Error" FileNameIndex="1" LineNumberIndex="3">^([^ ][a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([0-9]*)([:0-9]*)(: )((fatal error)|(error)|(undefined reference))</Pattern>
+      <Pattern Name="Error" FileNameIndex="3" LineNumberIndex="1">^([^ ][a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([^ ][a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)(\(\.text\+[0-9a-fx]*\))</Pattern>
+      <Pattern Name="Error" FileNameIndex="3" LineNumberIndex="1">^([^ ][a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([^ ][a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([0-9]+)(:)</Pattern>
+      <Pattern Name="Error" FileNameIndex="-1" LineNumberIndex="-1">undefined reference to</Pattern>
+      <Pattern Name="Error" FileNameIndex="-1" LineNumberIndex="-1">\\*\\*\\* \\[[a-zA-Z\\-_0-9 ]+\\] (Error)</Pattern>
+      <Pattern Name="Warning" FileNameIndex="1" LineNumberIndex="3">([a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([0-9]+ *)(:)([0-9:]*)?( warning)</Pattern>
+      <Pattern Name="Warning" FileNameIndex="1" LineNumberIndex="3">([a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([0-9]+ *)(:)([0-9:]*)?( note)</Pattern>
+      <Pattern Name="Warning" FileNameIndex="1" LineNumberIndex="3">([a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([0-9]+ *)(:)([0-9:]*)?([ ]+instantiated)</Pattern>
+      <Pattern Name="Warning" FileNameIndex="2" LineNumberIndex="4">(In file included from *)([a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([0-9]+ *)(:)([0-9:]*)?</Pattern>
+      <GlobalIncludePath></GlobalIncludePath>
+      <GlobalLibPath></GlobalLibPath>
+      <PathVariable></PathVariable>
+      <CompilerOption Name="-g">Produce debugging information.</CompilerOption>
+      <CompilerOption Name="-pg">Profile code when executed.</CompilerOption>
+      <CompilerOption Name="-ansi">In C mode, support all ISO C90 programs. In C++ mode, remove GNU extensions that conflict with ISO C++.</CompilerOption>
+      <CompilerOption Name="-Wall">Enable all compiler warnings.</CompilerOption>
+      <CompilerOption Name="-W">Enable standard compiler warnings</CompilerOption>
+      <CompilerOption Name="-Wfatal-errors">Stop compiling after first error</CompilerOption>
+      <CompilerOption Name="-w">Inhibit all warning messages</CompilerOption>
+      <CompilerOption Name="-pedantic">Enable warnings demanded by strict ISO C and ISO C++</CompilerOption>
+      <CompilerOption Name="-pedantic-errors">Treat as errors the warnings demanded by strict ISO C and ISO C++</CompilerOption>
+      <CompilerOption Name="-Wmain">Warn if main() is not conformant</CompilerOption>
+      <CompilerOption Name="-O">Optimize generated code (for speed)</CompilerOption>
+      <CompilerOption Name="-O1">Optimize more (for speed)</CompilerOption>
+      <CompilerOption Name="-O2">Optimize even more (for speed)</CompilerOption>
+      <CompilerOption Name="-O3">Optimize fully (for speed)</CompilerOption>
+      <CompilerOption Name="-Os">Optimize generated code (for size)</CompilerOption>
+      <CompilerOption Name="-fexpensive-optimizations">Expensive optimizations</CompilerOption>
+      <CompilerOption Name="-fopenmp">Enable OpenMP (compilation).</CompilerOption>
+      <LinkerOption Name="-s">Remove all symbol table and relocation information from the executable.</LinkerOption>
+      <LinkerOption Name="-fopenmp">Enable OpenMP (linkage).</LinkerOption>
+      <LinkerOption Name="-pg">Profile code when executed.</LinkerOption>
+      <LinkerOption Name="-mwindows">Prevent a useless terminal console appearing with MSWindows GUI programs.</LinkerOption>
+    </Compiler>
+
     <Compiler Name="gnu g++">
       <Switch Name="ArchiveOutput" Value=" "/>
       <Switch Name="Debug" Value="-gstab"/>
@@ -12,18 +121,23 @@
       <Switch Name="Preprocessor" Value="-D"/>
 	  <Switch Name="PreprocessOnly" Value="-E "/>
       <Switch Name="Source" Value="-c "/>
-      <Tool Name="ArchiveTool" Value="ar rcus"/>
-      <Tool Name="CompilerName" Value="g++"/>
-      <Tool Name="C_CompilerName" Value="gcc"/>
+      <Tool Name="AR" Value="ar rcus"/>
+      <Tool Name="CXX" Value="g++"/>
+      <Tool Name="CC" Value="gcc"/>
       <Tool Name="LinkerName" Value="g++"/>
       <Tool Name="ResourceCompiler" Value="windres"/>
       <Tool Name="SharedObjectLinkerName" Value="g++ -shared -fPIC"/>
+      <Tool Name="AS" Value="as"/>
       <Option Name="ObjectSuffix" Value=".o"/>
+      <Pattern Name="Error" FileNameIndex="1" LineNumberIndex="2">^windres: ([a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+) *:([0-9]+): syntax error</Pattern>
 	  <Pattern Name="Error" FileNameIndex="1" LineNumberIndex="3">^([^ ][a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([0-9]*)([:0-9]*)(: )((fatal error)|(error)|(undefined reference))</Pattern>
       <Pattern Name="Error" FileNameIndex="3" LineNumberIndex="1">^([^ ][a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([^ ][a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)(\(\.text\+[0-9a-fx]*\))</Pattern>
       <Pattern Name="Error" FileNameIndex="3" LineNumberIndex="1">^([^ ][a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([^ ][a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([0-9]+)(:)</Pattern>
+	  <Pattern Name="Error" FileNameIndex="-1" LineNumberIndex="-1">undefined reference to</Pattern>
+	  <Pattern Name="Error" FileNameIndex="-1" LineNumberIndex="-1">\\*\\*\\* \\[[a-zA-Z\\-_0-9 ]+\\] (Error)</Pattern>
 	  <Pattern Name="Warning" FileNameIndex="1" LineNumberIndex="3">([a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([0-9]+ *)(:)([0-9:]*)?( warning)</Pattern>
 	  <Pattern Name="Warning" FileNameIndex="1" LineNumberIndex="3">([a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([0-9]+ *)(:)([0-9:]*)?( note)</Pattern>
+	  <Pattern Name="Warning" FileNameIndex="1" LineNumberIndex="3">([a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([0-9]+ *)(:)([0-9:]*)?([ ]+instantiated)</Pattern>
 	  <Pattern Name="Warning" FileNameIndex="2" LineNumberIndex="4">(In file included from *)([a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([0-9]+ *)(:)([0-9:]*)?</Pattern>
 	  <GlobalIncludePath></GlobalIncludePath>
       <GlobalLibPath></GlobalLibPath>
@@ -59,18 +173,23 @@
       <Switch Name="Preprocessor" Value="-D"/>
 	  <Switch Name="PreprocessOnly" Value="-E "/>
       <Switch Name="Source" Value="-c "/>
-      <Tool Name="ArchiveTool" Value="ar rcus"/>
-      <Tool Name="CompilerName" Value="gcc"/>
-      <Tool Name="C_CompilerName" Value="gcc"/>
+      <Tool Name="AR" Value="ar rcus"/>
+      <Tool Name="CXX" Value="gcc"/>
+      <Tool Name="CC" Value="gcc"/>
       <Tool Name="LinkerName" Value="gcc"/>
       <Tool Name="ResourceCompiler" Value="windres"/>
       <Tool Name="SharedObjectLinkerName" Value="gcc -shared -fPIC"/>
+      <Tool Name="AS" Value="as"/>
       <Option Name="ObjectSuffix" Value=".o"/>
+	  <Pattern Name="Error" FileNameIndex="1" LineNumberIndex="2">^windres: ([a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+) *:([0-9]+): syntax error</Pattern>
 	  <Pattern Name="Error" FileNameIndex="1" LineNumberIndex="3">^([^ ][a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([0-9]*)([:0-9]*)(: )((fatal error)|(error)|(undefined reference))</Pattern>
       <Pattern Name="Error" FileNameIndex="3" LineNumberIndex="1">^([^ ][a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([^ ][a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)(\(\.text\+[0-9a-fx]*\))</Pattern>
       <Pattern Name="Error" FileNameIndex="3" LineNumberIndex="1">^([^ ][a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([^ ][a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([0-9]+)(:)</Pattern>
+	  <Pattern Name="Error" FileNameIndex="-1" LineNumberIndex="-1">undefined reference to</Pattern>
+	  <Pattern Name="Error" FileNameIndex="-1" LineNumberIndex="-1">\\*\\*\\* \\[[a-zA-Z\\-_0-9 ]+\\] (Error)</Pattern>
 	  <Pattern Name="Warning" FileNameIndex="1" LineNumberIndex="3">([a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([0-9]+ *)(:)([0-9:]*)?( warning)</Pattern>
 	  <Pattern Name="Warning" FileNameIndex="1" LineNumberIndex="3">([a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([0-9]+ *)(:)([0-9:]*)?( note)</Pattern>
+      <Pattern Name="Warning" FileNameIndex="1" LineNumberIndex="3">([a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([0-9]+ *)(:)([0-9:]*)?([ ]+instantiated)</Pattern>
 	  <Pattern Name="Warning" FileNameIndex="2" LineNumberIndex="4">(In file included from *)([a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([0-9]+ *)(:)([0-9:]*)?</Pattern>
 	  <GlobalIncludePath></GlobalIncludePath>
       <GlobalLibPath></GlobalLibPath>
@@ -105,13 +224,15 @@
       <Switch Name="Output" Value="/OUT:"/>
       <Switch Name="Preprocessor" Value="/D"/>
       <Switch Name="Source" Value=""/>
-      <Tool Name="ArchiveTool" Value="lib.exe  /nologo"/>
-      <Tool Name="CompilerName" Value="cl.exe /nologo /c"/>
-      <Tool Name="C_CompilerName" Value="cl.exe /nologo /c"/>
+      <Tool Name="AR" Value="lib.exe  /nologo"/>
+      <Tool Name="CXX" Value="cl.exe /nologo /c"/>
+      <Tool Name="CC" Value="cl.exe /nologo /c"/>
       <Tool Name="LinkerName" Value="link.exe  /nologo"/>
       <Tool Name="ResourceCompiler" Value="windres"/>
       <Tool Name="SharedObjectLinkerName" Value="link.exe /DLL  /nologo"/>
+      <Tool Name="AS" Value="NASM"/>
       <Option Name="ObjectSuffix" Value=".obj"/>
+      <Pattern Name="Error" FileNameIndex="1" LineNumberIndex="2">^windres: ([a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+) *:([0-9]+): syntax error</Pattern>
       <Pattern Name="Error" FileNameIndex="1" LineNumberIndex="3">(^[a-zA-Z\\\.0-9 _/\:\+\-]+ *)(\()([0-9]+)(\))( \: )(error)</Pattern>
       <Pattern Name="Error" FileNameIndex="1" LineNumberIndex="1">(LINK : fatal error)</Pattern>
       <Pattern Name="Error" FileNameIndex="1" LineNumberIndex="1">(NMAKE : fatal error)</Pattern>
@@ -133,14 +254,14 @@
       <Switch Name="PreprocessOnly" Value=""/>
       <Switch Name="Preprocessor" Value=""/>
       <Switch Name="Source" Value="-c "/>
-      <Tool Name="ArchiveTool" Value=""/>
-      <Tool Name="CompilerName" Value="cobra.exe"/>
-      <Tool Name="C_CompilerName" Value="cobra.exe"/>
+      <Tool Name="AR" Value=""/>
+      <Tool Name="CXX" Value="cobra.exe"/>
+      <Tool Name="CC" Value="cobra.exe"/>
       <Tool Name="LinkerName" Value=""/>
       <Tool Name="ResourceCompiler" Value=""/>
       <Tool Name="SharedObjectLinkerName" Value=""/>
-      <File Extension="cobra" CompilationLine="$(CompilerName) $(SourceSwitch)  $(CmpOptions) $(FileFullName)" Kind="0"/>
-      <File Extension="cs" CompilationLine="$(CompilerName) $(SourceSwitch) &quot;$(FileFullPath)&quot; $(CmpOptions) $(ObjectSwitch)$(FilePath)$(IntermediateDirectory)/$(FileName).cs " Kind="0"/>
+      <File Extension="cobra" CompilationLine="$(CXX) $(SourceSwitch)  $(CXXFLAGS) $(FileFullName)" Kind="0"/>
+      <File Extension="cs" CompilationLine="$(CXX) $(SourceSwitch) &quot;$(FileFullPath)&quot; $(CXXFLAGS) $(ObjectSwitch)$(FilePath)$(IntermediateDirectory)/$(FileName).cs " Kind="0"/>
       <Option Name="ObjectSuffix" Value=".cobra.cs"/>
       <Option Name="DependSuffix" Value=""/>
       <Option Name="PreprocessSuffix" Value=""/>

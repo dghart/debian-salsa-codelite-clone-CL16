@@ -1,31 +1,63 @@
 @echo off
 
-xcopy config\*.default "%ProgramFiles%\CodeLite\config\" /E /I /H /Y /EXCLUDE:excludes
-xcopy config\build_settings.xml.default.win "%ProgramFiles%\CodeLite\config\build_settings.xml.default" /E /I /H /Y /EXCLUDE:excludes
-xcopy debuggers\*.dll "%ProgramFiles%\CodeLite\debuggers\" /E /I /H /Y /EXCLUDE:excludes
-xcopy images\* "%ProgramFiles%\CodeLite\images\" /E /I /H /Y /EXCLUDE:excludes
-xcopy lexers\*.xml "%ProgramFiles%\CodeLite\lexers\" /E /I /H /Y /EXCLUDE:excludes
-xcopy plugins\*.dll "%ProgramFiles%\CodeLite\plugins\" /E /I /H /Y /EXCLUDE:excludes
-xcopy *.dll "%ProgramFiles%\CodeLite\" /E /I /H /Y /EXCLUDE:excludes
-xcopy plugins\resources\*.* "%ProgramFiles%\CodeLite\plugins\resources\" /E /I /H /Y /EXCLUDE:excludes
-xcopy rc\*.xrc "%ProgramFiles%\CodeLite\rc\" /E /I /H /Y /EXCLUDE:excludes
-xcopy templates\ "%ProgramFiles%\CodeLite\templates\" /E /I /H /Y /EXCLUDE:excludes
-xcopy templates\formbuilder\* "%ProgramFiles%\CodeLite\templates\formbuilder\" /E /I /H /Y /EXCLUDE:excludes
-xcopy templates\projects\* "%ProgramFiles%\CodeLite\templates\projects\" /E /I /H /Y /EXCLUDE:excludes
-xcopy templates\gizmos\* "%ProgramFiles%\CodeLite\templates\gizmos\" /E /I /H /Y /EXCLUDE:excludes
-xcopy templates\qmake\* "%ProgramFiles%\CodeLite\templates\qmake\" /E /I /H /Y /EXCLUDE:excludes
-xcopy *.html "%ProgramFiles%\CodeLite\" /H /Y /EXCLUDE:excludes
-xcopy codelite-icons.zip "%ProgramFiles%\CodeLite\" /H /Y /EXCLUDE:excludes
+set TARGET_DIR=%ProgramFiles(x86)%
+set COPY_WXC_RESOURCES=0
+IF EXIST D:\software\NUL (set TARGET_DIR=D:\software)
+IF EXIST ..\wxcrafter\wxcrafter.accelerators (set COPY_WXC_RESOURCES=1)
 
+xcopy config\*.default "%TARGET_DIR%\CodeLite\config\" /E /I /H /Y /EXCLUDE:excludes
+xcopy config\build_settings.xml.default.win "%TARGET_DIR%\CodeLite\config\build_settings.xml.default" /E /I /H /Y /EXCLUDE:excludes
+xcopy debuggers\*.dll "%TARGET_DIR%\CodeLite\debuggers\" /E /I /H /Y /EXCLUDE:excludes
+xcopy images\* "%TARGET_DIR%\CodeLite\images\" /E /I /H /Y /EXCLUDE:excludes
+xcopy lexers\*.xml "%TARGET_DIR%\CodeLite\lexers\" /E /I /H /Y /EXCLUDE:excludes
+xcopy plugins\*.dll "%TARGET_DIR%\CodeLite\plugins\" /E /I /H /Y /EXCLUDE:excludes
+xcopy lib*.dll "%TARGET_DIR%\CodeLite\" /E /I /H /Y /EXCLUDE:excludes
+xcopy plugins\resources\*.* "%TARGET_DIR%\CodeLite\plugins\resources\" /E /I /H /Y /EXCLUDE:excludes
+xcopy rc\*.xrc "%TARGET_DIR%\CodeLite\rc\" /E /I /H /Y /EXCLUDE:excludes
+xcopy templates\ "%TARGET_DIR%\CodeLite\templates\" /E /I /H /Y /EXCLUDE:excludes
+xcopy gdb_printers\*.py "%TARGET_DIR%\CodeLite\gdb_printers\" /E /I /H /Y /EXCLUDE:excludes
+xcopy templates\formbuilder\* "%TARGET_DIR%\CodeLite\templates\formbuilder\" /E /I /H /Y /EXCLUDE:excludes
+xcopy templates\projects\* "%TARGET_DIR%\CodeLite\templates\projects\" /E /I /H /Y /EXCLUDE:excludes
+xcopy templates\gizmos\* "%TARGET_DIR%\CodeLite\templates\gizmos\" /E /I /H /Y /EXCLUDE:excludes
+xcopy templates\codedesigner\* "%TARGET_DIR%\CodeLite\templates\codedesigner\" /E /I /H /Y /EXCLUDE:excludes
+xcopy templates\databaselayer\* "%TARGET_DIR%\CodeLite\templates\databaselayer\" /E /I /H /Y /EXCLUDE:excludes
+xcopy templates\qmake\* "%TARGET_DIR%\CodeLite\templates\qmake\" /E /I /H /Y /EXCLUDE:excludes
+xcopy *.html "%TARGET_DIR%\CodeLite\" /H /Y /EXCLUDE:excludes
+xcopy codelite-icons.zip "%TARGET_DIR%\CodeLite\" /H /Y /EXCLUDE:excludes
+xcopy codelite-icons-dark.zip "%TARGET_DIR%\CodeLite\" /H /Y /EXCLUDE:excludes
+xcopy codelite-icons-fresh-farm.zip "%TARGET_DIR%\CodeLite\" /H /Y /EXCLUDE:excludes
+xcopy locale\* "%TARGET_DIR%\CodeLite\locale\" /E /I /H /Y /EXCLUDE:excludes
+xcopy ..\lib\gcc_lib\libdatabaselayersqlite*.dll "%TARGET_DIR%\CodeLite\" /E /I /H /Y /EXCLUDE:excludes
+xcopy ..\lib\gcc_lib\libwxshapeframework*.dll "%TARGET_DIR%\CodeLite\" /E /I /H /Y /EXCLUDE:excludes
+IF EXIST wxgui.zip ( copy wxgui.zip "%TARGET_DIR%\CodeLite\" )
+
+if "%WXWIN%" == "" GOTO OTHERS
+xcopy %WXWIN%\lib\gcc_dll\wxmsw*u_*gcc_cl.dll "%TARGET_DIR%\CodeLite\" /E /I /H /Y /EXCLUDE:excludes
+xcopy %WXWIN%\lib\gcc_dll\wxbase*u_*gcc_cl.dll "%TARGET_DIR%\CodeLite\" /E /I /H /Y /EXCLUDE:excludes
+xcopy %WXWIN%\lib\gcc_dll\wxrc.exe "%TARGET_DIR%\CodeLite\" /E /I /H /Y /EXCLUDE:excludes
+
+if "%COPY_WXC_RESOURCES%" == "1" (copy ..\wxcrafter\wxcrafter.accelerators  "%TARGET_DIR%\CodeLite\plugins\resources" )
+
+:OTHERS
 :: Copy the misc files
-copy codelite_indexer.exe "%ProgramFiles%\CodeLite\" /Y
-copy codelite_cppcheck.exe "%ProgramFiles%\CodeLite\" /Y
-copy codelite_launcher.exe "%ProgramFiles%\CodeLite\" /Y
-copy makedir.exe "%ProgramFiles%\CodeLite\" /Y
-copy le_exec.exe "%ProgramFiles%\CodeLite\" /Y
-copy CodeLite.exe "%ProgramFiles%\CodeLite\" /Y
-copy patch.exe "%ProgramFiles%\CodeLite\" /Y
-copy rm.exe "%ProgramFiles%\CodeLite\" /Y
-copy astyle.sample "%ProgramFiles%\CodeLite\" /Y
-copy ..\sdk\wxconfig\wx-config.exe "%ProgramFiles%\CodeLite\" /Y
+copy codelite_indexer.exe "%TARGET_DIR%\CodeLite\" /Y
+copy codelitegcc.exe "%TARGET_DIR%\CodeLite\" /Y
+copy codelite_cppcheck.exe "%TARGET_DIR%\CodeLite\" /Y
+copy codelite_launcher.exe "%TARGET_DIR%\CodeLite\" /Y
+copy ..\sdk\clang\lib\liblibclang.dll "%TARGET_DIR%\CodeLite\" /Y
+copy ..\sdk\libssh\lib\libssh.dll "%TARGET_DIR%\CodeLite\" /Y
+copy makedir.exe "%TARGET_DIR%\CodeLite\" /Y
+copy le_exec.exe "%TARGET_DIR%\CodeLite\" /Y
+copy CodeLite.exe "%TARGET_DIR%\CodeLite\" /Y
+copy codelite-clang.exe "%TARGET_DIR%\CodeLite\" /Y
+copy codelite-make.exe "%TARGET_DIR%\CodeLite\" /Y
+copy codelite-terminal.exe "%TARGET_DIR%\CodeLite\" /Y
+copy patch.exe "%TARGET_DIR%\CodeLite\" /Y
+copy rm.exe "%TARGET_DIR%\CodeLite\" /Y
+copy astyle.sample "%TARGET_DIR%\CodeLite\" /Y
+copy pthreadGC2.dll "%TARGET_DIR%\CodeLite\" /Y
+copy ..\sdk\wxconfig\wx-config.exe "%TARGET_DIR%\CodeLite\" /Y
 
+:END
+
+echo codelite was updated into %TARGET_DIR%\CodeLite

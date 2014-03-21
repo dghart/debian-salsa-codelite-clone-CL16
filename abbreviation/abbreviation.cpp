@@ -28,48 +28,51 @@
 #include "abbreviationssettingsdlg.h"
 #include <wx/bitmap.h>
 #include <wx/menu.h>
+#include "event_notifier.h"
 #include "abbreviation.h"
 #include <wx/xrc/xmlres.h>
 #include <wx/app.h>
 #include <wx/log.h>
 #include <wx/regex.h>
+#include "cl_config.h"
 
 static AbbreviationPlugin* thePlugin = NULL;
 
 //Define the plugin entry point
 extern "C" EXPORT IPlugin *CreatePlugin(IManager *manager)
 {
-	if (thePlugin == 0) {
-		thePlugin = new AbbreviationPlugin(manager);
-	}
-	return thePlugin;
+    if (thePlugin == 0) {
+        thePlugin = new AbbreviationPlugin(manager);
+    }
+    return thePlugin;
 }
 
 extern "C" EXPORT PluginInfo GetPluginInfo()
 {
-	PluginInfo info;
-	info.SetAuthor(wxT("Eran Ifrah"));
-	info.SetName(wxT("abbreviation"));
-	info.SetDescription(wxT("Abbreviation plugin"));
-	info.SetVersion(wxT("v1.0"));
-	return info;
+    PluginInfo info;
+    info.SetAuthor(wxT("Eran Ifrah"));
+    info.SetName(wxT("abbreviation"));
+    info.SetDescription(_("Abbreviation plugin"));
+    info.SetVersion(wxT("v1.0"));
+    return info;
 }
 
 extern "C" EXPORT int GetPluginInterfaceVersion()
 {
-	return PLUGIN_INTERFACE_VERSION;
+    return PLUGIN_INTERFACE_VERSION;
 }
 
 AbbreviationPlugin::AbbreviationPlugin(IManager *manager)
-		: IPlugin(manager)
-		, m_topWindow(NULL)
+    : IPlugin(manager)
+    , m_topWindow(NULL)
+    , m_config("abbreviations.conf")
 {
-	m_longName = wxT("Abbreviation plugin");
-	m_shortName = wxT("abbreviation");
-	m_topWindow = m_mgr->GetTheApp();
-	m_topWindow->Connect(wxEVT_CCBOX_SELECTION_MADE, wxCommandEventHandler(AbbreviationPlugin::OnAbbrevSelected), NULL, this);
+    m_longName = _("Abbreviation plugin");
+    m_shortName = wxT("abbreviation");
+    m_topWindow = m_mgr->GetTheApp();
+    EventNotifier::Get()->Connect(wxEVT_CCBOX_SELECTION_MADE, clCodeCompletionEventHandler(AbbreviationPlugin::OnAbbrevSelected), NULL, this);
 
-	InitDefaults();
+    InitDefaults();
 }
 
 AbbreviationPlugin::~AbbreviationPlugin()
@@ -78,183 +81,231 @@ AbbreviationPlugin::~AbbreviationPlugin()
 
 clToolBar *AbbreviationPlugin::CreateToolBar(wxWindow *parent)
 {
-	wxUnusedVar(parent);
-	return NULL;
+    wxUnusedVar(parent);
+    return NULL;
 }
 
 void AbbreviationPlugin::CreatePluginMenu(wxMenu *pluginsMenu)
 {
-	wxMenu *menu = new wxMenu();
-	wxMenuItem *item( NULL );
+    wxMenu *menu = new wxMenu();
+    wxMenuItem *item( NULL );
 
-	item = new wxMenuItem(menu, XRCID("abbrev_show"), wxT( "Show Abbreviations" ), wxT( "Show Abbreviations" ), wxITEM_NORMAL );
-	menu->Append( item );
+    item = new wxMenuItem(menu, XRCID("abbrev_insert"), _( "Insert Expansion" ), _( "Insert Expansion" ), wxITEM_NORMAL );
+    menu->Append( item );
 
-	menu->AppendSeparator();
-	item = new wxMenuItem(menu, XRCID("abbrev_settings"), wxT( "Settings..." ), wxT( "Settings..." ), wxITEM_NORMAL );
-	menu->Append( item );
+    menu->AppendSeparator();
+    item = new wxMenuItem(menu, XRCID("abbrev_settings"), _( "Settings..." ), _( "Settings..." ), wxITEM_NORMAL );
+    menu->Append( item );
 
 
-	pluginsMenu->Append(wxID_ANY, wxT("Abbreviation"), menu);
+    pluginsMenu->Append(wxID_ANY, wxT("Abbreviation"), menu);
 
-	m_topWindow->Connect( XRCID("abbrev_settings"), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( AbbreviationPlugin::OnSettings ), NULL, this );
-	m_topWindow->Connect( XRCID("abbrev_show"), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( AbbreviationPlugin::OnAbbreviations), NULL, this );
+    m_topWindow->Connect( XRCID("abbrev_settings"), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( AbbreviationPlugin::OnSettings ), NULL, this );
+    m_topWindow->Connect( XRCID("abbrev_insert"), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( AbbreviationPlugin::OnAbbreviations), NULL, this );
 }
 
 void AbbreviationPlugin::HookPopupMenu(wxMenu *menu, MenuType type)
 {
-	wxUnusedVar(menu);
-	wxUnusedVar(type);
+    wxUnusedVar(menu);
+    wxUnusedVar(type);
 }
 
 void AbbreviationPlugin::UnPlug()
 {
-	m_topWindow->Disconnect(wxEVT_CCBOX_SELECTION_MADE, wxCommandEventHandler(AbbreviationPlugin::OnAbbrevSelected), NULL, this);
-	m_topWindow->Disconnect( XRCID("abbrev_settings"), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( AbbreviationPlugin::OnSettings ), NULL, this );
-	m_topWindow->Disconnect( XRCID("abbrev_show"), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( AbbreviationPlugin::OnAbbreviations), NULL, this );
+    EventNotifier::Get()->Disconnect(wxEVT_CCBOX_SELECTION_MADE, clCodeCompletionEventHandler(AbbreviationPlugin::OnAbbrevSelected), NULL, this);
+    m_topWindow->Disconnect( XRCID("abbrev_settings"), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( AbbreviationPlugin::OnSettings ), NULL, this );
+    m_topWindow->Disconnect( XRCID("abbrev_insert"), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( AbbreviationPlugin::OnAbbreviations), NULL, this );
 }
 
 void AbbreviationPlugin::OnSettings(wxCommandEvent& e)
 {
-	AbbreviationsSettingsDlg dlg(m_mgr->GetTheApp()->GetTopWindow(), m_mgr);
-	dlg.ShowModal();
+    AbbreviationsSettingsDlg dlg(m_mgr->GetTheApp()->GetTopWindow(), m_mgr);
+    dlg.ShowModal();
+    m_config.Reload();
 }
 
 void AbbreviationPlugin::OnAbbreviations(wxCommandEvent& e)
 {
-	static wxBitmap bmp = LoadBitmapFile(wxT("abbrev.png")) ;
-	IEditor *editor = m_mgr->GetActiveEditor();
-	if ( editor && bmp.IsOk() ) {
-		editor->RegisterImageForKind(wxT("Abbreviation"), bmp);
-		std::vector<TagEntryPtr> tags;
+    IEditor *editor = m_mgr->GetActiveEditor();
+    if (!editor) {
+        return;
+    }
 
-		// prepate list of abbreviations
-		AbbreviationEntry data;
-		m_mgr->GetConfigTool()->ReadObject(wxT("AbbreviationsData"), &data);
+    AbbreviationJSONEntry jsonData;
+    if ( !m_config.ReadItem( &jsonData ) ) {
+        // merge the data from the old configuration
+        AbbreviationEntry data;
+        m_mgr->GetConfigTool()->ReadObject(wxT("AbbreviationsData"), &data);
+    
+        jsonData.SetAutoInsert( data.GetAutoInsert() );
+        jsonData.SetEntries( data.GetEntries() );
+        m_config.WriteItem( &jsonData );
+    }
+    
+    wxString wordAtCaret = editor->GetWordAtCaret();
+    
+    bool autoInsert = (jsonData.IsAutoInsert() && wordAtCaret.IsEmpty() == false);
+    if  ( autoInsert ){
+        autoInsert = InsertExpansion(wordAtCaret);
+    }
+    
+    if ( !autoInsert ) {
+        static wxBitmap bmp = LoadBitmapFile(wxT("abbrev.png")) ;
+        if (bmp.IsOk()) {
+            editor->RegisterImageForKind(wxT("Abbreviation"), bmp);
+            std::vector<TagEntryPtr> tags;
 
-		// search for the old item
-		std::map<wxString, wxString> entries = data.GetEntries();
-		std::map<wxString, wxString>::iterator iter = entries.begin();
-		for (; iter != entries.end(); iter ++) {
-			TagEntryPtr t(new TagEntry());
-			t->SetName(iter->first);
-			t->SetKind(wxT("Abbreviation"));
-			tags.push_back(t);
-		}
-		editor->ShowCompletionBox(tags, editor->GetWordAtCaret(), this);
-	}
+            // search for the old item
+            const JSONElement::wxStringMap_t& entries = jsonData.GetEntries();
+            JSONElement::wxStringMap_t::const_iterator iter = entries.begin();
+            for (; iter != entries.end(); ++iter) {
+                TagEntryPtr t(new TagEntry());
+                t->SetName(iter->first);
+                t->SetKind(wxT("Abbreviation"));
+                tags.push_back(t);
+            }
+            editor->ShowCompletionBox(tags, editor->GetWordAtCaret(), false, this);
+        }
+    }
 }
 
-void AbbreviationPlugin::OnAbbrevSelected(wxCommandEvent& e)
+void AbbreviationPlugin::OnAbbrevSelected(clCodeCompletionEvent& e)
 {
-	// get the active editor
-	IEditor *editor = m_mgr->GetActiveEditor();
+    if(e.GetEventObject() != this) {
+        e.Skip();
+        return;
+    }
 
-	// Note that we do not delete str!
-	wxString *str = (wxString*)e.GetClientData();
-
-	if (!editor || !str)
-		return;
-
-	// hide the completion box
-	editor->HideCompletionBox();
-
-	// search for abbreviation that matches str
-	// prepate list of abbreviations
-	AbbreviationEntry data;
-	m_mgr->GetConfigTool()->ReadObject(wxT("AbbreviationsData"), &data);
-
-	// search for the old item
-	std::map<wxString, wxString> entries = data.GetEntries();
-	std::map<wxString, wxString>::iterator iter = entries.find(*str);
-
-
-	if (iter != entries.end()) {
-
-		wxString text = iter->second;
-		int selStart = editor->WordStartPos(editor->GetCurrentPosition(), true);
-		int selEnd   = editor->WordEndPos(editor->GetCurrentPosition(), true);
-		int curPos   = editor->GetCurrentPosition();
-		int typedWordLen = curPos - selStart;
-
-		if (typedWordLen < 0) {
-			typedWordLen = 0;
-		}
-
-		// format the text to insert
-		bool appendEol(false);
-		if (text.EndsWith(wxT("\r")) || text.EndsWith(wxT("\n"))) {
-			appendEol = true;
-		}
-
-		text = editor->FormatTextKeepIndent(text, selStart);
-
-		// remove the first line indenation that might have been placed by CL
-		text.Trim(false).Trim();
-
-		if (appendEol) {
-			wxString eol;
-			switch (editor->GetEOL()) {
-			case 1:
-				eol = wxT("\r");
-				break;
-			case 0:
-				eol = wxT("\r\n");
-				break;
-			case 2:
-				eol = wxT("\n");
-				break;
-			}
-			text << eol;
-		}
-
-		//--------------------------------------------
-		// replace any place holders
-		//--------------------------------------------
-		static wxRegEx reVarPattern(wxT("\\$\\(( *)([a-zA-Z0-9_]+)( *)\\)"));
-
-		while (reVarPattern.Matches(text)) {
-			// add result
-			wxString v = reVarPattern.GetMatch(text);
-			wxString replaceWith = wxGetTextFromUser(wxString::Format(wxT("Enter replacement for '%s':"), v.c_str()), wxT("CodeLite"));
-			text.Replace(v, replaceWith);
-		}
-
-		// locate the caret
-		int where = text.Find(wxT("|"));
-		if (where == wxNOT_FOUND) {
-			where = text.length();
-		}
-
-		// remove the pipe (|) character
-		text.Replace(wxT("|"), wxT(""));
-
-		if (selEnd - selStart >= 0) {
-			editor->SelectText(selStart, selEnd - selStart);
-			editor->ReplaceSelection(text);
-			editor->SetCaretAt(curPos + where - typedWordLen);
-		}
-	}
+    wxString wordAtCaret = e.GetWord();
+    InsertExpansion( wordAtCaret );
 }
 
 void AbbreviationPlugin::InitDefaults()
 {
-	// check to see if there are any abbreviations configured
-	AbbreviationEntry data;
-	m_mgr->GetConfigTool()->ReadObject(wxT("AbbreviationsData"), &data);
+    // check to see if there are any abbreviations configured
+    AbbreviationJSONEntry jsonData;
+    if ( !m_config.ReadItem(&jsonData) ) {
+        // merge the data from the old configuration
+        AbbreviationEntry data;
+        m_mgr->GetConfigTool()->ReadObject(wxT("AbbreviationsData"), &data);
+    
+        jsonData.SetAutoInsert( data.GetAutoInsert() );
+        jsonData.SetEntries( data.GetEntries() );
+        m_config.WriteItem( &jsonData );
+    }
 
-	// search for the old item
-	if (data.GetEntries().empty()) {
-		// fill some default abbreviations
-		std::map<wxString, wxString> entries;
-		entries[wxT("main")] = wxT("int main(int argc, char **argv)\n{\n\t|\n}\n");
-		entries[wxT("while")] = wxT("while(|)\n{\n\t\n}\n");
-		entries[wxT("dowhile")] = wxT("do\n{\n\t\n}while(|)\n");
-		entries[wxT("tryblock")] = wxT("try\n{\n\t|\n}\ncatch($(ExceptionType) e)\n{\n}\n");
-		entries[wxT("for_size")] = wxT("for(size_t i=0; i<|; i++)\n{\n}\n");
-		entries[wxT("for_int")] = wxT("for(int i=0; i<|; i++)\n{\n}\n");
-		data.SetEntries(entries);
+    // search for the old item
+    if (jsonData.GetEntries().empty()) {
+        // fill some default abbreviations
+        JSONElement::wxStringMap_t entries;
+        entries[wxT("main")] = wxT("int main(int argc, char **argv) {\n    |\n}\n");
+        entries[wxT("while")] = wxT("while(|) {\n    \n}\n");
+        entries[wxT("dowhile")] = wxT("do {\n    \n}while ( | );\n");
+        entries[wxT("tryblock")] = wxT("try {\n    |\n} catch ( $(ExceptionType) e ) {\n}\n");
+        entries[wxT("for_size")] = wxT("for ( size_t i=0; i<|; ++i ) {\n}\n");
+        entries[wxT("for_int")] = wxT("for( int i=0; i<|; ++i) {\n}\n");
+        jsonData.SetEntries(entries);
 
-		m_mgr->GetConfigTool()->WriteObject(wxT("AbbreviationsData"), &data);
-	}
+        m_config.WriteItem( &jsonData );
+    }
+}
+
+bool AbbreviationPlugin::InsertExpansion(const wxString& abbreviation)
+{
+    // get the active editor
+    IEditor *editor = m_mgr->GetActiveEditor();
+
+    if (!editor || !abbreviation)
+        return false;
+
+    // hide the completion box
+    if (editor->IsCompletionBoxShown()) {
+        editor->HideCompletionBox();
+    }
+
+    // search for abbreviation that matches str
+    // prepate list of abbreviations
+    AbbreviationJSONEntry jsonData;
+    if ( !m_config.ReadItem(&jsonData) ) {
+        // merge the data from the old configuration
+        AbbreviationEntry data;
+        m_mgr->GetConfigTool()->ReadObject(wxT("AbbreviationsData"), &data);
+    
+        jsonData.SetAutoInsert( data.GetAutoInsert() );
+        jsonData.SetEntries( data.GetEntries() );
+        m_config.WriteItem( &jsonData );
+    }
+
+    // search for the old item
+    const JSONElement::wxStringMap_t& entries = jsonData.GetEntries();
+    JSONElement::wxStringMap_t::const_iterator iter = entries.find(abbreviation);
+
+    if (iter != entries.end()) {
+
+        wxString text = iter->second;
+        int selStart = editor->WordStartPos(editor->GetCurrentPosition(), true);
+        int selEnd   = editor->WordEndPos(editor->GetCurrentPosition(), true);
+        int curPos   = editor->GetCurrentPosition();
+        int typedWordLen = curPos - selStart;    
+
+        if (typedWordLen < 0) {
+            typedWordLen = 0;
+        }
+
+        // format the text to insert
+        bool appendEol(false);
+        if (text.EndsWith(wxT("\r")) || text.EndsWith(wxT("\n"))) {
+            appendEol = true;
+        }            
+
+        text = editor->FormatTextKeepIndent(text, selStart, Format_Text_Save_Empty_Lines);    
+
+        // remove the first line indenation that might have been placed by CL
+        text.Trim(false).Trim();
+
+        if (appendEol) {
+            wxString eol;
+            switch (editor->GetEOL()) {
+            case 1:
+                eol = wxT("\r");
+                break;
+            case 0:
+                eol = wxT("\r\n");
+                break;
+            case 2:
+                eol = wxT("\n");
+                break;
+            }
+            text << eol;
+        }
+
+        //--------------------------------------------
+        // replace any place holders
+        //--------------------------------------------
+        static wxRegEx reVarPattern(wxT("\\$\\(( *)([a-zA-Z0-9_]+)( *)\\)"));
+
+        while (reVarPattern.Matches(text)) {
+            // add result
+            wxString v = reVarPattern.GetMatch(text);
+            wxString replaceWith = wxGetTextFromUser(wxString::Format(_("Enter replacement for '%s':"), v.c_str()), _("CodeLite"));
+            text.Replace(v, replaceWith);
+        }
+
+        // locate the caret
+        int where = text.Find(wxT("|"));
+        if (where == wxNOT_FOUND) {
+            where = text.length();
+        }
+
+        // remove the pipe (|) character
+        text.Replace(wxT("|"), wxT(""));
+
+        if (selEnd - selStart >= 0) {
+            editor->SelectText(selStart, selEnd - selStart);
+            editor->ReplaceSelection(text);
+            editor->SetCaretAt(curPos + where - typedWordLen);
+        }
+        return true;
+    } else
+        return false;
 }

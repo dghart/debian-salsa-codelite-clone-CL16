@@ -47,12 +47,32 @@ horizontal_white [ ]|{h_tab}
 #include <vector>
 #include <string>
 
-static std::vector<std::string> scope_stack;
-static std::string              current_scope;
-static int                      current_state       = INITIAL;
-static int                      current_brace_depth = 1;
-static std::string              catch_for_scope;
+struct ScopeEntry {
+	std::string str;
+	int         line;
+
+	ScopeEntry() : line(-1) {}
+	void clear() {
+		line = -1;
+		str.clear();
+	}
+};
+
+static std::vector<ScopeEntry> scope_stack;
+static ScopeEntry              current_scope;
+static int                     current_state       = INITIAL;
+static int                     current_brace_depth = 1;
+static std::string             catch_for_scope;
+
+#define PUSH_SCOPE(scope) {\
+	if(scope.line == -1)\
+		scope.line = scope_optimizer_lineno;\
+	scope_stack.push_back(scope);\
+}
+
 %}
+
+%option yylineno
 
 %%
 
@@ -64,9 +84,9 @@ static std::string              catch_for_scope;
 	BEGIN(C_COMMENT_STATE);
 }
 
-{horizontal_white}+                                                     {current_scope += " ";}
-({v_tab}|{c_return}|{form_feed})+                                       {current_scope += " ";}
-({horizontal_white}|{v_tab}|{c_return}|{form_feed})*"\n"                {current_scope += " ";}
+{horizontal_white}+                                                     {current_scope.str += " ";}
+({v_tab}|{c_return}|{form_feed})+                                       {current_scope.str += " ";}
+({horizontal_white}|{v_tab}|{c_return}|{form_feed})*"\n"                {current_scope.str += " ";}
 
 <CATCH_STATE>{horizontal_white}+                                        {catch_for_scope += " ";}
 <CATCH_STATE>({v_tab}|{c_return}|{form_feed})+                          {catch_for_scope += " ";}
@@ -121,9 +141,9 @@ for[ ]*\(               {
 	catch_for_scope += yytext;
 }
 \(                     {
-	current_scope += "(";
-	if(current_scope.empty() == false) {
-		scope_stack.push_back(current_scope);
+	current_scope.str += "(";
+	if(current_scope.str.empty() == false) {
+		PUSH_SCOPE(current_scope);
 	}
 	current_scope.clear();
 }
@@ -132,18 +152,18 @@ for[ ]*\(               {
 		current_scope = scope_stack.back();
 		scope_stack.pop_back();
 		
-		current_scope += ")";
+		current_scope.str += ")";
 	} else {
 		current_scope.clear();
 	}
 }
 \{                     {
-	current_scope += "{";
-	scope_stack.push_back(current_scope);
+	current_scope.str += "{";
+	PUSH_SCOPE(current_scope);
 	current_scope.clear();
 	
 	if(catch_for_scope.empty() == false)
-		current_scope += catch_for_scope;
+		current_scope.str += catch_for_scope;
 	catch_for_scope.clear();
 }
 \}                     {
@@ -151,12 +171,12 @@ for[ ]*\(               {
 		current_scope = scope_stack.back();
 		
 		scope_stack.pop_back();
-		current_scope += "}";
+		current_scope.str += "}";
 	} else {
 		current_scope.clear();
 	}
 }
-auto                {}
+auto                {current_scope.str += yytext;}
 break               {}
 case                {}
 continue            {}
@@ -181,13 +201,13 @@ switch              {}
 undef               {}
 union               {}
 while               {}
-class               {}
-namespace           {}
+class               { current_scope.str += yytext; }
+struct              { current_scope.str += yytext; }
+namespace           { current_scope.str += yytext; }
 delete              {}
 friend              {}
 inline              {}
 operator            {}
-overload            {}
 protected           {}
 private             {}
 public              {}
@@ -199,15 +219,15 @@ dynamic_cast        {}
 static_cast         {}
 const_cast          {}
 reinterpret_cast    {}
-using               {}
-throw               {}
+using               { current_scope.str += yytext; }
+throw               { current_scope.str += yytext; }
 {identifier}        |
 .                   {
 	if(catch_for_scope.empty() == false)
 		catch_for_scope.clear();
 		
 	// default keep the current token
-	current_scope += yytext;
+	current_scope.str += yytext;
 }
 <CPP_COMMENT_STATE>\n     {
 	BEGIN(current_state);
@@ -219,8 +239,8 @@ throw               {}
 }
 <C_COMMENT_STATE>.        {}
 <<EOF>> {
-	if(current_scope.empty() == false) {
-		scope_stack.push_back( current_scope );
+	if(current_scope.str.empty() == false) {
+		PUSH_SCOPE(current_scope);
 		current_scope.clear();
 	}
 	yyterminate();
@@ -243,7 +263,7 @@ void scope_optimizer_clean()
 	catch_for_scope.clear();
 }
 
-int OptimizeScope(const std::string &inputScope, std::string &optimizedScope)
+int OptimizeScope(const std::string &inputScope, std::string &optimizedScope, int localsLine, std::string &localsScope)
 {
 	BEGIN INITIAL;
 	yy_scan_string(inputScope.c_str());
@@ -255,15 +275,18 @@ int OptimizeScope(const std::string &inputScope, std::string &optimizedScope)
 		return rc;
 	}
 	
-	size_t i = 0;
-	current_scope.clear();
-	for (; i < scope_stack.size(); i++)
-		current_scope += scope_stack.at(i);
-	
+	std::string tmp_scope;
+	for (size_t i = 0; i < scope_stack.size(); i++) {
+		tmp_scope += scope_stack.at(i).str;
+		if(scope_stack.at(i).line >= localsLine) {
+			localsScope += scope_stack.at(i).str;
+		}
+	}
+
 	// if the current scope is not empty, terminate it with ';' and return
-	if ( current_scope.empty() == false ) {
-		current_scope += ";";
-		optimizedScope = current_scope;
+	if ( tmp_scope.empty() == false ) {
+		tmp_scope  += ";";
+		optimizedScope = tmp_scope;
 	}
 	scope_optimizer_clean();
 	return rc;

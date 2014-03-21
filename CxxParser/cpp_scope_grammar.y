@@ -94,6 +94,8 @@ extern void cl_scope_less(int count);
 %token  LE_STATIC_CAST
 %token  LE_CONST_CAST
 %token  LE_REINTERPRET_CAST
+%token  LE_SIZE_T
+%token  LE_TIME_T
 
 %token LE_DECLSPEC
 %token LE_DLLIMPORT
@@ -113,6 +115,7 @@ basic_type_name_inter:    LE_INT          { $$ = $1; }
                 |         LE_UNSIGNED     { $$ = $1; }
                 |         LE_VOID         { $$ = $1; }
                 |         LE_BOOL         { $$ = $1; }
+                |         LE_SIZE_T       { $$ = $1; }
                 ;
 
 basic_type_name:	LE_UNSIGNED basic_type_name_inter     { $$ = $1 + " " + $2; }
@@ -335,6 +338,7 @@ dummy_case : LE_CASE LE_IDENTIFIER
 /* functions */
 function_decl	: 	stmnt_starter opt_template_qualifier virtual_spec const_spec variable_decl nested_scope_specifier func_name '(' {consumeFuncArgList();} const_spec declare_throw '{'
 					{
+                        //printf("found function %s\n", $7.c_str());
 						//trim down trailing '::' from scope name
 						if($6.find_last_not_of(":") != std::string::npos){
 							$6.erase($6.find_last_not_of(":")+1);
@@ -496,7 +500,10 @@ void readClassName()
 			break;
 		}
 		
-		if(c == LE_IDENTIFIER) {
+		if(c == LE_MACRO) {
+			continue;
+			
+		} else if(c == LE_IDENTIFIER) {
 			className = cl_scope_text;
 		
 		} else if(c == LE_DECLSPEC && className.empty()) {

@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version Aug 25 2009)
+// C++ code generated with wxFormBuilder (version Nov 18 2010)
 // http://www.wxformbuilder.org/
 //
 // PLEASE DO "NOT" EDIT THIS FILE!
@@ -20,7 +20,7 @@ CppCheckReportBasePage::CppCheckReportBasePage( wxWindow* parent, wxWindowID id,
 	wxBoxSizer* bSizer41;
 	bSizer41 = new wxBoxSizer( wxVERTICAL );
 	
-	m_outputText = new wxScintilla(this);
+	m_outputText = new wxStyledTextCtrl(this);
 	bSizer41->Add( m_outputText, 1, wxALL|wxEXPAND, 5 );
 	
 	m_staticTextFile = new wxStaticText( this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0 );
@@ -44,7 +44,7 @@ CppCheckReportBasePage::CppCheckReportBasePage( wxWindow* parent, wxWindowID id,
 	
 	m_buttonStop = new wxButton( this, wxID_STOP, _("&Stop"), wxDefaultPosition, wxDefaultSize, 0 );
 	m_buttonStop->SetDefault(); 
-	m_buttonStop->SetToolTip( _("Stop the curreny analysis") );
+	m_buttonStop->SetToolTip( _("Stop the current analysis") );
 	
 	bSizer4->Add( m_buttonStop, 0, wxALL, 5 );
 	
@@ -69,4 +69,5 @@ CppCheckReportBasePage::~CppCheckReportBasePage()
 	m_buttonClear->Disconnect( wxEVT_UPDATE_UI, wxUpdateUIEventHandler( CppCheckReportBasePage::OnClearReportUI ), NULL, this );
 	m_buttonStop->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( CppCheckReportBasePage::OnStopChecking ), NULL, this );
 	m_buttonStop->Disconnect( wxEVT_UPDATE_UI, wxUpdateUIEventHandler( CppCheckReportBasePage::OnStopCheckingUI ), NULL, this );
+	
 }

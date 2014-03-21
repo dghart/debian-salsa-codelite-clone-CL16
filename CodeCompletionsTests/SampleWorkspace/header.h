@@ -21,9 +21,13 @@
 #include <CodeLite/y.tab.h>
 #include <LiteEditor/cl_editor.h>
 #include <Interfaces/debugger.h>
-#include <SymbolView/symbolview.h>
+#include <Outline/outline.h>
 #include <wx/clipbrd.h>
 #include <wx/app.h>
+#include <Plugin/editor_config.h>
+#include <Plugin/lexer_configuration.h>
+#include <wxcrafter/wx_ordered_map.h>
+#include <Plugin/workspace.h>
 
 struct ST {
 	std::string name;
@@ -32,3 +36,43 @@ struct ST {
 ST theStruct;
 
 #define EG(x) theStruct.x
+
+// This set of classes are here for creating entries in the database for the
+// test_netsting_scope_resolving
+class string
+{
+	class SubClass
+	{
+		int member;
+		class SubSubClass
+		{
+			int sub_sub_member;
+			class Box
+			{
+				void foo();
+			};
+		};
+	};
+};
+
+// Needed for the test of the 'goto decl inside namespace'
+namespace Baz
+{
+struct Tada
+{
+    int bar;  
+};
+
+class Foo
+{
+public:
+    Tada sad; // Tada cannot be located via Goto Declaration/Implementation
+};
+
+//////////////////////////////////////////////////////////////
+// Test the 'testStructDeclaratorInFuncArgument
+//////////////////////////////////////////////////////////////
+
+void foo_bar(struct wxString *s) {
+    
+}

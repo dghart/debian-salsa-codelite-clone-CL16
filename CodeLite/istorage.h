@@ -28,6 +28,12 @@
 
 #include "comment.h"
 #include "pptable.h"
+#include "tag_tree.h"
+#include "fileentry.h"
+#include "entry.h"
+
+#define MAX_SEARCH_LIMIT 250
+
 /**
  * @class ITagsStorage defined the tags storage API used by codelite
  * @author eran
@@ -42,7 +48,7 @@ protected:
 	int        m_singleSearchLimit;
 	int        m_maxWorkspaceTagToColour;
 	bool       m_useCache;
-
+	bool       m_enableCaseInsensitive;
 public:
 	enum {
 		OrderNone,
@@ -51,9 +57,17 @@ public:
 	};
 
 public:
-	ITagsStorage() : m_singleSearchLimit(1000), m_maxWorkspaceTagToColour(1000), m_useCache(false) {}
-	virtual ~ITagsStorage() {};
+	ITagsStorage()
+		: m_singleSearchLimit(MAX_SEARCH_LIMIT)
+		, m_maxWorkspaceTagToColour(1000)
+		, m_useCache(false)
+		, m_enableCaseInsensitive(true)
+	{}
 
+	virtual ~ITagsStorage() {};
+	virtual void SetEnableCaseInsensitive(bool b) {
+		m_enableCaseInsensitive = b;
+	}
 	virtual void SetUseCache(bool useCache) {
 		this->m_useCache = useCache;
 	}
@@ -77,7 +91,7 @@ public:
 
 	void SetSingleSearchLimit(int singleSearchLimit) {
 		if ( singleSearchLimit < 0 ) {
-			singleSearchLimit = 1000;
+			singleSearchLimit = MAX_SEARCH_LIMIT;
 		}
 		this->m_singleSearchLimit = singleSearchLimit;
 	}
@@ -141,7 +155,7 @@ public:
 	 * @param tags
 	 */
 	virtual void GetTagsByPath (const wxArrayString &path, std::vector<TagEntryPtr> &tags) = 0;
-	virtual void GetTagsByPath (const wxString      &path, std::vector<TagEntryPtr> &tags) = 0;
+	virtual void GetTagsByPath (const wxString      &path, std::vector<TagEntryPtr> &tags, int limit = 1) = 0;
 
 	/**
 	 * @brief return array of items by name and parent
@@ -172,7 +186,7 @@ public:
 	 * @param kinds
 	 * @param tags [output]
 	 */
-	virtual void GetTagsByScopeAndKind(const wxString &scope, const wxArrayString &kinds, std::vector<TagEntryPtr> &tags) = 0;
+	virtual void GetTagsByScopeAndKind(const wxString &scope, const wxArrayString &kinds, std::vector<TagEntryPtr> &tags, bool applyLimit = true) = 0;
 
 	/**
 	 * @brief get list of tags by kind and file
@@ -228,31 +242,6 @@ public:
 	virtual int UpdateFileEntry ( const wxString &filename , int timestamp ) = 0;
 
 	// -------------------------- TagEntry -------------------------------------------
-
-	/**
-	 * @brief update tag. The parameters used as key for the update are:
-	 * Kind/Signature/Path
-	 * @param tag
-	 * @return TagOk or TagError
-	 */
-	virtual int UpdateTagEntry ( const TagEntry& tag ) = 0;
-
-	/**
-	 * @brief insert tag into the database.
-	 * @param tag
-	 * @return TagOk, TagExist or TagError
-	 */
-	virtual int InsertTagEntry ( const TagEntry &tag ) = 0;
-
-	/**
-	 * @brief delete TagEntry
-	 * @param kind
-	 * @param signature
-	 * @param path
-	 * @return TagOk or TagError
-	 */
-	virtual int DeleteTagEntry ( const wxString &kind, const wxString &signature, const wxString &path ) = 0;
-
 	/**
 	 * Return a result set of tags according to file name.
 	 * @param file Source file name
@@ -357,10 +346,11 @@ public:
 	virtual void GetFiles(std::vector<FileEntryPtr> &files) = 0;
 
 	/**
-	 * @brief for transactional storage, provide begin/commit methods
+	 * @brief for transactional storage, provide begin/commit/rollback methods
 	 */
 	virtual void Begin() = 0;
 	virtual void Commit() = 0;
+	virtual void Rollback() = 0;
 
 	/**
 	 * Delete all entries from database that are related to filename.
@@ -409,6 +399,21 @@ public:
 	 * @param tags [output]
 	 */
 	virtual void GetTagsByScopesAndKind(const wxArrayString& scopes, const wxArrayString& kinds, std::vector<TagEntryPtr>& tags) = 0;
+	/**
+	 * @brief return list of tags by scopes and kinds with no LIMIT applied
+	 * @param scopes array of possible scopes
+	 * @param kinds array of possible kinds
+	 * @param tags [output]
+	 */		
+	virtual void GetTagsByScopesAndKindNoLimit(const wxArrayString& scopes, const wxArrayString& kinds, std::vector<TagEntryPtr>& tags) = 0;
+	
+	/**
+	 * @brief return list of tags by typerefs and kinds
+	 * @param typerefs array of possible typerefs
+	 * @param kinds array of possible kinds
+	 * @param tags [output]
+	 */	
+	virtual void GetTagsByTyperefAndKind(const wxArrayString& typerefs, const wxArrayString& kinds, std::vector<TagEntryPtr>& tags) = 0;
 
 	/**
 	 * @brief return tags by files / scope
@@ -444,7 +449,6 @@ public:
 	/**
 	 * @brief return macro evaluation
 	 * @param name macro to search
-	 * @param evaluated the macro value
 	 */
 	virtual PPToken GetMacro(const wxString &name) = 0;
 
@@ -452,6 +456,31 @@ public:
 	 * @brief store macros table as they are produced from the PPTable
 	 */
 	virtual void StoreMacros(const std::map<wxString, PPToken>& table) = 0;
+
+	/**
+	 * @brief return the macros defined by some files.
+	 * The macro return must match the given used macros.
+	 *
+	 * @param files The files which define the macros we are looking for
+	 * @param usedMacros The macros wee are looking for
+	 * @param defMacros [out] The real defined macros
+	 */
+	virtual void GetMacrosDefined(const std::set<std::string>& files, const std::set<wxString>& usedMacros, wxArrayString& defMacros) = 0;
+
+	/**
+	 * @brief return list of tags for a given prefix
+	 */
+	virtual void GetTagsByName(const wxString& prefix, std::vector<TagEntryPtr> &tags, bool exactMatch = false) = 0;
+	
+	/**
+	 * @brief return list of tags for a given partial name
+	 */
+	virtual void GetTagsByPartName(const wxString &partname, std::vector<TagEntryPtr> &tags) = 0;
+	
+	/**
+	 * @brief search for a single match in the database for an entry with a given name
+	 */
+	virtual TagEntryPtr GetTagsByNameLimitOne(const wxString& name) = 0;
 };
 
 enum {
@@ -460,32 +489,6 @@ enum {
 	TagError
 };
 
-/**
- * \class StorageCacheEnabler
- * \author eran
- * \date 02/08/10
- * \file istorage.h
- * \brief helper class to turn on/off storage cache flag
- */
-class StorageCacheEnabler
-{
-	ITagsStorage *m_storage;
-
-public:
-	StorageCacheEnabler(ITagsStorage *storage) : m_storage(storage)
-	{
-		if(m_storage) {
-			m_storage->SetUseCache(true);
-		}
-	}
-
-	~StorageCacheEnabler()
-	{
-		if(m_storage) {
-			m_storage->SetUseCache(false);
-			m_storage = NULL;
-		}
-	}
-};
+typedef SmartPtr<ITagsStorage> ITagsStoragePtr;
 
 #endif // ISTORAGE_H

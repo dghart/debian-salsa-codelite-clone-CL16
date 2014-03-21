@@ -42,11 +42,12 @@ class WXDLLIMPEXP_CL ProcessEventData
 {
 	wxString  m_data;
 	IProcess *m_process;
-	int       m_exitCode;
 
 public:
-	ProcessEventData() : m_exitCode(0) {}
-	virtual ~ProcessEventData() {}
+	ProcessEventData() : m_process(NULL) {}
+	virtual ~ProcessEventData() {
+        m_data.Clear();
+    }
 
 	void SetData(const wxString& data) {
 		this->m_data = data.c_str();
@@ -59,12 +60,6 @@ public:
 	}
 	IProcess* GetProcess() {
 		return m_process;
-	}
-	void SetExitCode(int exitCode) {
-		this->m_exitCode = exitCode;
-	}
-	int GetExitCode() const {
-		return m_exitCode;
 	}
 };
 

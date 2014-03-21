@@ -30,13 +30,16 @@
 #include "evnvarlist.h"
 #include "wx_xml_compatibility.h"
 #include <wx/log.h>
+#include "macromanager.h"
+
+const wxString __NO_SUCH_ENV__ = wxT("__NO_SUCH_ENV__");
 
 static EnvironmentConfig* ms_instance = NULL;
 
 //------------------------------------------------------------------------------
 
 EnvironmentConfig::EnvironmentConfig()
-: m_envApplied(0)
+    : m_envApplied(0)
 {
 }
 
@@ -46,168 +49,199 @@ EnvironmentConfig::~EnvironmentConfig()
 
 EnvironmentConfig* EnvironmentConfig::Instance()
 {
-	if (ms_instance == 0) {
-		ms_instance = new EnvironmentConfig();
-	}
-	return ms_instance;
+    if (ms_instance == 0) {
+        ms_instance = new EnvironmentConfig();
+    }
+    return ms_instance;
 }
 
 void EnvironmentConfig::Release()
 {
-	if (ms_instance) {
-		delete ms_instance;
-	}
-	ms_instance = 0;
+    if (ms_instance) {
+        delete ms_instance;
+    }
+    ms_instance = 0;
 }
 
 wxString EnvironmentConfig::GetRootName()
 {
-	return wxT("EnvironmentVariables");
+    return wxT("EnvironmentVariables");
 }
 
 bool EnvironmentConfig::Load()
 {
-	bool loaded = ConfigurationToolBase::Load( wxT("config/environment_variables.xml") );
-	if(loaded) {
-		// make sure that we are using the new format
-		wxXmlNode *node = XmlUtils::FindFirstByTagName(m_doc.GetRoot(), wxT("ArchiveObject"));
-		if(node) {
-			node = XmlUtils::FindFirstByTagName(node, wxT("StringMap"));
-			if(node) {
+    bool loaded = ConfigurationToolBase::Load( wxT("config/environment_variables.xml") );
+    if(loaded) {
+        // make sure that we are using the new format
+        wxXmlNode *node = XmlUtils::FindFirstByTagName(m_doc.GetRoot(), wxT("ArchiveObject"));
+        if(node) {
+            node = XmlUtils::FindFirstByTagName(node, wxT("StringMap"));
+            if(node) {
 
-				// this is an old version, convert it to the new format
-				EvnVarList vars;
-				std::map<wxString, wxString> envSets;
-				wxString content;
+                // this is an old version, convert it to the new format
+                EvnVarList vars;
+                std::map<wxString, wxString> envSets;
+                wxString content;
 
-				wxXmlNode *child = node->GetChildren();
-				while(child) {
-					if(child->GetName() == wxT("MapEntry")) {
-						wxString key = child->GetPropVal(wxT("Key"),   wxT(""));
-						wxString val = child->GetPropVal(wxT("Value"), wxT(""));
-						content << key << wxT("=") << val << wxT("\n");
-					}
-					child = child->GetNext();
-				}
-				envSets[wxT("Default")] = content.Trim().Trim(false);
-				vars.SetEnvVarSets(envSets);
-				SetSettings(vars);
-			}
-		}
-	}
-	return loaded;
+                wxXmlNode *child = node->GetChildren();
+                while(child) {
+                    if(child->GetName() == wxT("MapEntry")) {
+                        wxString key = child->GetPropVal(wxT("Key"),   wxT(""));
+                        wxString val = child->GetPropVal(wxT("Value"), wxT(""));
+                        content << key << wxT("=") << val << wxT("\n");
+                    }
+                    child = child->GetNext();
+                }
+                envSets[wxT("Default")] = content.Trim().Trim(false);
+                vars.SetEnvVarSets(envSets);
+                SetSettings(vars);
+            }
+        }
+    }
+    return loaded;
 }
 
 wxString EnvironmentConfig::ExpandVariables(const wxString &in, bool applyEnvironment)
 {
-	EnvSetter *env = NULL;
-	if(applyEnvironment) {
-		env = new EnvSetter(this);
-	}
+    EnvSetter *env = NULL;
+    if(applyEnvironment) {
+        env = new EnvSetter(this);
+    }
 
-	wxString expandedValue = DoExpandVariables(in);
+    wxString expandedValue = DoExpandVariables(in);
 
-	delete env;
-	return expandedValue;
+    delete env;
+    return expandedValue;
 }
 
-void EnvironmentConfig::ApplyEnv(StringMap *overrideMap)
+void EnvironmentConfig::ApplyEnv(wxStringMap_t *overrideMap, const wxString &project)
 {
-	// Dont allow recursive apply of the environment
-	m_envApplied++;
+    // Dont allow recursive apply of the environment
+    m_envApplied++;
 
-	if(m_envApplied > 1)
-		return;
+    if(m_envApplied > 1)
+        return;
 
-	//read the environments variables
-	EvnVarList vars;
-	ReadObject(wxT("Variables"), &vars);
+    //read the environments variables
+    EvnVarList vars;
+    ReadObject(wxT("Variables"), &vars);
 
-	// get the active environment variables set
-	EnvMap variables = vars.GetVariables();
+    // get the active environment variables set
+    EnvMap variables = vars.GetVariables(wxEmptyString, true, project);
 
-	// if we have an "override map" place all the entries from the override map
-	// into the global map before applying the environment
-	if(overrideMap) {
-		StringMap::iterator it = overrideMap->begin();
-		for(; it != overrideMap->end(); it++){
-			variables.Put(it->first, it->second);
-		}
-	}
+    // if we have an "override map" place all the entries from the override map
+    // into the global map before applying the environment
+    if(overrideMap) {
+        wxStringMap_t::iterator it = overrideMap->begin();
+        for(; it != overrideMap->end(); it++) {
+            variables.Put(it->first, it->second);
+        }
+    }
 
-	m_envSnapshot.clear();
-	for (size_t i=0; i<variables.GetCount(); i++) {
+    m_envSnapshot.clear();
+    for (size_t i=0; i<variables.GetCount(); i++) {
 
-		wxString key, val;
-		variables.Get(i, key, val);
+        wxString key, val;
+        variables.Get(i, key, val);
 
-		//keep old value before changing it
-		wxString oldVal(wxEmptyString);
-		wxGetEnv(key, &oldVal);
-		m_envSnapshot[key] = oldVal;
+        //keep old value before changing it
+        wxString oldVal(wxEmptyString);
+        if( wxGetEnv(key, &oldVal) == false ) {
+            oldVal = __NO_SUCH_ENV__;
+        }
 
+        // keep the old value, however, don't override it if it
+        // already exists as it might cause the variable to grow in size...
+        // Simple case:
+        // PATH=$(PATH);\New\Path
+        // PATH=$(PATH);\Another\New\Path
+        // If we replace the value, PATH will contain the original PATH + \New\Path
+        if ( m_envSnapshot.count( key ) == 0 ) {
+            m_envSnapshot.insert( std::make_pair( key, oldVal ) );
+        }
 
-		// Incase this line contains other environment variables, expand them before setting this environment variable
-		wxString newVal = DoExpandVariables(val);
+        // Incase this line contains other environment variables, expand them before setting this environment variable
+        wxString newVal = DoExpandVariables(val);
 
-		//set the new value
-		wxSetEnv(key, newVal);
-	}
+        //set the new value
+        wxSetEnv(key, newVal);
+    }
 }
 
 void EnvironmentConfig::UnApplyEnv()
 {
-	m_envApplied--;
+    m_envApplied--;
 
-	if(m_envApplied == 0) {
-		//loop over the old values and restore them
-		StringMap::iterator iter = m_envSnapshot.begin();
-		for ( ; iter != m_envSnapshot.end(); iter++ ) {
-			wxString key = iter->first;
-			wxString value = iter->second;
-			wxSetEnv(key, value);
-		}
-		m_envSnapshot.clear();
-	}
+    if(m_envApplied == 0) {
+        //loop over the old values and restore them
+        wxStringMap_t::iterator iter = m_envSnapshot.begin();
+        for ( ; iter != m_envSnapshot.end(); iter++ ) {
+            wxString key = iter->first;
+            wxString value = iter->second;
+            if ( value == __NO_SUCH_ENV__ ) {
+                // Remove the environment completely
+                ::wxUnsetEnv(key);
+            } else {
+                // Restore old value
+                ::wxSetEnv(key, value);
+            }
+        }
+        m_envSnapshot.clear();
+    }
 }
 
 EvnVarList EnvironmentConfig::GetSettings()
 {
-	EvnVarList vars;
-	ReadObject(wxT("Variables"), &vars);
-	return vars;
+    EvnVarList vars;
+    ReadObject(wxT("Variables"), &vars);
+    return vars;
 }
 
 void EnvironmentConfig::SetSettings(EvnVarList &vars)
 {
-	WriteObject(wxT("Variables"), &vars);
+    WriteObject(wxT("Variables"), &vars);
 }
 
 wxString EnvironmentConfig::DoExpandVariables(const wxString& in)
 {
-	static wxRegEx reVarPattern(wxT("\\$\\(( *)([a-zA-Z0-9_]+)( *)\\)"));
-	wxString result(in);
+    wxString result(in);
+    wxString varName, text;
 
-	while (reVarPattern.Matches(result)) {
-		wxString varName = reVarPattern.GetMatch(result, 2);
-		wxString text    = reVarPattern.GetMatch(result);
+    DollarEscaper de(result);
+    while ( MacroManager::Instance()->FindVariable(result, varName, text) ) {
 
-		wxString replacement;
-		if(varName == wxT("MAKE")) {
-			//ignore this variable, since it is probably was passed here
-			//by the makefile generator
-			replacement = wxT("___MAKE___");
+        wxString replacement;
+        if(varName == wxT("MAKE")) {
+            //ignore this variable, since it is probably was passed here
+            //by the makefile generator
+            replacement = wxT("___MAKE___");
 
-		} else {
+        } else {
 
-			//search for an environment with this name
-			wxGetEnv(varName, &replacement);
-		}
-		result.Replace(text, replacement);
-	}
+            //search for an environment with this name
+            wxGetEnv(varName, &replacement);
+        }
+        result.Replace(text, replacement);
+    }
 
-	//restore the ___MAKE___ back to $(MAKE)
-	result.Replace(wxT("___MAKE___"), wxT("$(MAKE)"));
-	return result;
+    //restore the ___MAKE___ back to $(MAKE)
+    result.Replace(wxT("___MAKE___"), wxT("$(MAKE)"));
+    return result;
 }
 
+// --------------------------------------------------------------------------
+// --------------------------------------------------------------------------
+// --------------------------------------------------------------------------
+// --------------------------------------------------------------------------
+
+DollarEscaper::DollarEscaper(wxString& str)
+    : m_str(str)
+{
+    m_str.Replace("$$", "@@ESC_DOLLAR@@");
+}
+
+DollarEscaper::~DollarEscaper()
+{
+    // we restore it to non escaped $ !!
+    m_str.Replace("@@ESC_DOLLAR@@", "$");
+}

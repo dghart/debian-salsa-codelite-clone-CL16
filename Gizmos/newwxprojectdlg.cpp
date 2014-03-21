@@ -25,6 +25,7 @@
  #include "wx/xrc/xmlres.h"
 #include "windowattrmanager.h"
 #include "imanager.h"
+#include "globals.h"
 #include "newwxprojectdlg.h"
 #include "wx/msgdlg.h"
 #include "workspace.h"
@@ -36,6 +37,9 @@ NewWxProjectDlg::NewWxProjectDlg( wxWindow* parent, IManager *mgr  )
 	m_bitmap1->SetBitmap(wxXmlResource::Get()->LoadBitmap(wxT("wx_project_header")));
 	m_choiceApplicationType->SetSelection(wxProjectTypeSimpleMain);
 	m_dirPicker->SetPath(m_mgr->GetWorkspace()->GetWorkspaceFileName().GetPath(wxPATH_GET_VOLUME|wxPATH_GET_SEPARATOR));
+	const wxString VersionChoices[] = { wxTRANSLATE("Default"), wxT("2.6"), wxT("2.8"), wxT("2.9"), wxT("3.0") };
+	m_stringManager.AddStrings(sizeof(VersionChoices)/sizeof(wxString), VersionChoices, wxT("Default"), m_choiceVersion);
+	
 	m_textCtrlName->SetFocus();
 
 #if defined (__WXMSW__)	
@@ -72,17 +76,17 @@ bool NewWxProjectDlg::ValidateInput()
 {
 	if(m_textCtrlName->GetValue().IsEmpty()){
 		wxString msg;
-		msg << wxT("Invalid project name '") << m_textCtrlName->GetValue() << wxT("'\n");
-		msg << wxT("Valid characters for project name are [0-9A-Za-z_]");
-		wxMessageBox(msg, wxT("CodeLite"), wxICON_WARNING|wxOK);
+		msg << _("Invalid project name '") << m_textCtrlName->GetValue() << wxT("'\n");
+		msg << _("Valid characters for project name are [0-9A-Za-z_]");
+		wxMessageBox(msg, _("CodeLite"), wxICON_WARNING|wxOK);
 		return false;
 	}
 	
 	if(m_textCtrlName->GetValue().find_first_not_of(wxT("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_")) != wxString::npos){
 		wxString msg;
-		msg << wxT("Invalid project name '") << m_textCtrlName->GetValue() << wxT("'\n");
-		msg << wxT("Valid characters for project name are [0-9A-Za-z_]");
-		wxMessageBox(msg, wxT("CodeLite"), wxICON_WARNING|wxOK);
+		msg << _("Invalid project name '") << m_textCtrlName->GetValue() << wxT("'\n");
+		msg << _("Valid characters for project name are [0-9A-Za-z_]");
+		wxMessageBox(msg, _("CodeLite"), wxICON_WARNING|wxOK);
 		return false;
 	}
 
@@ -95,7 +99,7 @@ bool NewWxProjectDlg::ValidateInput()
 	
 	wxFileName::Mkdir(path, 0777, wxPATH_MKDIR_FULL);
 	if ( !wxDirExists(path) ) {
-		wxMessageBox(wxString::Format(wxT("Failed to create the path: %s\nA permissions problem, perhaps?"), path.c_str() ), wxT("Error"), wxOK | wxICON_HAND);
+		wxMessageBox(wxString::Format(_("Failed to create the path: %s\nA permissions problem, perhaps?"), path.c_str() ), _("Error"), wxOK | wxICON_HAND);
 		return false;
 	}
 
@@ -141,7 +145,7 @@ void NewWxProjectDlg::GetProjectInfo(NewWxProjectInfo &info)
 	info.SetName(m_textCtrlName->GetValue());
 	info.SetPath(path);
 	info.SetPrefix(m_textCtrlPrefix->GetValue());
-	info.SetVersion(m_choiceVersion->GetStringSelection());
+	info.SetVersion(m_stringManager.GetStringSelection());
 }
 
 void NewWxProjectDlg::OnChoiceChanged(wxCommandEvent &e)

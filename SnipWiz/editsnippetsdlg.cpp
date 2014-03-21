@@ -42,16 +42,33 @@ void EditSnippetsDlg::OnItemSelected( wxCommandEvent& event )
 {
 	wxUnusedVar(event);
 	wxString selection = m_listBox1->GetStringSelection();
-	m_textCtrlMenuEntry->SetValue(selection);
-	m_textCtrlSnippet->SetValue(GetStringDb()->GetSnippetString(selection));
+	DoItemSelected(selection);
+}
+
+void EditSnippetsDlg::SelectItem(long index)
+{
+	m_listBox1->SetSelection(index);
+	wxString snippetStr = m_listBox1->GetString((unsigned int)index);
+	DoItemSelected(snippetStr);
+}
+
+void EditSnippetsDlg::DoItemSelected(const wxString& text)
+{
+	m_textCtrlMenuEntry->SetValue(text);
+	m_textCtrlSnippet->SetValue(GetStringDb()->GetSnippetString(text));
 	MenuItemDataMap accelMap;
 	m_manager->GetKeyboardManager()->GetAccelerators(accelMap);
-	MenuItemDataMap::iterator iter = accelMap.find(selection);
-	if (iter != accelMap.end()) {
+	if (text.IsEmpty()) {
+		return;
+	}
+
+	m_textCtrlAccelerator->SetValue(wxT(""));
+	MenuItemDataMap::iterator iter = accelMap.begin();
+	for (; iter != accelMap.end(); ++iter) {
 		MenuItemData mid = iter->second;
+		if (mid.action == text) {
 		m_textCtrlAccelerator->SetValue(mid.accel);
-	} else {
-		m_textCtrlAccelerator->SetValue(wxT(""));
+		}
 	}
 }
 
@@ -146,25 +163,6 @@ void EditSnippetsDlg::Initialize()
 	m_htmlWinAbout->SetPage(wxString::FromUTF8(snipwizhtml_txt));
 }
 
-void EditSnippetsDlg::SelectItem(long index)
-{
-	m_listBox1->SetSelection(index);
-	wxString snippetStr = m_listBox1->GetString((unsigned int)index);
-
-	m_textCtrlMenuEntry->SetValue(snippetStr);
-	m_textCtrlSnippet->SetValue(GetStringDb()->GetSnippetString(snippetStr));
-
-	MenuItemDataMap accelMap;
-	m_manager->GetKeyboardManager()->GetAccelerators(accelMap);
-	MenuItemDataMap::iterator iter = accelMap.find(snippetStr);
-	if (iter != accelMap.end()) {
-		MenuItemData mid = iter->second;
-		m_textCtrlAccelerator->SetValue(mid.accel);
-	} else {
-		m_textCtrlAccelerator->SetValue(wxT(""));
-	}
-}
-
 swStringDb* EditSnippetsDlg::GetStringDb()
 {
 	return m_pPlugin->GetStringDb();
@@ -194,7 +192,7 @@ void EditSnippetsDlg::OnButtonKeyShortcut(wxCommandEvent& e)
 		if (m_manager->GetKeyboardManager()->PopupNewKeyboardShortcutDlg(this, mid) == wxID_OK) {
 			
 			if (m_manager->GetKeyboardManager()->IsDuplicate(accelMap, mid.accel) && mid.accel.IsEmpty() == false) {
-				wxMessageBox(_("Accelerator already exist"), wxT("CodeLite"), wxOK|wxCENTRE, this);
+				wxMessageBox(_("That accelerator already exists"), _("CodeLite"), wxOK|wxCENTRE, this);
 				return;
 			}
 			

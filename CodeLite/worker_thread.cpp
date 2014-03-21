@@ -27,6 +27,7 @@
 WorkerThread::WorkerThread()
 : wxThread(wxTHREAD_JOINABLE)
 , m_notifiedWindow( NULL )
+, m_sleep(200)
 {
 }
 
@@ -62,7 +63,7 @@ void* WorkerThread::Entry()
 		}
 
 		// Sleep for 1 seconds, and then try again
-		wxThread::Sleep(200);
+		wxThread::Sleep(m_sleep);
 	}
 	return NULL;
 }
@@ -70,7 +71,7 @@ void* WorkerThread::Entry()
 void WorkerThread::Add(ThreadRequest *request)
 {
 	wxCriticalSectionLocker locker(m_cs);
-	m_queue.push_front(request);
+	m_queue.push_back(request);
 }
 
 ThreadRequest *WorkerThread::GetRequest()
@@ -86,7 +87,23 @@ ThreadRequest *WorkerThread::GetRequest()
 
 void WorkerThread::Stop()
 {
-	wxThread::Delete();
+#if wxVERSION_NUMBER < 2904
+    if(IsAlive()) {
+        Delete();
+    }
+    Wait();
+#else    
+    // Notify the thread to exit and 
+    // wait for it
+    if ( IsAlive() ) {
+        Delete(NULL, wxTHREAD_WAIT_BLOCK);
+        
+    } else {
+        Wait(wxTHREAD_WAIT_BLOCK);
+        
+    }
+#endif
+
 }
 
 void WorkerThread::Start(int priority)
@@ -94,5 +111,10 @@ void WorkerThread::Start(int priority)
 	Create();
 	SetPriority(priority);
 	Run();
+}
+
+void WorkerThread::SetSleepInterval(size_t ms)
+{
+	m_sleep = ms;
 }
 

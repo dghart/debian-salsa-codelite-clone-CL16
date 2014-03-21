@@ -25,42 +25,47 @@
 #ifndef FIND_IN_FILES_DLG_H
 #define FIND_IN_FILES_DLG_H
 
-#include "findinfilesdlgbase.h"
+#include "findinfiles_dlg.h"
 #include "findreplacedlg.h"
 #include "search_thread.h"
 
-class FindInFilesDialog : public FindInFilesDialogBase {
-	FindReplaceData m_data;
+class FindInFilesDialog : public FindInFilesDialogBase
+{
+    FindReplaceData m_data;
+protected:
+    void       DoSearch();
+    void       DoSearchReplace();
+    void       DoSaveSearchPaths();
+    SearchData DoGetSearchData();
+    void       DoSaveOpenFiles();
+    void       DoSetFileMask();
 
-	void       DoSearch();
-	void       DoSearchReplace();
-	void       DoSaveSearchPaths();
-	SearchData DoGetSearchData();
-	void       DoSaveOpenFiles();
+    // Event Handlers
+    virtual void OnClick(wxCommandEvent &event);
+    virtual void OnClose(wxCloseEvent &event);
+    virtual void OnAddPath( wxCommandEvent& event );
+    virtual void OnRemovePath( wxCommandEvent& event );
+    virtual void OnClearPaths( wxCommandEvent& event );
+    virtual void OnClearPathsUI( wxUpdateUIEvent& event );
+    virtual void OnRemovePathUI( wxUpdateUIEvent& event );
 
-	virtual void OnClick(wxCommandEvent &event);
-	virtual void OnClose(wxCloseEvent &event);
-	virtual void OnAddPath( wxCommandEvent& event );
-	virtual void OnRemovePath( wxCommandEvent& event );
-	virtual void OnClearPaths( wxCommandEvent& event );
-	virtual void OnClearPathsUI( wxUpdateUIEvent& event );
-	virtual void OnRemovePathUI( wxUpdateUIEvent& event );
-	void OnCharEvent(wxKeyEvent &event);
+    virtual void OnFindWhatUI( wxUpdateUIEvent& event );
 
-	virtual void OnFindWhatUI( wxUpdateUIEvent& event );
-
-	void OnUseDiffColourForCommentsUI(wxUpdateUIEvent& event);
+    void OnUseDiffColourForCommentsUI(wxUpdateUIEvent& event);
 
 public:
-	FindInFilesDialog(wxWindow* parent, wxWindowID id, const FindReplaceData& data);
-	virtual ~FindInFilesDialog();
-	void SetRootDir   (const wxString &rootDir);
+    FindInFilesDialog(wxWindow* parent, const wxString &dataName);
+    virtual ~FindInFilesDialog();
+    void SetRootDir   (const wxString &rootDir);
 
-	FindReplaceData& GetData() {
-		return m_data;
-	}
-
-	virtual bool Show();
+    FindReplaceData& GetData() {
+        return m_data;
+    }
+    
+    const FindReplaceData& GetData() const {
+        return m_data;
+    }
+    virtual bool Show();
 };
 
 #endif // FIND_IN_FILES_DLG_H

@@ -23,6 +23,7 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 
+#include "globals.h"
 #include "editorsettingsfolding.h"
 
 EditorSettingsFolding::EditorSettingsFolding( wxWindow* parent )
@@ -35,8 +36,13 @@ EditorSettingsFolding::EditorSettingsFolding( wxWindow* parent )
 	m_foldPreprocessors->SetValue(options->GetFoldPreprocessor());
 	m_foldCompact->SetValue(options->GetFoldCompact());
 	m_foldElse->SetValue(options->GetFoldAtElse());
-	m_foldStyle->SetStringSelection( options->GetFoldStyle() );
-	m_colourPicker->SetColour(options->GetFoldBgColour());
+	
+	const wxString FoldStyles[] = { wxTRANSLATE("Simple"), 
+									wxTRANSLATE("Arrows"), 
+									wxTRANSLATE("Flatten Tree Square Headers"), 
+									wxTRANSLATE("Flatten Tree Circular Headers") };
+									
+	m_stringManager.AddStrings(sizeof(FoldStyles)/sizeof(wxString), FoldStyles, options->GetFoldStyle(), m_foldStyle);
 }
 
 
@@ -47,13 +53,19 @@ void EditorSettingsFolding::Save(OptionsConfigPtr options)
 	options->SetFoldPreprocessor(m_foldPreprocessors->GetValue());
 	options->SetFoldCompact(m_foldCompact->GetValue());
 	options->SetFoldAtElse(m_foldElse->GetValue());
-	options->SetFoldStyle(m_foldStyle->GetStringSelection());
-	options->SetFoldBgColour(m_colourPicker->GetColour());
-}
-
-void EditorSettingsFolding::OnFoldColourUI(wxUpdateUIEvent& e)
-{
-	e.Enable( m_displayMargin->IsChecked() && (m_foldStyle->GetStringSelection() == wxT("Arrows with Background Colour") || m_foldStyle->GetStringSelection() == wxT("Simple with Background Colour")) );
+	
+	// Get the foldstyle selection, unlocalised
+	wxString foldStyle = m_stringManager.GetStringSelection();
+	
+	// thses 2 styles no longer exists...
+	if(foldStyle == _("Arrows with Background Colour") || foldStyle == _("Simple with Background Colour"))
+		foldStyle.Clear();
+		
+	if (foldStyle.IsEmpty()) {
+		foldStyle = wxT("Arrows");
+	}
+	
+	options->SetFoldStyle(foldStyle);
 }
 
 void EditorSettingsFolding::OnFoldingMarginUI(wxUpdateUIEvent& event)

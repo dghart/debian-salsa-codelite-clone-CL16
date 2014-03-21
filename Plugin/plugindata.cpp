@@ -25,7 +25,6 @@
 #include "plugindata.h"
 
 PluginInfo::PluginInfo()
-		: enabled(true)
 {
 }
 
@@ -33,19 +32,83 @@ PluginInfo::~PluginInfo()
 {
 }
 
-void PluginInfo::DeSerialize(Archive &arch)
+void PluginInfo::FromJSON(const JSONElement& json)
 {
-	arch.Read(wxT("enabled"), enabled);
-	arch.Read(wxT("name"), name);
-	arch.Read(wxT("author"), author);
-	arch.Read(wxT("description"), description);
-	arch.Read(wxT("version"), version);
+    name = json.namedObject("name").toString();
+    author = json.namedObject("author").toString();
+    description = json.namedObject("description").toString();
+    version = json.namedObject("version").toString();
 }
-void PluginInfo::Serialize(Archive &arch)
+
+JSONElement PluginInfo::ToJSON() const
 {
-	arch.Write(wxT("enabled"), enabled);
-	arch.Write(wxT("name"), name);
-	arch.Write(wxT("author"), author);
-	arch.Write(wxT("description"), description);
-	arch.Write(wxT("version"), version);
+    JSONElement e = JSONElement::createObject();
+    e.addProperty("name", name);
+    e.addProperty("author", author);
+    e.addProperty("description", description);
+    e.addProperty("version", version);
+    return e;
+}
+
+
+//-------------------------------------------
+// PluginConfig
+//-------------------------------------------
+PluginInfoArray::PluginInfoArray()
+    : clConfigItem("codelite-plugins")
+{
+}
+
+PluginInfoArray::~PluginInfoArray()
+{
+}
+
+void PluginInfoArray::DisablePugins(const wxArrayString& plugins)
+{
+    m_disabledPlugins = plugins;
+}
+
+bool PluginInfoArray::CanLoad(const wxString &plugin) const
+{
+    return m_disabledPlugins.Index(plugin) == wxNOT_FOUND;
+}
+
+void PluginInfoArray::FromJSON(const JSONElement& json)
+{
+    m_disabledPlugins = json.namedObject("disabledPlugins").toArrayString();
+    m_plugins.clear();
+    JSONElement arr = json.namedObject("installed-plugins");
+    for(int i=0; i<arr.arraySize(); ++i) {
+        PluginInfo pi;
+        pi.FromJSON( arr.arrayItem(i) );
+        m_plugins.insert(std::make_pair(pi.GetName(), pi));
+    }
+}
+
+JSONElement PluginInfoArray::ToJSON() const
+{
+    JSONElement el = JSONElement::createObject(GetName());
+    el.addProperty("disabledPlugins", m_disabledPlugins);
+    
+    JSONElement arr = JSONElement::createArray("installed-plugins");
+    PluginInfo::PluginMap_t::const_iterator iter = m_plugins.begin();
+    for( ; iter != m_plugins.end(); ++iter ) {
+        arr.arrayAppend( iter->second.ToJSON() );
+    }
+    el.append(arr);
+    return el;
+}
+
+void PluginInfoArray::AddPlugin(const PluginInfo& plugin)
+{
+    if ( m_plugins.count(plugin.GetName()) )
+        m_plugins.erase(plugin.GetName());
+        
+    m_plugins.insert(std::make_pair(plugin.GetName(), plugin));
+}
+
+void PluginInfoArray::DisablePlugin(const wxString& plugin)
+{
+    if ( m_disabledPlugins.Index(plugin) == wxNOT_FOUND )
+        m_disabledPlugins.Add( plugin );
 }

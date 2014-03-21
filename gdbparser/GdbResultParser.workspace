@@ -8,5 +8,8 @@
     <WorkspaceConfiguration Name="Release" Selected="no">
       <Project Name="GdbResultParser" ConfigName="Release"/>
     </WorkspaceConfiguration>
+    <WorkspaceConfiguration Name="Linux" Selected="no">
+      <Project Name="GdbResultParser" ConfigName="Linux"/>
+    </WorkspaceConfiguration>
   </BuildMatrix>
 </CodeLite_Workspace>

@@ -54,6 +54,7 @@ struct NewClassInfo {
 	bool                           implAllPureVirtual;
 	bool                           implAllVirtual;
 	bool                           isInline;
+	bool                           hppHeader;
 	std::vector< ClassParentInfo > parents;
 
 	NewClassInfo()
@@ -63,6 +64,7 @@ struct NewClassInfo {
 		, implAllPureVirtual(false)
 		, implAllVirtual(false)
 		, isInline(false)
+		, hppHeader(false)
 	{}
 
 	~NewClassInfo()
@@ -72,8 +74,10 @@ struct NewClassInfo {
 /** Implementing NewClassBaseDlg */
 class NewClassDlg : public NewClassBaseDlg
 {
-	long m_selectedItem;
+	long      m_selectedItem;
 	IManager *m_mgr;
+	wxString  m_basePath;
+	
 protected:
 	// Handlers for NewClassBaseDlg events.
 	void OnListItemActivated( wxListEvent& event );
@@ -91,9 +95,11 @@ protected:
 	void OnBrowseVD(wxCommandEvent &e);
 	void OnBrowseNamespace(wxCommandEvent &e);
 	void OnCheckInline(wxCommandEvent &e);
+	void OnOkUpdateUI(wxUpdateUIEvent& event);
 
 	wxString doSpliteByCaptilization(const wxString &str);
-
+	void DoUpdateGeneratedPath();
+	
 public:
 	/** Constructor */
 	NewClassDlg( wxWindow* parent, IManager *mgr );
@@ -111,6 +117,7 @@ public:
 	wxString GetVirtualDirectoryPath() {return m_textCtrlVD->GetValue();}
 	void GetNamespacesList(wxArrayString& namespacesArray);
 	bool IsInline() const {return m_checkBoxInline->GetValue();}
+	bool HppHeader() const {return m_checkBoxHpp->GetValue();}
 };
 
 #endif // __newclassdlg__

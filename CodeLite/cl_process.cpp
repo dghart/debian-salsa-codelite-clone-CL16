@@ -53,28 +53,13 @@ void clProcess::SetPid(long pid)
 
 void clProcess::Terminate()
 {
-	wxLog::EnableLogging(false);
 	wxKillError rc;
-#ifdef __WXMSW__
-	std::map<unsigned long, bool> tree;
-	ProcUtils::GetProcTree(tree, GetPid());
-
-
-	std::map<unsigned long, bool>::iterator iter = tree.begin();
-	for(; iter != tree.end(); iter++){
-		if(wxProcess::Exists(iter->first)) {
-			wxKill(iter->first, wxSIGKILL, &rc);
-		}
-	}
-#else
 	wxKill(GetPid(), wxSIGKILL, &rc, wxKILL_CHILDREN);
-#endif
 
 	// Sleep for 20 ms to allow the process to be killed and
 	// the main frame to handle the event or else we can get
 	// memory leak
 	wxMilliSleep( 150 );
-	wxLog::EnableLogging(true);
 }
 
 long clProcess::Start(bool hide)

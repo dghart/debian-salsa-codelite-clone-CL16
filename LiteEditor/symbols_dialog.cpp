@@ -26,6 +26,7 @@
 #include "manager.h"
 #include "macros.h"
 #include "globals.h"
+#include "windowattrmanager.h"
 
 BEGIN_EVENT_TABLE(SymbolsDialog, SymbolsDialogBase)
 	EVT_CHAR_HOOK(SymbolsDialog::OnCharHook)
@@ -38,14 +39,20 @@ SymbolsDialog::SymbolsDialog( wxWindow* parent )
 		, m_selectedItem(wxNOT_FOUND)
 {
 	// Initialise the list control
-	m_results->InsertColumn(0, wxT("Symbol"));
-	m_results->InsertColumn(1, wxT("Kind"));
-	m_results->InsertColumn(2, wxT("File"));
-	m_results->InsertColumn(3, wxT("Line"));
-	m_results->InsertColumn(4, wxT("Pattern"));
+	m_results->InsertColumn(0, _("Symbol"));
+	m_results->InsertColumn(1, _("Kind"));
+	m_results->InsertColumn(2, _("File"));
+	m_results->InsertColumn(3, _("Line"));
+	m_results->InsertColumn(4, _("Pattern"));
 	
 	m_results->Connect(wxEVT_COMMAND_LIST_ITEM_DESELECTED, wxListEventHandler(SymbolsDialog::OnItemDeselected), NULL, this);
 	Centre();
+	WindowAttrManager::Load(this, wxT("SymbolsDialog"), NULL);
+}
+
+SymbolsDialog::~SymbolsDialog()
+{
+	WindowAttrManager::Save(this, wxT("SymbolsDialog"), NULL);
 }
 
 void SymbolsDialog::AddSymbol(const TagEntryPtr &tag, bool sel)
@@ -170,3 +177,4 @@ void SymbolsDialog::OnCharHook(wxKeyEvent &event)
 	}
 	event.Skip();
 }
+

@@ -7,17 +7,17 @@
       <Project Name="sqlite3" ConfigName="Debug"/>
       <Project Name="sqlite3" ConfigName="Debug"/>
     </WorkspaceConfiguration>
-    <WorkspaceConfiguration Name="Release" Selected="no">
+    <WorkspaceConfiguration Name="Release" Selected="yes">
       <Project Name="CCTest" ConfigName="Release"/>
       <Project Name="sqlite3" ConfigName="Release"/>
       <Project Name="sqlite3" ConfigName="Release"/>
     </WorkspaceConfiguration>
-    <WorkspaceConfiguration Name="Debug_Unix" Selected="yes">
+    <WorkspaceConfiguration Name="Debug_Unix" Selected="no">
       <Project Name="sqlite3" ConfigName="Debug"/>
       <Project Name="CCTest" ConfigName="Debug_Unix"/>
       <Project Name="sqlite3" ConfigName="Debug"/>
     </WorkspaceConfiguration>
-    <WorkspaceConfiguration Name="Release_Unix" Selected="yes">
+    <WorkspaceConfiguration Name="Release_Unix" Selected="no">
       <Project Name="sqlite3" ConfigName="Release"/>
       <Project Name="CCTest" ConfigName="Release_Unix"/>
       <Project Name="sqlite3" ConfigName="Debug"/>

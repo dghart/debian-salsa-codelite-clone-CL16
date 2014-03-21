@@ -27,28 +27,31 @@
 #define __abbreviation__
 
 #include "plugin.h"
+#include "cl_command_event.h"
 
 class AbbreviationPlugin : public IPlugin
 {
-	wxEvtHandler *m_topWindow;
+    wxEvtHandler *m_topWindow;
+    clConfig m_config;
+    
 protected:
-	void OnSettings(wxCommandEvent &e);
-	void OnAbbreviations(wxCommandEvent &e);
-	void OnAbbrevSelected(wxCommandEvent &e);
-	void InitDefaults();
+    void OnSettings(wxCommandEvent &e);
+    void OnAbbreviations(wxCommandEvent &e);
+    void OnAbbrevSelected(clCodeCompletionEvent &e);
+    void InitDefaults();
+    bool InsertExpansion(const wxString& abbreviation);
 
 public:
-	AbbreviationPlugin(IManager *manager);
-	~AbbreviationPlugin();
+    AbbreviationPlugin(IManager *manager);
+    ~AbbreviationPlugin();
 
-	//--------------------------------------------
-	//Abstract methods
-	//--------------------------------------------
-	virtual clToolBar *CreateToolBar(wxWindow *parent);
-	virtual void CreatePluginMenu(wxMenu *pluginsMenu);
-	virtual void HookPopupMenu(wxMenu *menu, MenuType type);
-	virtual void UnPlug();
+    //--------------------------------------------
+    //Abstract methods
+    //--------------------------------------------
+    virtual clToolBar *CreateToolBar(wxWindow *parent);
+    virtual void CreatePluginMenu(wxMenu *pluginsMenu);
+    virtual void HookPopupMenu(wxMenu *menu, MenuType type);
+    virtual void UnPlug();
 };
 
 #endif //abbreviation
-

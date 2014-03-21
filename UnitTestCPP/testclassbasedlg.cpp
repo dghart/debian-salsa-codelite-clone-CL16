@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version Mar 19 2008)
+// C++ code generated with wxFormBuilder (version Nov 18 2010)
 // http://www.wxformbuilder.org/
 //
 // PLEASE DO "NOT" EDIT THIS FILE!
@@ -59,7 +59,7 @@ TestClassBaseDlg::TestClassBaseDlg( wxWindow* parent, wxWindowID id, const wxStr
 	
 	fgSizer2->Add( m_textCtrlFileName, 0, wxALL|wxEXPAND, 5 );
 	
-	m_staticText5 = new wxStaticText( this, wxID_ANY, _("Project to whom these unit tests should be added to:"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_staticText5 = new wxStaticText( this, wxID_ANY, _("Project to which these unit tests should be added:"), wxDefaultPosition, wxDefaultSize, 0 );
 	m_staticText5->Wrap( -1 );
 	fgSizer2->Add( m_staticText5, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5 );
 	
@@ -133,4 +133,5 @@ TestClassBaseDlg::~TestClassBaseDlg()
 	m_buttonCheckAll->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TestClassBaseDlg::OnCheckAll ), NULL, this );
 	m_buttonUnCheckAll->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TestClassBaseDlg::OnUnCheckAll ), NULL, this );
 	m_buttonCreate->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TestClassBaseDlg::OnButtonOk ), NULL, this );
+	
 }
