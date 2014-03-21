@@ -1,12 +1,46 @@
-Format-Specification: http://svn.debian.org/wsvn/dep/web/deps/dep5.mdwn?op=file&rev=135
-Name: CodeLite
-Maintainer: Eran Ifrah <eranif@gmail.com>
-Source: http://www.codelite.org
+Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: CodeLite
+Upstream-Contact: Eran Ifrah <eranif@gmail.com>
+Source: https://github.com/eranif/codelite
+Files-Excluded:
+ *.exe
+ *.dll
+ patches
+ sdk/astyle
+ sdk/clang
+ sdk/codelite_cppcheck
+ sdk/curl
+ sdk/databaselayer/src/sqlite3
+ sdk/libssh
+ sdk/src
+ sdk/wxconfig
+ sdk/wxsqlite3
+ sqlite3
+ Runtime/src/unittest++1.3.tar.gz
+ Runtime/OpenTerm
+ UnitTest++
 
-Copyright: 2007-2010 Eran Ifrah <eranif@gmail.com>
+Files: *
+Copyright: 2007-2014 Eran Ifrah <eranif@gmail.com>
+           2011-2014 David Hart <david@codelite.co.uk>
 License: CodeLite
 
-Files: ./CxxParser/cpp5_grammar.y.full
+Files: CMakePlugin/*
+Copyright: 2013 Jiří Fatka <ntsfka@gmail.com>
+License: GPL-3+
+
+Files: CodeBeautifier/UncrustifyCodeBeautifier/*
+       CodeBeautifier/win32/*
+Copyright: Ben Gardner
+License: GPL-2+
+
+Files: CodeFormatter/AS*.cpp
+       CodeFormatter/astyle*
+Copyright: 2006-2011, Jim Pattee <jimp03@email.com>
+           1998-2002, Tal Davidson
+License: LGPL-3+
+
+Files: CxxParser/cpp5_grammar.y.full
 Copyright: 1989-1990, James  A. Roskind <jar@hq.ileaf.com>
 License: other
  This grammar was developed  and  written  by  James  A.  Roskind. 
@@ -38,7 +72,7 @@ License: other
  WARRANTIES  OF  MERCHANTABILITY  AND  FITNESS  LE_FOR  A  PARTICULAR 
  PURPOSE.
 
-Files: ./CodeLite/cpp5.l
+Files: CodeLite/cpp5.l
 Copyright: 1989-1991, James A. Roskind <jar@hq.ileaf.com>
 License: other
  This lexer description was written by James A.  Roskind.  Copying
@@ -68,195 +102,18 @@ License: other
  WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES
  OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 
-Files: ./CodeLite/readtags*
+Files: CodeLite/readtags*
 Copyright: 1996-2003, Darren Hiebert
- 2008, Eran Ifrah <eranif@gmail.com>
+           2008, Eran Ifrah <eranif@gmail.com>
 License: CodeLite
-X-Comment: the original author, Darren Hiebert, released these
+Comment: the original author, Darren Hiebert, released these
  files in the Public Domain.
 
-Files: ./sdk/codelite_cppchecker/src/*
-Copyright: 2007-2009 Daniel Marjamäki and Cppcheck team
-License: GPL-3+
-
-Files: ./sdk/codelite_indexer/libctags/asp.c
-Copyright: 2000, Patrick Dehne <patrick@steidle.net>
-License: GPL-2+
-
-Files: ./sdk/codelite_indexer/libctags/beta.c
-Copyright: 1999-2000, Mj�lner Informatics
-License: GPL-2+
-
-Files: ./sdk/codelite_indexer/libctags/e_mac.h
-Copyright: 2001, Maarten L. Hekkelman <maarten@hekkelman.com>
-License: GPL-2+
-
-Files: ./sdk/codelite_indexer/libctags/e_riscos.h
-Copyright: 2002, Andrew Wingate <andy@sparse.net>
-License: GPL-2+
-
-Files: ./sdk/codelite_indexer/libctags/erlang.c
-Copyright: 2003, Brent Fulgham <bfulgham@debian.org>
-License: GPL-2+
-
-Files: ./sdk/codelite_indexer/libctags/lua.c
-Copyright: 2000-2001, Max Ischenko <mfi@ukr.net>
-License: GPL-2+
-
-Files: ./sdk/codelite_indexer/libctags/php.c
-Copyright: 2000, Jesus Castagnetto <jmcastagnetto@zkey.com>
-License: GPL-2+
-
-Files: ./sdk/codelite_indexer/libctags/ruby.c
-Copyright: 2000-2001, Thaddeus Covert <sahuagin@mediaone.net>
-           2002, Matthias Veit <matthias_veit@yahoo.de>
-           2004, Elliott Hughes <enh@acm.org>
-License: GPL-2+
-
-Files: ./sdk/codelite_indexer/libctags/slang.c
-Copyright: 2000-2001, Francesc Rocher <f.rocher@computer.org>
-License: GPL-2+
-
-Files: ./sdk/codelite_indexer/libctags/sml.c
-Copyright: 2002, Venkatesh Prasad Ranganath
-           2002, Darren Hiebert
-License: GPL-2+
-
-Files: ./sdk/codelite_indexer/libctags/yacc.c
-Copyright: 2001-2002, Nick Hibma <n_hibma@van-laarhoven.org>
-License: GPL-2+
-
-Files: ./sdk/codelite_indexer/libctags/*
-Copyright: 1996-2003, Darren Hiebert
-License: GPL-2+
-
-Files: ./Debugger/*
-Copyright: 2008 Eran Ifrah <eranif@gmail.com>
-License: GPL-2+
-
-Files: ./sdk/wxflatnotebook/src/wxFlatNotebook/xh_fnb.cpp
-Copyright: 2006i, Armel Asselin (copied from Vaclav Slavik xh_notbk)
+Files: FileCrawler/trunk/fileCrawler/test.h
+Copyright: 2007 Karsten Ballueder
 License: wxWindows
 
-Files: ./sdk/wxscintilla/*
-Copyright: 1998-2008, Neil Hodgson <neilh@scintilla.org>
-License: wxWindows
-
-Files: ./sdk/wxscintilla/{build,include}/*
-Copyright: 2004, wxCode
-License: wxWindows
-
-Files: ./sdk/wxscintilla/src/scintilla/src/LexPLM.cxx
-Copyright: 1990-2007, Scientific Toolworks, Inc
-License: Scintilla
-
-Files: ./sdk/wxscintilla/src/scintilla/src/LexTCL.cxx
-Copyright: 1998-2001, Andre Arpin <arpin@kingston.net>
-License: Scintilla
-
-Files: ./sdk/wxscintilla/src/scintilla/src/LexGCC.cxx,
- ./sdk/wxscintilla/src/scintilla/src/LexSVN.cxx,
- ./sdk/wxscintilla/src/scintilla/src/LexFIF.cxx
-Copyright: 1998-2001 Eran Ifrah <eran.ifrah@gmail.com>
-License: Scintilla
-
-Files: ./sdk/wxscintilla/src/ScintillaWX.cpp
-Copyright: 2000, Total Control Software
-License: wxWindows
-
-Files: ./sdk/wxscintilla/src/scintilla/src/LexRuby.cxx
-Copyright: 2001, Clemens Wyss <wys@helbling.ch>
-License: Scintilla
-
-Files: ./sdk/wxscintilla/src/scintilla/src/LexBaan.cxx
-Copyright: 2001, Vamsi Potluru <vamsi@who.net>
-Copyright: 2001, Praveen Ambekar <ambekarpraveen@yahoo.com>
-License: Scintilla
-
-Files: ./sdk/wxscintilla/src/scintilla/src/ExternalLexer.cxx
-Copyright: 2001, Simon Steele <ss@notepad.org>
-License: Scintilla
-
-Files: ./sdk/wxscintilla/src/scintilla/src/LexAda.cxx
-Copyright: 2002, Sergey Koshcheyev <sergey.k@seznam.cz>
-License: Scintilla
-
-Files: ./sdk/wxscintilla/src/scintilla/src/LexCLW.cxx
-Copyright: 2003-2004, Ron Schofield <ron@schofieldcomputer.com>
-License: Scintilla
-
-Files: ./sdk/wxscintilla/src/scintilla/src/LexNsis.cxx
-Copyright: 2003-2005, Angelo Mandato <angelo@spaceblue.com>
-License: Scintilla
-
-Files: ./sdk/wxscintilla/src/scintilla/src/LexLout.cxx
-Copyright: 2003, Kein-Hong Man <mkh@pl.jaring.my>
-License: Scintilla
-
-Files: ./sdk/wxscintilla/src/scintilla/src/LexMPT.cxx
-Copyright: 2003, Marius Gheorghe <mgheorghe@cabletest.com>
-License: Scintilla
-
-Files: ./sdk/wxscintilla/src/scintilla/src/LexEScript.cxx
-Copyright: 2003, Patrizio Bekerle <patrizio@bekerle.com>
-License: Scintilla
-
-Files: ./sdk/wxscintilla/src/scintilla/src/LexYAML.cxx
-Copyright: 2003, Sean O'Dell <sean@celsoft.com>
-License: Scintilla
-
-Files: ./sdk/wxscintilla/src/scintilla/src/LexAsn1.cxx
-Copyright: 2004, Herr Pfarrer <rpfarrer@yahoo.de>
-License: Scintilla
-
-Files: ./sdk/wxscintilla/src/scintilla/src/LexKix.cxx
-Copyright: 2004, Manfred Becker <manfred@becker-trdf.de>
-License: Scintilla
-
-Files: ./sdk/wxscintilla/src/wxscintilla.cpp
-Copyright: 2004, wxCode
-License: wxWindows
-
-Files: ./sdk/wxscintilla/src/scintilla/src/LexRebol.cxx
-Copyright: 2005, Pascal Hurni <pascal_hurni@fastmail.fm>
-License: Scintilla
-
-Files: ./sdk/wxscintilla/src/scintilla/src/LexFlagship.cxx
-Copyright: 1998-2003, Neil Hodgson <neilh@scintilla.org>
-Copyright: 2005, Randy Butler
-License: Scintilla
-
-Files: ./sdk/wxscintilla/src/scintilla/src/LexCaml.cxx
-Copyright: 2005, Robert Roessler <robertr@rftp.com>
-License: Scintilla
-
-Files: ./sdk/wxscintilla/src/scintilla/src/LexProgress.cxx
-Copyright: 2006-2007, Yuval Papish <Yuval@YuvCom.com>
-License: Scintilla
-
-Files: ./sdk/wxscintilla/src/scintilla/src/LexCmake.cxx
-Copyright: 2007, Cristian Adam <cristian.adam@gmx.net>
-License: Scintilla
-
-Files: ./sdk/wxscintilla/src/scintilla/src/LexGAP.cxx
-Copyright: 2007, Istvan Szollosi <szteven@gmail.com>
-License: Scintilla
-
-Files: ./sdk/wxscintilla/src/scintilla/src/LexPowerShell.cxx
-Copyright: 2008, Tim Gerundt <tim@gerundt.de>
-License: Scintilla
-
-Files: ./sdk/wxsqlite3/*
-Copyright: Ulrich Telle
-License: wxWindows
-
-Files: ./CodeFormatter/AS*.cpp, ./CodeFormatter/astyle*
-Copyright:
- 2006-2010, Jim Pattee <jimp03@email.com>
- 1998-2002, Tal Davidson
-License: LGPL-2.1+
-
-Files: ./Plugin/md5*
+Files: Plugin/md5*
 Copyright: 1991-1992, RSA Data Security, Inc.
 License: other
  License to copy and use this software is granted provided that it
@@ -277,18 +134,102 @@ License: other
  These notices must be retained in any copies of any part of this
  documentation and/or software.
 
-Files: ./Plugin/wxmd5*
+Files: Plugin/wxmd5*
 Copyright: 1991-1992, RSA Data Security, Inc.
 License: wxWindows
 
-Files: ./UnitTest++/*
-Copyright: 2006, Noel Llopis <llopis@convexhull.com>
-           2006, Charles Nicholson <cn@cnicholson.net>
-License: MIT
+Files: Runtime/gdb_printers/qt4.py
+Copyright: 2009 Niko Sams <niko.sams@gmail.com>
+License: GPL-2+
 
-Files: ./debian/*
-Copyright: 2010, Alessio Treglia <quadrispro@ubuntu.com>
-           2009, Chow Loong Jin <hyperair@ubuntu.com>
+Files: Runtime/gdb_printers/libstdcxx/v6/printers.py
+Copyright: 2008-2013 Free Software Foundation, Inc.
+License: GPL-3+
+
+Files: ZoomNavigator/*
+Copyright: 2013 Brandon Captain <bcaptain404@gmail.com>
+License: CodeLite
+
+Files: sdk/codelite_indexer/libctags/*
+Copyright: 1996-2003, Darren Hiebert
+License: GPL-2+
+
+Files: sdk/codelite_indexer/libctags/asp.c
+Copyright: 2000, Patrick Dehne <patrick@steidle.net>
+License: GPL-2+
+
+Files: sdk/codelite_indexer/libctags/beta.c
+Copyright: 1999-2000, Mjølner Informatics
+License: GPL-2+
+
+Files: sdk/codelite_indexer/libctags/e_mac.h
+Copyright: 2001, Maarten L. Hekkelman <maarten@hekkelman.com>
+License: GPL-2+
+
+Files: sdk/codelite_indexer/libctags/e_riscos.h
+Copyright: 2002, Andrew Wingate <andy@sparse.net>
+License: GPL-2+
+
+Files: sdk/codelite_indexer/libctags/erlang.c
+Copyright: 2003, Brent Fulgham <bfulgham@debian.org>
+License: GPL-2+
+
+Files: sdk/codelite_indexer/libctags/lua.c
+Copyright: 2000-2001, Max Ischenko <mfi@ukr.net>
+License: GPL-2+
+
+Files: sdk/codelite_indexer/libctags/php.c
+Copyright: 2000, Jesus Castagnetto <jmcastagnetto@zkey.com>
+License: GPL-2+
+
+Files: sdk/codelite_indexer/libctags/ruby.c
+Copyright: 2000-2001, Thaddeus Covert <sahuagin@mediaone.net>
+           2002, Matthias Veit <matthias_veit@yahoo.de>
+           2004, Elliott Hughes <enh@acm.org>
+License: GPL-2+
+
+Files: sdk/codelite_indexer/libctags/slang.c
+Copyright: 2000-2001, Francesc Rocher <f.rocher@computer.org>
+License: GPL-2+
+
+Files: sdk/codelite_indexer/libctags/sml.c
+Copyright: 2002, Venkatesh Prasad Ranganath
+           2002, Darren Hiebert
+License: GPL-2+
+
+Files: sdk/codelite_indexer/libctags/yacc.c
+Copyright: 2001-2002, Nick Hibma <n_hibma@van-laarhoven.org>
+License: GPL-2+
+
+Files: sdk/databaselayer/*
+Copyright: 2009 Joseph Blough <jblough@umich.edu>
+License: wxWindows
+
+Files: sdk/databaselayer/include/wx/dblayer/include/otlv4.h
+Copyright: 1996,2007 Sergei Kuchin
+License: other
+ This library is free software. Permission to use, copy,
+ modify and redistribute it for any purpose is hereby granted
+ without fee, provided that the above copyright notice appear
+ in all copies.
+
+Files: sdk/wxflatnotebook/src/wxFlatNotebook/xh_fnb.cpp
+       sdk/wxflatnotebook/include/wx/wxFlatNotebook/xh_fnb.h
+Copyright: 2006, Armel Asselin (copied from Vaclav Slavik xh_notbk)
+License: wxWindows
+
+Files: sdk/wxshapeframework/*
+Copyright: 2007-2010 Michal Bližňák <michal.bliznak@tiscali.cz>
+License: wxWindows
+
+Files: sdk/wxshapeframework/include/wx/wx_xml_compatibility.h
+Copyright: 2009 Eran Ifrah <eranif@gmail.com>
+License: CodeLite
+
+Files: debian/*
+Copyright: 2009 Chow Loong Jin <hyperair@ubuntu.com>
+           2010 Alessio Treglia <quadrispro@ubuntu.com>
+           2014 James Cowgill <james410@cowgill.org.uk>
 License: GPL-2+
 
 License: GPL-2+
@@ -305,7 +246,8 @@ License: GPL-2+
  You should have received a copy of the GNU General Public License along
  with this program; if not, write to the Free Software Foundation, Inc.,
  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-X-Comment: On Debian systems, the complete text of the GNU General Public
+ .
+ On Debian systems, the complete text of the GNU General Public
  License can be found in `/usr/share/common-licenses/GPL-2'.
 
 License: GPL-3+
@@ -321,7 +263,8 @@ License: GPL-3+
  .
  You should have received a copy of the GNU General Public License
  along with this program.  If not, see <http://www.gnu.org/licenses/>.
-X-Comment: On Debian systems, the complete text of the GNU General Public
+ .
+ On Debian systems, the complete text of the GNU General Public
  License can be found in `/usr/share/common-licenses/GPL-3'.
 
 License: wxWindows
@@ -339,6 +282,9 @@ License: wxWindows
  along with this software, usually in a file named COPYING.LIB.  If not,
  write to the Free Software Foundation, Inc., 51 Franklin St, Fifth Floor,
  Boston, MA 02110-1301 USA.
+ .
+ On Debian systems, the complete text of the GNU Library Public
+ License can be found in `/usr/share/common-licenses/LGPL-2'.
  .
  EXCEPTION NOTICE
  .
@@ -366,39 +312,22 @@ License: wxWindows
  If you do not wish that, you must delete the exception notice from such
  code and/or adjust the licensing conditions notice accordingly.
 
-License: LGPL-2.1
- This library is free software; you can redistribute it and/or
- modify it under the terms of the GNU Lesser General Public
- License as published by the Free Software Foundation; either
- version 2.1 of the License, or (at your option) any later version.
+License: LGPL-3+
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU Lesser General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
  .
- This library is distributed in the hope that it will be useful,
+ This program is distributed in the hope that it will be useful,
  but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- Lesser General Public License for more details.
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU Lesser General Public License for more details.
  .
- You should have received a copy of the GNU Lesser General Public
- License along with this library; if not, write to the Free Software
- Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-X-Comment: On Debian systems, the complete text of the GNU Lesser General
- Public License can be found in `/usr/share/common-licenses/LGPL-2.1'.
-
-License: Scintilla
- Permission to use, copy, modify, and distribute this software and its
- documentation for any purpose and without fee is hereby granted,
- provided that the above copyright notice appear in all copies and that
- both that copyright notice and this permission notice appear in
- supporting documentation.
+ You should have received a copy of the GNU Lesser General Public License
+ along with this program.  If not, see <http://www.gnu.org/licenses/>.
  .
- NEIL HODGSON DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS
- SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
- AND FITNESS, IN NO EVENT SHALL NEIL HODGSON BE LIABLE FOR ANY
- SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
- WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
- TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE
- OR PERFORMANCE OF THIS SOFTWARE.
-X-Comment: see sdk/wxscintilla/src/scintilla/License.txt
+ On Debian systems, the complete text of the GNU Lesser General
+ Public License can be found in `/usr/share/common-licenses/LGPL-3'.
 
 License: CodeLite
  This program is free software; you can redistribute it and/or modify
@@ -414,6 +343,9 @@ License: CodeLite
  You should have received a copy of the GNU General Public License along
  with this program; if not, write to the Free Software Foundation, Inc.,
  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ .
+ On Debian systems, the complete text of the GNU General Public
+ License can be found in `/usr/share/common-licenses/GPL-2'
  .
  The only exception is that plugins developed for CodeLite and are linking
  against CodeLite sources (either static linking or dynamic linking),
@@ -433,23 +365,3 @@ License: CodeLite
   - wxFormBuilder plugin
  .
  Can be distributed under a license other than the GPL
-
-License: MIT
- Permission is hereby granted, free of charge, to any person obtaining
- a copy of this software and associated documentation files (the
- "Software"), to deal in the Software without restriction, including
- without limitation the rights to use, copy, modify, merge, publish,
- distribute, sublicense, and/or sell copies of the Software, and to
- permit persons to whom the Software is furnished to do so, subject to
- the following conditions:
- .
- The above copyright notice and this permission notice shall be included
- in all copies or substantial portions of the Software.
- .
- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
- IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
- CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
- TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
- SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
