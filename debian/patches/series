@@ -3,3 +3,4 @@ remove-bundled-cppcheck.patch
 remove-bundled-sqlite.patch
 remove-bundled-libclang.patch
 remove-bundled-unittest++.patch
+prevent-cxx-flags-clobbering.patch
