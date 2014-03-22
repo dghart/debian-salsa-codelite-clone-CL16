@@ -42,28 +42,6 @@ Description: Powerful and lightweight C/C++ IDE
 Package: codelite-plugins
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Breaks: codelite-plugins-abbreviation (<< 2.3.0.3833+dfsg-1),
- codelite-plugins-codeformatter (<< 2.3.0.3833+dfsg-1),
- codelite-plugins-continuousbuild (<< 2.3.0.3833+dfsg-1),
- codelite-plugins-copyright (<< 2.3.0.3833+dfsg-1),
- codelite-plugins-cscope (<< 2.3.0.3833+dfsg-1),
- codelite-plugins-externaltools (<< 2.3.0.3833+dfsg-1),
- codelite-plugins-gizmos (<< 2.3.0.3833+dfsg-1),
- codelite-plugins-snipwiz (<< 2.3.0.3833+dfsg-1),
- codelite-plugins-subversion (<< 2.3.0.3833+dfsg-1),
- codelite-plugins-unittestcpp (<< 2.3.0.3833+dfsg-1),
- codelite-plugins-wxformbuilder (<< 2.3.0.3833+dfsg-1)
-Replaces: codelite-plugins-abbreviation (<< 2.3.0.3833+dfsg-1),
- codelite-plugins-codeformatter (<< 2.3.0.3833+dfsg-1),
- codelite-plugins-continuousbuild (<< 2.3.0.3833+dfsg-1),
- codelite-plugins-copyright (<< 2.3.0.3833+dfsg-1),
- codelite-plugins-cscope (<< 2.3.0.3833+dfsg-1),
- codelite-plugins-externaltools (<< 2.3.0.3833+dfsg-1),
- codelite-plugins-gizmos (<< 2.3.0.3833+dfsg-1),
- codelite-plugins-snipwiz (<< 2.3.0.3833+dfsg-1),
- codelite-plugins-subversion (<< 2.3.0.3833+dfsg-1),
- codelite-plugins-unittestcpp (<< 2.3.0.3833+dfsg-1),
- codelite-plugins-wxformbuilder (<< 2.3.0.3833+dfsg-1)
 Description: Powerful and lightweight C/C++ IDE - plugins
  CodeLite is a powerful and lightweight C/C++ IDE which comes with but is not
  limited to the following features:
