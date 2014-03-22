@@ -3,11 +3,14 @@ Section: devel
 Priority: optional
 Maintainer: James Cowgill <james410@cowgill.org.uk>
 Build-Depends: debhelper (>= 9),
- autotools-dev,
+ cmake (>= 2.8),
+ libclang-dev,
  libgtk2.0-dev,
- libwxgtk2.8-dev,
- libwxsqlite3-2.8-dev,
- libsqlite3-dev
+ libssh-dev,
+ libwxgtk3.0-dev,
+ libwxsqlite3-3.0-dev,
+ llvm,
+ pkg-config
 Standards-Version: 3.9.1
 Homepage: http://www.codelite.org
 Vcs-Git: git://git.debian.org/git/collab-maint/codelite.git
