@@ -11,7 +11,7 @@ Build-Depends: debhelper (>= 9),
  libwxsqlite3-3.0-dev,
  llvm,
  pkg-config
-Standards-Version: 3.9.1
+Standards-Version: 3.9.5
 Homepage: http://www.codelite.org
 Vcs-Git: git://git.debian.org/git/collab-maint/codelite.git
 Vcs-Browser: http://git.debian.org/?p=collab-maint/codelite.git
