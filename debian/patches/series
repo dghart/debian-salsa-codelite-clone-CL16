@@ -6,3 +6,4 @@ remove-bundled-unittest++.patch
 prevent-cxx-flags-clobbering.patch
 extra-library-linking.patch
 remove-extra-rpath.patch
+fix-crash-on-close.patch

@@ -1,0 +1,13 @@
+--- a/CodeLite/tags_storage_sqlite3.h
++++ b/CodeLite/tags_storage_sqlite3.h
+@@ -115,7 +115,9 @@
+ 	}
+ 
+ 	void Close() {
+-		wxSQLite3Database::Close();
++		if (IsOpen())
++			wxSQLite3Database::Close();
++
+ 		m_statements.clear();
+ 	}
+ 
