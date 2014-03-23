@@ -1,0 +1,19 @@
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -360,16 +360,6 @@
+     execute_process(COMMAND cp ../Runtime/make_mac_bundle.sh pack)
+ endif( APPLE )
+ 
+-###########################################
+-## RPATH settings
+-###########################################
+-
+-if (UNIX AND NOT APPLE)
+-    SET(CMAKE_INSTALL_RPATH ${PLUGINS_DIR})
+-    SET(CMAKE_SKIP_BUILD_RPATH  FALSE)
+-    SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+-endif(UNIX AND NOT APPLE)
+-
+ if ( WITH_PCH )
+     set( USE_PCH 1 )
+ endif( WITH_PCH )
