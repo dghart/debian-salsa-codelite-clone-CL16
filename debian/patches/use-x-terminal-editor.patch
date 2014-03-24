@@ -1,0 +1,80 @@
+--- a/CodeLite/procutils.cpp
++++ b/CodeLite/procutils.cpp
+@@ -434,7 +434,7 @@
+     	terminal = where;
+     }
+     cmd = terminal;*/
+-    terminal = wxT ( "xterm" );
++    terminal = wxT ( "x-terminal-emulator" );
+     if ( !programConsoleCommand.IsEmpty() ) {
+         tokens = wxStringTokenize ( programConsoleCommand, wxT ( " " ), wxTOKEN_STRTOK );
+         if ( !tokens.IsEmpty() ) {
+--- a/codelite_terminal/procutils.cpp
++++ b/codelite_terminal/procutils.cpp
+@@ -434,7 +434,7 @@
+     	terminal = where;
+     }
+     cmd = terminal;*/
+-    terminal = wxT ( "xterm" );
++    terminal = wxT ( "x-terminal-emulator" );
+     if ( !programConsoleCommand.IsEmpty() ) {
+         tokens = wxStringTokenize ( programConsoleCommand, wxT ( " " ), wxTOKEN_STRTOK );
+         if ( !tokens.IsEmpty() ) {
+--- a/LiteEditor/manager.cpp
++++ b/LiteEditor/manager.cpp
+@@ -2108,7 +2108,7 @@
+     wxString terminal;
+     wxArrayString tokens;
+     wxArrayString configuredTerminal;
+-    terminal = wxT ( "xterm" );
++    terminal = wxT ( "x-terminal-emulator" );
+     if ( !EditorConfigST::Get()->GetOptions()->GetProgramConsoleCommand().IsEmpty() ) {
+         tokens = wxStringTokenize ( EditorConfigST::Get()->GetOptions()->GetProgramConsoleCommand(), wxT ( " " ), wxTOKEN_STRTOK );
+         if ( !tokens.IsEmpty() ) {
+--- a/Plugin/consolefinder.cpp
++++ b/Plugin/consolefinder.cpp
+@@ -153,7 +153,9 @@
+ 	//try to locate the default terminal
+ 	wxString terminal;
+ 	wxString where;
+-	if (ExeLocator::Locate(wxT("gnome-terminal"), where)) {
++	if (ExeLocator::Locate(wxT("x-terminal-emulator"), where)) {
++		terminal = wxT("x-terminal-emulator -e ");
++	} else if (ExeLocator::Locate(wxT("gnome-terminal"), where)) {
+ 		terminal = wxT("gnome-terminal -e ");
+ 	} else if (ExeLocator::Locate(wxT("konsole"), where)) {
+ 		terminal = wxT("konsole");
+--- a/LiteEditor/app.cpp
++++ b/LiteEditor/app.cpp
+@@ -153,7 +153,9 @@
+         char command[256];
+         memset (command, 0, sizeof(command));
+ 
+-        if (ExeLocator::Locate(wxT("gnome-terminal"), where)) {
++        if (ExeLocator::Locate(wxT("x-terminal-emulator"), where)) {
++            sprintf(command, "x-terminal-emulator -T 'gdb' -e 'gdb -p %d'", getpid());
++        } else if (ExeLocator::Locate(wxT("gnome-terminal"), where)) {
+             sprintf(command, "gnome-terminal -t 'gdb' -e 'gdb -p %d'", getpid());
+         } else if (ExeLocator::Locate(wxT("konsole"), where)) {
+             sprintf(command, "konsole -T 'gdb' -e 'gdb -p %d'", getpid());
+--- a/Runtime/codelite_xterm
++++ b/Runtime/codelite_xterm
+@@ -9,15 +9,15 @@
+ 	if [ "${LD_LIBRARY_PATH}" = "" ]; then
+ 		## LD_LIBRARY_PATH is not defined OR empty
+ 		## Run xterm without the bash wrapper
+-		xterm -T "codelite's shell" 2> /dev/null
++		x-terminal-emulator -T "codelite's shell" 2> /dev/null
+ 	fi
+ else
+ 	if [ "${LD_LIBRARY_PATH}" = "" ]; then
+ 		## LD_LIBRARY_PATH is not defined OR empty
+ 		## Run xterm without the bash wrapper
+-		xterm -T "$program_title" -e $2 2> /dev/null
++		x-terminal-emulator -T "$program_title" -e $2 2> /dev/null
+ 	else
+-		xterm -T "$program_title" -e /bin/bash -c 'export LD_LIBRARY_PATH=$0;shift;$@' $LD_LIBRARY_PATH "$@" 2> /dev/null
++		x-terminal-emulator -T "$program_title" -e /bin/bash -c 'export LD_LIBRARY_PATH=$0;shift;$@' $LD_LIBRARY_PATH "$@" 2> /dev/null
+ 	fi
+ fi
+ 
