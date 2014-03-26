@@ -1,6 +1,17 @@
-debian/codelite.xpm /usr/share/pixmaps
-usr/bin
+debian/codelite.xpm             usr/share/pixmaps
+usr/bin/codelite
+usr/bin/codelite-make
+usr/bin/codelite_fix_files
+usr/bin/cl*                     usr/lib/codelite
+usr/bin/codelite-clang          usr/lib/codelite
+usr/bin/codelite-terminal       usr/lib/codelite
+usr/bin/codelite_exec           usr/lib/codelite
+usr/bin/codelite_indexer        usr/lib/codelite
+usr/bin/codelite_kill_children  usr/lib/codelite
+usr/bin/codelite_xterm          usr/lib/codelite
+usr/bin/codelitegcc             usr/lib/codelite
 usr/lib/codelite/*.so
 usr/lib/codelite/debuggers
 usr/share
-usr/lib/codelite/resources usr/share/codelite
+usr/lib/codelite/resources      usr/share/codelite
+

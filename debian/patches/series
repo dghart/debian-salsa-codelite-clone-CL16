@@ -8,3 +8,4 @@ extra-library-linking.patch
 remove-extra-rpath.patch
 fix-crash-on-close.patch
 use-x-terminal-editor.patch
+move-helper-binaries.patch
