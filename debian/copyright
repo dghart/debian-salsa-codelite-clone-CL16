@@ -16,7 +16,7 @@ Files-Excluded:
  sdk/wxconfig
  sdk/wxsqlite3
  sqlite3
- Runtime/src/unittest++1.3.tar.gz
+ Runtime/src
  Runtime/OpenTerm
  UnitTest++
 
