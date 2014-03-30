@@ -1,0 +1,16 @@
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -433,5 +433,13 @@
+ add_dependencies(plugin libcodelite)
+ add_dependencies(codelite plugin)
+ 
++# Disable SONAMES on all libraries (since none are public)
++set_target_properties(libcodelite plugin wxshapeframework databaselayersqlite
++    abbreviation CallGraph ContinuousBuild DebuggerGDB Wizards Outline QMakePlugin
++    UnitTestsPP cppchecker cscope wxFormBuilder Tweaks CodeFormatter Copyright
++    DatabaseExplorer ExternalTools SnipWiz Subversion ZoomNavigator git
++    CMakePlugin SFTP
++    PROPERTIES NO_SONAME TRUE)
++
+ # Don't unset this earlier: it would affect the plugins' CMakeLists.txts
+ unset(PREFIX CACHE)

@@ -9,3 +9,4 @@ remove-extra-rpath.patch
 fix-crash-on-close.patch
 use-x-terminal-editor.patch
 move-helper-binaries.patch
+no-sonames.patch
