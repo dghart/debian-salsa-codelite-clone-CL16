@@ -1,3 +1,8 @@
+Description: Fix crash on close (due to newer version of wxsqlite3)
+Author: James Cowgill <james410@cowgill.org.uk>
+Last-Update: 2014-03-30
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- a/CodeLite/tags_storage_sqlite3.h
 +++ b/CodeLite/tags_storage_sqlite3.h
 @@ -115,7 +115,9 @@

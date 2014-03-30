@@ -1,3 +1,9 @@
+Description: Remove bundled unittest++ and fix unittest++ project file
+Author: James Cowgill <james410@cowgill.org.uk>
+Forwarded: not-needed
+Last-Update: 2014-03-30
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- a/LiteEditor/CMakeLists.txt
 +++ b/LiteEditor/CMakeLists.txt
 @@ -127,7 +127,7 @@

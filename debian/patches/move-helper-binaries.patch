@@ -1,3 +1,9 @@
+Description: Move most helper binaries to /usr/lib/codelite
+Author: James Cowgill <james410@cowgill.org.uk>
+Forwarded: not-needed
+Last-Update: 2014-03-30
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- a/LiteEditor/clang_driver.cpp
 +++ b/LiteEditor/clang_driver.cpp
 @@ -777,7 +777,7 @@

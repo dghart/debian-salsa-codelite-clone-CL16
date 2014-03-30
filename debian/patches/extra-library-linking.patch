@@ -1,3 +1,8 @@
+Description: Link against all necessary libraries to prevent warnings
+Author: James Cowgill <james410@cowgill.org.uk>
+Last-Update: 2014-03-30
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- a/sdk/databaselayer/CMakeLists.txt
 +++ b/sdk/databaselayer/CMakeLists.txt
 @@ -49,5 +49,5 @@

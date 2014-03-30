@@ -1,3 +1,11 @@
+Description: Remove bundled libclang + fix for latest clang
+ Use libclang as specified by llvm-config, and remove usages of
+ CXTranslationUnit_CXX* flags which no longer exist.
+Author: James Cowgill <james410@cowgill.org.uk>
+Forwarded: not-needed
+Last-Update: 2014-03-30
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -329,9 +329,10 @@
