@@ -10,8 +10,16 @@ usr/bin/codelite_indexer        usr/lib/codelite
 usr/bin/codelite_kill_children  usr/lib/codelite
 usr/bin/codelite_xterm          usr/lib/codelite
 usr/bin/codelitegcc             usr/lib/codelite
-usr/lib/codelite/*.so
+usr/lib/codelite/liblibcodelite.so
+usr/lib/codelite/libplugin.so
 usr/lib/codelite/debuggers
-usr/share
 usr/lib/codelite/resources      usr/share/codelite
-
+usr/share/applications
+usr/share/codelite/codelite-*.zip
+usr/share/codelite/config
+usr/share/codelite/gdb_printers
+usr/share/codelite/images
+usr/share/codelite/lexers
+usr/share/codelite/rc
+usr/share/codelite/templates/projects/[Ccdensvw]*
+usr/share/locale
