@@ -13,6 +13,9 @@ export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed
 override_dh_auto_configure:
 	dh_auto_configure -- -DCMAKE_INSTALL_LIBDIR=lib
 
+override_dh_shlibdeps:
+	dh_shlibdeps -Lcodelite
+
 # this is a hack so we can grab everything in /usr/share/codelite for
 # codelite while splitting these directories away into separate plugins
 #override_dh_install:
