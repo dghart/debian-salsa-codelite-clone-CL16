@@ -9,3 +9,30 @@
    DESTINATION ${CL_PREFIX}/share/codelite
    USE_SOURCE_PERMISSIONS
    PATTERN ".svn" EXCLUDE
+--- a/Runtime/templates/projects/UnitTest++/UnitTest++.project
++++ b/Runtime/templates/projects/UnitTest++/UnitTest++.project
+@@ -5,11 +5,10 @@
+     <Configuration Name="Debug" CompilerType="gnu g++" DebuggerType="GNU gdb debugger" Type="Executable">
+       <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="Debug" Command="./$(ProjectName)" CommandArguments="" WorkingDirectory="$(IntermediateDirectory)" PauseExecWhenProcTerminates="yes"/>
+       <Compiler Required="yes" Options="-g">
+-        <IncludePath Value="$(UNIT_TEST_PP_SRC_DIR)/src"/>
++        <IncludePath Value="/usr/include/unittest++"/>
+         <IncludePath Value="."/>
+       </Compiler>
+       <Linker Required="yes" Options="">
+-        <LibraryPath Value="$(UNIT_TEST_PP_SRC_DIR)/Debug"/>
+         <Library Value="libUnitTest++.a"/>
+       </Linker>
+       <ResourceCompiler Required="no" Options=""/>
+@@ -32,10 +31,9 @@
+       <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="Release" Command="./$(ProjectName)" CommandArguments="" WorkingDirectory="$(IntermediateDirectory)" PauseExecWhenProcTerminates="yes"/>
+       <Compiler Required="yes" Options="">
+         <IncludePath Value="."/>
+-        <IncludePath Value="$(UNIT_TEST_PP_SRC_DIR)/src"/>
++        <IncludePath Value="/usr/include/unittest++"/>
+       </Compiler>
+       <Linker Required="yes" Options="-O2">
+-        <LibraryPath Value="$(UNIT_TEST_PP_SRC_DIR)/Release"/>
+         <Library Value="libUnitTest++.a"/>
+       </Linker>
+       <ResourceCompiler Required="no" Options=""/>
