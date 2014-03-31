@@ -1,0 +1,45 @@
+Description: Fix syntax error in codelite_kill_children
+ Caused by DOS line endings
+Author: James Cowgill <james410@cowgill.org.uk>
+Last-Update: 2014-03-31
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+--- a/Runtime/codelite_kill_children
++++ b/Runtime/codelite_kill_children
+@@ -1,18 +1,18 @@
+-#!/bin/sh
+-
+-## let the user an option to pass -9 or anything 
+-## for "hard kills"
+-
+-sig_options=$2
+-osname=$(uname -o)
+-
+-if [ "$osname" = "FreeBSD" ]; then
+-    procs=`ps -A -o ppid,pid | sed -e '1d' | awk '{print $1" "$2}' | grep "^$1 " | awk '{print $2}' | xargs`
+-else
+-    procs=`ps --ppid $1 | grep -v PID | awk '{print $1;}'`
+-fi
+-for p in $procs
+-do
+-	kill $sig_options $p 2> /dev/null
+-done
+-kill $sig_options $1 2> /dev/null
++#!/bin/sh
++
++## let the user an option to pass -9 or anything
++## for "hard kills"
++
++sig_options=$2
++osname=$(uname -o)
++
++if [ "$osname" = "FreeBSD" ]; then
++    procs=`ps -A -o ppid,pid | sed -e '1d' | awk '{print $1" "$2}' | grep "^$1 " | awk '{print $2}' | xargs`
++else
++    procs=`ps --ppid $1 | grep -v PID | awk '{print $1;}'`
++fi
++for p in $procs
++do
++	kill $sig_options $p 2> /dev/null
++done
++kill $sig_options $1 2> /dev/null

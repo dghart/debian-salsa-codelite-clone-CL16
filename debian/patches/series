@@ -10,3 +10,4 @@
 10_move-helper-binaries.patch
 11_no-sonames.patch
 12_fix-desktop.patch
+13_kill_children_syntax_error.patch
