@@ -11,3 +11,4 @@
 11_no-sonames.patch
 12_fix-desktop.patch
 13_kill_children_syntax_error.patch
+14_fix_chinese_locale.patch
