@@ -13,7 +13,6 @@ usr/bin/codelitegcc             usr/lib/codelite
 usr/lib/codelite/liblibcodelite.so
 usr/lib/codelite/libplugin.so
 usr/lib/codelite/debuggers
-usr/lib/codelite/resources      usr/share/codelite
 usr/share/applications
 usr/share/codelite/codelite-*.zip
 usr/share/codelite/config

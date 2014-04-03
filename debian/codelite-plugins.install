@@ -21,6 +21,7 @@ usr/lib/codelite/git.so
 usr/lib/codelite/libdatabaselayersqlite.so
 usr/lib/codelite/libwxshapeframework.so
 usr/lib/codelite/wxFormBuilder.so
+usr/lib/codelite/resources usr/share/codelite
 usr/share/codelite/templates/codedesigner
 usr/share/codelite/templates/formbuilder
 usr/share/codelite/templates/databaselayer
