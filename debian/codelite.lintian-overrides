@@ -1,0 +1,6 @@
+# False positive
+codelite binary: spelling-error-in-binary usr/bin/codelite tEH the
+
+# Although built with the correct flags, codelitegcc contains no
+# fortifiable function calls
+codelite binary: hardening-no-fortify-functions usr/lib/codelite/codelitegcc
