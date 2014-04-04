@@ -12,3 +12,4 @@
 12_fix-desktop.patch
 13_kill_children_syntax_error.patch
 14_fix_chinese_locale.patch
+15_fix_about_box_license.patch
