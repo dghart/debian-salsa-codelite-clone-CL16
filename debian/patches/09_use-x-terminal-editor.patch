@@ -1,5 +1,6 @@
 Description: Use x-terminal-emulator in preference to xterm
 Author: James Cowgill <james410@cowgill.org.uk>
+Author: Alessio Treglia <alessio@debian.org>
 Last-Update: 2014-03-30
 ---
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/

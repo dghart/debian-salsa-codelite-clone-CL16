@@ -3,6 +3,50 @@ codelite (5.4+dfsg-1) UNRELEASED; urgency=medium
   * New maintainer (Closes: #639782)
   * New upstream release.
 
+  * debian/control:
+    - Use debhelper 9.
+    - Bump standards to 3.9.5 (no changes).
+    - Remove ancient Breaks / Replaces on old codelite plugin packages.
+    - codelite-plugins now depends on codelite.
+    - Canonicalize Vcs fields.
+  * debian/copyright:
+    - Use final version of the machine readable copyright format.
+    - Use Files-Excluded to mark files to be removed from upstream source.
+  * debian/rules:
+    - Enable all hardening flags.
+    - Enable parallel builds.
+  * debian/watch:
+    - Update watch file (upstream has moved to github).
+  * debian/codelite-make.1
+    - Add man page for codelite-make.
+  * patches/01..04.patch:
+    - Patches to build scripts to remove bundled versions of cppcheck, sqlite,
+      wxsqlite, libclang and unittest++.
+  * patches/05_prevent-cxx-flags-clobbering.patch:
+    - Prevent build scripts clobbering compiler flags (which prevents hardening
+      flags from getting through).
+  * patches/06_extra-library-linking.patch:
+    - Manually link plugins to required libraries (instead of assuming the
+      dynamic linker has already loaded them).
+  * patches/07_remove-extra-rpath.patch:
+    - Remove duplicate RPATH entry.
+  * patches/08_fix-crash-on-close.patch:
+    - Fix crash caused by new version of wxsqlite3.
+  * patches/09_use-x-terminal-editor.patch (was 01-x_terminal_emulator.patch):
+    - Patch updated.
+  * patches/10_move-helper-binaries.patch (was 03_move-helper-binaries.patch):
+    - Patch updated.
+  * patches/11_no-sonames.patch:
+    - Disable SONAME generation (since all the libraies are private).
+  * patches/12_fix-desktop.patch (was 02_fix-desktop.patch):
+    - Patch updated and Keywords field added.
+  * patches/13_kill_children_syntax_error.patch:
+    - Fix syntax error in codelite_kill_children script.
+  * patches/14_fix_chinese_locale.patch:
+    - Fix chinese locale code (cz -> zh_CN).
+  * patches/15_fix_about_box_license.patch:
+    - Fix license tab in the about box.
+
  -- James Cowgill <james410@cowgill.org.uk>  Thu, 20 Mar 2014 18:15:28 +0000
 
 codelite (2.8.0.4537~dfsg-4) unstable; urgency=low
