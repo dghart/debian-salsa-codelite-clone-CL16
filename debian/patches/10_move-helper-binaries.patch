@@ -1,7 +1,8 @@
 Description: Move most helper binaries to /usr/lib/codelite
+ Use /usr/bin/cppcheck as the path to cppcheck
 Author: James Cowgill <james410@cowgill.org.uk>
 Forwarded: not-needed
-Last-Update: 2014-03-30
+Last-Update: 2014-04-07
 ---
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- a/LiteEditor/clang_driver.cpp
@@ -179,13 +180,12 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
      }
 --- a/cppchecker/cppchecker.cpp
 +++ b/cppchecker/cppchecker.cpp
-@@ -457,8 +457,7 @@
-     path = wxStandardPaths::Get().GetDataDir();
- 
- #else // Linux / Windows
--    wxFileName exePath( wxStandardPaths::Get().GetExecutablePath() );
--    path = exePath.GetPath();
-+    path = wxStandardPaths::Get().GetPluginsDir();
+@@ -462,7 +462,7 @@
  
  #endif
  
+-    path << wxFileName::GetPathSeparator() << wxT("codelite_cppcheck");
++    path << wxFileName::GetPathSeparator() << wxT("cppcheck");
+ #ifdef __WXMSW__
+     path << wxT(".exe");
+ #endif
