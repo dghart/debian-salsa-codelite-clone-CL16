@@ -42,6 +42,8 @@ Description: Powerful and lightweight C/C++ IDE
 Package: codelite-plugins
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, codelite (= ${binary:Version})
+Breaks: codelite (<< 5.4+dfsg-1)
+Replaces: codelite (<< 5.4+dfsg-1)
 Recommends: cppcheck (>= 1.54),
  libunittest++-dev (>= 1.3),
  qt4-qmake
