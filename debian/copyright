@@ -363,5 +363,8 @@ License: CodeLite
   - Subversion
   - UnitTestPP
   - wxFormBuilder plugin
+  - ZoomNavigator
+  - git
+  - Outline
  .
  Can be distributed under a license other than the GPL

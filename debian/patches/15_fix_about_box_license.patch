@@ -3,12 +3,12 @@ Description: Fix license text in about dialog
  "short" GPL license text into the about dialog box.
 Author: James Cowgill <james410@cowgill.org.uk>
 Forwarded: not-needed
-Last-Update: 2014-04-04
+Last-Update: 2014-04-15
 ---
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- a/LiteEditor/aboutdlg.cpp
 +++ b/LiteEditor/aboutdlg.cpp
-@@ -33,31 +33,58 @@
+@@ -33,31 +33,61 @@
  #include "windowattrmanager.h"
  #include "manager.h"
  
@@ -46,6 +46,9 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 +    " - Subversion\n"
 +    " - UnitTestPP\n"
 +    " - wxFormBuilder plugin\n"
++    " - ZoomNavigator\n"
++    " - git\n"
++    " - Outline\n"
 +    "\n"
 +    "Can be distributed under a license other than the GPL\n";
 +
