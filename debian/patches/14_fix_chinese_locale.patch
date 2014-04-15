@@ -3,7 +3,8 @@ Description: Fix chinese locale code
  The correct way to do this is to rename the directory. It's done
  this way to avoid a massive quilt patch.
 Author: James Cowgill <james410@cowgill.org.uk>
-Last-Update: 2014-03-31
+Applied-Upstream: https://github.com/eranif/codelite/commit/be5168e5b288ef25efcd21a17b73fcadc3f0ecd2
+Last-Update: 2014-04-06
 ---
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- a/LiteEditor/CMakeLists.txt
