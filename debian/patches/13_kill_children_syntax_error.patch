@@ -2,7 +2,8 @@ Description: Fix syntax error in codelite_kill_children
  Caused by DOS line endings
 Author: James Cowgill <james410@cowgill.org.uk>
 Forwarded: http://forums.codelite.org/viewtopic.php?f=13&t=2506
-Last-Update: 2014-04-15
+Applied-Upstream: https://github.com/eranif/codelite/commit/13fc6dfdedb28b3f5ee1df335bd40af6ee31f6d5
+Last-Update: 2014-05-16
 ---
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- a/Runtime/codelite_kill_children
