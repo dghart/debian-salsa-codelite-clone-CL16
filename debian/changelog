@@ -37,13 +37,13 @@ codelite (5.4+dfsg-1) UNRELEASED; urgency=medium
   * patches/10_move-helper-binaries.patch (was 03_move-helper-binaries.patch):
     - Patch updated.
   * patches/11_no-sonames.patch:
-    - Disable SONAME generation (since all the libraies are private).
+    - Disable SONAME generation (since all the libraries are private).
   * patches/12_fix-desktop.patch (was 02_fix-desktop.patch):
     - Patch updated and Keywords field added.
   * patches/13_kill_children_syntax_error.patch:
     - Fix syntax error in codelite_kill_children script.
   * patches/14_fix_chinese_locale.patch:
-    - Fix chinese locale code (cz -> zh_CN).
+    - Fix Chinese locale code (cz -> zh_CN).
   * patches/15_fix_about_box_license.patch:
     - Fix license tab in the about box.
 
