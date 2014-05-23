@@ -1,4 +1,4 @@
-codelite (5.4+dfsg-1~exp1) UNRELEASED; urgency=low
+codelite (5.4+dfsg-1~exp1) experimental; urgency=low
 
   * New maintainer (Closes: #639782)
   * New upstream release.
@@ -47,7 +47,7 @@ codelite (5.4+dfsg-1~exp1) UNRELEASED; urgency=low
   * patches/15_fix_about_box_license.patch:
     - Fix license tab in the about box.
 
- -- James Cowgill <james410@cowgill.org.uk>  Thu, 20 Mar 2014 18:15:28 +0000
+ -- James Cowgill <james410@cowgill.org.uk>  Mon, 26 May 2014 18:37:09 +0100
 
 codelite (2.8.0.4537~dfsg-4) unstable; urgency=low
 
