@@ -1,4 +1,4 @@
-codelite (5.4+dfsg-1) UNRELEASED; urgency=medium
+codelite (5.4+dfsg-1~exp1) UNRELEASED; urgency=low
 
   * New maintainer (Closes: #639782)
   * New upstream release.
