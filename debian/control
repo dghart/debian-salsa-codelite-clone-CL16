@@ -21,6 +21,7 @@ Vcs-Browser: http://anonscm.debian.org/gitweb/?p=collab-maint/codelite.git
 Package: codelite
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
+Breaks: codelite-plugins (<< 5.4+dfsg-1~exp1)
 Recommends:
  gdb,
  wx-common,
