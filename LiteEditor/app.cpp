@@ -4,7 +4,7 @@
 // copyright            : (C) 2008 by Eran Ifrah
 // file name            : app.cpp
 //
-// -------------------------------------------------------------------------
+// ------------------------------------------------------------------------- 
 // A
 //              _____           _      _     _ _
 //             /  __ \         | |    | |   (_) |
@@ -45,6 +45,9 @@
 #include "frame.h"
 #include "asyncprocess.h" // IProcess
 #include "new_build_tab.h"
+#include "cl_config.h"
+#include "globals.h"
+#include <CompilerLocatorMinGW.h>
 
 #define __PERFORMANCE
 #include "performance.h"
@@ -85,8 +88,8 @@ void EnableDebugPriv()
 #ifdef __WXMAC__
 #include <mach-o/dyld.h>
 
-//On Mac we determine the base path using system call
-//_NSGetExecutablePath(path, &path_len);
+// On Mac we determine the base path using system call
+// _NSGetExecutablePath(path, &path_len);
 wxString MacGetBasePath()
 {
     char path[257];
@@ -130,6 +133,35 @@ static void massCopy(const wxString &sourceDir, const wxString &spec, const wxSt
         wxCopyFile(files.Item(i), destDir + wxT("/") + fn.GetFullName());
     }
 }
+#ifndef __WXMSW__
+static void ChildTerminatedSingalHandler(int signo)
+{
+    int status;
+    while( true ) {
+        pid_t pid = ::waitpid(-1, &status, WNOHANG);
+        if(pid > 0) {
+            // waitpid succeeded
+            IProcess::SetProcessExitCode(pid, WEXITSTATUS(status));
+            // CL_DEBUG("Process terminated. PID: %d, Exit Code: %d", pid, WEXITSTATUS(status));
+
+        } else {
+            break;
+
+        }
+    }
+}
+
+// Block/Restore sigchild
+static struct sigaction old_behvior;
+static struct sigaction new_behvior;
+static void CodeLiteBlockSigChild()
+{
+    sigfillset(&new_behvior.sa_mask);
+    new_behvior.sa_handler = ChildTerminatedSingalHandler;
+    new_behvior.sa_flags = 0;
+    sigaction(SIGCHLD, &new_behvior, &old_behvior);
+}
+#endif
 
 #ifdef __WXGTK__
 //-------------------------------------------
@@ -180,29 +212,6 @@ static void WaitForDebugger(int signo)
 }
 #endif
 
-#if defined(__WXGTK__) || defined(__WXMAC__)
-static void ChildTerminatedSingalHandler(int signo)
-{
-    int status;
-    while( true ) {
-        pid_t pid = waitpid(-1, &status, WNOHANG);
-        if(pid > 0) {
-            // waitpid succeeded
-            IProcess::SetProcessExitCode(pid, WEXITSTATUS(status));
-            //::wxPrintf(wxT("Child terminatd %d\n"), pid);
-
-        } else {
-            break;
-
-        }
-    }
-
-    // reinstall the handler
-    //signal(SIGCHLD, ChildTerminatedSingalHandler);
-}
-
-#endif
-
 IMPLEMENT_APP(CodeLiteApp)
 
 //BEGIN_EVENT_TABLE(CodeLiteApp, wxApp)
@@ -238,6 +247,7 @@ CodeLiteApp::~CodeLiteApp(void)
 bool CodeLiteApp::OnInit()
 {
 #if defined(__WXGTK__) || defined(__WXMAC__)
+
     // block signal pipe
     sigset_t mask_set;
     sigemptyset( &mask_set );
@@ -245,11 +255,7 @@ bool CodeLiteApp::OnInit()
     sigprocmask(SIG_SETMASK, &mask_set, NULL);
 
     // Handle sigchld
-    struct sigaction sa;
-    sigfillset(&sa.sa_mask);
-    sa.sa_handler = ChildTerminatedSingalHandler;
-    sa.sa_flags = 0;
-    sigaction(SIGCHLD, &sa, NULL);
+    CodeLiteBlockSigChild();
 
 #ifdef __WXGTK__
     // Insall signal handlers
@@ -258,13 +264,12 @@ bool CodeLiteApp::OnInit()
 #endif
 
 #endif
-
     wxSocketBase::Initialize();
 
-#if wxUSE_ON_FATAL_EXCEPTION
-    //trun on fatal exceptions handler
-    wxHandleFatalExceptions(true);
-#endif
+// #if wxUSE_ON_FATAL_EXCEPTION
+//     //trun on fatal exceptions handler
+//     wxHandleFatalExceptions(true);
+// #endif
 
 #ifdef __WXMSW__
     // as described in http://jrfonseca.dyndns.org/projects/gnu-win32/software/drmingw/
@@ -330,16 +335,24 @@ bool CodeLiteApp::OnInit()
         wxLogDebug("Ignoring the Windows-only --basedir option as not running Windows");
 #endif
     }
- 
+
     wxString newDataDir(wxEmptyString);
     if (parser.Found(wxT("d"), &newDataDir)) {
         clStandardPaths::Get().SetUserDataDir(newDataDir);
     }
-    
+
     // Copy gdb pretty printers from the installation folder to a writeable location
     // this is  needed because python complies the files and in most cases the user
     // running codelite has no write permissions to /usr/share/codelite/...
     DoCopyGdbPrinters();
+
+    // Since GCC 4.8.2 gcc has a default colored output
+    // which breaks codelite output parsing
+    // to disable this, we need to set GCC_COLORS to an empty
+    // string.
+    // https://sourceforge.net/p/codelite/bugs/946/
+    // http://gcc.gnu.org/onlinedocs/gcc/Language-Independent-Options.html
+    ::wxSetEnv("GCC_COLORS", "");
 
 #if defined (__WXGTK__)
     if (homeDir.IsEmpty()) {
@@ -398,15 +411,7 @@ bool CodeLiteApp::OnInit()
     ManagerST::Get()->SetInstallDir( installPath );
     //copy the settings from the global location if needed
     CopySettings(homeDir, installPath);
-    
-    // Since GCC 4.8.2 gcc has a default colored output
-    // which breaks codelite output parsing
-    // to disable this, we need to set GCC_COLORS to an empty
-    // string.
-    // https://sourceforge.net/p/codelite/bugs/946/
-    // http://gcc.gnu.org/onlinedocs/gcc/Language-Independent-Options.html
-    ::wxSetEnv("GCC_COLORS", "");
-    
+
 #else //__WXMSW__
     if (homeDir.IsEmpty()) { //did we got a basedir from user?
         homeDir = ::wxGetCwd();
@@ -493,10 +498,8 @@ bool CodeLiteApp::OnInit()
 #endif
 
     // Set the log file verbosity
-    long log_verbosity(FileLogger::Error);
-    EditorConfigST::Get()->GetLongValue(wxT("LogVerbosity"), log_verbosity);
-    FileLogger::Get()->SetVerbosity(log_verbosity);
-    CL_SYSTEM(wxT("Starting codelite..."));
+    FileLogger::OpenLog("codelite.log", clConfig::Get().Read("LogVerbosity", FileLogger::Error));
+    CL_DEBUG(wxT("Starting codelite..."));
 
     // check for single instance
     if ( !IsSingleInstance(parser, ManagerST::Get()->GetOriginalCwd()) ) {
@@ -515,7 +518,7 @@ bool CodeLiteApp::OnInit()
     EnvironmentConfig::Instance()->WriteObject(wxT("Variables"), &vars);
 
     //---------------------------------------------------------
-    
+
 #ifdef __WXMSW__
 
     // Read registry values
@@ -566,7 +569,7 @@ bool CodeLiteApp::OnInit()
         }
     }
 
-    // Append the binary's dir to $PATH. This makes codelitegcc available even for a --prefix= installation
+    // Append the binary's dir to $PATH. This makes codelite-cc available even for a --prefix= installation
 #if defined(__WXMSW__)
     wxChar pathsep(wxT(';'));
 #else
@@ -583,7 +586,9 @@ bool CodeLiteApp::OnInit()
     // a file, this is done to reduce the load time
 //    if(parser.GetParamCount() > 0)
 //        showSplash = false;
-
+    
+    //CompilerLocatorMinGW mg;
+    //mg.Locate();
     // Create the main application window
     clMainFrame::Initialize( parser.GetParamCount() == 0 );
     m_pMainFrame = clMainFrame::Get();
@@ -631,7 +636,7 @@ bool CodeLiteApp::OnInit()
 
 int CodeLiteApp::OnExit()
 {
-    CL_SYSTEM(wxT("Bye"));
+    CL_DEBUG(wxT("Bye"));
     EditorConfigST::Free();
     ConfFileLocator::Release();
     return 0;
@@ -827,7 +832,7 @@ void CodeLiteApp::DoCopyGdbPrinters()
 #else
     printersInstallDir = wxFileName(wxStandardPaths::Get().GetDataDir(), "gdb_printers");
 #endif
-    
+
     // copy the files to ~/.codelite/gdb_printers
     wxLogNull nolog;
     wxFileName targetDir(clStandardPaths::Get().GetUserDataDir(), "gdb_printers");

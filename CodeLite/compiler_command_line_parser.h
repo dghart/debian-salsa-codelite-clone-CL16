@@ -3,9 +3,9 @@
 
 #include <wx/string.h>
 #include <wx/arrstr.h>
+#include <wx/filename.h>
 #include <set>
 #include "codelite_exports.h"
-
 
 class WXDLLIMPEXP_CL CompilerCommandLineParser
 {
@@ -24,9 +24,10 @@ protected:
     char **       m_argv;
     wxString      m_diretory;
     wxString      m_pchFile;
-
+protected:
+    void AddIncludesFromFile(const wxFileName& includeFile);
 public:
-    CompilerCommandLineParser(const wxString &cmdline);
+    CompilerCommandLineParser(const wxString &cmdline, const wxString &workingDirectory = wxEmptyString);
     virtual ~CompilerCommandLineParser();
 
     wxString GetCompileLine() const;

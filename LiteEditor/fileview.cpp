@@ -64,6 +64,8 @@
 #include <wx/richmsgdlg.h>
 #include "cl_command_event.h"
 #include "NewVirtualFolderDlg.h"
+#include "workspacetab.h"
+#include "file_logger.h"
 
 IMPLEMENT_DYNAMIC_CLASS(FileViewTree, wxTreeCtrl)
 
@@ -74,7 +76,7 @@ BEGIN_EVENT_TABLE( FileViewTree, wxTreeCtrl )
     EVT_TREE_END_DRAG  (wxID_ANY, FileViewTree::OnItemEndDrag   )
     EVT_TREE_ITEM_MENU (wxID_ANY, FileViewTree::OnPopupMenu     )
     EVT_TREE_SEL_CHANGED(wxID_ANY, FileViewTree::OnSelectionChanged)
-    
+
     EVT_MENU( XRCID( "local_workspace_prefs" ),        FileViewTree::OnLocalPrefs )
     EVT_MENU( XRCID( "local_workspace_settings" ),     FileViewTree::OnLocalWorkspaceSettings )
     EVT_MENU( XRCID( "remove_project" ),               FileViewTree::OnRemoveProject )
@@ -156,7 +158,7 @@ void FileViewTree::OnBuildInProgress( wxUpdateUIEvent &event )
 FileViewTree::FileViewTree( wxWindow *parent, const wxWindowID id, const wxPoint& pos, const wxSize& size, long style )
 {
     Create( parent, id, pos, size, style );
-    MSWSetNativeTheme(this);
+    //MSWSetNativeTheme(this);
 
     // Initialise images map
     BitmapLoader *bmpLoader = PluginManager::Get()->GetStdIcons();
@@ -182,7 +184,7 @@ FileViewTree::~FileViewTree()
     EventNotifier::Get()->Disconnect(wxEVT_REBUILD_WORKSPACE_TREE, wxCommandEventHandler(FileViewTree::OnBuildTree), NULL, this);
     EventNotifier::Get()->Disconnect(wxEVT_CMD_BUILD_PROJECT_ONLY, wxCommandEventHandler(FileViewTree::OnBuildProjectOnlyInternal), NULL, this);
     EventNotifier::Get()->Disconnect(wxEVT_CMD_CLEAN_PROJECT_ONLY, wxCommandEventHandler(FileViewTree::OnCleanProjectOnlyInternal), NULL, this);
-    
+
     wxDELETE(m_folderMenu);
     wxDELETE(m_projectMenu);
     wxDELETE(m_fileMenu);
@@ -238,14 +240,11 @@ void FileViewTree::BuildTree()
         wxArrayString list;
         ManagerST::Get()->GetProjectList( list );
 
-        Freeze();
         for ( size_t n=0; n<list.GetCount(); n++ ) {
             BuildProjectNode( list.Item( n ) );
         }
-
         SortTree();
-        Thaw();
-
+        
         //set selection to first item
         SelectItem( root, HasFlag(wxTR_MULTIPLE) ? false : true );
     }
@@ -320,10 +319,10 @@ void FileViewTree::BuildProjectNode( const wxString &projectName )
 
     std::map<wxString, wxTreeItemId> items;
     for ( ; !walker.End(); walker++ ) {
-        
+
         // Did we get the icon from a plugin?
         bool iconFromPlugin = false;
-        
+
         // Add the item to the tree
         ProjectTreeNode* node = walker.GetNode();
         wxTreeItemId parentHti;
@@ -335,24 +334,28 @@ void FileViewTree::BuildProjectNode( const wxString &projectName )
                 continue;
             parentHti = items.find( parentKey )->second;
         }
-        
+
         // Allow plugins to customize the project icon/colours
         int projectIconIndex = wxNOT_FOUND;
         if ( node->GetData().GetKind() == ProjectItem::TypeProject ) {
             DoGetProjectIconIndex(node->GetData().GetDisplayName(), projectIconIndex, iconFromPlugin);
-            
+
         } else {
             projectIconIndex = GetIconIndex(node->GetData());
         }
-        
+
         wxTreeItemId hti = AppendItem(  parentHti,                          // parent
                                         node->GetData().GetDisplayName(),   // display name
                                         projectIconIndex,    // item image index
                                         projectIconIndex,    // selected item image
                                         new FilewViewTreeItemData( node->GetData() ) );
-        if ( IsFileExcludedFromBuild(hti) ) {
-            SetItemTextColour(hti, wxSystemSettings::GetColour(wxSYS_COLOUR_GRAYTEXT) );
-        }
+        
+        // FIXME :: 
+        // Use a more efficient way for checking if a file is 'Excluded' from the build
+        
+        //if ( IsFileExcludedFromBuild(hti) ) {
+        //    SetItemTextColour(hti, wxSystemSettings::GetColour(wxSYS_COLOUR_GRAYTEXT) );
+        //}
         m_itemsToSort[parentHti.m_pItem] = true;
 
         // Set active project with bold
@@ -409,10 +412,10 @@ void FileViewTree::PopupContextMenu( wxMenu *menu, MenuType type, const wxString
                 // get list of custom targets, and create menu entry for each target
                 CustomTargetsMgr::Map_t::const_iterator iter = targetsMap.begin();
                 for (; iter != targetsMap.end(); ++iter) {
-                    item = new wxMenuItem(customTargetsMenu, 
+                    item = new wxMenuItem(customTargetsMenu,
                                           iter->first,         // Menu ID
                                           iter->second.first,  // Menu Name
-                                          wxEmptyString, 
+                                          wxEmptyString,
                                           wxITEM_NORMAL);
                     customTargetsMenu->Append(item);
                 }
@@ -843,7 +846,7 @@ void FileViewTree::DoSetProjectActive( wxTreeItemId &item )
             while ( child.IsOk() ) {
                 FilewViewTreeItemData *childData = static_cast<FilewViewTreeItemData*>( GetItemData( child ) );
                 if ( childData &&  childData->GetData().GetDisplayName() == curActiveProj ) {
-                    
+
                     DoGetProjectIconIndex(childData->GetData().GetDisplayName(), iconIndex, fromPlugin);
                     SetItemBold( child, false );
                     SetItemImage(child, iconIndex);
@@ -922,13 +925,13 @@ void FileViewTree::DoRemoveItems()
                     wxString message;
                     message << _( "Are you sure you want remove '" ) << name << wxT( "' ?" );
                     if ((num > 1) && ((i+1) < num) ) {
-                        
+
                         // For multiple selections, use a YesToAll dialog
                         wxRichMessageDialog dlg(wxTheApp->GetTopWindow(), message, _("Confirm"), wxYES_NO|wxYES_DEFAULT|wxCANCEL|wxCENTER|wxICON_QUESTION);
                         dlg.ShowCheckBox(_("Remember my answer and apply it all files"), false);
                         result = dlg.ShowModal();
                         ApplyToEachFileRemoval = dlg.IsCheckBoxChecked();
-                        
+
                     } else {
                         result = wxMessageBox( message, _("Are you sure?"), wxYES_NO | wxICON_QUESTION, this );
                     }
@@ -999,7 +1002,10 @@ void FileViewTree::DoRemoveItems()
 
     // Notify plugins if we actually removed files
     if ( filesRemoved.IsEmpty() == false ) {
-        SendCmdEvent(wxEVT_PROJ_FILE_REMOVED, (void*)&filesRemoved);
+        clCommandEvent evtFileRemoved(wxEVT_PROJ_FILE_REMOVED);
+        evtFileRemoved.SetStrings( filesRemoved );
+        evtFileRemoved.SetEventObject( this );
+        EventNotifier::Get()->ProcessEvent( evtFileRemoved );
     }
 }
 
@@ -1139,27 +1145,8 @@ void FileViewTree::OnProjectProperties( wxCommandEvent & WXUNUSED( event ) )
     if (!item.IsOk()) {
         return;
     }
-
     wxString projectName( GetItemText( item ) );
-    wxString title( projectName );
-    title << _( " Project Settings" );
-
-    //open the project properties dialog
-    BuildMatrixPtr matrix = ManagerST::Get()->GetWorkspaceBuildMatrix();
-    //find the project configuration name that matches the workspace selected configuration
-    ProjectSettingsDlg *dlg = new ProjectSettingsDlg( clMainFrame::Get(), matrix->GetProjectSelectedConf( matrix->GetSelectedConfigurationName(), projectName ),
-                            projectName,
-                            title );
-    dlg->Show();
-    //if(dlg.ShowModal() == wxID_OK) {
-    //    ManagerST::Get()->UpdateParserPaths(true);
-    //}
-
-    //mark this project as modified
-    ProjectPtr proj = ManagerST::Get()->GetProject(projectName);
-    if (proj) {
-        proj->SetModified(true);
-    }
+    clMainFrame::Get()->GetWorkspaceTab()->OpenProjectSettings( projectName );
 }
 
 void FileViewTree::DoRemoveProject( const wxString &name )
@@ -1250,10 +1237,10 @@ void FileViewTree::OnClean( wxCommandEvent &event )
         if (bldConf) {
             conf = bldConf->GetName();
         }
-        QueueCommand buildInfo(projectName, conf, false, QueueCommand::Clean);
+        QueueCommand buildInfo(projectName, conf, false, QueueCommand::kClean);
 
         if (bldConf && bldConf->IsCustomBuild()) {
-            buildInfo.SetKind(QueueCommand::CustomBuild);
+            buildInfo.SetKind(QueueCommand::kCustomBuild);
             buildInfo.SetCustomBuildTarget(wxT("Clean"));
         }
         ManagerST::Get()->PushQueueCommand(buildInfo);
@@ -1275,9 +1262,9 @@ void FileViewTree::OnBuild( wxCommandEvent &event )
             conf = bldConf->GetName();
         }
 
-        QueueCommand buildInfo(projectName, conf, false, QueueCommand::Build);
+        QueueCommand buildInfo(projectName, conf, false, QueueCommand::kBuild);
         if (bldConf && bldConf->IsCustomBuild()) {
-            buildInfo.SetKind(QueueCommand::CustomBuild);
+            buildInfo.SetKind(QueueCommand::kCustomBuild);
             buildInfo.SetCustomBuildTarget(wxT("Build"));
         }
         ManagerST::Get()->PushQueueCommand(buildInfo);
@@ -1476,7 +1463,7 @@ void FileViewTree::OnBuildProjectOnly( wxCommandEvent &event )
 {
     wxUnusedVar( event );
     wxTreeItemId item = GetSingleSelection();
-    
+
     if ( item.IsOk() ) {
         wxString projectName = GetItemText( item );
         wxCommandEvent e(wxEVT_CMD_BUILD_PROJECT_ONLY);
@@ -1489,7 +1476,7 @@ void FileViewTree::OnCleanProjectOnly( wxCommandEvent &event )
 {
     wxUnusedVar( event );
     wxTreeItemId item = GetSingleSelection();
-    
+
     if ( item.IsOk() ) {
         wxString projectName = GetItemText( item );
         wxCommandEvent e(wxEVT_CMD_CLEAN_PROJECT_ONLY);
@@ -1503,6 +1490,8 @@ void FileViewTree::ExpandToPath(const wxString &project, const wxFileName &fileN
     wxTreeItemId root = GetRootItem();
     if (!root.IsOk())
         return;
+
+    CL_DEBUG1(" ===> [workspace] Expand to path for " + project + "::" + fileName.GetFullPath() );
 
     wxTreeItemIdValue cookie;
     for (wxTreeItemId child = GetFirstChild(root, cookie); child.IsOk(); child = GetNextChild(root, cookie)) {
@@ -1529,7 +1518,7 @@ void FileViewTree::ExpandToPath(const wxString &project, const wxFileName &fileN
             break;
         }
     }
-
+    CL_DEBUG1(" <=== [workspace] Expand to path for " + project + "::" + fileName.GetFullPath() );
 }
 
 wxTreeItemId FileViewTree::FindItemByPath(wxTreeItemId &parent, const wxString &projectPath, const wxString &fileName)
@@ -1596,16 +1585,16 @@ void FileViewTree::OnImportDirectory(wxCommandEvent &e)
     wxArrayString     files;
     wxArrayString     all_files;
     wxString          filespec;
-    
-    
+
+
     ImportFilesDialogNew dlg(clMainFrame::Get());
     if ( dlg.ShowModal() != wxID_OK )
         return;
-    
+
     extlessFiles = dlg.ExtlessFiles();
     dlg.GetDirectories( dirs );
     filespec = dlg.GetFileMask();
-    
+
     // get list of all files based on the checked directories
     wxStringBoolMap_t::const_iterator iter = dirs.begin();
     for(; iter != dirs.end(); ++iter) {
@@ -1631,7 +1620,7 @@ void FileViewTree::OnImportDirectory(wxCommandEvent &e)
     // filter non interesting files
     for (size_t i=0; i<all_files.GetCount(); i++) {
         wxFileName fn(all_files.Item(i));
-        
+
         /* always excluded by default */
         const wxArrayString &dirs = fn.GetDirs();
         bool cont = true;
@@ -1943,9 +1932,9 @@ void FileViewTree::OnReBuild(wxCommandEvent& event)
 
         // Custom build supports the 'Rebuild' target
         if(bldConf && bldConf->IsCustomBuild()) {
-            QueueCommand buildInfo(projectName, conf, false, QueueCommand::ReBuild);
+            QueueCommand buildInfo(projectName, conf, false, QueueCommand::kRebuild);
             if (bldConf && bldConf->IsCustomBuild()) {
-                buildInfo.SetKind(QueueCommand::CustomBuild);
+                buildInfo.SetKind(QueueCommand::kCustomBuild);
                 buildInfo.SetCustomBuildTarget(wxT("Rebuild"));
             }
 
@@ -2082,9 +2071,9 @@ void FileViewTree::OnRebuildProjectOnly(wxCommandEvent& event)
             conf = bldConf->GetName();
         }
 
-        QueueCommand info(projectName, conf, true, QueueCommand::ReBuild);
+        QueueCommand info(projectName, conf, true, QueueCommand::kRebuild);
         if (bldConf && bldConf->IsCustomBuild()) {
-            info.SetKind(QueueCommand::CustomBuild);
+            info.SetKind(QueueCommand::kCustomBuild);
             info.SetCustomBuildTarget(wxT("Rebuild"));
         }
 
@@ -2193,7 +2182,7 @@ void FileViewTree::OnBuildProjectOnlyInternal(wxCommandEvent& e)
     if ( projectName.IsEmpty() ) {
         projectName = ManagerST::Get()->GetActiveProjectName();
     }
-    
+
     wxString conf;
     // get the selected configuration to be built
     BuildConfigPtr bldConf = WorkspaceST::Get()->GetProjBuildConf(projectName, wxEmptyString);
@@ -2201,9 +2190,9 @@ void FileViewTree::OnBuildProjectOnlyInternal(wxCommandEvent& e)
         conf = bldConf->GetName();
     }
 
-    QueueCommand info(projectName, conf, true, QueueCommand::Build);
+    QueueCommand info(projectName, conf, true, QueueCommand::kBuild);
     if (bldConf && bldConf->IsCustomBuild()) {
-        info.SetKind(QueueCommand::CustomBuild);
+        info.SetKind(QueueCommand::kCustomBuild);
         info.SetCustomBuildTarget(wxT("Build"));
     }
     ManagerST::Get()->PushQueueCommand( info );
@@ -2217,7 +2206,7 @@ void FileViewTree::OnCleanProjectOnlyInternal(wxCommandEvent& e)
     if ( projectName.IsEmpty() ) {
         projectName = ManagerST::Get()->GetActiveProjectName();
     }
-    
+
     wxString conf;
     // get the selected configuration to be built
     BuildConfigPtr bldConf = WorkspaceST::Get()->GetProjBuildConf(projectName, wxEmptyString);
@@ -2225,9 +2214,9 @@ void FileViewTree::OnCleanProjectOnlyInternal(wxCommandEvent& e)
         conf = bldConf->GetName();
     }
 
-    QueueCommand info(projectName, conf, true, QueueCommand::Clean);
+    QueueCommand info(projectName, conf, true, QueueCommand::kClean);
     if (bldConf && bldConf->IsCustomBuild()) {
-        info.SetKind(QueueCommand::CustomBuild);
+        info.SetKind(QueueCommand::kCustomBuild);
         info.SetCustomBuildTarget(wxT("Clean"));
     }
 
@@ -2237,53 +2226,52 @@ void FileViewTree::OnCleanProjectOnlyInternal(wxCommandEvent& e)
 
 void FileViewTree::OnExcludeFromBuild(wxCommandEvent& e)
 {
-       wxUnusedVar( e );
+    wxUnusedVar( e );
 
-       wxArrayTreeItemIds selections;
-       size_t count = GetSelections(selections);
-       for( size_t selectionIndex=0; selectionIndex<count; selectionIndex++)
-       {
-               wxTreeItemId item = selections[selectionIndex];
-               if ( item.IsOk() ) {
-                       FilewViewTreeItemData *data = static_cast<FilewViewTreeItemData*>( GetItemData( item ) );
-                       if (data->GetData().GetKind() == ProjectItem::TypeFile) {
-                               Manager *mgr = ManagerST::Get();
-                               wxTreeItemId parent = GetItemParent( item );
-                               if ( parent.IsOk() ) {
-                                       wxString path = GetItemPath( parent );
-                                       wxString proj = path.BeforeFirst(wxT(':'));
-                                       ProjectPtr p = mgr->GetProject(proj);
-                                       if ( p ) {
-                                               wxString vdPath   = path.AfterFirst(':');
-                                               wxString filename = data->GetData().GetFile();
-                                              
-                                               BuildConfigPtr buildConf = WorkspaceST::Get()->GetProjBuildConf(proj, "");
-                                               if ( !buildConf ) {
-                                                       return;
-                                               }
-                                              
-                                               wxString current_build_config = buildConf->GetName();
-                                              
-                                               wxArrayString configs = p->GetExcludeConfigForFile( filename, vdPath );
-                                              
-                                               if ( e.IsChecked() ) {
-                                                       configs.Add( current_build_config );
-                                                       //SetItemTextColour(item, wxSystemSettings::GetColour(wxSYS_COLOUR_GRAYTEXT) );
-                      
-                                               } else {
-                                                       int where = configs.Index(current_build_config);
-                                                       if ( where != wxNOT_FOUND ) {
-                                                               configs.RemoveAt(where);
-                                                       }
-                                                      
-                                                       //SetItemTextColour(item, DrawingUtils::GetOutputPaneFgColour() );
-                                               }
-                                               p->SetExcludeConfigForFile( filename, vdPath, configs);
-                                       }
-                               }
-                       }
-               }
-       }
+    wxArrayTreeItemIds selections;
+    size_t count = GetSelections(selections);
+    for( size_t selectionIndex=0; selectionIndex<count; selectionIndex++) {
+        wxTreeItemId item = selections[selectionIndex];
+        if ( item.IsOk() ) {
+            FilewViewTreeItemData *data = static_cast<FilewViewTreeItemData*>( GetItemData( item ) );
+            if (data->GetData().GetKind() == ProjectItem::TypeFile) {
+                Manager *mgr = ManagerST::Get();
+                wxTreeItemId parent = GetItemParent( item );
+                if ( parent.IsOk() ) {
+                    wxString path = GetItemPath( parent );
+                    wxString proj = path.BeforeFirst(wxT(':'));
+                    ProjectPtr p = mgr->GetProject(proj);
+                    if ( p ) {
+                        wxString vdPath   = path.AfterFirst(':');
+                        wxString filename = data->GetData().GetFile();
+
+                        BuildConfigPtr buildConf = WorkspaceST::Get()->GetProjBuildConf(proj, "");
+                        if ( !buildConf ) {
+                            return;
+                        }
+
+                        wxString current_build_config = buildConf->GetName();
+
+                        wxArrayString configs = p->GetExcludeConfigForFile( filename, vdPath );
+
+                        if ( e.IsChecked() ) {
+                            configs.Add( current_build_config );
+                            SetItemTextColour(item, wxSystemSettings::GetColour(wxSYS_COLOUR_GRAYTEXT) );
+
+                        } else {
+                            int where = configs.Index(current_build_config);
+                            if ( where != wxNOT_FOUND ) {
+                                configs.RemoveAt(where);
+                            }
+
+                            SetItemTextColour(item, DrawingUtils::GetOutputPaneFgColour() );
+                        }
+                        p->SetExcludeConfigForFile( filename, vdPath, configs);
+                    }
+                }
+            }
+        }
+    }
 }
 
 void FileViewTree::OnExcludeFromBuildUI(wxUpdateUIEvent& event)
@@ -2304,16 +2292,16 @@ bool FileViewTree::IsFileExcludedFromBuild(const wxTreeItemId& item) const
                 wxString proj = path.BeforeFirst(wxT(':'));
                 ProjectPtr p = mgr->GetProject(proj);
                 if ( p ) {
-                    
+
                     BuildConfigPtr buildConf = WorkspaceST::Get()->GetProjBuildConf(proj, "");
                     if ( !buildConf ) {
                         return false;
                     }
-                    
+
                     wxString vdPath   = path.AfterFirst(':');
                     wxString filename = data->GetData().GetFile();
                     wxArrayString configs = p->GetExcludeConfigForFile( filename, vdPath );
-                    
+
                     return configs.Index(buildConf->GetName()) != wxNOT_FOUND;
                 }
             }
@@ -2327,7 +2315,7 @@ void FileViewTree::OnSelectionChanged(wxTreeEvent& e)
     e.Skip();
     if ( !e.GetItem().IsOk() )
         return;
-    
+
     FilewViewTreeItemData *data = dynamic_cast<FilewViewTreeItemData*>( GetItemData( e.GetItem() ) );
     if ( data && data->GetData().GetKind() == ProjectItem::TypeProject ) {
         wxCommandEvent evtProjectSelected(wxEVT_PROJECT_TREEITEM_CLICKED);
@@ -2342,11 +2330,11 @@ void FileViewTree::DoGetProjectIconIndex(const wxString& projectName, int& iconI
     clColourEvent event(wxEVT_WORKSPACE_VIEW_CUSTOMIZE_PROJECT);
     event.SetEventObject(this);
     // set the project name
-    event.SetString( projectName ); 
+    event.SetString( projectName );
     if ( EventNotifier::Get()->ProcessEvent( event ) ) {
         iconIndex = event.GetInt();
         fromPlugin = true;
-        
+
     } else {
         iconIndex = PROJECT_IMG_IDX;
     }

@@ -62,6 +62,7 @@
 #include <wx/stdpaths.h>
 #include "tags_storage_sqlite3.h"
 #include "cl_standard_paths.h"
+#include <algorithm>
 
 
 //#define __PERFORMANCE
@@ -1208,6 +1209,17 @@ clCallTipPtr TagsManager::GetFunctionTip(const wxFileName &fileName, int lineno,
             if( tmpCandidates.size() == 1) {
                 TagEntryPtr t = tmpCandidates.at(0);
                 DoGetFunctionTipForEmptyExpression(t->GetScope(), text, tips);
+                
+            } else {
+                // Stil no luck, try this:
+                // Assume that the expression is a code-complete expression (i.e. an expression that ends with -> or .
+                // and try to resolve it. If we succeed, we collect only the ctors matches from that list
+                TagEntryPtrVector_t matches;
+                tmpCandidates.clear();
+                if ( AutoCompleteCandidates(fileName, lineno, expr + ".", text, matches) && !matches.empty() ) {
+                    std::for_each(matches.begin(), matches.end(), TagEntry::ForEachCopyIfCtor(tmpCandidates) );
+                    GetFunctionTipFromTags(tmpCandidates, matches.at(0)->GetScopeName(), tips);
+                }
             }
         }
     } else if( expression == wxT("::") ) {
@@ -2221,12 +2233,17 @@ wxString TagsManager::NormalizeFunctionSig(const wxString &sig, size_t flags, st
         if ( v.m_isVolatile ) {
             str_output << wxT("volatile ");
         }
-
+        
+        // enum as part of the type?
+        if ( v.m_enumInTypeDecl ) {
+            str_output << "enum ";
+        }
+        
         //add scope
         if (v.m_typeScope.empty() == false) {
             str_output << _U(v.m_typeScope.c_str()) << wxT("::");
         }
-
+        
         if (v.m_type.empty() == false) {
             if(flags & Normalize_Func_Reverse_Macro) {
                 // replace the type if it exists in the map
@@ -2249,9 +2266,10 @@ wxString TagsManager::NormalizeFunctionSig(const wxString &sig, size_t flags, st
         if (v.m_rightSideConst.empty() == false) {
             str_output << wxT(" ") << _U(v.m_rightSideConst.c_str());
         }
-
+        
         if (v.m_name.empty() == false && (flags & Normalize_Func_Name)) {
             str_output << wxT(" ") << _U(v.m_name.c_str());
+            
         } else if ( v.m_isEllipsis ) {
             str_output << wxT(" ...");
         }

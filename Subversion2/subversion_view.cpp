@@ -38,6 +38,11 @@
 #include "SvnInfoDialog.h"
 #include <map>
 #include "cl_command_event.h"
+#include "workspacesvnsettings.h"
+#include <wx/cmdline.h>
+#include "dirsaver.h"
+#include "clcommandlineparser.h"
+#include "DiffSideBySidePanel.h"
 
 BEGIN_EVENT_TABLE(SubversionView, SubversionPageBase)
     EVT_UPDATE_UI(XRCID("svn_stop"),         SubversionView::OnStopUI)
@@ -90,7 +95,7 @@ SubversionView::SubversionView( wxWindow* parent, Subversion2 *plugin )
     m_themeHelper = new ThemeHandlerHelper(this);
     EventNotifier::Get()->Connect(wxEVT_WORKSPACE_LOADED,            wxCommandEventHandler(SubversionView::OnWorkspaceLoaded),           NULL, this);
     EventNotifier::Get()->Connect(wxEVT_WORKSPACE_CLOSED,            wxCommandEventHandler(SubversionView::OnWorkspaceClosed),           NULL, this);
-    EventNotifier::Get()->Connect(wxEVT_FILE_SAVED,                  wxCommandEventHandler(SubversionView::OnRefreshView),               NULL, this);
+    EventNotifier::Get()->Connect(wxEVT_FILE_SAVED,                  clCommandEventHandler(SubversionView::OnFileSaved),                 NULL, this);
     EventNotifier::Get()->Connect(wxEVT_PROJ_FILE_ADDED,             clCommandEventHandler(SubversionView::OnFileAdded  ),               NULL, this);
     EventNotifier::Get()->Connect(wxEVT_FILE_RENAMED,                wxCommandEventHandler(SubversionView::OnFileRenamed),               NULL, this);
     EventNotifier::Get()->Connect(wxEVT_ACTIVE_EDITOR_CHANGED,       wxCommandEventHandler(SubversionView::OnActiveEditorChanged),       NULL, this);
@@ -105,9 +110,9 @@ SubversionView::~SubversionView()
 void SubversionView::OnChangeRootDir( wxCommandEvent& event )
 {
     wxUnusedVar(event);
-    SvnSelectLocalRepoDlg dlg(this, m_plugin, DoGetCurRepoPath());
-    if(dlg.ShowModal() == wxID_OK) {
-        DoRootDirChanged(dlg.GetPath());
+    wxString newPath = ::wxDirSelector(_("Choose directory"));
+    if ( !newPath.IsEmpty() ) {
+        DoRootDirChanged( newPath );
     }
 }
 
@@ -242,15 +247,14 @@ void SubversionView::OnWorkspaceLoaded(wxCommandEvent& event)
 
     // Workspace changes its directory to the workspace path, update the SVN path
     wxString path = ::wxGetCwd();
-
-    // Check if we got a customized directory
-    if(m_plugin->GetManager()->IsWorkspaceOpen()) {
-        wxString customizedPath = LocalWorkspaceST::Get()->GetCustomData(wxT("SubversionPath"));
-        if(customizedPath.IsEmpty() == false && wxFileName::DirExists(customizedPath)) {
-            path = customizedPath;
-        }
+    m_workspaceFile = event.GetString();
+    
+    WorkspaceSvnSettings conf(m_workspaceFile);
+    wxString customizedRepo = conf.Load().GetRepoPath();
+    if ( !customizedRepo.IsEmpty() ) {
+        path.swap( customizedRepo );
     }
-
+    
     DoRootDirChanged(path);
     BuildTree();
 }
@@ -258,6 +262,15 @@ void SubversionView::OnWorkspaceLoaded(wxCommandEvent& event)
 void SubversionView::OnWorkspaceClosed(wxCommandEvent& event)
 {
     event.Skip();
+    
+    // Save the local svn settings
+    if ( m_workspaceFile.IsOk() && m_workspaceFile.Exists() ) {
+        WorkspaceSvnSettings conf(m_workspaceFile);
+        conf.SetRepoPath( m_curpath );
+        conf.Save();
+    }
+    
+    m_workspaceFile.Clear();
     DoChangeRootPathUI(_("<No repository path is selected>"));
     m_plugin->GetConsole()->Clear();
 }
@@ -266,20 +279,6 @@ void SubversionView::ClearAll()
 {
     m_treeCtrl->DeleteAllItems();
 }
-
-#if 0
-static void DoAddArrayToMap(const wxArrayString &files, SvnFileExplorerTraverser::Map_t& mymap, int type, const wxString &rootDir)
-{
-    for(size_t i=0; i<files.GetCount(); i++) {
-        SvnFileInfo fi;
-        wxFileName fn(files.Item(i));
-        fn.MakeAbsolute(rootDir);
-        fi.file = fn.GetFullPath();
-        fi.type = type;
-        mymap[fi.file] = fi;
-    }
-}
-#endif
 
 void SubversionView::UpdateTree(const wxArrayString& modifiedFiles, const wxArrayString& conflictedFiles, const wxArrayString& unversionedFiles, const wxArrayString& newFiles, const wxArrayString& deletedFiles, const wxArrayString& lockedFiles, const wxArrayString& ignoreFiles, bool fileExplorerOnly, const wxString& sRootDir)
 {
@@ -366,7 +365,7 @@ void SubversionView::DoAddNode(const wxString& title, int imgId, SvnTreeData::Sv
 
         // Set the parent node with bold font
         wxFont font = wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT);
-        font.SetWeight(wxBOLD);
+        font.SetWeight(wxFONTWEIGHT_BOLD);
         m_treeCtrl->SetItemFont(parent, font);
 
         // Add all children items
@@ -930,52 +929,82 @@ void SubversionView::OnShowSvnInfo(wxCommandEvent& event)
 
 void SubversionView::OnItemActivated(wxTreeEvent& event)
 {
-    wxArrayTreeItemIds items;
-    wxArrayString      paths;
-    size_t count = m_treeCtrl->GetSelections(items);
-    for(size_t i=0; i<count; i++) {
-        wxTreeItemId item = items.Item(i);
-
-        if(item.IsOk() == false)
-            continue;
-
-        SvnTreeData *data = (SvnTreeData *)m_treeCtrl->GetItemData(item);
-        if (data && data->GetType() == SvnTreeData::SvnNodeTypeFile) {
-            paths.Add(/*DoGetCurRepoPath() + wxFileName::GetPathSeparator() + */data->GetFilepath());
-        }
-    }
-
-    if(paths.IsEmpty()) {
+    wxTreeItemId item = m_treeCtrl->GetFocusedItem();
+    CHECK_ITEM_RET(item);
+    
+    SvnTreeData *data = (SvnTreeData *)m_treeCtrl->GetItemData(item);
+    if (!data || data->GetType() != SvnTreeData::SvnNodeTypeFile) {
         event.Skip();
         return;
     }
-
+    
     wxString loginString;
     if(m_plugin->LoginIfNeeded(event, DoGetCurRepoPath(), loginString) == false) {
         return;
     }
+    
     bool nonInteractive = m_plugin->GetNonInteractiveMode(event);
-    wxString diffAgainst(wxT("BASE"));
 
     // Simple diff
     wxString command;
+    
     // By default use ignore-whitespaces
     command << m_plugin->GetSvnExeNameNoConfigDir(nonInteractive) << loginString;
     
     SvnSettingsData ssd = m_plugin->GetSettings();
     if ( ssd.GetFlags() & SvnUseExternalDiff ) {
-        command << " --diff-cmd=\"" << ssd.GetExternalDiffViewer() << "\" ";
+        
+        // Using external diff viewer
+        command << " diff \"" << data->GetFilepath() << "\" --diff-cmd=\"" << ssd.GetExternalDiffViewer() << "\"";
+        m_plugin->GetConsole()->Execute(command, DoGetCurRepoPath(), new SvnDiffHandler(m_plugin, event.GetId(), this), false);
+        
+    } else {
+        
+        // Use the internal diff viewer
+        // --diff-cmd will execute external tool like this:
+        // -u -L "php-plugin/XDebugManager.cpp	(revision 447)" -L "php-plugin/XDebugManager.cpp	(working copy)" C:\src\codelite\codelitephp\.svn\pristine\ae\ae25b80b53f432c6124c455ef815679df6ed4ea4.svn-base C:\src\codelite\codelitephp\php-plugin\XDebugManager.cpp 
+        command << " diff \"" << data->GetFilepath() << "\" --diff-cmd=";
+        // We dont have proper echo on windows that can be used here, so 
+        // we provide our own batch script wrapper
+        wxFileName echoTool(wxStandardPaths::Get().GetExecutablePath());
+        echoTool.SetFullName("codelite-echo");
+#ifdef __WXMSW__
+        echoTool.SetExt("exe");
+#endif
+        command << "\"" << echoTool.GetFullPath() << "\"";
+        
+        wxArrayString lines;
+        {
+            DirSaver ds;
+            ::wxSetWorkingDirectory( DoGetCurRepoPath() );
+            ProcUtils::SafeExecuteCommand(command, lines);
+        }
+        if ( lines.GetCount() < 3 ) {
+            return;
+        }
+        
+        clCommandLineParser parser(lines.Item(2));
+        wxArrayString tokens = parser.ToArray();
+        if ( tokens.GetCount() < 2 )
+            return;
+
+        wxString rightFile = tokens.Last();
+        tokens.RemoveAt(tokens.GetCount()-1);
+        wxString leftFile = tokens.Last();
+        
+        // get the left file title
+        wxString title_left, title_right;
+        title_right = _("Working copy");
+        title_left  = _("HEAD version");
+        
+        DiffSideBySidePanel *diffPanel = new DiffSideBySidePanel( EventNotifier::Get()->TopFrame());
+        DiffSideBySidePanel::FileInfo l(leftFile, title_left, true);
+        DiffSideBySidePanel::FileInfo r(rightFile, title_right, false);
+        diffPanel->SetFilesDetails(l, r);
+        diffPanel->Diff();
+        diffPanel->SetOriginSourceControl();
+        m_plugin->GetManager()->AddPage( diffPanel, _("Svn Diff: ") + wxFileName(data->GetFilepath()).GetFullName(), wxNullBitmap, true);
     }
-    command << " diff ";
-    if ( !(ssd.GetFlags() & SvnUseExternalDiff) ) { 
-        command << " -x -w "; 
-    }
-    command << " -r" << diffAgainst << " ";
-    
-    for (size_t i=0; i<paths.GetCount(); i++) {
-        command << wxT("\"") << paths.Item(i) << wxT("\" ");
-    }
-    m_plugin->GetConsole()->Execute(command, DoGetCurRepoPath(), new SvnDiffHandler(m_plugin, event.GetId(), this), false);
 }
 
 void SubversionView::OnStopUI(wxUpdateUIEvent& event)
@@ -1088,7 +1117,7 @@ void SubversionView::DisconnectEvents()
 {
     EventNotifier::Get()->Disconnect(wxEVT_WORKSPACE_LOADED, wxCommandEventHandler(SubversionView::OnWorkspaceLoaded),          NULL, this);
     EventNotifier::Get()->Disconnect(wxEVT_WORKSPACE_CLOSED, wxCommandEventHandler(SubversionView::OnWorkspaceClosed),          NULL, this);
-    EventNotifier::Get()->Disconnect(wxEVT_FILE_SAVED,       wxCommandEventHandler(SubversionView::OnRefreshView),              NULL, this);
+    EventNotifier::Get()->Disconnect(wxEVT_FILE_SAVED,       clCommandEventHandler(SubversionView::OnFileSaved),                NULL, this);
     EventNotifier::Get()->Disconnect(wxEVT_PROJ_FILE_ADDED,  clCommandEventHandler(SubversionView::OnFileAdded),                NULL, this);
     EventNotifier::Get()->Disconnect(wxEVT_FILE_RENAMED,     wxCommandEventHandler(SubversionView::OnFileRenamed),              NULL, this);
     EventNotifier::Get()->Disconnect(wxEVT_ACTIVE_EDITOR_CHANGED, wxCommandEventHandler(SubversionView::OnActiveEditorChanged), NULL, this);
@@ -1342,4 +1371,10 @@ void SubversionView::DoCreateFileExplorerImages()
         //wxPrintf(wxT("%d\n"), newCount);
     }
 #endif
+}
+
+void SubversionView::OnFileSaved(clCommandEvent& event)
+{
+    event.Skip();
+    OnRefreshView( event );
 }

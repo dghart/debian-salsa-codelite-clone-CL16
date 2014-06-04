@@ -33,6 +33,7 @@
 #include "entry.h"
 #include <vector>
 #include "cl_calltip.h"
+#include <list>
 
 class wxStyledTextCtrl;
 
@@ -56,6 +57,9 @@ enum {
  */
 class IEditor
 {
+public:
+    typedef std::list<IEditor*> List_t;
+    
 public:
     IEditor() {}
     virtual ~IEditor() {}
@@ -126,7 +130,13 @@ public:
      * \brief return the current word under the caret. May return wxEmptyString
      */
     virtual wxString GetWordAtCaret() = 0;
-
+    
+    /**
+     * @brief return the word under the mouse pointer. 
+     * If a selection exists, return it instead
+     */
+    virtual wxString GetWordAtMousePointer() = 0;
+    
     /**
      * @brief return the EOL mode of the editor.
      * 	wxSCI_EOL_CRLF 	0
@@ -235,7 +245,14 @@ public:
      * @param tip tip to display
      */
     virtual void ShowCalltip(clCallTipPtr tip) = 0;
-
+    
+    /**
+     * @brief display a rich tooltip (a tip that supports basic markup, such as <a></a>, <strong></strong> etc)
+     * @param tip tip text
+     * @param pos position for the tip. If wxNOT_FOUND the tip is positioned at the mouse
+     */
+    virtual void ShowRichTooltip(const wxString &tip, int pos = wxNOT_FOUND) = 0;
+    
     /**
      * @brief register new user image fot TagEntry kind
      * @param kind the kind string that will be associated with the bitmap (TagEntry::GetKind())
@@ -290,6 +307,10 @@ public:
      * @return return true if a match was found, false otherwise
      */
     virtual bool FindAndSelect(const wxString &pattern, const wxString &what, int from_pos, NavMgr *navmgr) = 0;
+    /**
+     * @brief Similar to the above but returns void, and is implemented asynchronously
+     */
+    virtual void FindAndSelectV(const wxString &pattern, const wxString &what, int from_pos = 0, NavMgr *navmgr = NULL) = 0;
 
     /**
      * @brief set a lexer to the editor
@@ -356,6 +377,11 @@ public:
      * @brief set the focus to the current editor
      */
     virtual void SetActive() = 0;
+ 
+    /**
+     * @brief set the focus to the current editor, after a delay
+     */
+    virtual void DelayedSetActive() = 0;
 };
 
 #endif //IEDITOR_H

@@ -25,6 +25,7 @@
 #ifndef BUILD_CONFIG_SETTINGS_H
 #define BUILD_CONFIG_SETTINGS_H
 
+#include <vector>
 #include "wx/string.h"
 #include "builder.h"
 #include "codelite_exports.h"
@@ -73,7 +74,22 @@ public:
      * codelite to override the user version
      */
     bool Load(const wxString &version);
-
+    
+    /**
+     * @brief delete all compilers
+     */
+    void DeleteAllCompilers(bool notify = true);
+    
+    /**
+     * @brief return list of all compiler names
+     */
+    wxArrayString GetAllCompilers() const;
+    
+    /**
+     * @brief replace the current compilers list with a new one
+     */
+    void SetCompilers( const std::vector<CompilerPtr> &compilers );
+    
     /**
      * Set or update a given compiler using its name as the index
      */

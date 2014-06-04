@@ -252,7 +252,7 @@ FileTypeCmpArgs_t ClangDriver::DoPrepareCompilationArgs(const wxString& projectN
 
     CompilationDatabase cdb;
     static bool once = false;
-    if ( (!wxFileName::FileExists( cdb.GetFileName().GetFullPath() ) || !CompilationDatabase::IsDbVersionUpToDate(cdb.GetFileName())) && !once ) {
+    if ( !cdb.IsOk() && !once ) {
         once = true;
 
         wxString msg;
@@ -260,8 +260,8 @@ FileTypeCmpArgs_t ClangDriver::DoPrepareCompilationArgs(const wxString& projectN
             << cdb.GetFileName().GetFullPath() << wxT("\n\n")
             << _("This file should be created automatically for you.\nIf you don't have it, please run a full rebuild of your workspace\n\n")
             << _("If this is a custom build project (i.e. project that uses a custom makefile),\nplease set the CXX and CC environment variables like this:\n")
-            << _("CXX=codelitegcc g++\n")
-            << _("CC=codelitegcc gcc\n\n");
+            << _("CXX=codelite-cc g++\n")
+            << _("CC=codelite-cc gcc\n\n");
 
         clMainFrame::Get()->GetMainBook()->ShowMessage( msg,
                 true,
@@ -279,7 +279,7 @@ FileTypeCmpArgs_t ClangDriver::DoPrepareCompilationArgs(const wxString& projectN
             cdb.CompilationLine(fnSourceFile.GetFullPath(), compilationLine, cwd);
             cdb.Close();
 
-            CompilerCommandLineParser cclp(compilationLine);
+            CompilerCommandLineParser cclp(compilationLine, cwd);
             cclp.MakeAbsolute(cwd);
 
             CL_DEBUG(wxT("Loaded compilation flags: %s"), compilationLine.c_str());
@@ -539,8 +539,16 @@ void ClangDriver::OnPrepareTUEnded(wxCommandEvent& e)
         // Display an error message if needed, but not if the code-completion box
         // is visible
         if(reply->errorMessage.IsEmpty() == false && !m_activeEditor->IsCompletionBoxShown()) {
-            CodeCompletionBox::Get().CancelTip();
-            CodeCompletionBox::Get().ShowTip(reply->errorMessage, dynamic_cast<LEditor*>(m_activeEditor));
+            // CodeCompletionBox::Get().CancelTip();
+            // CodeCompletionBox::Get().ShowTip(reply->errorMessage, dynamic_cast<LEditor*>(m_activeEditor));
+            LEditor* pEditor = dynamic_cast<LEditor*>(m_activeEditor);
+            if ( pEditor ) {
+                wxWindow* pParent = ::wxGetTopLevelParent( pEditor );
+                wxFrame* pFrame = dynamic_cast<wxFrame*>( pParent );
+                if ( pFrame ) {
+                    pFrame->SetStatusText( reply->errorMessage );
+                }
+            }
         }
         return;
     }
@@ -736,7 +744,7 @@ void ClangDriver::DoGotoDefinition(ClangThreadReply* reply)
     LEditor *editor = clMainFrame::Get()->GetMainBook()->OpenFile(reply->filename, wxEmptyString, reply->line);
     if(editor) {
         int pos = editor->PositionFromLine(reply->line - 1);
-        editor->FindAndSelect(reply->filterWord,
+        editor->FindAndSelectV(reply->filterWord,
                               reply->filterWord,
                               pos,
                               NULL);
@@ -839,7 +847,7 @@ ClangThreadRequest::List_t ClangDriver::DoCreateListOfModifiedBuffers(IEditor* e
     // Collect all modified buffers and pass them to clang as well
     ClangThreadRequest::List_t modifiedBuffers;
     std::vector<LEditor*> editors;
-    clMainFrame::Get()->GetMainBook()->GetAllEditors(editors);
+    clMainFrame::Get()->GetMainBook()->GetAllEditors(editors, MainBook::kGetAll_IncludeDetached);
     for(size_t i=0; i<editors.size(); i++) {
 
         if( editors.at(i) == excludeEditor || !editors.at(i)->IsModified())

@@ -44,6 +44,7 @@
 #include "globals.h"
 #include "cl_defs.h"
 #include "bookmark_manager.h"
+#include "cl_unredo.h"
 
 #define DEBUGGER_INDICATOR          11
 #define MATCH_INDICATOR             10
@@ -60,16 +61,7 @@ enum sci_annotation_styles {
     eAnnotationStyleError = 128, eAnnotationStyleWarning
 };
 
-    /**************** NB: enum sci_marker_types has now moved to bookmark_manager.h ****************/
-
-// These are bitmap masks of the various margin markers.
-// So 256 == 0x100 == 100000000, 2^9, and masks the ninth marker, smt_cond_bp_disabled==8 (as the markers are zero-based)
-// 0x7f00 is binary 111111100000000 and masks all the 7 current breakpoint types. If you add others, change it
-enum marker_mask_type { mmt_standard_bookmarks=0x78, mmt_find_bookmark=0x80, mmt_all_bookmarks=0xF8,
-                        mmt_FIRST_BP_TYPE=0x100, mmt_cond_bp_disabled=mmt_FIRST_BP_TYPE, mmt_bp_cmdlist_disabled=0x200, mmt_bp_disabled=0x400, mmt_bp_ignored=0x800,
-                        mmt_cond_bp=0x1000,mmt_bp_cmdlist=0x2000, mmt_breakpoint=0x4000, mmt_LAST_BP_TYPE=mmt_breakpoint, mmt_all_breakpoints=0x7f00,
-                        mmt_indicator=0x8000, mmt_compiler=0x30000 /* masks compiler errors/warnings */, mmt_folds=wxSTC_MASK_FOLDERS /* 0xFE000000 */
-                      };
+/**************** NB: enum sci_marker_types has now moved to bookmark_manager.h ****************/
 
 /**
 * @class BPtoMarker
@@ -120,6 +112,7 @@ class LEditor : public wxStyledTextCtrl, public IEditor
     int                                         m_lastMatchPos;
     static std::map<wxString, int>              ms_bookmarkShapes;
     bool                                        m_popupIsOn;
+    bool                                        m_isDragging;
     time_t                                      m_modifyTime;
     std::map<int, wxString>                     m_customCmds;
     bool                                        m_isVisible;
@@ -146,12 +139,13 @@ class LEditor : public wxStyledTextCtrl, public IEditor
     std::vector< std::pair<int,int> >           m_savedMarkers;
     bool                                        m_findBookmarksActive;
     std::map<int, wxString>                     m_compilerMessagesMap;
+    CLCommandProcessor                          m_commandsProcessor;
     
 public:
     static bool                                 m_ccShowPrivateMembers;
     static bool                                 m_ccShowItemsComments;
     static bool                                 m_ccInitialized;
-
+    typedef std::vector<LEditor*> Vec_t;
 public:
     static FindReplaceData &GetFindReplaceData() {
         return m_findReplaceData;
@@ -176,6 +170,10 @@ public:
 
     bool IsFullLineCopyCut() const {
         return m_fullLineCopyCut;
+    }
+
+    CLCommandProcessor& GetCommandsProcessor() {
+        return m_commandsProcessor;
     }
 
 public:
@@ -267,6 +265,9 @@ public:
     // page to this one
     virtual void SetActive();
 
+    // Ditto, but asynchronously
+    virtual void DelayedSetActive();
+
     // Perform FindNext operation based on the data stored in the FindReplaceData class
     void FindNext(const FindReplaceData &data);
 
@@ -294,13 +295,14 @@ public:
     }
 
     /**
-     * If word-wrap isn't on, this calls DoEnsureCaretIsVisible() immediately. Otherwise it
+     * If word-wrap isn't on, and forceDelay is false, this calls DoEnsureCaretIsVisible() immediately. Otherwise it
      * stores a position for OnScnPainted() to ensure-is-visible in the next scintilla paint event
      * This doesn't happen until scintilla painting is complete, so it isn't ruined by e.g. word-wrap
      * \param position the position to ensure is visible
      * \param preserveSelection preserve any selection
+     * \param forceDelay wait for the next paint event even if word-wrap is off
      */
-    void SetEnsureCaretIsVisible(int pos, bool preserveSelection = true);
+    void SetEnsureCaretIsVisible(int pos, bool preserveSelection = true, bool forceDelay = false);
 
     /**
      * Does the necessary things to ensure that the destination line of a GoTo is visible
@@ -426,6 +428,8 @@ public:
     bool FindAndSelect();
     bool FindAndSelect(const FindReplaceData &data);
     bool FindAndSelect(const wxString &pattern, const wxString &name);
+    void FindAndSelectV(const wxString &pattern, const wxString &name, int pos = 0, NavMgr* unused = NULL); // The same but returns void, so usable with CallAfter()
+    void DoFindAndSelectV(const wxArrayString& strings, int pos); // Called with CallAfter()
 
     bool Replace();
     bool Replace(const FindReplaceData &data);
@@ -477,6 +481,10 @@ public:
 
     bool IsContextMenuOn() const {
         return m_popupIsOn;
+    }
+
+    bool IsDragging() const {
+        return m_isDragging;
     }
 
     /**
@@ -647,7 +655,20 @@ public:
     virtual const wxString &GetProjectName() const {
         return m_project;
     }
-    virtual wxString GetWordAtCaret() ;
+    /**
+     * @brief 
+     * @return 
+     */
+    virtual wxString GetWordAtCaret();
+    /**
+     * @brief 
+     * @return 
+     */
+    virtual wxString GetWordAtMousePointer();
+    /**
+     * @brief 
+     * @param text
+     */
     virtual void AppendText(const wxString &text) {
         wxStyledTextCtrl::AppendText(text);
     }
@@ -740,7 +761,18 @@ public:
     virtual int PositionAfterPos(int pos);
     virtual int PositionBeforePos(int pos);
     virtual int GetCharAtPos(int pos);
-
+    
+    /**
+     * @brief return true if the current editor is detached from the mainbook
+     */
+    bool IsDetached() const;
+    
+    /**
+     * @brief display a rich tooltip (a tip that supports basic markup, such as <a></a>, <strong></strong> etc)
+     * @param tip tip text
+     * @param pos position for the tip. If wxNOT_FOUND the tip is positioned at the mouse
+     */
+    void ShowRichTooltip(const wxString& tip, int pos = wxNOT_FOUND);
     //----------------------------------------------------------------------------
     //----------------------------------------------------------------------------
 
@@ -775,6 +807,8 @@ public:
     void PasteLineAbove();
 
 private:
+    void DoUpdateTLWTitle(bool raise);
+    
     void FillBPtoMarkerArray();
     BPtoMarker GetMarkerForBreakpt(enum BreakpointType bp_type);
     void SetProperties();

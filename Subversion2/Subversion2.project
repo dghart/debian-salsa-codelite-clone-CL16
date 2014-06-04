@@ -21,6 +21,8 @@
     <File Name="SvnLogDialog.cpp"/>
     <File Name="SvnInfoDialog.h"/>
     <File Name="SvnInfoDialog.cpp"/>
+    <File Name="workspacesvnsettings.h"/>
+    <File Name="workspacesvnsettings.cpp"/>
   </VirtualDirectory>
   <VirtualDirectory Name="include">
     <File Name="subversion2.h"/>
@@ -254,7 +256,7 @@
       </Completion>
     </Configuration>
   </Settings>
-  <Dependencies Name="WinDebugUnicode"/>
   <Dependencies Name="Win_wxWidgets_29"/>
   <Dependencies Name="WinReleaseUnicode"/>
+  <Dependencies Name="WinDebugUnicode"/>
 </CodeLite_Project>

@@ -29,9 +29,11 @@
 #include "wx_xml_compatibility.h"
 #include "build_system.h"
 #include "build_settings_config.h"
+#include <ICompilerLocator.h>
 
-Compiler::Compiler(wxXmlNode *node)
+Compiler::Compiler(wxXmlNode *node, Compiler::eRegexType regexType)
     : m_objectNameIdenticalToFileName(false)
+    , m_isDefault(false)
 {
     // ensure all relevant entries exist in switches map (makes sure they show up in build settings dlg)
     SetSwitch("Include",       "");
@@ -58,6 +60,9 @@ Compiler::Compiler(wxXmlNode *node)
     m_fileTypes.clear();
     if (node) {
         m_name = XmlUtils::ReadString(node, wxT("Name"));
+        m_compilerFamily = XmlUtils::ReadString(node, "CompilerFamily");
+        m_isDefault = XmlUtils::ReadBool(node, "IsDefault");
+        
         if (!node->HasProp(wxT("GenerateDependenciesFiles"))) {
             if (m_name == wxT("gnu g++") || m_name == wxT("gnu gcc")) {
                 m_generateDependeciesFile = true;
@@ -152,7 +157,11 @@ Compiler::Compiler(wxXmlNode *node)
                 cmpOption.help = child->GetNodeContent();
                 m_linkerOptions[cmpOption.name] = cmpOption;
             }
-
+            
+            else if (child->GetName() == wxT("InstallationPath")) {
+                m_installationPath = child->GetNodeContent();
+            }
+            
             child = child->GetNext();
         }
         
@@ -172,7 +181,9 @@ Compiler::Compiler(wxXmlNode *node)
         }
     } else {
         // Create a default compiler: g++
-        m_name = "gnu g++";
+        m_name = "";
+        m_compilerFamily = COMPILER_FAMILY_GCC;
+        m_isDefault = false;
         SetSwitch("Include",        "-I");
         SetSwitch("Debug",          "-g ");
         SetSwitch("Preprocessor",   "-D");
@@ -187,19 +198,36 @@ Compiler::Compiler(wxXmlNode *node)
         m_objectSuffix = ".o";
         m_preprocessSuffix = ".i";
         
-        AddPattern(eErrorPattern, "^([^ ][a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([0-9]*)([:0-9]*)(: )((fatal error)|(error)|(undefined reference))", 1, 3);
-        AddPattern(eErrorPattern, "^([^ ][a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([^ ][a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)(\\(\\.text\\+[0-9a-fx]*\\))", 3, 1);
-        AddPattern(eErrorPattern, "^([^ ][a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([^ ][a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([0-9]+)(:)", 3, 1);
-        AddPattern(eErrorPattern, "undefined reference to", -1, -1);
-        AddPattern(eErrorPattern, "\\*\\*\\* \\[[a-zA-Z\\-_0-9 ]+\\] (Error)", -1, -1);
+        if ( regexType == kRegexGNU ) {
+            AddPattern(eErrorPattern, "^([^ ][a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([0-9]*)([:0-9]*)(: )((fatal error)|(error)|(undefined reference))", 1, 3);
+            AddPattern(eErrorPattern, "^([^ ][a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([^ ][a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)(\\(\\.text\\+[0-9a-fx]*\\))", 3, 1);
+            AddPattern(eErrorPattern, "^([^ ][a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([^ ][a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([0-9]+)(:)", 3, 1);
+            AddPattern(eErrorPattern, "undefined reference to", -1, -1);
+            AddPattern(eErrorPattern, "\\*\\*\\* \\[[a-zA-Z\\-_0-9 ]+\\] (Error)", -1, -1);
+            
+            AddPattern(eWarningPattern, "([a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([0-9]+ *)(:)([0-9:]*)?( warning)", 1, 3);
+            AddPattern(eWarningPattern, "([a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([0-9]+ *)(:)([0-9:]*)?( note)", 1, 3);
+            AddPattern(eWarningPattern, "([a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([0-9]+ *)(:)([0-9:]*)?([ ]+instantiated)", 1, 3);
+            AddPattern(eWarningPattern, "(In file included from *)([a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([0-9]+ *)(:)([0-9:]*)?", 2, 4);
+            
+        } else {
+            
+            AddPattern(eErrorPattern,   "^windres: ([a-zA-Z:]{0,2}[ a-zA-Z\\\\.0-9_/\\+\\-]+) *:([0-9]+): syntax error", 1, 2);
+            AddPattern(eErrorPattern,   "(^[a-zA-Z\\\\.0-9 _/\\:\\+\\-]+ *)(\\()([0-9]+)(\\))( \\: )(error)", 1, 3);
+            AddPattern(eErrorPattern,   "(LINK : fatal error)", 1, 1);
+            AddPattern(eErrorPattern,   "(NMAKE : fatal error)", 1, 1);
+            AddPattern(eWarningPattern, "(^[a-zA-Z\\\\.0-9 _/\\:\\+\\-]+ *)(\\()([0-9]+)(\\))( \\: )(warning)", 1, 3);
+            AddPattern(eWarningPattern, "([a-z_A-Z]*\\.obj)( : warning)", 1, 1);
+            AddPattern(eWarningPattern, "(cl : Command line warning)", 1, 1);
+        }
         
-        AddPattern(eWarningPattern, "([a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([0-9]+ *)(:)([0-9:]*)?( warning)", 1, 3);
-        AddPattern(eWarningPattern, "([a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([0-9]+ *)(:)([0-9:]*)?( note)", 1, 3);
-        AddPattern(eWarningPattern, "([a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([0-9]+ *)(:)([0-9:]*)?([ ]+instantiated)", 1, 3);
-        AddPattern(eWarningPattern, "(In file included from *)([a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([0-9]+ *)(:)([0-9:]*)?", 2, 4);
-
         SetTool("LinkerName",             "g++");
+#ifdef __WXMAC__
+        SetTool("SharedObjectLinkerName", "g++ -dynamiclib -fPIC");
+#else
         SetTool("SharedObjectLinkerName", "g++ -shared -fPIC");
+#endif
+
         SetTool("CXX",                    "g++");
         SetTool("CC",                     "gcc");
         SetTool("AR",                     "ar rcu");
@@ -255,10 +283,16 @@ Compiler::~Compiler()
 wxXmlNode *Compiler::ToXml() const
 {
     wxXmlNode *node = new wxXmlNode(NULL, wxXML_ELEMENT_NODE, wxT("Compiler"));
-    node->AddProperty(wxT("Name"), m_name);
+    node->AddProperty(wxT("Name"),                          m_name);
     node->AddProperty(wxT("GenerateDependenciesFiles"),     BoolToString(m_generateDependeciesFile));
     node->AddProperty(wxT("ReadObjectsListFromFile"),       BoolToString(m_readObjectFilesFromList));
     node->AddProperty(wxT("ObjectNameIdenticalToFileName"), BoolToString(m_objectNameIdenticalToFileName));
+    node->AddProperty("CompilerFamily",                     m_compilerFamily);
+    node->AddProperty("IsDefault",                          BoolToString(m_isDefault));
+    
+    wxXmlNode* installPath = new wxXmlNode(NULL, wxXML_ELEMENT_NODE, "InstallationPath");
+    node->AddChild( installPath );
+    XmlUtils::SetCDATANodeContent(installPath, m_installationPath);
 
     std::map<wxString, wxString>::const_iterator iter = m_switches.begin();
     for (; iter != m_switches.end(); iter++) {

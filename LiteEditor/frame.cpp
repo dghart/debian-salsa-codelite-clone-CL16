@@ -50,6 +50,13 @@
 #include "refactoring_storage.h"
 #include "refactorengine.h"
 #include "bookmark_manager.h"
+#include <wx/richmsgdlg.h>
+#include "code_completion_manager.h"
+#include "clang_compilation_db_thread.h"
+#include "cl_unredo.h"
+#include "NewProjectWizard.h"
+#include <CompilersDetectorManager.h>
+#include "CompilersFoundDlg.h"
 
 #ifdef __WXGTK20__
 // We need this ugly hack to workaround a gtk2-wxGTK name-clash
@@ -74,10 +81,8 @@
 #include "singleinstancethreadjob.h"
 #include "refactorindexbuildjob.h"
 #include "jobqueue.h"
-#include "threebuttondlg.h"
 #include "acceltabledlg.h"
 #include "drawingutils.h"
-#include "newprojectdlg.h"
 #include "newworkspacedlg.h"
 #include "replaceinfilespanel.h"
 #include "pluginmgrdlg.h"
@@ -217,6 +222,7 @@ BEGIN_EVENT_TABLE(clMainFrame, wxFrame)
     //--------------------------------------------------
     EVT_MENU(wxID_UNDO,                           clMainFrame::DispatchCommandEvent)
     EVT_MENU(wxID_REDO,                           clMainFrame::DispatchCommandEvent)
+    EVT_MENU(XRCID("label_current_state"),        clMainFrame::DispatchCommandEvent)
     EVT_MENU(wxID_DUPLICATE,                      clMainFrame::DispatchCommandEvent)
     EVT_MENU(XRCID("delete_line"),                clMainFrame::DispatchCommandEvent)
     EVT_MENU(XRCID("delete_line_end"),            clMainFrame::DispatchCommandEvent)
@@ -539,10 +545,11 @@ BEGIN_EVENT_TABLE(clMainFrame, wxFrame)
     EVT_MENU(XRCID("copy_file_path"),                   clMainFrame::OnCopyFilePathOnly)
     EVT_MENU(XRCID("copy_file_name_only"),              clMainFrame::OnCopyFileName)
     EVT_MENU(XRCID("open_shell_from_filepath"),         clMainFrame::OnOpenShellFromFilePath)
-
+    EVT_MENU(XRCID("ID_DETACH_EDITOR"),                 clMainFrame::OnDetachEditor)
     EVT_UPDATE_UI(XRCID("copy_file_name"),              clMainFrame::OnFileExistUpdateUI)
     EVT_UPDATE_UI(XRCID("copy_file_path"),              clMainFrame::OnFileExistUpdateUI)
     EVT_UPDATE_UI(XRCID("open_shell_from_filepath"),    clMainFrame::OnFileExistUpdateUI)
+    EVT_UPDATE_UI(XRCID("ID_DETACH_EDITOR"),            clMainFrame::OnDetachEditorUI)
 
     //-----------------------------------------------------------------
     // Default editor context menu
@@ -599,10 +606,6 @@ BEGIN_EVENT_TABLE(clMainFrame, wxFrame)
     EVT_COMMAND(wxID_ANY, wxEVT_REFRESH_PERSPECTIVE_MENU,          clMainFrame::OnRefreshPerspectiveMenu)
     EVT_MENU   (XRCID("update_num_builders_count"),                clMainFrame::OnUpdateNumberOfBuildProcesses)
     EVT_MENU   (XRCID("goto_codelite_download_url"),               clMainFrame::OnGotoCodeLiteDownloadPage)
-
-    EVT_MENU   (XRCID("never_update_parser_paths"),                clMainFrame::OnNeverUpdateParserPath)
-    EVT_MENU   (XRCID("update_parser_paths"),                      clMainFrame::OnUpdateParserPath)
-
     EVT_COMMAND(wxID_ANY, wxEVT_CMD_SINGLE_INSTANCE_THREAD_OPEN_FILES, clMainFrame::OnSingleInstanceOpenFiles)
     EVT_COMMAND(wxID_ANY, wxEVT_CMD_SINGLE_INSTANCE_THREAD_RAISE_APP,  clMainFrame::OnSingleInstanceRaise)
 
@@ -612,9 +615,6 @@ BEGIN_EVENT_TABLE(clMainFrame, wxFrame)
     EVT_COMMAND(wxID_ANY, wxEVT_CMD_NEW_DOCKPANE,    clMainFrame::OnNewDetachedPane)
     EVT_COMMAND(wxID_ANY, wxEVT_LOAD_PERSPECTIVE,    clMainFrame::OnLoadPerspective)
     EVT_COMMAND(wxID_ANY, wxEVT_CMD_DELETE_DOCKPANE, clMainFrame::OnDestroyDetachedPane)
-
-    EVT_MENU(wxEVT_CMD_RELOAD_EXTERNALLY_MODIFIED,          clMainFrame::OnReloadExternallModified)
-    EVT_MENU(wxEVT_CMD_RELOAD_EXTERNALLY_MODIFIED_NOPROMPT, clMainFrame::OnReloadExternallModifiedNoPrompt)
 END_EVENT_TABLE()
 
 clMainFrame* clMainFrame::m_theFrame = NULL;
@@ -688,11 +688,25 @@ clMainFrame::clMainFrame(wxWindow *pParent, wxWindowID id, const wxString& title
     EventNotifier::Get()->Connect(wxEVT_CL_THEME_CHANGED, wxCommandEventHandler(clMainFrame::OnThemeChanged), NULL, this);
     EventNotifier::Get()->Connect(wxEVT_ACTIVE_EDITOR_CHANGED, wxCommandEventHandler(clMainFrame::OnActiveEditorChanged), NULL, this);
     EventNotifier::Get()->Bind(wxEVT_EDITOR_SETTINGS_CHANGED, wxCommandEventHandler(clMainFrame::OnSettingsChanged), this);
+    EventNotifier::Get()->Bind(wxEVT_CMD_RELOAD_EXTERNALLY_MODIFIED_NOPROMPT, wxCommandEventHandler(clMainFrame::OnReloadExternallModifiedNoPrompt), this);
+    EventNotifier::Get()->Bind(wxEVT_CMD_RELOAD_EXTERNALLY_MODIFIED, wxCommandEventHandler(clMainFrame::OnReloadExternallModified), this);
 
+    Connect(wxID_UNDO, wxEVT_COMMAND_AUITOOLBAR_TOOL_DROPDOWN, wxAuiToolBarEventHandler(clMainFrame::OnTBUnRedo), NULL, this);
+    Connect(wxID_REDO, wxEVT_COMMAND_AUITOOLBAR_TOOL_DROPDOWN, wxAuiToolBarEventHandler(clMainFrame::OnTBUnRedo), NULL, this);
+
+    // Start the code completion manager, we do this by calling it once
+    CodeCompletionManager::Get();
 }
 
 clMainFrame::~clMainFrame(void)
 {
+#ifndef __WXMSW__
+    m_zombieReaper.Stop();
+#endif
+
+    // Free the code completion manager
+    CodeCompletionManager::Release();
+    
     // this will make sure that the main menu bar's member m_widget is freed before the we enter wxMenuBar destructor
     // see this wxWidgets bug report for more details:
     //  http://trac.wxwidgets.org/ticket/14292
@@ -725,6 +739,11 @@ clMainFrame::~clMainFrame(void)
     EventNotifier::Get()->Disconnect(wxEVT_CL_THEME_CHANGED, wxCommandEventHandler(clMainFrame::OnThemeChanged), NULL, this);
     EventNotifier::Get()->Disconnect(wxEVT_ACTIVE_EDITOR_CHANGED, wxCommandEventHandler(clMainFrame::OnActiveEditorChanged), NULL, this);
     EventNotifier::Get()->Unbind(wxEVT_EDITOR_SETTINGS_CHANGED, wxCommandEventHandler(clMainFrame::OnSettingsChanged), this);
+    EventNotifier::Get()->Unbind(wxEVT_CMD_RELOAD_EXTERNALLY_MODIFIED_NOPROMPT, wxCommandEventHandler(clMainFrame::OnReloadExternallModifiedNoPrompt), this);
+    EventNotifier::Get()->Unbind(wxEVT_CMD_RELOAD_EXTERNALLY_MODIFIED, wxCommandEventHandler(clMainFrame::OnReloadExternallModified), this);
+
+    Disconnect(wxID_UNDO, wxEVT_COMMAND_AUITOOLBAR_TOOL_DROPDOWN, wxAuiToolBarEventHandler(clMainFrame::OnTBUnRedo), NULL, this);
+    Disconnect(wxID_REDO, wxEVT_COMMAND_AUITOOLBAR_TOOL_DROPDOWN, wxAuiToolBarEventHandler(clMainFrame::OnTBUnRedo), NULL, this);
 
     wxDELETE(m_timer);
     wxDELETE(m_statusbarTimer);
@@ -880,6 +899,13 @@ void clMainFrame::CreateGUIControls(void)
     CreateRecentlyOpenedWorkspacesMenu();
     DoUpdatePerspectiveMenu();
 
+    // Connect to Edit menu, so that its labelled-state submenu can be added on the fly when necessary
+    wxMenu* editmenu = NULL;
+    wxMenuItem* menuitem = GetMenuBar()->FindItem(wxID_UNDO, &editmenu);
+    if (menuitem && editmenu) {
+        editmenu->Bind(wxEVT_MENU_OPEN, wxMenuEventHandler(clMainFrame::OnEditMenuOpened), this);
+    }
+
     m_DPmenuMgr = new DockablePaneMenuManager(GetMenuBar(), &m_mgr);
 
     //---------------------------------------------
@@ -918,7 +944,10 @@ void clMainFrame::CreateGUIControls(void)
     if ( !show_nav ) {
         m_mainBook->ShowNavBar( false );
     }
-    BuildSettingsConfigST::Get()->Load(wxT("2.1"));
+    
+    if ( !BuildSettingsConfigST::Get()->Load(wxT("2.1")) ) {
+        CL_ERROR("Could not locate build configuration! CodeLite installation is broken this might cause unwanted behavior!");
+    }
 
     clConfig ccConfig("code-completion.conf");
     ccConfig.ReadItem( &m_tagsOptionsData );
@@ -951,7 +980,8 @@ void clMainFrame::CreateGUIControls(void)
     ParseThreadST::Get()->SetSearchPaths( m_tagsOptionsData.GetParserSearchPaths(), m_tagsOptionsData.GetParserExcludePaths() );
 
     ParseThreadST::Get()->Start();
-
+    ClangCompilationDbThreadST::Get()->Start();
+    
     // Connect this tree to the parse thread
     ParseThreadST::Get()->SetNotifyWindow( this );
 
@@ -983,6 +1013,7 @@ void clMainFrame::CreateGUIControls(void)
         } else {
             nativeToolbar ? CreateNativeToolbar24() : CreateToolbars24();
         }
+        Bind(wxEVT_TOOL_DROPDOWN, wxCommandEventHandler(clMainFrame::OnNativeTBUnRedoDropdown), this, wxID_UNDO, wxID_REDO);
     } else {
         CreateToolbars24();
     }
@@ -999,10 +1030,6 @@ void clMainFrame::CreateGUIControls(void)
 
     m_mgr.Update();
     SetAutoLayout (true);
-
-    //load debuggers
-    DebuggerMgr::Get().Initialize(this, EnvironmentConfig::Instance(), ManagerST::Get()->GetInstallDir());
-    DebuggerMgr::Get().LoadDebuggers();
 
     wxString sessConfFile;
     sessConfFile << clStandardPaths::Get().GetUserDataDir() << wxT("/config/sessions.xml");
@@ -1058,6 +1085,51 @@ void clMainFrame::CreateViewAsSubMenu()
     }
 }
 
+void clMainFrame::OnEditMenuOpened(wxMenuEvent& event)
+{
+    LEditor* editor = GetMainBook()->GetActiveEditor(true);
+    wxMenuItem* labelCurrentState = event.GetMenu()->FindChildItem(XRCID("label_current_state"));
+    if (labelCurrentState) { // Here seems to be the only reliable place to do 'updateui' for this; a real UpdateUI handler is only hit when there's no editor :/
+        labelCurrentState->Enable(editor != NULL);
+    }
+
+    if (editor) {
+        editor->GetCommandsProcessor().PrepareLabelledStatesMenu(event.GetMenu());
+
+    } else {
+        // There's no active editor, so remove any stale submenu; otherwise it'll display but the contents won't work
+        wxMenuItem* menuitem = event.GetMenu()->FindChildItem(XRCID("goto_labelled_state"));
+        if (menuitem) {
+            event.GetMenu()->Delete(menuitem);
+        }
+        event.Skip();
+    }
+}
+
+void clMainFrame::OnNativeTBUnRedoDropdown(wxCommandEvent& event)
+{    
+    LEditor* editor = GetMainBook()->GetActiveEditor(true);
+    if (editor && GetToolBar()) {
+        bool undoing = event.GetId()==wxID_UNDO;
+        wxMenu* menu = new wxMenu;
+        editor->GetCommandsProcessor().DoPopulateUnRedoMenu(*menu, undoing);
+        if (!menu->GetMenuItemCount()) {
+            delete menu;
+            return;
+        }
+
+        if (undoing) {
+            menu->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(CommandProcessorBase::OnUndoDropdownItem), &editor->GetCommandsProcessor());
+        } else {
+            menu->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(CommandProcessorBase::OnRedoDropdownItem), &editor->GetCommandsProcessor());
+        }
+        GetToolBar()->SetDropdownMenu(event.GetId(), menu);
+        
+        event.Skip();
+    }
+    // Don't skip if there's no active editor/toolbar, otherwise a stale menu will show
+}
+
 wxString clMainFrame::GetViewAsLanguageById(int id) const
 {
     if (m_viewAsMap.find(id) == m_viewAsMap.end()) {
@@ -1104,7 +1176,9 @@ void clMainFrame::CreateToolbars24()
     tb->AddTool(wxID_PASTE,               _("Paste"),           bmpLoader.LoadBitmap(wxT("toolbars/24/standard/paste")),        _("Paste"));
     TB_SEPARATOR();
     tb->AddTool(wxID_UNDO,                _("Undo"),            bmpLoader.LoadBitmap(wxT("toolbars/24/standard/undo")),         _("Undo"));
+    tb->SetToolDropDown(wxID_UNDO, true);
     tb->AddTool(wxID_REDO,                _("Redo"),            bmpLoader.LoadBitmap(wxT("toolbars/24/standard/redo")),         _("Redo"));
+    tb->SetToolDropDown(wxID_REDO, true);
     tb->AddTool(wxID_BACKWARD,            _("Backward"),        bmpLoader.LoadBitmap(wxT("toolbars/24/standard/back")),         _("Backward"));
     tb->AddTool(wxID_FORWARD,             _("Forward"),         bmpLoader.LoadBitmap(wxT("toolbars/24/standard/forward")),      _("Forward"));
     TB_SEPARATOR();
@@ -1230,8 +1304,8 @@ void clMainFrame::CreateNativeToolbar16()
     tb->AddTool(wxID_COPY,                _("Copy"),            bmpLoader.LoadBitmap(wxT("toolbars/16/standard/copy")),         _("Copy"));
     tb->AddTool(wxID_PASTE,               _("Paste"),           bmpLoader.LoadBitmap(wxT("toolbars/16/standard/paste")),        _("Paste"));
     TB_SEPARATOR();
-    tb->AddTool(wxID_UNDO,                _("Undo"),            bmpLoader.LoadBitmap(wxT("toolbars/16/standard/undo")),         _("Undo"));
-    tb->AddTool(wxID_REDO,                _("Redo"),            bmpLoader.LoadBitmap(wxT("toolbars/16/standard/redo")),         _("Redo"));
+    tb->AddTool(wxID_UNDO,                _("Undo"),            bmpLoader.LoadBitmap(wxT("toolbars/16/standard/undo")),         _("Undo"), wxITEM_DROPDOWN);
+    tb->AddTool(wxID_REDO,                _("Redo"),            bmpLoader.LoadBitmap(wxT("toolbars/16/standard/redo")),         _("Redo"), wxITEM_DROPDOWN);
     tb->AddTool(wxID_BACKWARD,            _("Backward"),        bmpLoader.LoadBitmap(wxT("toolbars/16/standard/back")),         _("Backward"));
     tb->AddTool(wxID_FORWARD,             _("Forward"),         bmpLoader.LoadBitmap(wxT("toolbars/16/standard/forward")),      _("Forward"));
     TB_SEPARATOR();
@@ -1306,8 +1380,8 @@ void clMainFrame::CreateNativeToolbar24()
     tb->AddTool(wxID_COPY,                _("Copy"),            bmpLoader.LoadBitmap(wxT("toolbars/24/standard/copy")),         _("Copy"));
     tb->AddTool(wxID_PASTE,               _("Paste"),           bmpLoader.LoadBitmap(wxT("toolbars/24/standard/paste")),        _("Paste"));
     TB_SEPARATOR();
-    tb->AddTool(wxID_UNDO,                _("Undo"),            bmpLoader.LoadBitmap(wxT("toolbars/24/standard/undo")),         _("Undo"));
-    tb->AddTool(wxID_REDO,                _("Redo"),            bmpLoader.LoadBitmap(wxT("toolbars/24/standard/redo")),         _("Redo"));
+    tb->AddTool(wxID_UNDO,                _("Undo"),            bmpLoader.LoadBitmap(wxT("toolbars/24/standard/undo")),         _("Undo"), wxITEM_DROPDOWN);
+    tb->AddTool(wxID_REDO,                _("Redo"),            bmpLoader.LoadBitmap(wxT("toolbars/24/standard/redo")),         _("Redo"), wxITEM_DROPDOWN);
     tb->AddTool(wxID_BACKWARD,            _("Backward"),        bmpLoader.LoadBitmap(wxT("toolbars/24/standard/back")),         _("Backward"));
     tb->AddTool(wxID_FORWARD,             _("Forward"),         bmpLoader.LoadBitmap(wxT("toolbars/24/standard/forward")),      _("Forward"));
     TB_SEPARATOR();
@@ -1396,7 +1470,9 @@ void clMainFrame::CreateToolbars16()
     tb->AddTool(wxID_PASTE,               _("Paste"),           bmpLoader.LoadBitmap(wxT("toolbars/16/standard/paste")),        _("Paste"));
     TB_SEPARATOR();
     tb->AddTool(wxID_UNDO,                _("Undo"),            bmpLoader.LoadBitmap(wxT("toolbars/16/standard/undo")),         _("Undo"));
+    tb->SetToolDropDown(wxID_UNDO, true);
     tb->AddTool(wxID_REDO,                _("Redo"),            bmpLoader.LoadBitmap(wxT("toolbars/16/standard/redo")),         _("Redo"));
+    tb->SetToolDropDown(wxID_REDO, true);
     tb->AddTool(wxID_BACKWARD,            _("Backward"),        bmpLoader.LoadBitmap(wxT("toolbars/16/standard/back")),         _("Backward"));
     tb->AddTool(wxID_FORWARD,             _("Forward"),         bmpLoader.LoadBitmap(wxT("toolbars/16/standard/forward")),      _("Forward"));
     TB_SEPARATOR();
@@ -1501,72 +1577,54 @@ void clMainFrame::CreateToolbars16()
     }
 }
 
+void clMainFrame::LocateCompilersIfNeeded()
+{
+    bool bAutoDetectCompilers = clConfig::Get().Read("AutoDetectCompilerOnStartup", true);
+    if ( bAutoDetectCompilers ) {
+        
+        // Unset the flag so next time we won't get this
+        clConfig::Get().Write("AutoDetectCompilerOnStartup", false);
+        
+        // First time, trigger the auto-compiler detection code
+        CompilersDetectorManager detector;
+        if ( detector.Locate() ) {
+            const ICompilerLocator::CompilerVec_t& compilersFound = detector.GetCompilersFound();
+            CompilersFoundDlg dlg(this, compilersFound);
+            if ( dlg.ShowModal() == wxID_OK ) {
+                // Replace the current compilers with a new one
+                BuildSettingsConfigST::Get()->SetCompilers( compilersFound );
+            }
+        }
+    }
+}
+
 void clMainFrame::UpdateBuildTools()
 {
-/*    BuilderPtr builder = BuildManagerST::Get()->GetBuilder ( wxT ( "GNU makefile for g++/gcc" ) );
-    wxString tool = builder->GetBuildToolName();
-    wxString origTool ( tool );
-
-    //confirm that it exists...
-    wxString path;
-    bool is_ok ( true );
-
-    // Apply the environment
-    EnvSetter env;
-
-    if ( tool.Contains ( wxT ( "$" ) ) ) {
-        //expand
-        tool = EnvironmentConfig::Instance()->ExpandVariables ( tool, false );
-    }
-
-    if ( !ExeLocator::Locate ( tool, path ) ) {
-        is_ok = false;
-        //failed to locate the specified build tool
-        //try some default names which are commonly used on windows
-        if ( !is_ok && ExeLocator::Locate ( wxT ( "mingw32-make" ), path ) ) {
-            tool = path;
-            is_ok = true;
-        }
-
-        if ( !is_ok && ExeLocator::Locate ( wxT ( "make" ), path ) ) {
-            tool = path;
-            is_ok = true;
-        }
-    } else {
-        //we are good, nothing to be done
-        return;
-    }
-
-    wxString message;
-    if ( !is_ok ) {
-        message << wxT ( "Failed to locate make util '" )
-                << tool << wxT ( "' specified by 'Build Settings'" );
-        wxLogMessage ( message );
-        return;
-    } else {
-        wxLogMessage ( wxT ( "Updating build too to '" ) + tool + wxT ( "' from '" ) + origTool + wxT ( "'" ) );
-    }
-
-    //update the cached builders
-    builder->SetBuildTool ( tool );
-    BuildManagerST::Get()->AddBuilder ( builder );
-
-    //update the configuration files
-    BuilderConfigPtr bsptr = BuildSettingsConfigST::Get()->GetBuilderConfig ( wxT ( "GNU makefile for g++/gcc" ) );
-    if ( !bsptr ) {
-        bsptr = new BuilderConfig ( NULL );
-        bsptr->SetName ( wxT ( "GNU makefile for g++/gcc" ) );
-    }
-
-    bsptr->SetToolPath ( tool );
-    BuildSettingsConfigST::Get()->SetBuildSystem ( bsptr );
-     */
 }
 
 void clMainFrame::OnQuit(wxCommandEvent& WXUNUSED(event))
 {
     Close();
 }
+
+void clMainFrame::OnTBUnRedo(wxAuiToolBarEvent& event)
+{
+    if (event.IsDropDownClicked()) {
+        LEditor* editor = GetMainBook()->GetActiveEditor(true);
+        if (editor) {
+            editor->GetCommandsProcessor().ProcessEvent(event);
+
+        } else if (GetMainBook()->GetCurrentPage()) {
+            event.StopPropagation(); // Otherwise we'll infinitely loop if the active page doesn't handle this event
+            GetMainBook()->GetCurrentPage()->GetEventHandler()->ProcessEvent(event); // Let the active plugin have a go
+        }
+    }
+
+    else {
+        DispatchCommandEvent(event); // Revert to standard processing
+    }
+}
+
 //----------------------------------------------------
 // Helper method for the event handling
 //----------------------------------------------------
@@ -1575,7 +1633,7 @@ bool clMainFrame::IsEditorEvent(wxEvent &event)
 {
 #ifdef __WXGTK__
     MainBook *mainBook = GetMainBook();
-    if(!mainBook || !mainBook->GetActiveEditor()) {
+    if(!mainBook || !mainBook->GetActiveEditor(true)) {
         if ( event.GetId() == wxID_FIND )
             return true;
         else
@@ -1595,7 +1653,7 @@ bool clMainFrame::IsEditorEvent(wxEvent &event)
             isFocused = true;
 
         } else {
-            isFocused = mainBook->GetActiveEditor()->IsFocused();
+            isFocused = mainBook->GetActiveEditor(true)->IsFocused();
 
         }
         return isFocused;
@@ -1643,7 +1701,7 @@ void clMainFrame::DispatchCommandEvent(wxCommandEvent &event)
     }
 
     // Do the default and pass this event to the Editor
-    LEditor* editor = GetMainBook()->GetActiveEditor();
+    LEditor* editor = GetMainBook()->GetActiveEditor(true);
     if ( !editor && event.GetId() != wxID_FIND ) {
         return;
     }
@@ -1666,7 +1724,7 @@ void clMainFrame::DispatchUpdateUIEvent(wxUpdateUIEvent &event)
         return;
     }
 
-    LEditor* editor = GetMainBook()->GetActiveEditor();
+    LEditor* editor = GetMainBook()->GetActiveEditor(true);
     if ( !editor ) {
         event.Enable(false);
         return;
@@ -1685,7 +1743,7 @@ void clMainFrame::OnFileExistUpdateUI(wxUpdateUIEvent &event)
 {
     CHECK_SHUTDOWN();
 
-    LEditor* editor = GetMainBook()->GetActiveEditor();
+    LEditor* editor = GetMainBook()->GetActiveEditor(true);
     if ( !editor ) {
         event.Enable(false);
     } else {
@@ -1707,17 +1765,6 @@ void clMainFrame::OnClose(wxCloseEvent& event)
 {
     wxString msg;
     bool boDoNotClose = false;
-
-    //// Check for running retag thread
-    //if (ManagerST::Get()->GetRetagInProgress()) {
-    //    msg << wxT("The retag of the Workspace is currently in progress.\n")
-    //        << wxT("Do you want to close any way?");
-    //
-    //    int rc = wxMessageBox(msg, wxT("Retag of the Workspace in progress..."), wxYES_NO|wxCENTER|wxICON_QUESTION);
-    //    if (rc == wxNO) {
-    //        boDoNotClose = true;
-    //    }
-    // }
 
     if (!boDoNotClose) {
         ManagerST::Get()->SetShutdownInProgress(true);
@@ -1751,7 +1798,13 @@ void clMainFrame::LoadSession(const wxString &sessionName)
     if (SessionManager::Get().GetSession(sessionName, session)) {
         wxString wspFile = session.GetWorkspaceName();
         if (wspFile.IsEmpty() == false && wspFile != wxT("Default")) {
-            ManagerST::Get()->OpenWorkspace(wspFile);
+            
+            // Load the workspace only if it exists
+            wxFileName fnWorkspace( wspFile );
+            if ( fnWorkspace.Exists() ) {
+                ManagerST::Get()->OpenWorkspace(wspFile);
+            }
+            
         } else {
             // no workspace to open, so just restore any previously open editors
             GetMainBook()->RestoreSession(session);
@@ -1761,7 +1814,7 @@ void clMainFrame::LoadSession(const wxString &sessionName)
 
 void clMainFrame::OnSave(wxCommandEvent& event)
 {
-    LEditor *editor = GetMainBook()->GetActiveEditor();
+    LEditor *editor = GetMainBook()->GetActiveEditor(true);
     if (editor) {
         editor->SaveFile();
 
@@ -1800,7 +1853,7 @@ void clMainFrame::OnFileLoadTabGroup(wxCommandEvent& WXUNUSED(event))
 
     // Disable the 'Replace' checkbox if there aren't any editors to replace
     std::vector<LEditor*> editors;
-    GetMainBook()->GetAllEditors(editors);
+    GetMainBook()->GetAllEditors(editors, MainBook::kGetAll_Default);
     dlg.EnableReplaceCheck(editors.size());
 
     if (dlg.ShowModal() != wxID_OK) {
@@ -1832,14 +1885,14 @@ void clMainFrame::OnFileLoadTabGroup(wxCommandEvent& WXUNUSED(event))
 void clMainFrame::OnFileReload(wxCommandEvent &event)
 {
     wxUnusedVar(event);
-    LEditor *editor = GetMainBook()->GetActiveEditor();
+    LEditor *editor = GetMainBook()->GetActiveEditor(true);
     if (editor) {
         if ( editor->GetModify() ) {
             // Ask user if he really wants to lose all changes
             wxString msg;
             msg << _("The file") << wxT(" '") << editor->GetFileName().GetFullName() << wxT(" '") << _("has been altered.") << wxT("\n");
             msg << _("Are you sure you want to lose all changes?");
-            if ( wxMessageBox(msg, _("Confirm"), wxYES_NO, this) != wxYES ) {
+            if ( wxMessageBox(msg, _("Confirm"), wxYES_NO, ::wxGetTopLevelParent(editor) ) != wxYES ) {
                 return;
             }
         }
@@ -1921,7 +1974,7 @@ void clMainFrame::OnSwitchWorkspace(wxCommandEvent &event)
 void clMainFrame::OnCompleteWordRefreshList(wxCommandEvent& event)
 {
     wxUnusedVar(event);
-    LEditor *editor = GetMainBook()->GetActiveEditor();
+    LEditor *editor = GetMainBook()->GetActiveEditor(true);
     if (editor) {
         editor->CompleteWord(true);
     }
@@ -1930,7 +1983,7 @@ void clMainFrame::OnCompleteWordRefreshList(wxCommandEvent& event)
 void clMainFrame::OnCompleteWord(wxCommandEvent& event)
 {
     wxUnusedVar(event);
-    LEditor *editor = GetMainBook()->GetActiveEditor();
+    LEditor *editor = GetMainBook()->GetActiveEditor(true);
     if (editor) {
         editor->CompleteWord();
     }
@@ -1939,7 +1992,7 @@ void clMainFrame::OnCompleteWord(wxCommandEvent& event)
 void clMainFrame::OnFunctionCalltip(wxCommandEvent& event)
 {
     wxUnusedVar(event);
-    LEditor *editor = GetMainBook()->GetActiveEditor();
+    LEditor *editor = GetMainBook()->GetActiveEditor(true);
     if (editor) {
         editor->ShowFunctionTipFromCurrentPos();
     }
@@ -1984,8 +2037,10 @@ void clMainFrame::OnFileOpen(wxCommandEvent & WXUNUSED(event))
 void clMainFrame::OnFileClose(wxCommandEvent &event)
 {
     wxUnusedVar( event );
-    clWindowUpdateLocker locker(this);
-    GetMainBook()->ClosePage(GetMainBook()->GetCurrentPage());
+    if ( GetMainBook()->GetCurrentPage() ) {
+        wxWindow *winToClose = GetMainBook()->GetCurrentPage();
+        GetMainBook()->CallAfter( &MainBook::ClosePageVoid, winToClose);
+    }
 }
 
 void clMainFrame::OnFileSaveAll(wxCommandEvent &event)
@@ -2003,8 +2058,7 @@ void clMainFrame::OnFileSaveTabGroup(wxCommandEvent& WXUNUSED(event))
 
     std::vector<LEditor*> editors;
     wxArrayString filepaths;
-    bool retain_order(true);
-    GetMainBook()->GetAllEditors(editors, retain_order);	// We'll want the order of intArr to match the order in MainBook::SaveSession
+    GetMainBook()->GetAllEditors(editors, MainBook::kGetAll_RetainOrder|MainBook::kGetAll_IncludeDetached); // We'll want the order of intArr to match the order in MainBook::SaveSession
     for (size_t i = 0; i < editors.size(); ++i) {
         filepaths.Add(editors[i]->GetFileName().GetFullPath());
     }
@@ -2065,9 +2119,9 @@ void clMainFrame::OnCompleteWordUpdateUI(wxUpdateUIEvent &event)
 {
     CHECK_SHUTDOWN();
 
-    LEditor* editor = GetMainBook()->GetActiveEditor();
+    LEditor* editor = GetMainBook()->GetActiveEditor(true);
     // This menu item is enabled only if the current editor belongs to a project
-    event.Enable(editor);
+    event.Enable( editor );
 }
 
 void clMainFrame::OnWorkspaceOpen(wxUpdateUIEvent &event)
@@ -2105,16 +2159,32 @@ void clMainFrame::OnProjectNewWorkspace(wxCommandEvent &event)
 void clMainFrame::OnProjectNewProject(wxCommandEvent &event)
 {
     // Let the plugin process this request first
-    wxCommandEvent newProjectEvent(wxEVT_CMD_CREATE_NEW_PROJECT, GetId());
+    clNewProjectEvent newProjectEvent(wxEVT_NEW_PROJECT_WIZARD_SHOWING);
     newProjectEvent.SetEventObject(this);
-    if(EventNotifier::Get()->ProcessEvent(newProjectEvent)) {
+    if( EventNotifier::Get()->ProcessEvent( newProjectEvent ) ) {
         return;
     }
 
+    
     wxUnusedVar(event);
-    NewProjectDlg dlg(this);
-    if (dlg.ShowModal() == wxID_OK) {
-        ProjectData data = dlg.GetProjectData();
+    NewProjectWizard wiz(this, newProjectEvent.GetTemplates());
+    if ( wiz.RunWizard( wiz.GetFirstPage() ) ) {
+        
+        ProjectData data = wiz.GetProjectData();
+        
+        // Try the plugins first
+        clNewProjectEvent finishEvent(wxEVT_NEW_PROJECT_WIZARD_FINISHED);
+        finishEvent.SetEventObject(this);
+        finishEvent.SetToolchain( data.m_cmpType );
+        finishEvent.SetDebugger( data.m_debuggerType );
+        finishEvent.SetProjectName( data.m_name );
+        finishEvent.SetProjectFolder( data.m_path );
+        finishEvent.SetTemplateName( data.m_sourceTemplate );
+        if( EventNotifier::Get()->ProcessEvent( finishEvent ) ) {
+            return;
+        }
+        
+        // Carry on with the default behaviour
         ManagerST::Get()->CreateProject(data);
     }
 }
@@ -2443,6 +2513,7 @@ void clMainFrame::OnAdvanceSettings(wxCommandEvent &event)
 void clMainFrame::OnBuildEnded(clCommandEvent& event)
 {
     event.Skip();
+    
     if (m_buildAndRun) {
         //If the build process was part of a 'Build and Run' command, check whether an erros
         //occured during build process, if non, launch the output
@@ -2478,9 +2549,9 @@ void clMainFrame::OnBuildProject(wxCommandEvent &event)
             conf = bldConf->GetName();
         }
 
-        QueueCommand info(projectName, conf, false, QueueCommand::Build);
+        QueueCommand info(projectName, conf, false, QueueCommand::kBuild);
         if (bldConf && bldConf->IsCustomBuild()) {
-            info.SetKind(QueueCommand::CustomBuild);
+            info.SetKind(QueueCommand::kCustomBuild);
             info.SetCustomBuildTarget(wxT("Build"));
         }
         ManagerST::Get()->PushQueueCommand( info );
@@ -2504,7 +2575,7 @@ void clMainFrame::OnBuildCustomTarget(wxCommandEvent& event)
                 return;
             }
 
-            QueueCommand info(CustomTargetsMgr::Get().GetProjectName(), bldConf->GetName(), false, QueueCommand::CustomBuild);
+            QueueCommand info(CustomTargetsMgr::Get().GetProjectName(), bldConf->GetName(), false, QueueCommand::kCustomBuild);
             info.SetCustomBuildTarget(target.first);
 
             ManagerST::Get()->PushQueueCommand(info);
@@ -2528,10 +2599,10 @@ void clMainFrame::OnBuildAndRunProject(wxCommandEvent &event)
             conf = bldConf->GetName();
         }
 
-        QueueCommand info(projectName, conf, false, QueueCommand::Build);
+        QueueCommand info(projectName, conf, false, QueueCommand::kBuild);
 
         if (bldConf && bldConf->IsCustomBuild()) {
-            info.SetKind(QueueCommand::CustomBuild);
+            info.SetKind(QueueCommand::kCustomBuild);
             info.SetCustomBuildTarget(wxT("Build"));
         }
 
@@ -2603,17 +2674,7 @@ void clMainFrame::OnCleanProject(wxCommandEvent &event)
     wxString conf, projectName;
     projectName = ManagerST::Get()->GetActiveProjectName();
 
-    // get the selected configuration to be built
-    BuildConfigPtr bldConf = WorkspaceST::Get()->GetProjBuildConf(projectName, wxEmptyString);
-    if (bldConf) {
-        conf = bldConf->GetName();
-    }
-
-    QueueCommand buildInfo(projectName, conf, false, QueueCommand::Clean);
-    if (bldConf && bldConf->IsCustomBuild()) {
-        buildInfo.SetKind(QueueCommand::CustomBuild);
-        buildInfo.SetCustomBuildTarget(wxT("Clean"));
-    }
+    QueueCommand buildInfo(QueueCommand::kClean);
     ManagerST::Get()->PushQueueCommand(buildInfo);
     ManagerST::Get()->ProcessCommandQueue();
 }
@@ -2631,13 +2692,27 @@ void clMainFrame::OnExecuteNoDebug(wxCommandEvent &event)
     wxCommandEvent evtExecute(wxEVT_CMD_EXECUTE_ACTIVE_PROJECT);
     if ( EventNotifier::Get()->ProcessEvent( evtExecute ) )
         return;
+    
+    if ( !WorkspaceST::Get()->IsOpen() ) {
+        return;
+    }
+    
+    // Prepare the commands to execute
+    QueueCommand commandExecute(QueueCommand::kExecuteNoDebug);
+    wxStandardID res = ::PromptForYesNoDialogWithCheckbox( _("Would you like to build the active project\nbefore executing it?"), 
+                                                           "PromptForBuildBeforeExecute", 
+                                                           _("Build and Execute"), 
+                                                           _("Execute"));
+    // Don't do anything if "X" is pressed
+    if ( res != wxID_CANCEL ) {
+        if ( res == wxID_YES ) {
+            QueueCommand buildCommand( QueueCommand::kBuild );
+            ManagerST::Get()->PushQueueCommand( buildCommand );
+            commandExecute.SetCheckBuildSuccess( true ); // execute only if build was successfull
+        }
 
-    wxUnusedVar(event);
-    wxString projectName;
-
-    projectName = ManagerST::Get()->GetActiveProjectName();
-    if (projectName.IsEmpty() == false) {
-        ManagerST::Get()->ExecuteNoDebug(ManagerST::Get()->GetActiveProjectName());
+        ManagerST::Get()->PushQueueCommand( commandExecute );
+        ManagerST::Get()->ProcessCommandQueue();
     }
 }
 
@@ -2749,27 +2824,28 @@ void clMainFrame::OnTimer(wxTimerEvent &event)
     wxModule::InitializeModules();
 
     // Send initialization end event
-    SendCmdEvent(wxEVT_INIT_DONE);
-
+    EventNotifier::Get()->PostCommandEvent(wxEVT_INIT_DONE, NULL);
+    CallAfter( &clMainFrame::LocateCompilersIfNeeded );
+    
     event.Skip();
 }
 
 void clMainFrame::OnFileCloseAll(wxCommandEvent &event)
 {
     wxUnusedVar(event);
-    GetMainBook()->CloseAll(true);
+    GetMainBook()->CallAfter( &MainBook::CloseAllVoid, true );
 }
 
 void clMainFrame::OnQuickOutline(wxCommandEvent &event)
 {
     // Sanity
-    if (!GetMainBook()->GetActiveEditor())
-        return;
-
+    LEditor *activeEditor = GetMainBook()->GetActiveEditor(true);
+    CHECK_PTR_RET(activeEditor);
+    
     // let the plugins process this first
     clCodeCompletionEvent evt(wxEVT_CC_SHOW_QUICK_OUTLINE, GetId());
     evt.SetEventObject(this);
-    evt.SetEditor( GetMainBook()->GetActiveEditor() );
+    evt.SetEditor( activeEditor );
 
     if(EventNotifier::Get()->ProcessEvent(evt))
         return;
@@ -2778,11 +2854,11 @@ void clMainFrame::OnQuickOutline(wxCommandEvent &event)
     if (ManagerST::Get()->IsWorkspaceOpen() == false)
         return;
 
-    if (GetMainBook()->GetActiveEditor()->GetProject().IsEmpty())
+    if (activeEditor->GetProject().IsEmpty())
         return;
 
-    QuickOutlineDlg dlg(this,
-                        GetMainBook()->GetActiveEditor()->GetFileName().GetFullPath(),
+    QuickOutlineDlg dlg(::wxGetTopLevelParent(activeEditor),
+                        activeEditor->GetFileName().GetFullPath(),
                         wxID_ANY,
                         wxT(""),
                         wxDefaultPosition,
@@ -2791,13 +2867,7 @@ void clMainFrame::OnQuickOutline(wxCommandEvent &event)
                        );
 
     dlg.ShowModal();
-
-#ifdef __WXMAC__
-    LEditor *editor = GetMainBook()->GetActiveEditor();
-    if (editor) {
-        editor->SetActive();
-    }
-#endif
+    activeEditor->SetActive();
 }
 
 wxString clMainFrame::CreateWorkspaceTable()
@@ -3068,18 +3138,35 @@ void clMainFrame::OnImportMSVS(wxCommandEvent &e)
 void clMainFrame::OnDebug(wxCommandEvent &e)
 {
     wxUnusedVar(e);
-
+    
     // Let the plugin know that we are about to start debugging
     clDebugEvent dbgEvent(wxEVT_DBG_UI_START_OR_CONT);
-    if ( EventNotifier::Get()->ProcessEvent(dbgEvent) ) {
-        return;
+    if ( WorkspaceST::Get()->IsOpen() ) {
+        // Pass as much as info as we can (i.e. project name and the selected debugger)
+        dbgEvent.SetProjectName( WorkspaceST::Get()->GetActiveProjectName() );
+        BuildConfigPtr bldConf = WorkspaceST::Get()->GetProjBuildConf( dbgEvent.GetProjectName() , "" );
+        if ( bldConf ) {
+            dbgEvent.SetDebuggerName( bldConf->GetDebuggerType() );
+        }
+    }
+    
+    // If a built-in debugger is already running, don't fire an event to the 
+    // plugins
+    // We know that it is a built-in debugger if 'dbgr' is not NULL
+    IDebugger *dbgr = DebuggerMgr::Get().GetActiveDebugger();
+    if ( !(dbgr && dbgr->IsRunning()) ) {
+        if ( EventNotifier::Get()->ProcessEvent(dbgEvent) ) {
+            return;
+        }
     }
     
     Manager *mgr = ManagerST::Get();
-    IDebugger *dbgr = DebuggerMgr::Get().GetActiveDebugger();
+    
     if (dbgr && dbgr->IsRunning()) {
-        //debugger is already running -> probably a continue command
-        mgr->DbgStart();
+        
+        // Debugger is already running -> probably a continue command
+        mgr->DbgContinue();
+        
     } else if (mgr->IsWorkspaceOpen()) {
 
         if (WorkspaceST::Get()->GetActiveProjectName().IsEmpty()) {
@@ -3088,48 +3175,28 @@ void clMainFrame::OnDebug(wxCommandEvent &e)
         }
 
         // Debugger is not running, but workspace is opened -> start debug session
-        long build_first(wxID_NO);
-        bool answer(false);
-
-        if (!EditorConfigST::Get()->GetLongValue(wxT("BuildBeforeDebug"), build_first)) {
-            // value does not exist in the configuration file, prompt the user
-            ThreeButtonDlg dlg(this, _("Would you like to build the project before debugging it?"), _("CodeLite"));
-            build_first = dlg.ShowModal();
-            answer = dlg.GetDontAskMeAgain();
-
-            if (answer && build_first != wxID_CANCEL) {
-                // save the answer
-                EditorConfigST::Get()->SaveLongValue(wxT("BuildBeforeDebug"), build_first);
-
-            } else if ( build_first == wxID_CANCEL ) {
-                // Do nothing
-                return;
-            }
-        }
-
-        // if build first is required, place a build command on the queue
-        if (build_first == wxID_OK) {
-            QueueCommand bldCmd(WorkspaceST::Get()->GetActiveProjectName(), wxEmptyString, false, QueueCommand::Build);
-
-            // handle custom builds
-            BuildConfigPtr bldConf = WorkspaceST::Get()->GetProjBuildConf(WorkspaceST::Get()->GetActiveProjectName(), wxEmptyString);
-            if (bldConf->IsCustomBuild()) {
-                bldCmd.SetKind(QueueCommand::CustomBuild);
-                bldCmd.SetCustomBuildTarget(wxT("Build"));
+        QueueCommand dbgCmd(QueueCommand::kDebug);
+        
+        wxStandardID res = ::PromptForYesNoDialogWithCheckbox(_("Would you like to build the project before debugging it?"), 
+                                                              "BuildBeforeDebug",
+                                                              _("Build and Debug"), _("Debug"));
+        // Don't do anything if "X" is pressed
+        if ( res != wxID_CANCEL ) {
+            if ( res == wxID_YES ) {
+                QueueCommand bldCmd( QueueCommand::kBuild );
+                ManagerST::Get()->PushQueueCommand(bldCmd);
+                dbgCmd.SetCheckBuildSuccess(true);
             }
 
-            ManagerST::Get()->PushQueueCommand(bldCmd);
+            // place a debug command
+            ManagerST::Get()->PushQueueCommand(dbgCmd);
+
+            // trigger the commands queue
+            ManagerST::Get()->ProcessCommandQueue();
         }
-
-        // place a debug command
-        QueueCommand dbgCmd(QueueCommand::Debug);
-
-        // make sure that build was success before proceeding (only when build_first flag is on)
-        dbgCmd.SetCheckBuildSuccess(build_first == wxID_OK);
-        ManagerST::Get()->PushQueueCommand(dbgCmd);
-
-        // trigger the commands queue
-        ManagerST::Get()->ProcessCommandQueue();
+    } else if ( !mgr->IsWorkspaceOpen() ) {
+        // Run the 'Quick Debug'
+        OnQuickDebug( e );
     }
 }
 
@@ -3362,7 +3429,12 @@ void clMainFrame::OnShowWelcomePage(wxCommandEvent &event)
 
 void clMainFrame::CompleteInitialization()
 {
+    // Load the plugins
     PluginManager::Get()->Load();
+
+    // Load debuggers (*must* be after the plugins)
+    DebuggerMgr::Get().Initialize(this, EnvironmentConfig::Instance(), ManagerST::Get()->GetInstallDir());
+    DebuggerMgr::Get().LoadDebuggers();
 
     // Connect some system events
     m_mgr.Connect(wxEVT_AUI_PANE_CLOSE, wxAuiManagerEventHandler(clMainFrame::OnDockablePaneClosed), NULL, this);
@@ -3376,6 +3448,19 @@ void clMainFrame::CompleteInitialization()
 
     wxCommandEvent evt(wxEVT_CL_THEME_CHANGED);
     EventNotifier::Get()->AddPendingEvent( evt );
+    
+#ifndef __WXMSW__
+    sigset_t child_set;
+    sigemptyset (&child_set);
+    sigaddset (&child_set, SIGCHLD);
+    
+    // make sure SIGCHILD is not blocked
+    sigprocmask (SIG_UNBLOCK, &child_set, NULL);
+
+    // Start the Zombie Reaper thread
+    m_zombieReaper.Start();
+
+#endif
 }
 
 void clMainFrame::OnAppActivated(wxActivateEvent &e)
@@ -3385,14 +3470,12 @@ void clMainFrame::OnAppActivated(wxActivateEvent &e)
 #endif
     if (m_theFrame && e.GetActive()) {
 
-        m_theFrame->ReloadExternallyModifiedProjectFiles();
-        m_theFrame->GetMainBook()->ReloadExternallyModified(true);
-
-        if(ManagerST::Get()->IsWorkspaceOpen() && !ManagerST::Get()->IsWorkspaceClosing()) {
-            // Retag the workspace the light way
-            ManagerST::Get()->RetagWorkspace(TagsManager::Retag_Quick_No_Scan);
+        // if workspace or project was modified, don't prompt for 
+        // file(s) reload
+        if ( !m_theFrame->ReloadExternallyModifiedProjectFiles() ) {
+            m_theFrame->GetMainBook()->ReloadExternallyModified( true );
         }
-
+        
         // Notify plugins that we got the focus.
         // Some plugins want to hide some frames etc
         wxCommandEvent evtGotFocus(wxEVT_CODELITE_MAINFRAME_GOT_FOCUS);
@@ -3453,7 +3536,7 @@ void clMainFrame::OnCloseAllButThis(wxCommandEvent &e)
     wxUnusedVar(e);
     wxWindow *win = GetMainBook()->GetCurrentPage();
     if (win != NULL) {
-        GetMainBook()->CloseAllButThis(win);
+        GetMainBook()->CallAfter( &MainBook::CloseAllButThisVoid, win );
     }
 }
 
@@ -3610,7 +3693,7 @@ void clMainFrame::OnManagePlugins(wxCommandEvent &e)
 void clMainFrame::OnCppContextMenu(wxCommandEvent &e)
 {
     wxUnusedVar(e);
-    LEditor *editor = GetMainBook()->GetActiveEditor();
+    LEditor *editor = GetMainBook()->GetActiveEditor(true);
     if (editor) {
         editor->GetContext()->ProcessEvent(e);
     }
@@ -3824,14 +3907,14 @@ void clMainFrame::OnDockablePaneClosed(wxAuiManagerEvent &e)
 void clMainFrame::SetStatusMessage(const wxString &msg, int col, int seconds_to_live /*=wxID_ANY*/)
 {
     SetStatusText(msg, col);
-    if ((col > 0)						// We only auto-delete in column 0
-        || (seconds_to_live == 0)	// which means keep forever
-        || msg.empty()) {			// not much point deleting an empty string
-        return;
-    }
-
-    int seconds = (seconds_to_live > 0 ? seconds_to_live : 30);
-    m_statusbarTimer->Start(seconds * 1000, wxTIMER_ONE_SHOT);
+    // if ((col > 0)						// We only auto-delete in column 0
+    //     || (seconds_to_live == 0)	// which means keep forever
+    //     || msg.empty()) {			// not much point deleting an empty string
+    //     return;
+    // }
+    // 
+    // int seconds = (seconds_to_live > 0 ? seconds_to_live : 30);
+    // m_statusbarTimer->Start(seconds * 1000, wxTIMER_ONE_SHOT);
 }
 
 void clMainFrame::OnFunctionCalltipUI(wxUpdateUIEvent& event)
@@ -3856,10 +3939,9 @@ void clMainFrame::OnReloadWorkspace(wxCommandEvent& event)
         return;
     }
 
-    // Save the current session before re-loading
     SaveLayoutAndSession();
-
     ManagerST::Get()->ReloadWorkspace();
+
 }
 
 void clMainFrame::OnReloadWorkspaceUI(wxUpdateUIEvent& event)
@@ -3880,18 +3962,18 @@ void clMainFrame::RebuildProject(const wxString& projectName)
         }
 
         // first we place a clean command
-        QueueCommand buildInfo(projectName, conf, false, QueueCommand::Clean);
+        QueueCommand buildInfo(projectName, conf, false, QueueCommand::kClean);
         if (bldConf && bldConf->IsCustomBuild()) {
-            buildInfo.SetKind(QueueCommand::CustomBuild);
+            buildInfo.SetKind(QueueCommand::kCustomBuild);
             buildInfo.SetCustomBuildTarget(wxT("Clean"));
         }
         ManagerST::Get()->PushQueueCommand(buildInfo);
 
         // now we place a build command
-        buildInfo = QueueCommand(projectName, conf, false, QueueCommand::Build);
+        buildInfo = QueueCommand(projectName, conf, false, QueueCommand::kBuild);
 
         if (bldConf && bldConf->IsCustomBuild()) {
-            buildInfo.SetKind(QueueCommand::CustomBuild);
+            buildInfo.SetKind(QueueCommand::kCustomBuild);
             buildInfo.SetCustomBuildTarget(wxT("Build"));
         }
         ManagerST::Get()->PushQueueCommand(buildInfo);
@@ -3955,8 +4037,9 @@ void clMainFrame::SetFrameTitle(LEditor* editor)
     
     pattern.Replace("$workspace", workspace);
     pattern.Replace("$user",      username);
-    pattern.Replace("$fullname",  fullname);
+    pattern.Replace("$filename",  fullname);
     pattern.Replace("$fullpath",  fullpath);
+    
     pattern.Trim().Trim(false);
     if ( pattern.IsEmpty() ) {
         pattern << "CodeLite";
@@ -4073,22 +4156,22 @@ void clMainFrame::OnSyntaxHighlight(wxCommandEvent& e)
 void clMainFrame::OnQuickDebug(wxCommandEvent& e)
 {
     // launch the debugger
-    QuickDebugDlg *dlg = new QuickDebugDlg(this);
-    if (dlg->ShowModal() == wxID_OK) {
+    QuickDebugDlg dlg(this);
+    if (dlg.ShowModal() == wxID_OK) {
 
-        DebuggerMgr::Get().SetActiveDebugger(dlg->GetDebuggerName());
+        DebuggerMgr::Get().SetActiveDebugger(dlg.GetDebuggerName());
         IDebugger *dbgr =  DebuggerMgr::Get().GetActiveDebugger();
 
         if (dbgr && !dbgr->IsRunning()) {
 
             std::vector<BreakpointInfo> bpList;
-            wxString exepath = dlg->GetExe();
-            wxString wd = dlg->GetWorkingDirectory();
-            wxArrayString cmds = dlg->GetStartupCmds();
+            wxString exepath = dlg.GetExe();
+            wxString wd = dlg.GetWorkingDirectory();
+            wxArrayString cmds = dlg.GetStartupCmds();
 
             // update the debugger information
             DebuggerInformation dinfo;
-            DebuggerMgr::Get().GetDebuggerInformation(dlg->GetDebuggerName(), dinfo);
+            DebuggerMgr::Get().GetDebuggerInformation(dlg.GetDebuggerName(), dinfo);
             dinfo.breakAtWinMain = true;
 
             // read the console command
@@ -4120,9 +4203,8 @@ void clMainFrame::OnQuickDebug(wxCommandEvent& e)
             wxString tty;
 #ifndef __WXMSW__
             wxString title;
-            title << _("Debugging: ") << exepath << wxT(" ") << dlg->GetArguments();
-            tty = StartTTY(title);
-            if(tty.IsEmpty()) {
+            title << _("Debugging: ") << exepath << wxT(" ") << dlg.GetArguments();
+            if ( !ManagerST::Get()->StartTTY( title, tty ) ) {
                 wxMessageBox(_("Could not start TTY console for debugger!"), _("codelite"), wxOK|wxCENTER|wxICON_ERROR);
             }
 #endif
@@ -4143,7 +4225,7 @@ void clMainFrame::OnQuickDebug(wxCommandEvent& e)
             // notify plugins that the debugger just started
             SendCmdEvent(wxEVT_DEBUG_STARTED, &startup_info);
 
-            dbgr->Run(dlg->GetArguments(), wxEmptyString);
+            dbgr->Run(dlg.GetArguments(), wxEmptyString);
 
             // Now the debugger has been fed the breakpoints, re-Initialise the breakpt view,
             // so that it uses debugger_ids instead of internal_ids
@@ -4152,9 +4234,20 @@ void clMainFrame::OnQuickDebug(wxCommandEvent& e)
             // Layout management
             ManagerST::Get()->GetPerspectiveManager().SavePerspective(NORMAL_LAYOUT);
             ManagerST::Get()->GetPerspectiveManager().LoadPerspective(DEBUG_LAYOUT);
+            
+        } else if ( !dbgr ) {
+            
+            // Fire an event, maybe a plugin wants to process this
+            clDebugEvent event( wxEVT_DBG_UI_QUICK_DEBUG);
+            event.SetDebuggerName(dlg.GetDebuggerName());
+            event.SetExecutableName( dlg.GetExe() );
+            event.SetWorkingDirectory( dlg.GetWorkingDirectory() );
+            event.SetStartupCommands( wxJoin(dlg.GetStartupCmds(), '\n') );
+            event.SetArguments( dlg.GetArguments() );
+            EventNotifier::Get()->AddPendingEvent( event );
+            
         }
     }
-    dlg->Destroy();
 }
 
 void clMainFrame::OnDebugCoreDump(wxCommandEvent& e)
@@ -4191,20 +4284,19 @@ void clMainFrame::OnDebugCoreDump(wxCommandEvent& e)
             startup_info.debugger = dbgr;
 
             // notify plugins that we're about to start debugging
-            if (SendCmdEvent(wxEVT_DEBUG_STARTING, &startup_info))
+            if (SendCmdEvent(wxEVT_DEBUG_STARTING, &startup_info)) {
+                dlg->Destroy();
                 // plugin stopped debugging
                 return;
-
+            }
             wxString tty;
-#ifndef __WXMSW__
             wxString title;
-            title << _("Debugging: '") << dlg->GetCore() << _("' from '") << dlg->GetExe() << wxT("'");
-            tty = StartTTY(title);
-            if(tty.IsEmpty()) {
+            title << "Debugging core: " << dlg->GetCore();
+#ifndef __WXMSW__
+            if ( !ManagerST::Get()->StartTTY( title, tty ) ) {
                 wxMessageBox(_("Could not start TTY console for debugger!"), _("codelite"), wxOK|wxCENTER|wxICON_ERROR);
             }
 #endif
-
             dbgr->SetIsRemoteDebugging(false);
 
             // The next two are empty, but are required as parameters
@@ -4241,6 +4333,15 @@ void clMainFrame::OnDebugCoreDump(wxCommandEvent& e)
             // Finally, get the call-stack and 'continue' gdb (which seems to be necessary for things to work...)
             dbgr->ListFrames();
             dbgr->Continue();
+            
+        } else if ( !dbgr ) {
+            clDebugEvent event( wxEVT_DBG_UI_CORE_FILE);
+            event.SetDebuggerName(dlg->GetDebuggerName());
+            event.SetExecutableName( dlg->GetExe());
+            event.SetCoreFile( dlg->GetCore() );
+            event.SetWorkingDirectory( dlg->GetWorkingDirectory() );
+            EventNotifier::Get()->AddPendingEvent( event );
+
         }
     }
     dlg->Destroy();
@@ -4249,8 +4350,7 @@ void clMainFrame::OnDebugCoreDump(wxCommandEvent& e)
 void clMainFrame::OnQuickDebugUI(wxUpdateUIEvent& e)   // (Also used by DebugCoreDump)
 {
     CHECK_SHUTDOWN();
-    IDebugger *dbgr =  DebuggerMgr::Get().GetActiveDebugger();
-    e.Enable(dbgr && !dbgr->IsRunning());
+    e.Enable(true);
 }
 
 void clMainFrame::OnShowWhitespaceUI(wxUpdateUIEvent& e)
@@ -4295,8 +4395,6 @@ void clMainFrame::OnIncrementalSearch(wxCommandEvent& event)
 
 void clMainFrame::OnRetagWorkspace(wxCommandEvent& event)
 {
-    wxUnusedVar( event );
-
     // See if any of the plugins want to handle this event by itself
     bool fullRetag = !(event.GetId() == XRCID("retag_workspace"));
     wxCommandEvent e(fullRetag ? wxEVT_CMD_RETAG_WORKSPACE_FULL : wxEVT_CMD_RETAG_WORKSPACE, GetId());
@@ -4313,7 +4411,13 @@ void clMainFrame::OnRetagWorkspace(wxCommandEvent& event)
 
     else if(event.GetId() == XRCID("retag_workspace_no_includes"))
         type = TagsManager::Retag_Quick_No_Scan;
-
+    
+    wxMenu *menu = dynamic_cast<wxMenu*>(event.GetEventObject());
+    if ( menu ) {
+        // the event was fired from the menu bar, trigger a compile_commands.json file generation
+        // Generate the compile_commands files (needed for Clang)
+        ManagerST::Get()->GenerateCompileCommands();
+    }
     ManagerST::Get()->RetagWorkspace(type);
 }
 
@@ -4356,10 +4460,10 @@ void clMainFrame::OnReloadExternallModifiedNoPrompt(wxCommandEvent& e)
     GetMainBook()->ReloadExternallyModified(false);
 }
 
-void clMainFrame::ReloadExternallyModifiedProjectFiles()
+bool clMainFrame::ReloadExternallyModifiedProjectFiles()
 {
     if ( ManagerST::Get()->IsWorkspaceOpen() == false ) {
-        return;
+        return false;
     }
 
     Workspace *workspace = WorkspaceST::Get();
@@ -4393,34 +4497,27 @@ void clMainFrame::ReloadExternallyModifiedProjectFiles()
     }
 
     if (!project_modified && !workspace_modified)
-        return;
+        return false;
+    
+    // Make sure we don't have the mouse captured in any editor or we might get a crash somewhere
+    wxStandardID res = ::PromptForYesNoDialogWithCheckbox(  _("Workspace or project settings have been modified outside of CodeLite\nWould you like to reload the workspace?"), 
+                                                            "ReloadWorkspaceWhenAltered", 
+                                                            _("Reload workspace"), 
+                                                            _("Not now"));
+    // Don't do anything if "X" is pressed
+    if ( res != wxID_CANCEL ) {
+        if ( res == wxID_YES ) {
+            wxCommandEvent evtReload(wxEVT_COMMAND_MENU_SELECTED, XRCID("reload_workspace"));
+            GetEventHandler()->ProcessEvent( evtReload );
 
-    // See if there's a saved 'Always do this' preference re reloading
-    long pref;
-    if (EditorConfigST::Get()->GetLongValue(wxT("ReloadWorkspaceWhenAltered"), pref)) {
-        if (pref == 1) { // 1 means never reload
-            return;
-        } else if (pref == 2) { // 2 means always reload
-            wxCommandEvent evt(wxEVT_COMMAND_MENU_SELECTED, XRCID("reload_workspace"));
-            GetEventHandler()->AddPendingEvent(evt); // Lands in OnReloadWorkspace()
-            return;
+        } else {
+            // user cancelled the dialog or chosed not to reload the workspace
+            if ( GetMainBook()->GetActiveEditor() ) {
+                GetMainBook()->GetActiveEditor()->CallAfter( &LEditor::SetActive );
+            }
         }
     }
-
-    // No preference (or it's 'Always ask') so ask
-    ButtonDetails btn, noBtn;
-    btn.buttonLabel = _("Reload Workspace");
-    btn.commandId   = XRCID("reload_workspace");
-    btn.isDefault   = false;
-    btn.window      = this;
-
-    noBtn.buttonLabel = _("&Don't reload");
-    noBtn.isDefault   = true;
-    noBtn.window      = NULL;
-
-    CheckboxDetails cb(wxT("ReloadWorkspaceWhenAltered"));
-
-    GetMainBook()->ShowMessage(_("Workspace or project settings have been modified, would you like to reload the workspace and all contained projects?"), false, PluginManager::Get()->GetStdIcons()->LoadBitmap(wxT("messages/48/reload_workspace")), noBtn, btn, ButtonDetails(), cb);
+    return true;
 }
 
 void clMainFrame::SaveLayoutAndSession()
@@ -4560,7 +4657,8 @@ void clMainFrame::OnCheckForUpdate(wxCommandEvent& e)
 
 void clMainFrame::OnShowActiveProjectSettings(wxCommandEvent& e)
 {
-    GetWorkspaceTab()->GetEventHandler()->ProcessEvent( e );
+    wxUnusedVar(e);
+    GetWorkspaceTab()->OpenProjectSettings();
 }
 
 void clMainFrame::OnShowActiveProjectSettingsUI(wxUpdateUIEvent& e)
@@ -4707,29 +4805,6 @@ void clMainFrame::OnGotoCodeLiteDownloadPage(wxCommandEvent& e)
     m_codeliteDownloadPageURL.Clear();
 }
 
-void clMainFrame::OnUpdateParserPath(wxCommandEvent& e)
-{
-    wxUnusedVar(e);
-    wxArrayString paths;
-    wxArrayString excudePaths;
-    IncludePathLocator locator(PluginManager::Get());
-    locator.Locate( paths, excudePaths );
-
-    m_tagsOptionsData.SetParserSearchPaths ( paths       );
-    m_tagsOptionsData.SetParserExcludePaths( excudePaths );
-
-    // Update the parser thread
-    ParseThreadST::Get()->SetSearchPaths( paths, excudePaths );
-    clConfig ccConfig("code-completion.conf");
-    ccConfig.WriteItem( &m_tagsOptionsData );
-}
-
-void clMainFrame::OnNeverUpdateParserPath(wxCommandEvent& e)
-{
-    wxUnusedVar(e);
-    EditorConfigST::Get()->SaveLongValue(wxT("UpdateParserPaths"), 0);
-}
-
 void clMainFrame::DoSuggestRestart()
 {
 #ifdef __WXMAC__
@@ -4863,14 +4938,11 @@ void clMainFrame::OnRetaggingCompelted(wxCommandEvent& e)
 void clMainFrame::OnRetaggingProgress(wxCommandEvent& e)
 {
     e.Skip();
-#if USE_PARSER_TREAD_FOR_RETAGGING_WORKSPACE
     if(e.GetInt() == 1) {
         // parsing started
         gStopWatch.Start();
     }
-
     GetWorkspacePane()->UpdateProgress( e.GetInt() );
-#endif
 }
 
 void clMainFrame::OnRetagWorkspaceUI(wxUpdateUIEvent& event)
@@ -4891,7 +4963,7 @@ wxString clMainFrame::StartTTY(const wxString &title)
 #ifndef __WXMSW__
 
     // Create a new TTY Console and place it in the AUI
-    ConsoleFrame *console = new ConsoleFrame(this);
+    ConsoleFrame *console = new ConsoleFrame(this, PluginManager::Get());
     wxAuiPaneInfo paneInfo;
     paneInfo.Name(wxT("Debugger Console")).Caption(title).Dockable().FloatingSize(300, 200).CloseButton(false);
     m_mgr.AddPane(console, paneInfo);
@@ -5157,7 +5229,7 @@ void clMainFrame::OnParserThreadReady(wxCommandEvent& e)
 void clMainFrame::OnFileSaveUI(wxUpdateUIEvent& event)
 {
     CHECK_SHUTDOWN();
-    LEditor *editor = GetMainBook()->GetActiveEditor();
+    LEditor *editor = GetMainBook()->GetActiveEditor(true);
     if ( editor ) {
         event.Enable(editor->IsModified());
 
@@ -5312,14 +5384,13 @@ void clMainFrame::OnFileSaveAllUI(wxUpdateUIEvent& event)
 {
     bool hasModifiedEditor = false;
     std::vector<LEditor*> editors;
-    GetMainBook()->GetAllEditors(editors);
+    GetMainBook()->GetAllEditors(editors, MainBook::kGetAll_IncludeDetached);
     for(size_t i=0; i<editors.size(); ++i) {
         if( editors.at(i)->IsModified() ) {
             hasModifiedEditor = true;
             break;
         }
     }
-
     event.Enable( hasModifiedEditor );
 }
 
@@ -5434,3 +5505,14 @@ void clMainFrame::OnSettingsChanged(wxCommandEvent& e)
     e.Skip();
     SetFrameTitle( GetMainBook()->GetActiveEditor() );
 }
+
+void clMainFrame::OnDetachEditor(wxCommandEvent& e)
+{
+    GetMainBook()->DetachActiveEditor();
+}
+
+void clMainFrame::OnDetachEditorUI(wxUpdateUIEvent& e)
+{
+    e.Enable( GetMainBook()->GetActiveEditor() != NULL );
+}
+

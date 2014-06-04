@@ -71,7 +71,8 @@ class SubversionView : public SubversionPageBase
     SvnConsole*          m_subversionConsole;
     int                  m_fileExplorerLastBaseImgIdx;
     ThemeHandlerHelper*  m_themeHelper;
-
+    wxFileName           m_workspaceFile;
+    
 public:
     enum {
         SvnInfo_Tag,
@@ -112,6 +113,7 @@ protected:
     void OnWorkspaceClosed    (wxCommandEvent &event);
     void OnClearOuptut        (wxCommandEvent &event);
     void OnRefreshView        (wxCommandEvent &event);
+    void OnFileSaved          (clCommandEvent &event);
     void OnFileRenamed        (wxCommandEvent &event);
     void OnFileAdded          (clCommandEvent& event);
     void OnSettings           (wxCommandEvent &event);
