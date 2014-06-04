@@ -71,12 +71,8 @@ class GitPlugin : public IPlugin
         gitRmFiles,
         gitApplyPatch,
         gitRevertCommit,
-#if 0
-        gitBisectStart,
-        gitBisectGood,
-        gitBisectBad,
-        gitBisectReset,
-#endif
+        gitStash,
+        gitStashPop,
     };
 
     wxArrayString           m_localBranchList;
@@ -110,11 +106,13 @@ class GitPlugin : public IPlugin
     
 private:
     void DoCreateTreeImages();
+    void DoShowDiffViewer(const wxString &headFile, const wxString& fileName);
+    
     void DoSetTreeItemImage(wxTreeCtrl* ctrl, const wxTreeItemId& item, OverlayTool::BmpType bmpType ) const;
     void InitDefaults();
     void AddDefaultActions();
     void LoadDefaultGitCommands(GitEntry& data, bool overwrite = false);
-    void ProcessGitActionQueue(const wxString& commandString = "");
+    void ProcessGitActionQueue();
     void ColourFileTree(wxTreeCtrl *tree, const wxStringSet_t& files, OverlayTool::BmpType bmpType) const;
     void CreateFilesTreeIDsMap(std::map<wxString, wxTreeItemId>& IDs, bool ifmodified = false) const;
     
@@ -144,9 +142,9 @@ private:
     void OnProcessTerminated(wxCommandEvent &event);
     void OnProcessOutput(wxCommandEvent &event);
 
-    void OnFileSaved(wxCommandEvent& e);
+    void OnFileSaved(clCommandEvent& e);
     void OnFilesAddedToProject(clCommandEvent& e);
-    void OnFilesRemovedFromProject(wxCommandEvent& e);
+    void OnFilesRemovedFromProject(clCommandEvent& e);
     void OnWorkspaceLoaded(wxCommandEvent& e);
     void OnWorkspaceClosed(wxCommandEvent &e);
     void OnWorkspaceConfigurationChanged(wxCommandEvent &e);

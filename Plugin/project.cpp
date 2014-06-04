@@ -38,10 +38,16 @@
 #include "wx_xml_compatibility.h"
 #include "plugin.h"
 #include "event_notifier.h"
+#include <wx/sstream.h>
+#include <wx/ffile.h>
+#include "cl_command_event.h"
+#include "environmentconfig.h"
 
 const wxString Project::STATIC_LIBRARY = wxT("Static Library");
 const wxString Project::DYNAMIC_LIBRARY = wxT("Dynamic Library");
 const wxString Project::EXECUTABLE = wxT("Executable");
+
+static wxStringMap_t s_backticks;
 
 #define EXCLUDE_FROM_BUILD_FOR_CONFIG "ExcludeProjConfig"
 
@@ -101,6 +107,7 @@ static wxArrayString Explode(const wxString& in)
 Project::Project()
     : m_tranActive(false)
     , m_isModified(false)
+    , m_workspace(NULL)
 {
 }
 
@@ -328,11 +335,6 @@ bool Project::RemoveFile(const wxString &fileName, const wxString &virtualDir)
         return false;
     }
 
-    // Convert the file path to be relative to
-    // the project path
-    DirSaver ds;
-
-    ::wxSetWorkingDirectory(m_fileName.GetPath());
     wxFileName tmp(fileName);
     tmp.MakeRelativeTo(m_fileName.GetPath());
 
@@ -340,6 +342,7 @@ bool Project::RemoveFile(const wxString &fileName, const wxString &virtualDir)
     if ( node ) {
         node->GetParent()->RemoveChild( node );
         delete node;
+
     } else {
         wxLogMessage(wxT("Failed to remove file %s from project"), tmp.GetFullPath(wxPATH_UNIX).c_str());
     }
@@ -397,9 +400,7 @@ void Project::RecursiveAdd(wxXmlNode *xmlNode, ProjectTreePtr &ptp, ProjectTreeN
     } else if ( xmlNode->GetName() == wxT("File") ) {
         wxFileName filename(xmlNode->GetPropVal(wxT("Name"), wxEmptyString));
         //convert this file name to absolute path
-        DirSaver ds;
-        ::wxSetWorkingDirectory(m_fileName.GetPath());
-        filename.MakeAbsolute();
+        filename.MakeAbsolute(m_fileName.GetPath());
         item = ProjectItem(key, filename.GetFullName(), filename.GetFullPath(), ProjectItem::TypeFile);
     } else {
         // un-recognised or not viewable item in the tree,
@@ -420,13 +421,22 @@ void Project::RecursiveAdd(wxXmlNode *xmlNode, ProjectTreePtr &ptp, ProjectTreeN
 
 bool Project::SaveXmlFile()
 {
-    bool ok = m_doc.Save(m_fileName.GetFullPath());
+    wxString projectXml;
+    wxStringOutputStream sos( &projectXml );
+    bool ok = m_doc.Save( sos );
+    
+    wxFFile file(m_fileName.GetFullPath(), wxT("w+b"));
+    if ( !file.IsOpened() ) {
+        ok = false;
+        
+    } else {
+        file.Write( projectXml );
+        file.Close();
+        
+    }
+
     SetProjectLastModifiedTime(GetFileLastModifiedTime());
-    
-    wxCommandEvent evt(wxEVT_FILE_SAVED);
-    evt.SetString( m_fileName.GetFullPath() );
-    EventNotifier::Get()->AddPendingEvent( evt );
-    
+    EventNotifier::Get()->PostFileSavedEvent( m_fileName.GetFullPath() );
     return ok;
 }
 
@@ -1219,24 +1229,31 @@ wxString Project::GetBestPathForVD(const wxString& vdPath)
     return basePath;
 }
 
-wxArrayString Project::GetIncludePaths()
+wxArrayString Project::GetIncludePaths(bool clearCache)
 {
     wxArrayString paths;
-    BuildMatrixPtr matrix = WorkspaceST::Get()->GetBuildMatrix();
+    BuildMatrixPtr matrix = GetWorkspace()->GetBuildMatrix();
     if(!matrix) {
         return paths;
     }
     wxString workspaceSelConf = matrix->GetSelectedConfigurationName();
 
     wxString projectSelConf = matrix->GetProjectSelectedConf(workspaceSelConf, GetName());
-    BuildConfigPtr buildConf = WorkspaceST::Get()->GetProjBuildConf(this->GetName(), projectSelConf);
-
+    BuildConfigPtr buildConf = GetWorkspace()->GetProjBuildConf(this->GetName(), projectSelConf);
+    
     // for non custom projects, take the settings from the build configuration
     if(buildConf && !buildConf->IsCustomBuild()) {
-
+        
+        // Apply the environment
+        EnvSetter es(NULL, NULL, GetName());
+        
+        if ( clearCache ) {
+            s_backticks.clear();
+        }
+        
         // Get the include paths and add them
         wxString projectIncludePaths = buildConf->GetIncludePath();
-        wxArrayString projectIncludePathsArr = wxStringTokenize(projectIncludePaths, wxT(";"), wxTOKEN_STRTOK);
+        wxArrayString projectIncludePathsArr = ::wxStringTokenize(projectIncludePaths, wxT(";"), wxTOKEN_STRTOK);
         for(size_t i=0; i<projectIncludePathsArr.GetCount(); i++) {
             wxFileName fn;
             if(projectIncludePathsArr.Item(i) == wxT("..")) {
@@ -1249,7 +1266,7 @@ wxArrayString Project::GetIncludePaths()
             } else {
                 fn = projectIncludePathsArr.Item(i);
                 if(fn.IsRelative()) {
-                    fn.MakeAbsolute(GetFileName().GetPath());
+                    fn.MakeAbsolute( GetFileName().GetPath() );
                 }
             }
             paths.Add( fn.GetFullPath() );
@@ -1266,8 +1283,9 @@ wxArrayString Project::GetIncludePaths()
             // expand backticks, if the option is not a backtick the value remains
             // unchanged
             wxArrayString includePaths = DoBacktickToIncludePath(cmpOption);
-            if(includePaths.IsEmpty() == false)
+            if ( !includePaths.IsEmpty() ) {
                 paths.insert(paths.end(), includePaths.begin(), includePaths.end());
+            }
         }
     }
     return paths;
@@ -1276,40 +1294,18 @@ wxArrayString Project::GetIncludePaths()
 wxArrayString Project::DoBacktickToIncludePath(const wxString& backtick)
 {
     wxArrayString paths;
-    wxString tmp;
-    wxString cmpOption = backtick;
-    static std::map<wxString, wxString> s_backticks;
-
-    // Expand backticks / $(shell ...) syntax supported by codelite
-    if(cmpOption.StartsWith(wxT("$(shell "), &tmp) || cmpOption.StartsWith(wxT("`"), &tmp)) {
-        cmpOption = tmp;
-        tmp.Clear();
-        if(cmpOption.EndsWith(wxT(")"), &tmp) || cmpOption.EndsWith(wxT("`"), &tmp)) {
-            cmpOption = tmp;
-        }
-
-        if(s_backticks.find(cmpOption) == s_backticks.end()) {
-
-            // Expand the backticks into their value
-            wxString expandedValue = wxShellExec(cmpOption, GetName());
-            s_backticks[cmpOption] = expandedValue;
-            cmpOption = expandedValue;
-
-        } else {
-            cmpOption = s_backticks.find(cmpOption)->second;
-        }
-    }
-
+    wxString cmpOption = DoExpandBacktick( backtick );
     wxArrayString options = Explode(cmpOption);
     for(size_t i=0; i<options.GetCount(); i++) {
         options.Item(i).Trim().Trim(false);
         if(options.Item(i).StartsWith(wxT("-I"))) {
             options.Item(i).Remove(0, 2);
-            wxFileName fn(options.Item(i));
+            wxFileName fn(options.Item(i), "");
             if(fn.IsRelative()) {
+                // Convert to absolute path
                 fn.MakeAbsolute(GetFileName().GetPath());
             }
-            paths.Add(fn.GetFullPath());
+            paths.Add(fn.GetPath());
         }
     }
     return paths;
@@ -1456,13 +1452,15 @@ void Project::SetReconciliationData(const wxString& toplevelDir, const wxString&
 }
 
 
-void Project::GetFilesMetadata(Project::FileInfoVector_t& files)
+void Project::GetFilesMetadata(Project::FileInfoVector_t& files) const
 {
     std::queue<wxXmlNode*> elements;
     if ( !m_doc.IsOk() || !m_doc.GetRoot())
         return;
 
     elements.push( m_doc.GetRoot() );
+    files.reserve( 1000 ); // make room for at least for 1000 files (should be enough for most projects)
+    
     while ( !elements.empty() ) {
         wxXmlNode *element = elements.front();
         elements.pop();
@@ -1471,7 +1469,7 @@ void Project::GetFilesMetadata(Project::FileInfoVector_t& files)
             if ( element->GetName() == wxT("File") ) {
 
                 // files are kept relative to the project file
-                wxString fileName = element->GetPropVal(wxT("Name"), wxEmptyString);
+                wxString fileName = element->GetAttribute(wxT("Name"), wxEmptyString);
                 wxFileName tmp(fileName);
                 tmp.MakeAbsolute(m_fileName.GetPath());
                 FileInfo fi;
@@ -1490,6 +1488,9 @@ void Project::GetFilesMetadata(Project::FileInfoVector_t& files)
             element = element->GetNext();
         }
     }
+    
+    // releaes any un-needed memory
+    Project::FileInfoVector_t( files ).swap( files );
 }
 
 wxString Project::DoFormatVirtualFolderName(const wxXmlNode* node) const
@@ -1607,4 +1608,207 @@ void Project::SetExcludeConfigForFile(const wxString& filename, const wxString& 
     wxString excludeConfigs = ::wxJoin(uniqueArr, ';');
     XmlUtils::UpdateProperty(fileNode, EXCLUDE_FROM_BUILD_FOR_CONFIG, excludeConfigs );
     SaveXmlFile();
+}
+
+wxString Project::GetCompileLineForCXXFile(const wxString& filenamePlaceholder, bool cxxFile) const
+{
+    // Return a compilation line for a CXX file
+    BuildMatrixPtr matrix = GetWorkspace()->GetBuildMatrix();
+    if(!matrix) {
+        return "";
+    }
+    wxString workspaceSelConf = matrix->GetSelectedConfigurationName();
+    wxString projectSelConf = matrix->GetProjectSelectedConf(workspaceSelConf, GetName());
+    BuildConfigPtr buildConf = GetWorkspace()->GetProjBuildConf(this->GetName(), projectSelConf);
+    if ( !buildConf || buildConf->IsCustomBuild() || !buildConf->IsCompilerRequired()) {
+        return "";
+    }
+    
+    CompilerPtr compiler = buildConf->GetCompiler();
+    if ( !compiler ) {
+        return "";
+    }
+    // Build the command line
+    wxString commandLine;
+    
+    wxString compilerExe = compiler->GetTool(cxxFile ? "CXX" : "CC");
+    commandLine << compilerExe << " -c " << filenamePlaceholder << " -o " << filenamePlaceholder << ".o ";
+    
+    // Apply the environment
+    EnvSetter es(NULL, NULL, GetName());
+    
+    // Clear the backticks cache
+    s_backticks.clear();
+    
+    // Get the compile options
+    wxString projectCompileOptions = cxxFile ? buildConf->GetCompileOptions() : buildConf->GetCCompileOptions();
+    wxArrayString projectCompileOptionsArr = ::wxStringTokenize(projectCompileOptions, ";", wxTOKEN_STRTOK);
+    for(size_t i=0; i<projectCompileOptionsArr.GetCount(); ++i) {
+        wxString cmpOption (projectCompileOptionsArr.Item(i));
+        cmpOption.Trim().Trim(false);
+
+        // expand backticks, if the option is not a backtick the value remains
+        // unchanged
+        commandLine << " " << DoExpandBacktick(cmpOption) << " ";
+    }
+    
+    // Add the macros
+    wxArrayString prepArr;
+    buildConf->GetPreprocessor( prepArr );
+    for ( size_t i=0; i<prepArr.GetCount(); ++i ) {
+        commandLine << "-D" << prepArr.Item(i) << " ";
+    }
+    
+    // Add the include paths
+    wxString inclPathAsString = buildConf->GetIncludePath();
+    wxArrayString inclPathArr = ::wxStringTokenize(inclPathAsString, ";", wxTOKEN_STRTOK);
+    for(size_t i=0; i<inclPathArr.GetCount(); ++i) {
+        wxString incl_path = inclPathArr.Item(i);
+        incl_path.Trim().Trim(false);
+        if ( incl_path.IsEmpty() ) 
+            continue;
+            
+        if ( incl_path.Contains(" ") ) {
+            incl_path.Prepend("\"").Append("\"");
+        }
+        
+        commandLine << "-I" << incl_path << " ";
+    }
+    
+    commandLine.Trim().Trim(false);
+    return commandLine;
+}
+
+wxString Project::DoExpandBacktick(const wxString& backtick) const
+{
+    wxString tmp;
+    wxString cmpOption = backtick;
+
+    // Expand backticks / $(shell ...) syntax supported by codelite
+    if(cmpOption.StartsWith(wxT("$(shell "), &tmp) || cmpOption.StartsWith(wxT("`"), &tmp)) {
+        cmpOption = tmp;
+        tmp.Clear();
+        if(cmpOption.EndsWith(wxT(")"), &tmp) || cmpOption.EndsWith(wxT("`"), &tmp)) {
+            cmpOption = tmp;
+        }
+
+        if(s_backticks.find(cmpOption) == s_backticks.end()) {
+
+            // Expand the backticks into their value
+            wxString expandedValue = ::wxShellExec(cmpOption, GetName());
+            s_backticks[cmpOption] = expandedValue;
+            cmpOption = expandedValue;
+
+        } else {
+            cmpOption = s_backticks.find(cmpOption)->second;
+        }
+    }
+    cmpOption.Trim().Trim(false);
+    return cmpOption;
+}
+
+void Project::CreateCompileCommandsJSON(JSONElement& compile_commands)
+{
+    FileNameVector_t files;
+    GetFiles(files, true);
+    
+    wxString cFilePattern   = GetCompileLineForCXXFile("$FileName", false);
+    wxString cxxFilePattern = GetCompileLineForCXXFile("$FileName", true);
+    wxString workingDirectory = m_fileName.GetPath();
+    
+    for(size_t i=0; i<files.size(); ++i) {
+        const wxFileName &fn = files.at(i);
+        const wxString fullpath = fn.GetFullPath();
+        
+        wxString pattern;
+        FileExtManager::FileType fileType = FileExtManager::GetType( fullpath );
+        if ( fileType == FileExtManager::TypeSourceC ) {
+            pattern = cFilePattern;
+            
+        } else if ( fileType == FileExtManager::TypeSourceCpp ) {
+            pattern = cxxFilePattern;
+            
+        } else {
+            continue;
+        }
+        
+        wxString file_name = fullpath;
+        if ( file_name.Contains(" ") ) {
+            file_name.Prepend("\"").Append("\"");
+        }
+        pattern.Replace("$FileName", file_name);
+        
+        JSONElement json = JSONElement::createObject();
+        json.addProperty("file", fullpath);
+        json.addProperty("directory", workingDirectory);
+        json.addProperty("command", pattern);
+        compile_commands.append( json );
+    }
+}
+
+BuildConfigPtr Project::GetBuildConfiguration(const wxString& configName) const
+{
+    BuildMatrixPtr matrix = GetWorkspace()->GetBuildMatrix();
+    if( !matrix ) {
+        return NULL;
+    }
+    
+    wxString workspaceSelConf = matrix->GetSelectedConfigurationName();
+    wxString projectSelConf   = configName.IsEmpty() ? matrix->GetProjectSelectedConf(workspaceSelConf, GetName()) : configName;
+    BuildConfigPtr buildConf = GetWorkspace()->GetProjBuildConf(this->GetName(), projectSelConf);
+    return buildConf;
+}
+
+void Project::AssociateToWorkspace(Workspace* workspace)
+{
+    m_workspace = workspace;
+}
+
+Workspace* Project::GetWorkspace()
+{
+    if ( !m_workspace ) {
+        return WorkspaceST::Get();
+        
+    } else {
+        return m_workspace;
+    }
+}
+
+const Workspace* Project::GetWorkspace() const
+{
+    if ( !m_workspace ) {
+        return WorkspaceST::Get();
+        
+    } else {
+        return m_workspace;
+    }
+}
+
+void Project::GetCompilers(wxStringSet_t& compilers)
+{
+    ProjectSettingsPtr pSettings = GetSettings();
+    CHECK_PTR_RET( pSettings );
+    
+    BuildConfigPtr buildConf = GetBuildConfiguration();
+    if ( buildConf ) {
+        compilers.insert( buildConf->GetCompilerType() );
+    }
+}
+
+void Project::ReplaceCompilers(wxStringMap_t& compilers)
+{
+    ProjectSettingsPtr pSettings = GetSettings();
+    CHECK_PTR_RET( pSettings );
+    
+    ProjectSettingsCookie cookie;
+    BuildConfigPtr buildConf = pSettings->GetFirstBuildConfiguration( cookie );
+    while ( buildConf ) {
+        if ( compilers.count(buildConf->GetCompilerType()) ) {
+            buildConf->SetCompilerType( compilers.find(buildConf->GetCompilerType())->second );
+        }
+        buildConf = pSettings->GetNextBuildConfiguration( cookie );
+    }
+    
+    // and update the settings (+ save the XML file)
+    SetSettings( pSettings );
 }

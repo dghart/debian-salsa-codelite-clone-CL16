@@ -44,21 +44,18 @@ class PSGeneralPage : public PSGeneralPageBase, public IProjectSettingsPage
     ProjectSettingsDlg *m_dlg;
     wxString            m_projectName;
     wxString            m_configName;
-    StringManager m_stringManager;
 
 protected:
-    virtual void OnEnableProject(wxCommandEvent& event);
-    virtual void OnConfigurationEnabledUI(wxUpdateUIEvent& event);
-    wxString DoGetWorkingDirectory();
+    virtual void OnCustomEditorClicked(wxCommandEvent& event);
+    virtual void OnProjectEnabled(wxCommandEvent& event);
+    virtual void OnValueChanged(wxPropertyGridEvent& event);
+
+    wxString GetPropertyAsString(wxPGProperty* prop) const;
+    bool GetPropertyAsBool(wxPGProperty* prop) const;
 
 protected:
     // Handlers for PSGeneralPageBase events.
     void OnProjectCustumBuildUI( wxUpdateUIEvent& event );
-    void OnCmdEvtVModified( wxCommandEvent& event );
-    void OnBrowseIntermediateDir( wxCommandEvent& event );
-    void OnBrowseProgram( wxCommandEvent& event );
-    void OnBrowseCommandWD( wxCommandEvent& event );
-    void OnUseDebugArgsUI(wxUpdateUIEvent& event);
 
 public:
 
@@ -68,9 +65,8 @@ public:
     virtual void Save(BuildConfigPtr buildConf, ProjectSettingsPtr projSettingsPtr);
     virtual void Load(BuildConfigPtr buildConf);
     virtual void Clear();
-
     wxString GetCompiler() const {
-        return m_choiceCompilerType->GetStringSelection();
+        return m_pgPropCompiler->GetValueAsString();
     }
 };
 

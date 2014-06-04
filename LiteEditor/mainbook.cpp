@@ -37,6 +37,8 @@
 #include "mainbook.h"
 #include "message_pane.h"
 #include "theme_handler.h"
+#include "editorframe.h"
+#include "FilesModifiedDlg.h"
 
 #if CL_USE_NATIVEBOOK
 #ifdef __WXGTK20__
@@ -54,6 +56,8 @@ MainBook::MainBook(wxWindow *parent)
     , m_book           (NULL)
     , m_quickFindBar   (NULL)
     , m_useBuffereLimit(true)
+    , m_isWorkspaceReloading(false)
+    , m_reloadingDoRaise(true)
 {
     CreateGuiControls();
     ConnectEvents();
@@ -99,10 +103,12 @@ void MainBook::ConnectEvents()
 
     EventNotifier::Get()->Connect(wxEVT_WORKSPACE_LOADED,  wxCommandEventHandler(MainBook::OnWorkspaceLoaded),    NULL, this);
     EventNotifier::Get()->Connect(wxEVT_PROJ_FILE_ADDED,   clCommandEventHandler(MainBook::OnProjectFileAdded),   NULL, this);
-    EventNotifier::Get()->Connect(wxEVT_PROJ_FILE_REMOVED, wxCommandEventHandler(MainBook::OnProjectFileRemoved), NULL, this);
+    EventNotifier::Get()->Connect(wxEVT_PROJ_FILE_REMOVED, clCommandEventHandler(MainBook::OnProjectFileRemoved), NULL, this);
     EventNotifier::Get()->Connect(wxEVT_WORKSPACE_CLOSED,  wxCommandEventHandler(MainBook::OnWorkspaceClosed),    NULL, this);
     EventNotifier::Get()->Connect(wxEVT_DEBUG_ENDED,       wxCommandEventHandler(MainBook::OnDebugEnded),         NULL, this);
     EventNotifier::Get()->Connect(wxEVT_INIT_DONE,         wxCommandEventHandler(MainBook::OnInitDone),           NULL, this);
+
+    EventNotifier::Get()->Bind(wxEVT_DETACHED_EDITOR_CLOSED, &MainBook::OnDetachedEditorClosed, this);
 
     // Highlight Job
     Connect(wxEVT_CMD_JOB_STATUS_VOID_PTR,         wxCommandEventHandler(MainBook::OnStringHighlight),      NULL, this);
@@ -119,10 +125,12 @@ MainBook::~MainBook()
 
     EventNotifier::Get()->Disconnect(wxEVT_WORKSPACE_LOADED,  wxCommandEventHandler(MainBook::OnWorkspaceLoaded),    NULL, this);
     EventNotifier::Get()->Disconnect(wxEVT_PROJ_FILE_ADDED,   clCommandEventHandler(MainBook::OnProjectFileAdded),   NULL, this);
-    EventNotifier::Get()->Disconnect(wxEVT_PROJ_FILE_REMOVED, wxCommandEventHandler(MainBook::OnProjectFileRemoved), NULL, this);
+    EventNotifier::Get()->Disconnect(wxEVT_PROJ_FILE_REMOVED, clCommandEventHandler(MainBook::OnProjectFileRemoved), NULL, this);
     EventNotifier::Get()->Disconnect(wxEVT_WORKSPACE_CLOSED,  wxCommandEventHandler(MainBook::OnWorkspaceClosed),    NULL, this);
     EventNotifier::Get()->Disconnect(wxEVT_DEBUG_ENDED,       wxCommandEventHandler(MainBook::OnDebugEnded),         NULL, this);
     EventNotifier::Get()->Disconnect(wxEVT_INIT_DONE,         wxCommandEventHandler(MainBook::OnInitDone),           NULL, this);
+
+    EventNotifier::Get()->Unbind(wxEVT_DETACHED_EDITOR_CLOSED, &MainBook::OnDetachedEditorClosed, this);
     Disconnect(wxEVT_CMD_JOB_STATUS_VOID_PTR,         wxCommandEventHandler(MainBook::OnStringHighlight),      NULL, this);
 }
 
@@ -188,15 +196,13 @@ void MainBook::OnProjectFileAdded(clCommandEvent &e)
     }
 }
 
-void MainBook::OnProjectFileRemoved(wxCommandEvent &e)
+void MainBook::OnProjectFileRemoved(clCommandEvent& e)
 {
     e.Skip();
-    wxArrayString *files = (wxArrayString*) e.GetClientData();
-    if (!files)
-        return;
-    for (size_t i = 0; i < files->GetCount(); i++) {
-        LEditor *editor = FindEditor(files->Item(i));
-        if (editor && files->Index(editor->GetFileName().GetFullPath()) != wxNOT_FOUND) {
+    const wxArrayString &files = e.GetStrings();
+    for (size_t i = 0; i < files.GetCount(); ++i) {
+        LEditor *editor = FindEditor(files.Item(i));
+        if (editor && files.Index(editor->GetFileName().GetFullPath()) != wxNOT_FOUND) {
             editor->SetProject(wxEmptyString);
         }
     }
@@ -313,6 +319,7 @@ void MainBook::RestoreSession(SessionEntry &session)
     const std::vector<TabInfo> &vTabInfoArr = session.GetTabInfoArr();
     for (size_t i = 0; i < vTabInfoArr.size(); i++) {
         const TabInfo &ti = vTabInfoArr[i];
+        m_reloadingDoRaise = (i == vTabInfoArr.size()-1); // Raise() when opening only the last editor
         LEditor *editor = OpenFile(ti.GetFileName());
         if (!editor) {
             if (i < sel) {
@@ -336,43 +343,62 @@ void MainBook::RestoreSession(SessionEntry &session)
     m_book->GetEventHandler()->AddPendingEvent(event);
 }
 
-LEditor *MainBook::GetActiveEditor()
+LEditor *MainBook::GetActiveEditor(bool includeDetachedEditors)
 {
+    if ( includeDetachedEditors ) {
+        EditorFrame::List_t::iterator iter = m_detachedEditors.begin();
+        for(; iter != m_detachedEditors.end(); ++iter ) {
+            if ( (*iter)->GetEditor()->IsFocused() ) {
+                return (*iter)->GetEditor();
+            }
+        }
+    }
+
     if ( !GetCurrentPage() ) {
         return NULL;
     }
     return dynamic_cast<LEditor*>(GetCurrentPage());
 }
 
-void MainBook::GetAllEditors(std::vector<LEditor*> &editors, bool retain_order /*= false*/)
+void MainBook::GetAllEditors(LEditor::Vec_t& editors, size_t flags)
 {
     editors.clear();
-    if (!retain_order) {
-        // Most of the time we don't care about the order the tabs are stored in
-        for (size_t i = 0; i < m_book->GetPageCount(); i++) {
-            LEditor *editor = dynamic_cast<LEditor*>(m_book->GetPage(i));
-            if (editor) {
-                editors.push_back(editor);
+    if( !(flags & kGetAll_DetachedOnly) ) {
+        // Collect booked editors
+        if ( !(flags & kGetAll_RetainOrder) ) {
+            // Most of the time we don't care about the order the tabs are stored in
+            for (size_t i = 0; i < m_book->GetPageCount(); i++) {
+                LEditor *editor = dynamic_cast<LEditor*>(m_book->GetPage(i));
+                if (editor) {
+                    editors.push_back(editor);
+                }
             }
-        }
-    } else {
-        std::vector<wxWindow*> windows;
+        } else {
+            std::vector<wxWindow*> windows;
 #if !CL_USE_NATIVEBOOK
-        m_book->GetEditorsInOrder(windows);
-        for (size_t i = 0; i < windows.size(); i++) {
-            LEditor *editor = dynamic_cast<LEditor*>(windows.at(i));
-            if (editor) {
-                editors.push_back(editor);
+            m_book->GetEditorsInOrder(windows);
+            for (size_t i = 0; i < windows.size(); i++) {
+                LEditor *editor = dynamic_cast<LEditor*>(windows.at(i));
+                if (editor) {
+                    editors.push_back(editor);
+                }
             }
-        }
 #else
-        for(size_t i=0; i<m_book->GetPageCount(); i++) {
-            LEditor *editor = dynamic_cast<LEditor*>(m_book->GetPage(i));
-            if(editor) {
-                editors.push_back(editor);
+            for(size_t i=0; i<m_book->GetPageCount(); i++) {
+                LEditor *editor = dynamic_cast<LEditor*>(m_book->GetPage(i));
+                if(editor) {
+                    editors.push_back(editor);
+                }
             }
-        }
 #endif
+        }
+    }
+    if ( (flags & kGetAll_IncludeDetached) || (flags & kGetAll_DetachedOnly) ) {
+        // Add the detached editors
+        EditorFrame::List_t::iterator iter = m_detachedEditors.begin();
+        for(; iter != m_detachedEditors.end(); ++iter ) {
+            editors.push_back( (*iter)->GetEditor() );
+        }
     }
 }
 
@@ -404,6 +430,14 @@ LEditor *MainBook::FindEditor(const wxString &fileName)
                 return editor;
             }
 #endif
+        }
+    }
+
+    // try the detached editors
+    EditorFrame::List_t::iterator iter = m_detachedEditors.begin();
+    for(; iter != m_detachedEditors.end(); ++iter ) {
+        if ( (*iter)->GetEditor()->GetFileName().GetFullPath() == fileName ) {
+            return (*iter)->GetEditor();
         }
     }
     return NULL;
@@ -457,9 +491,9 @@ LEditor *MainBook::NewEditor()
 static bool IsFileExists(const wxFileName &filename)
 {
 #ifdef __WXMSW__
-/*    wxString drive  = filename.GetVolume();
-    if(drive.Length()>1)
-        return false;*/
+    /*    wxString drive  = filename.GetVolume();
+        if(drive.Length()>1)
+            return false;*/
 
     return filename.FileExists();
 #else
@@ -467,7 +501,7 @@ static bool IsFileExists(const wxFileName &filename)
 #endif
 }
 
-LEditor *MainBook::OpenFile(const wxString &file_name, const wxString &projectName, int lineno, long position, enum OF_extra extra/*=OF_AddJump*/, bool preserveSelection /*=true*/)
+LEditor *MainBook::OpenFile(const wxString &file_name, const wxString &projectName, int lineno, long position, OF_extra extra/*=OF_AddJump*/, bool preserveSelection /*=true*/)
 {
     wxFileName fileName(file_name);
     fileName.MakeAbsolute();
@@ -483,7 +517,7 @@ LEditor *MainBook::OpenFile(const wxString &file_name, const wxString &projectNa
         projName = ManagerST::Get()->GetProjectNameByFile(fileName.GetFullPath());
     }
 
-    LEditor* editor = GetActiveEditor();
+    LEditor* editor = GetActiveEditor(true);
     BrowseRecord jumpfrom = editor ? editor->CreateBrowseRecord() : BrowseRecord();
 
     editor = FindEditor(fileName.GetFullPath());
@@ -558,10 +592,12 @@ LEditor *MainBook::OpenFile(const wxString &file_name, const wxString &projectNa
 
     }
 
-    if (GetActiveEditor() == editor) {
-        editor->SetActive();
-    } else {
-        SelectPage(editor);
+    if (m_reloadingDoRaise) {
+        if (GetActiveEditor() == editor) {
+            editor->SetActive();
+        } else {
+            SelectPage(editor);
+        }
     }
 
     // Add this file to the history. Don't check for uniqueness:
@@ -639,7 +675,7 @@ bool MainBook::AddPage(wxWindow *win, const wxString &text, const wxBitmap &bmp,
 bool MainBook::SelectPage(wxWindow *win)
 {
     size_t index = m_book->GetPageIndex(win);
-    if (index != Notebook::npos && m_book->GetSelection() != index) {
+    if (index != Notebook::npos && m_book->GetSelection() != (int)index) {
         m_book->SetSelection(index);
     }
 
@@ -664,8 +700,8 @@ bool MainBook::UserSelectFiles(std::vector<std::pair<wxFileName,bool> > &files, 
 bool MainBook::SaveAll(bool askUser, bool includeUntitled)
 {
     // turn the 'saving all' flag on so we could 'Veto' all focus events
-    std::vector<LEditor*> editors;
-    GetAllEditors(editors);
+    LEditor::Vec_t editors;
+    GetAllEditors(editors, MainBook::kGetAll_Default);
 
     std::vector<std::pair<wxFileName, bool> > files;
     size_t n = 0;
@@ -695,8 +731,13 @@ bool MainBook::SaveAll(bool askUser, bool includeUntitled)
 
 void MainBook::ReloadExternallyModified(bool prompt)
 {
-    std::vector<LEditor*> editors;
-    GetAllEditors(editors);
+    if ( m_isWorkspaceReloading )
+        return;
+
+    LEditor::Vec_t editors;
+    GetAllEditors(editors, MainBook::kGetAll_IncludeDetached);
+
+    time_t workspaceModifiedTimeBefore = WorkspaceST::Get()->GetFileLastModifiedTime();
 
     // filter list of editors for any whose files have been modified
     std::vector<std::pair<wxFileName, bool> > files;
@@ -705,20 +746,52 @@ void MainBook::ReloadExternallyModified(bool prompt)
         time_t diskTime = editors[i]->GetFileLastModifiedTime();
         time_t editTime = editors[i]->GetEditorLastModifiedTime();
         if (diskTime != editTime) {
-            files.push_back(std::make_pair(editors[i]->GetFileName(), !editors[i]->GetModify()));
             // update editor last mod time so that we don't keep bugging the user over the same file,
             // unless it gets changed again
             editors[i]->SetEditorLastModifiedTime(diskTime);
-            editors[n++] = editors[i];
+
+            // A last check: see if the content of the file has actually changed. This avoids unnecessary reload offers after e.g. git stash
+            if (!CompareFileWithString(editors[i]->GetFileName().GetFullPath(), editors[i]->GetText())) {
+                files.push_back(std::make_pair(editors[i]->GetFileName(), !editors[i]->GetModify()));
+                editors[n++] = editors[i];
+            }
         }
     }
     editors.resize(n);
+    if ( n == 0 )
+        return;
 
     if(prompt) {
-        UserSelectFiles(files, _("Reload Modified Files"), _("Files have been modified outside the editor.\nChoose which files you would like to reload."), false);
+
+        int res = clConfig::Get().GetAnnoyingDlgAnswer("FilesModifiedDlg", wxNOT_FOUND);
+        if ( res == wxNOT_FOUND ) {
+            // User did not ticked the 'Remember my answer' checkbox
+            // Show the dialog
+            FilesModifiedDlg dlg( EventNotifier::Get()->TopFrame() );
+            res = dlg.ShowModal();
+            
+            if ( res == wxID_CANCEL ) {
+                return;
+            }
+            
+            if ( dlg.GetRememberMyAnswer() ) {
+                clConfig::Get().SetAnnoyingDlgAnswer("FilesModifiedDlg", res);
+            }
+        }
+
+        if ( res == FilesModifiedDlg::kID_BUTTON_CHOOSE ) {
+            UserSelectFiles(files, _("Reload Modified Files"), _("Files have been modified outside the editor.\nChoose which files you would like to reload."), false);
+        }
+
     }
 
-    
+    time_t workspaceModifiedTimeAfter = WorkspaceST::Get()->GetFileLastModifiedTime();
+    if ( workspaceModifiedTimeBefore != workspaceModifiedTimeAfter ) {
+        // a workspace reload occured between the "Reload Modified Files" and
+        // the "Reload WOrkspace" dialog, cancel this it's not needed anymore
+        return;
+    }
+
     std::vector<wxFileName> filesToRetag;
     for (size_t i = 0; i < files.size(); i++) {
         if (files[i].second) {
@@ -768,8 +841,8 @@ bool MainBook::CloseAllButThis(wxWindow *page)
 
 bool MainBook::CloseAll(bool cancellable)
 {
-    std::vector<LEditor*> editors;
-    GetAllEditors(editors);
+    LEditor::Vec_t editors;
+    GetAllEditors(editors, kGetAll_IncludeDetached);
 
     // filter list of editors for any that need to be saved
     std::vector<std::pair<wxFileName, bool> > files;
@@ -802,7 +875,15 @@ bool MainBook::CloseAll(bool cancellable)
 
     SendCmdEvent(wxEVT_ALL_EDITORS_CLOSING);
 
+    m_reloadingDoRaise = false;
     m_book->DeleteAllPages(false);
+    m_reloadingDoRaise = true;
+
+    // Delete all detached editors
+    EditorFrame::List_t::iterator iter = m_detachedEditors.begin();
+    for(; iter != m_detachedEditors.end(); ++iter ) {
+        (*iter)->Destroy(); // Destroying the frame will release the editor
+    }
 
     // Since we got no more editors opened,
     // send a wxEVT_ALL_EDITORS_CLOSED event
@@ -848,13 +929,13 @@ void MainBook::SetPageTitle ( wxWindow *page, const wxString &name )
 void MainBook::ApplySettingsChanges()
 {
     std::vector<LEditor*> editors;
-    GetAllEditors(editors);
+    GetAllEditors(editors, MainBook::kGetAll_IncludeDetached);
     for (size_t i = 0; i < editors.size(); i++) {
         editors[i]->SetSyntaxHighlight(editors[i]->GetContext()->GetName());
     }
 
     clMainFrame::Get()->UpdateAUI();
-    
+
     // Last: reposition the findBar
     DoPositionFindBar(2);
 }
@@ -862,7 +943,7 @@ void MainBook::ApplySettingsChanges()
 void MainBook::UnHighlightAll()
 {
     std::vector<LEditor*> editors;
-    GetAllEditors(editors);
+    GetAllEditors(editors, MainBook::kGetAll_IncludeDetached);
     for (size_t i = 0; i < editors.size(); i++) {
         editors[i]->UnHighlightAll();
     }
@@ -871,7 +952,7 @@ void MainBook::UnHighlightAll()
 void MainBook::DelAllBreakpointMarkers()
 {
     std::vector<LEditor*> editors;
-    GetAllEditors(editors);
+    GetAllEditors(editors, MainBook::kGetAll_IncludeDetached);
     for (size_t i = 0; i < editors.size(); i++) {
         editors[i]->DelAllBreakpointMarkers();
     }
@@ -880,7 +961,7 @@ void MainBook::DelAllBreakpointMarkers()
 void MainBook::SetViewEOL(bool visible)
 {
     std::vector<LEditor*> editors;
-    GetAllEditors(editors);
+    GetAllEditors(editors, MainBook::kGetAll_IncludeDetached);
     for (size_t i = 0; i < editors.size(); i++) {
         editors[i]->SetViewEOL(visible);
     }
@@ -889,7 +970,7 @@ void MainBook::SetViewEOL(bool visible)
 void MainBook::HighlightWord(bool hl)
 {
     std::vector<LEditor*> editors;
-    GetAllEditors(editors);
+    GetAllEditors(editors, MainBook::kGetAll_IncludeDetached);
     for (size_t i = 0; i < editors.size(); i++) {
         editors[i]->HighlightWord(hl);
     }
@@ -898,7 +979,7 @@ void MainBook::HighlightWord(bool hl)
 void MainBook::ShowWhitespace(int ws)
 {
     std::vector<LEditor*> editors;
-    GetAllEditors(editors);
+    GetAllEditors(editors, MainBook::kGetAll_IncludeDetached);
     for (size_t i = 0; i < editors.size(); i++) {
         editors[i]->SetViewWhiteSpace(ws);
     }
@@ -907,7 +988,7 @@ void MainBook::ShowWhitespace(int ws)
 void MainBook::UpdateColours()
 {
     std::vector<LEditor*> editors;
-    GetAllEditors(editors);
+    GetAllEditors(editors, MainBook::kGetAll_IncludeDetached);
     for (size_t i = 0; i < editors.size(); i++) {
         editors[i]->UpdateColours();
     }
@@ -916,7 +997,7 @@ void MainBook::UpdateColours()
 void MainBook::UpdateBreakpoints()
 {
     std::vector<LEditor*> editors;
-    GetAllEditors(editors);
+    GetAllEditors(editors, MainBook::kGetAll_IncludeDetached);
     for (size_t i = 0; i < editors.size(); i++) {
         editors[i]->UpdateBreakpoints();
     }
@@ -949,7 +1030,7 @@ bool MainBook::DoSelectPage(wxWindow* win)
     if ( editor ) {
         editor->SetActive();
         m_quickFindBar->SetEditor( editor );
-        
+
     } else {
         m_quickFindBar->ShowForPlugins();
     }
@@ -990,7 +1071,7 @@ void MainBook::ShowMessage( const wxString &message,
 void MainBook::OnPageChanged(NotebookEvent& e)
 {
     int newSel = e.GetSelection();
-    if(newSel != wxNOT_FOUND) {
+    if (newSel != wxNOT_FOUND && m_reloadingDoRaise) {
         wxWindow *win = m_book->GetPage((size_t)newSel);
         if(win) {
             SelectPage(win);
@@ -1091,7 +1172,7 @@ void MainBook::OnPageChanging(NotebookEvent& e)
 void MainBook::SetViewWordWrap(bool b)
 {
     std::vector<LEditor*> editors;
-    GetAllEditors(editors);
+    GetAllEditors(editors, MainBook::kGetAll_Default);
     for (size_t i = 0; i < editors.size(); i++) {
         editors[i]->SetWrapMode(b ? wxSTC_WRAP_WORD : wxSTC_WRAP_NONE);
     }
@@ -1123,3 +1204,57 @@ size_t MainBook::GetPageCount() const
     return m_book->GetPageCount();
 }
 
+void MainBook::DetachActiveEditor()
+{
+    if ( GetActiveEditor() ) {
+        LEditor *editor = GetActiveEditor();
+        m_book->RemovePage( m_book->GetSelection(), true );
+        EditorFrame* frame = new EditorFrame(clMainFrame::Get(), editor);
+        frame->Show();
+        m_detachedEditors.push_back( frame );
+    }
+}
+
+void MainBook::OnDetachedEditorClosed(clCommandEvent& e)
+{
+    e.Skip();
+    DoEraseDetachedEditor( (IEditor*)e.GetClientData() );
+}
+
+void MainBook::DoEraseDetachedEditor(IEditor* editor)
+{
+    EditorFrame::List_t::iterator iter = m_detachedEditors.begin();
+    for(; iter != m_detachedEditors.end(); ++iter ) {
+        if ( (*iter)->GetEditor() == editor ) {
+            m_detachedEditors.erase( iter );
+            break;
+        }
+    }
+}
+
+void MainBook::OnWorkspaceReloadEnded(clCommandEvent& e)
+{
+    e.Skip();
+    m_isWorkspaceReloading = false;
+}
+
+void MainBook::OnWorkspaceReloadStarted(clCommandEvent& e)
+{
+    e.Skip();
+    m_isWorkspaceReloading = true;
+}
+
+void MainBook::ClosePageVoid(wxWindow* win)
+{
+    ClosePage(win);
+}
+
+void MainBook::CloseAllButThisVoid(wxWindow* win)
+{
+    CloseAllButThis(win);
+}
+
+void MainBook::CloseAllVoid(bool cancellable)
+{
+    CloseAll(cancellable);
+}

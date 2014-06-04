@@ -105,6 +105,7 @@ void OpenWindowsPanel::DoOpenSelectedItem(int item)
             clMainFrame::Get()->GetMainBook()->SelectPage(editor);
         } else {
             clMainFrame::Get()->GetMainBook()->OpenFile(data->GetData(), wxEmptyString);
+            editor->DelayedSetActive(); // At least in wxGTK, this won't work synchronously
         }
     }
 }
@@ -290,7 +291,7 @@ void OpenWindowsPanel::DoSelectItem(const LEditor* editor)
     if (sorttool && !sorttool->IsToggled()) {
         // If we're sorting-by-editor-order, in wxAuiNotebook we can't rely on m_fileList's order
         std::vector<LEditor*> editors;
-        clMainFrame::Get()->GetMainBook()->GetAllEditors(editors, true);
+        clMainFrame::Get()->GetMainBook()->GetAllEditors(editors, MainBook::kGetAll_IncludeDetached|MainBook::kGetAll_RetainOrder);
         for (size_t n = 0; n < editors.size(); ++n) {
             if (editors.at(n)->GetFileName().GetFullPath() == editor->GetFileName().GetFullPath()) {
                 DoSelectItem(n);
@@ -363,7 +364,7 @@ void OpenWindowsPanel::SortAlphabetically()
 {
     m_fileList->Clear();
     std::vector<LEditor*> editors;
-    clMainFrame::Get()->GetMainBook()->GetAllEditors(editors, true);
+    clMainFrame::Get()->GetMainBook()->GetAllEditors(editors, MainBook::kGetAll_IncludeDetached|MainBook::kGetAll_RetainOrder);
     for (size_t n = 0; n < editors.size(); ++n) {
         LEditor* editor = editors.at(n);
         wxString name = editor->GetFileName().GetFullName();
@@ -385,7 +386,7 @@ void OpenWindowsPanel::SortAlphabetically()
 void OpenWindowsPanel::SortByEditorOrder()
 {
     std::vector<LEditor*> editors;
-    clMainFrame::Get()->GetMainBook()->GetAllEditors(editors, true);
+    clMainFrame::Get()->GetMainBook()->GetAllEditors(editors, MainBook::kGetAll_IncludeDetached|MainBook::kGetAll_RetainOrder);
 
     m_fileList->Clear();
     for (size_t n = 0; n < editors.size(); ++n) {

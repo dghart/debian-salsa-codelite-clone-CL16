@@ -1,11 +1,9 @@
-#if HAS_LIBCLANG
-
 #include "clang_compilation_db_thread.h"
 #include "compilation_database.h"
+#include "file_logger.h"
 
-ClangCompilationDbThread::ClangCompilationDbThread(const wxString &filename)
-    : wxThread(wxTHREAD_DETACHED)
-    , m_dbfile(filename.c_str())
+ClangCompilationDbThread::ClangCompilationDbThread()
+    : wxThread(wxTHREAD_JOINABLE)
 {
 }
 
@@ -15,9 +13,25 @@ ClangCompilationDbThread::~ClangCompilationDbThread()
 
 void* ClangCompilationDbThread::Entry()
 {
-    CompilationDatabase cdb(m_dbfile);
-    cdb.Initialize();
+    CL_DEBUG("ClangCompilationDbThread: Started");
+    wxString filename;
+    while ( !TestDestroy() ) {
+        if ( m_queue.ReceiveTimeout( 50, filename ) == wxMSGQUEUE_NO_ERROR ) {
+
+            // success
+            // Process the file
+            CL_DEBUG("ClangCompilationDbThread: Processing file " + filename);
+            CompilationDatabase cdb(filename);
+            cdb.Initialize();
+            CL_DEBUG("ClangCompilationDbThread: Processing file " + filename + "... done");
+            
+        }
+    }
+    CL_DEBUG("ClangCompilationDbThread: Going down");
     return NULL;
 }
 
-#endif // #if HAS_LIBCLANG
+void ClangCompilationDbThread::AddFile(const wxString& filename)
+{
+    m_queue.Post( filename );
+}

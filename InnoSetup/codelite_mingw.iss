@@ -4,9 +4,9 @@
 [Setup]
 AppName=CodeLite
 AppVerName=CodeLite
-AppPublisherURL=http://codelite.sourceforge.net
-AppSupportURL=http://codelite.sourceforge.net
-AppUpdatesURL=http://codelite.sourceforge.net
+AppPublisherURL=http://codelite.org
+AppSupportURL=http://codelite.org
+AppUpdatesURL=http://codelite.org
 DefaultDirName={reg:HKLM\Software\codelite\settings,InstalPath|{pf}\CodeLite}
 DefaultGroupName=CodeLite
 LicenseFile=license.txt
@@ -33,8 +33,9 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "..\Runtime\CodeLite.exe"; DestDir: "{app}"; Flags: ignoreversion; Components: Editor
+Source: "..\Runtime\codelite.exe"; DestDir: "{app}"; Flags: ignoreversion; Components: Editor
 Source: "..\Runtime\codelite-clang.exe"; DestDir: "{app}"; Flags: ignoreversion; Components: Editor
+Source: "..\Runtime\codelite-echo.exe"; DestDir: "{app}"; Flags: ignoreversion; Components: Editor
 Source: "..\Runtime\codelite-make.exe"; DestDir: "{app}"; Flags: ignoreversion; Components: Editor
 Source: "..\Runtime\codelite-terminal.exe"; DestDir: "{app}"; Flags: ignoreversion; Components: Editor
 Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion; Components: Editor
@@ -52,7 +53,8 @@ Source: "D:\src\wxWidgets-3.0.0\lib\gcc_dll\wxmsw30u_richtext_gcc_cl.dll"; DestD
 Source: "D:\src\wxWidgets-3.0.0\lib\gcc_dll\wxmsw30u_stc_gcc_cl.dll";      DestDir: "{app}"; Flags: ignoreversion; Components: Editor
 Source: "D:\src\wxWidgets-3.0.0\lib\gcc_dll\wxmsw30u_propgrid_gcc_cl.dll"; DestDir: "{app}"; Flags: ignoreversion; Components: Editor
 Source: "D:\src\wxWidgets-3.0.0\lib\gcc_dll\wxmsw30u_webview_gcc_cl.dll";  DestDir: "{app}"; Flags: ignoreversion; Components: Editor
-Source: "D:\src\wxWidgets-3.0.0\lib\gcc_dll\wxrc.exe";                      DestDir: "{app}"; Flags: ignoreversion; Components: Editor
+Source: "D:\src\wxWidgets-3.0.0\lib\gcc_dll\wxmsw30u_ribbon_gcc_cl.dll";   DestDir: "{app}"; Flags: ignoreversion; Components: Editor
+Source: "D:\src\wxWidgets-3.0.0\lib\gcc_dll\wxrc.exe";                     DestDir: "{app}"; Flags: ignoreversion; Components: Editor
 
 Source: "..\InnoSetup\license.txt"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
 Source: "..\sdk\wxconfig\wx-config.exe"; DestDir: "{app}"; Components: Editor
@@ -64,6 +66,7 @@ Source: "..\Runtime\config\build_settings.xml.default.win"; DestDir: "{app}\conf
 Source: "..\Runtime\rc\*"; DestDir: "{app}\rc"; Flags: ignoreversion ; Components: Editor
 Source: "..\Runtime\astyle.sample"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
 Source: "..\Runtime\config\codelite.layout.default"; DestDir: "{app}\config"; DestName: codelite.layout; Flags: ignoreversion ; Components: Editor
+Source: "..\sdk\codelite_cppcheck\cfg\*.cfg"; DestDir: "{app}\config\cppcheck"; Flags: ignoreversion ; Components: Editor
 Source: "..\Runtime\templates\*"; DestDir: "{app}\templates"; Flags: recursesubdirs ; Components: Editor
 
 ; Override with Windows specific files
@@ -96,6 +99,9 @@ Source: "..\Runtime\plugins\ZoomNavigator.dll"; DestDir: "{app}\plugins"; Flags:
 Source: "..\Runtime\plugins\SFTP.dll"; DestDir: "{app}\plugins"; Flags: ignoreversion ; Components: Editor
 Source: "..\Runtime\plugins\Tweaks.dll"; DestDir: "{app}\plugins"; Flags: ignoreversion ; Components: Editor
 Source: "..\Runtime\plugins\CMakePlugin.dll"; DestDir: "{app}\plugins"; Flags: ignoreversion ; Components: Editor
+Source: "..\Runtime\plugins\CodeLiteDiff.dll"; DestDir: "{app}\plugins"; Flags: ignoreversion ; Components: Editor
+Source: "..\Runtime\plugins\LLDBDebugger.dll"; DestDir: "{app}\plugins"; Flags: ignoreversion ; Components: Editor
+Source: "..\Runtime\plugins\wxcrafter.dll"; DestDir: "{app}\plugins"; Flags: ignoreversion ; Components: Editor
 
 Source: "..\lib\gcc_lib\libwxsqlite3u.dll"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
 Source: "..\lib\gcc_lib\libcodeliteu.dll"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
@@ -108,7 +114,7 @@ Source: "..\Runtime\plugins\resources\*"; DestDir: "{app}\plugins\resources\"; F
 Source: "..\Runtime\codelite_indexer.exe"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
 Source: "..\Runtime\codelite_launcher.exe"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
 Source: "..\Runtime\codelite_cppcheck.exe"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
-Source: "..\Runtime\codelitegcc.exe"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
+Source: "..\Runtime\codelite-cc.exe"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
 Source: "..\Runtime\codelite-make.exe"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
 Source: "..\Runtime\le_exec.exe"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
 Source: "..\Runtime\makedir.exe"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
@@ -130,12 +136,14 @@ Source: "C:\MinGW-4.8.1\*"; Excludes: "*.~*,msys\*,mingw-get\*"; DestDir: "{code
 Source: "..\UnitTest++\*"; DestDir: "{code:GetUnitTestPPInstallDir}"; Flags: recursesubdirs ; Components: UnitTestPP
 Source: "..\Runtime\locale\*"; DestDir: "{app}\locale"; Flags: recursesubdirs ; Components: Editor
 Source: "..\Runtime\gdb_printers\*"; DestDir: "{app}\gdb_printers"; Flags: recursesubdirs ; Components: Editor
+Source: "..\Runtime\wxgui.zip";  DestDir: "{app}"; Flags: ignoreversion; Components: Editor
+Source: "..\wxcrafter\wxcrafter.accelerators"; DestDir: "{app}\plugins\resources"; Flags: ignoreversion; Components: Editor
 
 [Icons]
-Name: "{group}\CodeLite "; Filename: "{app}\CodeLite.exe"; WorkingDir: "{app}"
+Name: "{group}\CodeLite "; Filename: "{app}\codelite.exe"; WorkingDir: "{app}"
 Name: "{group}\{cm:UninstallProgram, CodeLite}"; Filename: "{uninstallexe}"
-Name: "{userdesktop}\CodeLite "; Filename: "{app}\CodeLite.exe"; WorkingDir: "{app}" ;Tasks: desktopicon
-Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\CodeLite "; WorkingDir: "{app}"; Filename: "{app}\CodeLite.exe"; Tasks: quicklaunchicon
+Name: "{userdesktop}\CodeLite "; Filename: "{app}\codelite.exe"; WorkingDir: "{app}" ;Tasks: desktopicon
+Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\CodeLite"; WorkingDir: "{app}"; Filename: "{app}\codelite.exe"; Tasks: quicklaunchicon
 
 [INI]
 Filename: "{app}\registry.ini"; Section: "environment"; Key: "mingw"; String: "{code:GetMinGWInstallDir}";
@@ -144,6 +152,8 @@ Filename: "{app}\registry.ini"; Section: "environment"; Key: "unittestpp"; Strin
 [Registry]
 Root: HKLM; Subkey: "Software\codelite\settings"; ValueType: string; ValueName: "InstallPath"; ValueData: "{app}"
 Root: HKLM; Subkey: "Software\codelite\settings"; ValueType: string; ValueName: "PluginsDir";  ValueData: "{app}\plugins"
+Root: HKLM; Subkey: "Software\codelite\settings"; ValueType: string; ValueName: "MinGW"; ValueData: "{code:GetMinGWInstallDir}"
+Root: HKLM; Subkey: "Software\codelite\settings"; ValueType: string; ValueName: "MinGW_Version"; ValueData: "4.8.1"
 
 [Code]
 var

@@ -44,9 +44,10 @@
 #define OPEN_CONFIG_MGR_STR _("<Open Configuration Manager...>")
 
 WorkspaceTab::WorkspaceTab(wxWindow *parent, const wxString &caption)
-    : wxPanel(parent)
+    : WorkspaceTabBase(parent)
     , m_caption(caption)
     , m_isLinkedToEditor(true)
+    , m_dlg(NULL)
 {
     long link(1);
     EditorConfigST::Get()->GetLongValue(wxT("LinkWorkspaceViewToEditor"), link);
@@ -55,67 +56,39 @@ WorkspaceTab::WorkspaceTab(wxWindow *parent, const wxString &caption)
     CreateGUIControls();
     ConnectEvents();
     m_themeHelper = new ThemeHandlerHelper(this);
+    int sashPos = clConfig::Get().Read("WorkspaceTabSashPosition", wxNOT_FOUND);
+    if ( sashPos != wxNOT_FOUND ) {
+        m_splitter->SetSashPosition( sashPos );
+    }
 }
 
 WorkspaceTab::~WorkspaceTab()
 {
     wxDELETE(m_themeHelper);
-    Disconnect( XRCID("link_editor"),        wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler (WorkspaceTab::OnLinkEditor));
-    Disconnect( XRCID("collapse_all"),       wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler (WorkspaceTab::OnCollapseAll));
-    Disconnect( XRCID("collapse_all"),       wxEVT_UPDATE_UI,             wxUpdateUIEventHandler(WorkspaceTab::OnCollapseAllUI));
-    Disconnect( XRCID("go_home"),            wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler (WorkspaceTab::OnGoHome));
-    Disconnect( XRCID("go_home"),            wxEVT_UPDATE_UI,             wxUpdateUIEventHandler(WorkspaceTab::OnGoHomeUI));
-    Disconnect( XRCID("project_properties"), wxEVT_UPDATE_UI,             wxUpdateUIEventHandler(WorkspaceTab::OnProjectSettingsUI));
-    Disconnect( XRCID("project_properties"), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler (WorkspaceTab::OnProjectSettings));
-    Disconnect( XRCID("set_project_active"), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler (WorkspaceTab::OnShowProjectListPopup));
-    Disconnect( XRCID("set_project_active"), wxEVT_UPDATE_UI,             wxUpdateUIEventHandler(WorkspaceTab::OnProjectSettingsUI));
-
     wxTheApp->Disconnect(XRCID("show_in_workspace"), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler (WorkspaceTab::OnShowFile),   NULL, this);
     wxTheApp->Disconnect(XRCID("show_in_workspace"), wxEVT_UPDATE_UI,             wxUpdateUIEventHandler(WorkspaceTab::OnShowFileUI), NULL, this);
 
-    EventNotifier::Get()->Disconnect(wxEVT_WORKSPACE_LOADED,         wxCommandEventHandler(WorkspaceTab::OnWorkspaceLoaded),     NULL, this);
-    EventNotifier::Get()->Disconnect(wxEVT_WORKSPACE_CLOSED,         wxCommandEventHandler(WorkspaceTab::OnWorkspaceClosed),     NULL, this);
-    EventNotifier::Get()->Disconnect(wxEVT_PROJ_ADDED,               wxCommandEventHandler(WorkspaceTab::OnProjectAdded),        NULL, this);
-    EventNotifier::Get()->Disconnect(wxEVT_PROJ_REMOVED,             wxCommandEventHandler(WorkspaceTab::OnProjectRemoved),      NULL, this);
-    EventNotifier::Get()->Disconnect(wxEVT_ACTIVE_EDITOR_CHANGED,    wxCommandEventHandler(WorkspaceTab::OnActiveEditorChanged), NULL, this);
-    EventNotifier::Get()->Disconnect(wxEVT_EDITOR_CLOSING,           wxCommandEventHandler(WorkspaceTab::OnEditorClosing),       NULL, this);
-    EventNotifier::Get()->Disconnect(wxEVT_WORKSPACE_CONFIG_CHANGED, wxCommandEventHandler(WorkspaceTab::OnWorkspaceConfig),     NULL, this);
-
+    EventNotifier::Get()->Disconnect(wxEVT_WORKSPACE_LOADED,         wxCommandEventHandler(WorkspaceTab::OnWorkspaceLoaded),      NULL, this);
+    EventNotifier::Get()->Disconnect(wxEVT_WORKSPACE_CLOSED,         wxCommandEventHandler(WorkspaceTab::OnWorkspaceClosed),      NULL, this);
+    EventNotifier::Get()->Disconnect(wxEVT_PROJ_ADDED,               clCommandEventHandler(WorkspaceTab::OnProjectAdded),         NULL, this);
+    EventNotifier::Get()->Disconnect(wxEVT_PROJ_REMOVED,             clCommandEventHandler(WorkspaceTab::OnProjectRemoved),       NULL, this);
+    EventNotifier::Get()->Disconnect(wxEVT_ACTIVE_EDITOR_CHANGED,    wxCommandEventHandler(WorkspaceTab::OnActiveEditorChanged),  NULL, this);
+    EventNotifier::Get()->Disconnect(wxEVT_EDITOR_CLOSING,           wxCommandEventHandler(WorkspaceTab::OnEditorClosing),        NULL, this);
+    EventNotifier::Get()->Disconnect(wxEVT_WORKSPACE_CONFIG_CHANGED, wxCommandEventHandler(WorkspaceTab::OnWorkspaceConfig),      NULL, this);
+    EventNotifier::Get()->Disconnect(wxEVT_ACTIVE_PROJECT_CHANGED,   wxCommandEventHandler(WorkspaceTab::OnActiveProjectChanged), NULL, this);
+    
     wxTheApp->Disconnect(XRCID("configuration_manager"), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler (WorkspaceTab::OnConfigurationManager), NULL, this);
     wxTheApp->Disconnect(XRCID("configuration_manager"), wxEVT_UPDATE_UI,             wxUpdateUIEventHandler (WorkspaceTab::OnProjectSettingsUI),   NULL, this);
+    clConfig::Get().Write("WorkspaceTabSashPosition", m_splitter->GetSashPosition());
 }
 
 void WorkspaceTab::CreateGUIControls()
 {
-    wxBoxSizer *sz = new wxBoxSizer(wxVERTICAL);
-    SetSizer(sz);
-
-    wxToolBar *tb = new wxToolBar(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTB_FLAT|wxTB_HORIZONTAL|wxTB_NODIVIDER);
-    tb->AddTool(XRCID("link_editor"), wxEmptyString, wxXmlResource::Get()->LoadBitmap(wxT("link_editor")), _("Link Editor"), wxITEM_CHECK);
-    tb->ToggleTool(XRCID("link_editor"), m_isLinkedToEditor);
-    tb->AddTool(XRCID("collapse_all"), wxEmptyString, wxXmlResource::Get()->LoadBitmap(wxT("collapse")), _("Collapse All"), wxITEM_NORMAL);
-    tb->AddTool(XRCID("go_home"), wxEmptyString, wxXmlResource::Get()->LoadBitmap(wxT("gohome")), _("Goto Active Project"), wxITEM_NORMAL);
-    tb->AddSeparator();
-
-    BitmapLoader *bmpLoader = PluginManager::Get()->GetStdIcons();
-    tb->AddTool(XRCID("project_properties"), wxEmptyString, bmpLoader->LoadBitmap(wxT("workspace/16/project_settings")),      _("Open Active Project Settings..."), wxITEM_NORMAL);
-    tb->AddTool(XRCID("set_project_active"), wxEmptyString, bmpLoader->LoadBitmap(wxT("workspace/16/project_select_active")), _("Select Active Project"),           wxITEM_NORMAL);
-    tb->Realize();
-    sz->Add(tb, 0, wxEXPAND, 0);
-
-    // Add the workspace configuration choice control
-    wxArrayString choices;
-    m_workspaceConfig = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, choices);
-    m_workspaceConfig->SetToolTip(_("Select the workspace build configuration"));
-
-    m_workspaceConfig->Enable(false);
-    m_workspaceConfig->Append(OPEN_CONFIG_MGR_STR);
-    ConnectChoice(m_workspaceConfig, WorkspaceTab::OnConfigurationManagerChoice);
+    wxSizer *sz = GetSizer();
 #ifdef __WXMAC__
     m_workspaceConfig->SetWindowVariant(wxWINDOW_VARIANT_SMALL);
+    m_choiceActiveProject->SetWindowVariant(wxWINDOW_VARIANT_SMALL);
 #endif
-    sz->Add(m_workspaceConfig, 0, wxEXPAND|wxALL, 2);
-
     // Construct the tree
     m_fileView = new FileViewTree(this, wxID_ANY);
     sz->Add(m_fileView, 1, wxEXPAND|wxALL, 2);
@@ -143,27 +116,16 @@ void WorkspaceTab::FreezeThaw(bool freeze /*=true*/)
 
 void WorkspaceTab::ConnectEvents()
 {
-    Connect( XRCID("link_editor"),        wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler (WorkspaceTab::OnLinkEditor));
-    Connect( XRCID("set_multi_selection"),wxEVT_UPDATE_UI,             wxUpdateUIEventHandler(WorkspaceTab::OnCollapseAllUI));
-    Connect( XRCID("collapse_all"),       wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler (WorkspaceTab::OnCollapseAll));
-    Connect( XRCID("collapse_all"),       wxEVT_UPDATE_UI,             wxUpdateUIEventHandler(WorkspaceTab::OnCollapseAllUI));
-    Connect( XRCID("go_home"),            wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler (WorkspaceTab::OnGoHome));
-    Connect( XRCID("go_home"),            wxEVT_UPDATE_UI,             wxUpdateUIEventHandler(WorkspaceTab::OnGoHomeUI));
-    Connect( XRCID("project_properties"), wxEVT_UPDATE_UI,             wxUpdateUIEventHandler(WorkspaceTab::OnProjectSettingsUI));
-    Connect( XRCID("project_properties"), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler (WorkspaceTab::OnProjectSettings));
-    Connect( XRCID("set_project_active"), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler (WorkspaceTab::OnShowProjectListPopup));
-    Connect( XRCID("set_project_active"), wxEVT_UPDATE_UI,             wxUpdateUIEventHandler(WorkspaceTab::OnProjectSettingsUI));
-
     wxTheApp->Connect(XRCID("show_in_workspace"),     wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler (WorkspaceTab::OnShowFile),   NULL, this);
     wxTheApp->Connect(XRCID("show_in_workspace"),     wxEVT_UPDATE_UI,             wxUpdateUIEventHandler(WorkspaceTab::OnShowFileUI), NULL, this);
     EventNotifier::Get()->Connect(wxEVT_WORKSPACE_LOADED,         wxCommandEventHandler(WorkspaceTab::OnWorkspaceLoaded),     NULL, this);
     EventNotifier::Get()->Connect(wxEVT_WORKSPACE_CLOSED,         wxCommandEventHandler(WorkspaceTab::OnWorkspaceClosed),     NULL, this);
-    EventNotifier::Get()->Connect(wxEVT_PROJ_ADDED,               wxCommandEventHandler(WorkspaceTab::OnProjectAdded),        NULL, this);
-    EventNotifier::Get()->Connect(wxEVT_PROJ_REMOVED,             wxCommandEventHandler(WorkspaceTab::OnProjectRemoved),      NULL, this);
+    EventNotifier::Get()->Connect(wxEVT_PROJ_ADDED,               clCommandEventHandler(WorkspaceTab::OnProjectAdded),        NULL, this);
+    EventNotifier::Get()->Connect(wxEVT_PROJ_REMOVED,             clCommandEventHandler(WorkspaceTab::OnProjectRemoved),      NULL, this);
     EventNotifier::Get()->Connect(wxEVT_ACTIVE_EDITOR_CHANGED,    wxCommandEventHandler(WorkspaceTab::OnActiveEditorChanged), NULL, this);
     EventNotifier::Get()->Connect(wxEVT_EDITOR_CLOSING,           wxCommandEventHandler(WorkspaceTab::OnEditorClosing),       NULL, this);
     EventNotifier::Get()->Connect(wxEVT_WORKSPACE_CONFIG_CHANGED, wxCommandEventHandler(WorkspaceTab::OnWorkspaceConfig),     NULL, this);
-
+    EventNotifier::Get()->Connect(wxEVT_ACTIVE_PROJECT_CHANGED,   wxCommandEventHandler(WorkspaceTab::OnActiveProjectChanged), NULL, this);
     wxTheApp->Connect(XRCID("configuration_manager"), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler (WorkspaceTab::OnConfigurationManager),   NULL, this);
     wxTheApp->Connect(XRCID("configuration_manager"), wxEVT_UPDATE_UI, wxUpdateUIEventHandler (WorkspaceTab::OnProjectSettingsUI),   NULL, this);
 }
@@ -231,25 +193,8 @@ void WorkspaceTab::OnGoHomeUI(wxUpdateUIEvent &e)
 
 void WorkspaceTab::OnProjectSettings(wxCommandEvent& e)
 {
-    wxString projectName = ManagerST::Get()->GetActiveProjectName();
-    wxString title( projectName );
-    title << _( " Project Settings" );
-
-    //open the project properties dialog
-    BuildMatrixPtr matrix = ManagerST::Get()->GetWorkspaceBuildMatrix();
-
-    //find the project configuration name that matches the workspace selected configuration
-    ProjectSettingsDlg *dlg = new ProjectSettingsDlg( clMainFrame::Get(), matrix->GetProjectSelectedConf( matrix->GetSelectedConfigurationName(), projectName ), projectName, title );
-    dlg->Show();
-    //if(dlg.ShowModal() == wxID_OK) {
-    //    ManagerST::Get()->UpdateParserPaths(true);
-    //}
-
-    //mark this project as modified
-    ProjectPtr proj = ManagerST::Get()->GetProject(projectName);
-    if (proj) {
-        proj->SetModified(true);
-    }
+    wxUnusedVar(e);
+    OpenProjectSettings( );
 }
 
 void WorkspaceTab::OnProjectSettingsUI(wxUpdateUIEvent& e)
@@ -260,56 +205,6 @@ void WorkspaceTab::OnProjectSettingsUI(wxUpdateUIEvent& e)
 static int wxStringCmpFunc(const wxString& item1, const wxString& item2)
 {
     return item1.CmpNoCase(item2);
-}
-
-void WorkspaceTab::OnShowProjectListPopup(wxCommandEvent& e)
-{
-    wxUnusedVar(e);
-
-#ifdef __WXMSW__
-    wxFont font = wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT);
-#endif
-
-    wxMenu popupMenu;
-
-    wxArrayString projects;
-    ManagerST::Get()->GetProjectList(projects);
-    projects.Sort(wxStringCmpFunc);
-    for (size_t i = 0; i < projects.GetCount(); i++) {
-        wxString text = projects.Item(i);
-        bool selected = ManagerST::Get()->GetActiveProjectName() == text;
-        wxMenuItem *item = new wxMenuItem(&popupMenu, i, text, text, wxITEM_CHECK);
-
-        //set the font
-#ifdef __WXMSW__
-        if (selected) {
-            font.SetWeight(wxBOLD);
-        }
-        item->SetFont(font);
-#endif
-        popupMenu.Append(item);
-        item->Check(selected);
-
-        //restore font
-#ifdef __WXMSW__
-        font.SetWeight(wxNORMAL);
-#endif
-    }
-
-    popupMenu.Connect(wxID_ANY, wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(WorkspaceTab::OnMenuSelection), NULL, this);
-    PopupMenu(&popupMenu);
-}
-
-void WorkspaceTab::OnMenuSelection(wxCommandEvent& e)
-{
-    wxArrayString projects;
-    ManagerST::Get()->GetProjectList(projects);
-    projects.Sort(wxStringCmpFunc);
-
-    size_t sel = (size_t)e.GetId();
-    if(sel < projects.GetCount()) {
-        m_fileView->MarkActive(projects.Item(sel));
-    }
 }
 
 void WorkspaceTab::OnShowFile(wxCommandEvent& e)
@@ -332,9 +227,18 @@ void WorkspaceTab::OnActiveEditorChanged(wxCommandEvent& e)
 {
     e.Skip();
     if (m_isLinkedToEditor) {
-        LEditor *editor = clMainFrame::Get()->GetMainBook()->GetActiveEditor();
+        MainBook* mainbook = clMainFrame::Get()->GetMainBook();
+        LEditor *editor = mainbook->GetActiveEditor();
         if (editor && !editor->GetProject().IsEmpty()) {
             m_fileView->ExpandToPath(editor->GetProject(), editor->GetFileName());
+        }
+
+        Notebook* book = clMainFrame::Get()->GetWorkspacePane()->GetNotebook();
+        if (book) {
+            size_t index = book->GetPageIndex("wxCrafter");
+            if (index == (size_t)book->GetSelection()) {
+                book->SetSelection(0); // The most likely to be wanted
+            }
         }
     }
 }
@@ -344,6 +248,7 @@ void WorkspaceTab::OnWorkspaceLoaded(wxCommandEvent& e)
     e.Skip();
     if(ManagerST::Get()->IsWorkspaceOpen()) {
         DoWorkspaceConfig();
+        DoUpdateChoiceWithProjects();
 
         // Tree construction
         Freeze();
@@ -363,29 +268,32 @@ void WorkspaceTab::OnWorkspaceClosed(wxCommandEvent& e)
 {
     e.Skip();
     m_workspaceConfig->Clear();
+    m_choiceActiveProject->Clear();
     m_workspaceConfig->Enable(false);
     m_fileView->DeleteAllItems();
     SendCmdEvent(wxEVT_FILE_VIEW_INIT_DONE);
 }
 
-void WorkspaceTab::OnProjectAdded(wxCommandEvent& e)
+void WorkspaceTab::OnProjectAdded(clCommandEvent& e)
 {
     e.Skip();
-    const wxString *projName = (const wxString *) e.GetClientData();
+    const wxString &projName = e.GetString();
     m_fileView->BuildTree();
-    if (projName && !projName->IsEmpty()) {
-        m_fileView->ExpandToPath(*projName, wxFileName());
+    if ( !projName.IsEmpty() ) {
+        m_fileView->ExpandToPath(projName, wxFileName());
     }
+    DoUpdateChoiceWithProjects();
     SendCmdEvent(wxEVT_FILE_VIEW_REFRESHED);
 }
 
-void WorkspaceTab::OnProjectRemoved(wxCommandEvent& e)
+void WorkspaceTab::OnProjectRemoved(clCommandEvent& e)
 {
     e.Skip();
     Freeze();
     m_fileView->BuildTree();
     OnGoHome(e);
     Thaw();
+    DoUpdateChoiceWithProjects();
     SendCmdEvent(wxEVT_FILE_VIEW_REFRESHED);
 }
 
@@ -446,4 +354,100 @@ void WorkspaceTab::OnConfigurationManager(wxCommandEvent& e)
 
     BuildMatrixPtr matrix = ManagerST::Get()->GetWorkspaceBuildMatrix();
     m_workspaceConfig->SetStringSelection(matrix->GetSelectedConfigurationName());
+}
+
+void WorkspaceTab::OnChoiceActiveProject(wxCommandEvent& event)
+{
+    event.Skip();
+    m_fileView->MarkActive(event.GetString());
+}
+
+void WorkspaceTab::OnChoiceActiveProjectUI(wxUpdateUIEvent& event)
+{
+    event.Enable(ManagerST::Get()->IsWorkspaceOpen());
+}
+
+void WorkspaceTab::OnLinkEditorUI(wxUpdateUIEvent& event)
+{
+    event.Enable(ManagerST::Get()->IsWorkspaceOpen());
+    event.Check( m_isLinkedToEditor );
+}
+
+void WorkspaceTab::DoUpdateChoiceWithProjects()
+{
+    wxArrayString projects;
+    ManagerST::Get()->GetProjectList(projects);
+    projects.Sort(wxStringCmpFunc);
+
+    wxWindowUpdateLocker locker(m_choiceActiveProject);
+    m_choiceActiveProject->Clear();
+    if ( WorkspaceST::Get()->IsOpen() ) {
+        m_choiceActiveProject->Append( projects );
+        m_choiceActiveProject->SetStringSelection( ManagerST::Get()->GetActiveProjectName() );
+    }
+}
+
+void WorkspaceTab::OnConfigurationManagerChoiceUI(wxUpdateUIEvent& event)
+{
+    event.Enable(ManagerST::Get()->IsWorkspaceOpen());
+}
+
+void WorkspaceTab::OnWorkspaceOpenUI(wxUpdateUIEvent& event)
+{
+    event.Enable(ManagerST::Get()->IsWorkspaceOpen());
+}
+
+void WorkspaceTab::OpenProjectSettings(const wxString& project)
+{
+    if ( m_dlg ) {
+        m_dlg->Raise();
+        return;
+    }
+    
+    wxString projectName = project.IsEmpty() ? ManagerST::Get()->GetActiveProjectName() : project;
+    wxString title( projectName );
+    title << _( " Project Settings" );
+    
+    // Allow plugins to process this event first
+    clCommandEvent openEvent(wxEVT_CMD_OPEN_PROJ_SETTINGS);
+    openEvent.SetString( project );
+    if ( EventNotifier::Get()->ProcessEvent( openEvent ) ) {
+        return;
+    }
+    
+    //open the project properties dialog
+    BuildMatrixPtr matrix = ManagerST::Get()->GetWorkspaceBuildMatrix();
+
+#ifdef __WXMAC__
+    // On OSX we use a modal version of the project settings
+    // since otherwise we get some weird focus issues when the project 
+    // settings dialog popups helper dialogs
+    ProjectSettingsDlg dlg( clMainFrame::Get(), this, matrix->GetProjectSelectedConf( matrix->GetSelectedConfigurationName(), projectName ), projectName, title );
+    dlg.ShowModal();
+    
+#else
+    // Find the project configuration name that matches the workspace selected configuration
+    m_dlg = new ProjectSettingsDlg( clMainFrame::Get(), this, matrix->GetProjectSelectedConf( matrix->GetSelectedConfigurationName(), projectName ), projectName, title );
+    m_dlg->Show();
+    
+#endif
+
+    // Mark this project as modified
+    ProjectPtr proj = ManagerST::Get()->GetProject(projectName);
+    if (proj) {
+        proj->SetModified(true);
+    }
+}
+
+void WorkspaceTab::ProjectSettingsDlgClosed()
+{
+    m_dlg = NULL;
+}
+
+void WorkspaceTab::OnActiveProjectChanged(wxCommandEvent& e)
+{
+    e.Skip();
+    
+    // Update the choice control
+    m_choiceActiveProject->SetStringSelection( e.GetString() );
 }

@@ -26,26 +26,42 @@
 #ifndef CLANGCOMPILATIONDBTHREAD_H
 #define CLANGCOMPILATIONDBTHREAD_H
 
-#if HAS_LIBCLANG
-
 #include <wx/string.h>
 #include <wx/thread.h>
+#include <wx/msgqueue.h>
+#include "singleton.h"
 
 class ClangCompilationDbThread : public wxThread
 {
-    wxString m_dbfile;
+    wxMessageQueue<wxString> m_queue;
+    friend class Singleton<ClangCompilationDbThread>;
+    
+    ClangCompilationDbThread();
     
 public:
-    ClangCompilationDbThread(const wxString &filename);
     virtual ~ClangCompilationDbThread();
 
 public:
+    
+    void AddFile( const wxString& filename );
+
     virtual void* Entry();
     void Start() {
         Create();
         Run();
     }
+    
+    /**
+     * @brief stop the thread
+     */
+    void Stop() {
+        if ( IsAlive() ) {
+            Delete(NULL, wxTHREAD_WAIT_BLOCK);
+        } else {
+            Wait(wxTHREAD_WAIT_BLOCK);
+        }
+    }
 };
-#endif // HAS_LIBCLANG
+typedef Singleton<ClangCompilationDbThread> ClangCompilationDbThreadST;
 
 #endif // CLANGCOMPILATIONDBTHREAD_H

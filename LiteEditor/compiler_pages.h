@@ -17,10 +17,15 @@
 #include <wx/listctrl.h>
 #include <wx/button.h>
 #include <wx/statline.h>
+#include <wx/propgrid/manager.h>
+#include <wx/propgrid/property.h>
+#include <wx/propgrid/advprops.h>
 #include <wx/textctrl.h>
 #include <wx/checkbox.h>
 #include <wx/dialog.h>
 #include <wx/iconbndl.h>
+#include <wx/choice.h>
+#include <wx/arrstr.h>
 
 class CompilerPatternsBase : public wxPanel
 {
@@ -58,24 +63,16 @@ public:
 class CompilerToolsBase : public wxPanel
 {
 protected:
-    wxStaticText* m_staticText92;
-    wxTextCtrl* m_textCompilerName;
-    wxStaticText* m_staticText254;
-    wxTextCtrl* m_textCtrlCCompilerName;
-    wxStaticText* m_staticText43;
-    wxTextCtrl* m_textCtrlAssemblerName;
-    wxStaticText* m_staticText116;
-    wxTextCtrl* m_textLinkerName;
-    wxStaticText* m_staticText128;
-    wxTextCtrl* m_textSOLinker;
-    wxStaticText* m_staticText1010;
-    wxTextCtrl* m_textArchiveTool;
-    wxStaticText* m_staticText1412;
-    wxTextCtrl* m_textResourceCmp;
-    wxStaticText* m_staticText19;
-    wxTextCtrl* m_textCtrlMake;
-    wxStaticText* m_staticText2014;
-    wxTextCtrl* m_textCtrlPathVariable;
+    wxPropertyGridManager* m_pgMgr92;
+    wxPGProperty* m_pgProp94;
+    wxPGProperty* m_pgPropCXX;
+    wxPGProperty* m_pgPropCC;
+    wxPGProperty* m_pgPropAS;
+    wxPGProperty* m_pgPropLD;
+    wxPGProperty* m_pgPropSharedObjectLD;
+    wxPGProperty* m_pgPropAR;
+    wxPGProperty* m_pgPropResourceCompiler;
+    wxPGProperty* m_pgPropMAKE;
 
 protected:
 
@@ -233,6 +230,26 @@ protected:
 public:
     CompilerPatternDlgBase(wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = wxT(""), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize(-1,-1), long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER);
     virtual ~CompilerPatternDlgBase();
+};
+
+
+class NewCompilerDlgBase : public wxDialog
+{
+protected:
+    wxStaticText* m_staticText84;
+    wxTextCtrl* m_textCtrlCompilerName;
+    wxStaticText* m_staticText88;
+    wxChoice* m_choiceCompilers;
+    wxStdDialogButtonSizer* m_stdBtnSizer75;
+    wxButton* m_buttonCancel;
+    wxButton* m_buttonOK;
+
+protected:
+    virtual void OnOkUI(wxUpdateUIEvent& event) { event.Skip(); }
+
+public:
+    NewCompilerDlgBase(wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("New Compiler"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize(-1,-1), long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER);
+    virtual ~NewCompilerDlgBase();
 };
 
 #endif

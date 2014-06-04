@@ -37,7 +37,6 @@
 #include "implement_parent_virtual_functions.h"
 #include "debuggerasciiviewer.h"
 #include <wx/file.h>
-#include "threebuttondlg.h"
 #include "debuggerconfigtool.h"
 #include "debuggersettings.h"
 #include "parse_thread.h"
@@ -75,6 +74,7 @@
 #include "AddFunctionsImpDlg.h"
 #include "event_notifier.h"
 #include "SelectProjectsDlg.h"
+#include "globals.h"
 
 //#define __PERFORMANCE
 #include "performance.h"
@@ -216,7 +216,7 @@ void ContextCpp::OnDwellStart(wxStyledTextEvent &event)
     VALIDATE_PROJECT(rCtrl);
 
     //before we start, make sure we are the visible window
-    if (clMainFrame::Get()->GetMainBook()->GetActiveEditor() != &rCtrl) {
+    if (clMainFrame::Get()->GetMainBook()->GetActiveEditor(true) != &rCtrl) {
         event.Skip();
         return;
     }
@@ -904,7 +904,7 @@ void ContextCpp::DoGotoSymbol(TagEntryPtr tag)
     if (tag) {
         LEditor *editor = clMainFrame::Get()->GetMainBook()->OpenFile(tag->GetFile(), wxEmptyString, tag->GetLine()-1);
         if (editor) {
-            editor->FindAndSelect(tag->GetPattern(), tag->GetName());
+            editor->FindAndSelectV(tag->GetPattern(), tag->GetName());
         }
     }
 }
@@ -975,31 +975,12 @@ void ContextCpp::SwapFiles(const wxFileName &fileName)
             return;
     }
 
-    long res(wxNOT_FOUND);
-
-    // we failed to locate matched file, offer the user to create one
+    // We failed to locate matched file, offer the user to create one
     // check to see if user already provided an answer
     otherFile.SetExt(exts.Item(0));
-
-    bool userAnsweredBefore = EditorConfigST::Get()->GetLongValue(wxT("CreateSwappedFile"), res);
-    if (!userAnsweredBefore) {
-        // prompt the user with an "annoying" dialog
-        ThreeButtonDlg dlg(clMainFrame::Get(), _("No matched file was found, would you like to create one?"),_("CodeLite"));
-        res = dlg.ShowModal();
-        if (dlg.GetDontAskMeAgain() && res != wxID_CANCEL) {
-            // the user is not interested of creating file, so dont bot
-            EditorConfigST::Get()->SaveLongValue(wxT("CreateSwappedFile"), res);
-        }
-    }
-
-    switch (res) {
-    case wxID_NO:
-    case wxID_CANCEL:
-        return;
-    case wxID_OK:
-    default:
+    wxStandardID res = ::PromptForYesNoDialogWithCheckbox(_("No matched file was found, would you like to create one?"), "CreateSwappedFile");
+    if ( res == wxID_YES ) {
         DoCreateFile(otherFile);
-        break;
     }
 }
 
@@ -3168,12 +3149,12 @@ bool ContextCpp::DoGetSingatureRange(int line, int& start, int& end, LEditor *ct
     int nDepth = 1;
     while ((nCur < nLen) && nDepth > 0) {
 
-        if(IsCommentOrString(nCur)) {
+        wxChar ch = ctrl->SafeGetChar(nCur);
+        if(ctrl->GetContext()->IsCommentOrString(nCur)) {
             nCur++;
             continue;
         }
 
-        wxChar ch = ctrl->SafeGetChar(nCur);
         switch(ch) {
         case wxT('('):
             nDepth++;

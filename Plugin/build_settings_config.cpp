@@ -28,6 +28,10 @@
 #include "xmlutils.h"
 #include <wx/ffile.h>
 #include "wx_xml_compatibility.h"
+#include "macros.h"
+#include <event_notifier.h>
+#include <cl_command_event.h>
+#include "codelite_events.h"
 
 
 BuildSettingsConfig::BuildSettingsConfig()
@@ -37,7 +41,7 @@ BuildSettingsConfig::BuildSettingsConfig()
 
 BuildSettingsConfig::~BuildSettingsConfig()
 {
-    delete m_doc;
+    wxDELETE(m_doc);
 }
 
 bool BuildSettingsConfig::Load(const wxString &version)
@@ -45,6 +49,8 @@ bool BuildSettingsConfig::Load(const wxString &version)
     m_version = version;
     wxString initialSettings = ConfFileLocator::Instance()->Locate(wxT("config/build_settings.xml"));
     bool loaded = m_doc->Load(initialSettings);
+    CHECK_PTR_RET_FALSE( m_doc->GetRoot() );
+    
     wxString xmlVersion = m_doc->GetRoot()->GetPropVal(wxT("Version"), wxEmptyString);
     if ( xmlVersion != version ) {
         loaded = m_doc->Load(ConfFileLocator::Instance()->GetDefaultCopy(wxT("config/build_settings.xml")));
@@ -181,7 +187,7 @@ void BuildSettingsConfig::SaveBuilderConfig(BuilderPtr builder)
     //update configuration file
     BuilderConfigPtr bsptr(new BuilderConfig(NULL));
     bsptr->SetName(builder->GetName());
-   bsptr->SetIsActive(builder->IsActive());
+    bsptr->SetIsActive(builder->IsActive());
     SetBuildSystem(bsptr);
 }
 
@@ -209,12 +215,64 @@ void BuildSettingsConfig::RestoreDefaults()
     ConfFileLocator::Instance()->DeleteLocalCopy(wxT("config/build_settings.xml"));
 
     // free the XML dodcument loaded into the memory and allocate new one
-    delete m_doc;
+    wxDELETE(m_doc);
     m_doc = new wxXmlDocument();
 
     // call Load again, this time the default settings will be loaded
     // since we just deleted the local settings
     Load(m_version);
+    
+    clCommandEvent event(wxEVT_COMPILER_LIST_UPDATED);
+    EventNotifier::Get()->AddPendingEvent( event );
+}
+
+void BuildSettingsConfig::DeleteAllCompilers(bool notify)
+{
+    // Delete all compilers
+    wxXmlNode *node = GetCompilerNode("");
+    while ( node ) {
+        node->GetParent()->RemoveChild(node);
+        wxDELETE(node);
+        node = GetCompilerNode("");
+    }
+    m_doc->Save(m_fileName.GetFullPath());
+    
+    if ( notify ) {
+        clCommandEvent event(wxEVT_COMPILER_LIST_UPDATED);
+        EventNotifier::Get()->AddPendingEvent( event );
+    }
+}
+
+void BuildSettingsConfig::SetCompilers(const std::vector<CompilerPtr>& compilers)
+{
+    DeleteAllCompilers( false );
+    
+    wxXmlNode *cmpsNode = XmlUtils::FindFirstByTagName(m_doc->GetRoot(), wxT("Compilers"));
+    if ( cmpsNode ) {
+        for(size_t i=0; i<compilers.size(); ++i) {
+            cmpsNode->AddChild(compilers.at(i)->ToXml());
+        }
+    }
+    m_doc->Save(m_fileName.GetFullPath());
+
+    clCommandEvent event(wxEVT_COMPILER_LIST_UPDATED);
+    EventNotifier::Get()->AddPendingEvent( event );
+}
+
+wxArrayString BuildSettingsConfig::GetAllCompilers() const
+{
+    wxArrayString allCompilers;
+    wxXmlNode* compilersNode = XmlUtils::FindFirstByTagName(m_doc->GetRoot(), "Compilers");
+    if ( compilersNode ) {
+        wxXmlNode* child = compilersNode->GetChildren();
+        while ( child ) {
+            if ( child->GetName() == "Compiler") {
+                allCompilers.Add( XmlUtils::ReadString(child, "Name") );
+            }
+            child = child->GetNext();
+        }
+    }
+    return allCompilers;
 }
 
 static BuildSettingsConfig* gs_buildSettingsInstance = NULL;

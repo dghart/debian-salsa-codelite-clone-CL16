@@ -61,6 +61,9 @@ FindInFilesDialog::FindInFilesDialog(wxWindow* parent, const wxString &dataName)
 
     if(choices.Index(wxGetTranslation(SEARCH_IN_CURRENT_FILE)) == wxNOT_FOUND)
         choices.Add(wxGetTranslation(SEARCH_IN_CURRENT_FILE));
+    
+    if(choices.Index(wxGetTranslation(SEARCH_IN_OPEN_FILES)) == wxNOT_FOUND)
+        choices.Add(wxGetTranslation(SEARCH_IN_OPEN_FILES));
 
     int initial = m_data.GetSearchScope();
     if ((initial == wxNOT_FOUND) || ((size_t)initial >= count)) {
@@ -132,56 +135,30 @@ void FindInFilesDialog::SetRootDir(const wxString &rootDir)
 void FindInFilesDialog::DoSetFileMask()
 {
     // First send an event to the plugins asking for an additional file mask
-    wxCommandEvent getFileMaskEvent(wxEVT_CMD_GET_FIND_IN_FILES_MASK, GetId());
+    clCommandEvent getFileMaskEvent(wxEVT_CMD_GET_FIND_IN_FILES_MASK, GetId());
     getFileMaskEvent.SetEventObject(this);
-    getFileMaskEvent.SetInt(0);
-    getFileMaskEvent.SetString(wxT(""));
     EventNotifier::Get()->ProcessEvent(getFileMaskEvent);
 
     // Get the output
-    wxString      pluginMask      = getFileMaskEvent.GetString();
-    int           pluginMaskFlags = getFileMaskEvent.GetInt();
-    wxArrayString fileTypes       = m_data.GetFileMask();
-    size_t        insertPos       = wxString::npos;
-
-    // Incase we got an additional file masking, add it to the default ones
-    // as instructed by the plugin
-    if(pluginMask.IsEmpty() == false) {
-        if(pluginMaskFlags & 0x00000004)
-            fileTypes.Clear();
-
-        if(pluginMaskFlags & 0x00000001) {
-            int where = fileTypes.Index(pluginMask);
-            if(where != wxNOT_FOUND)
-                fileTypes.RemoveAt(where);
-            insertPos = fileTypes.Add(pluginMask);
-        }
-
-        else if(pluginMaskFlags & 0x00000002) {
-            int where = fileTypes.Index(pluginMask);
-            if(where != wxNOT_FOUND)
-                fileTypes.RemoveAt(where);
-            fileTypes.Insert(pluginMask, 0);
-            insertPos = 0;
-        }
-    }
-
-    if(fileTypes.IsEmpty() == false) {
+    wxArrayString fileTypes = m_data.GetFileMask();
+    m_pluginFileMask = getFileMaskEvent.GetStrings();
+    if( !fileTypes.IsEmpty() ) {
+        
         m_fileTypes->Clear();
+        m_fileTypes->Append(m_pluginFileMask);
         m_fileTypes->Append(fileTypes);
-
-        int where (wxNOT_FOUND);
-        if((pluginMaskFlags & 0x00000008) && (insertPos != wxString::npos)) {
-            where = m_fileTypes->FindString(pluginMask);
-
+        
+        int where = wxNOT_FOUND;
+        if ( !m_pluginFileMask.IsEmpty() ) {
+            where = 0;
+            
         } else {
             where = m_fileTypes->FindString(m_data.GetSelectedMask());
-
+            if(where == wxNOT_FOUND) {
+                where = 0;
+            }
         }
-        if(where == wxNOT_FOUND)
-            where = 0;
-
-        m_fileTypes->SetSelection(where);
+        m_fileTypes->SetSelection( where );
     }
 }
 
@@ -266,6 +243,16 @@ SearchData FindInFilesDialog::DoGetSearchData()
             if(editor) {
                 files.Add(editor->GetFileName().GetFullPath());
             }
+        } else if ((rootDir == wxGetTranslation(SEARCH_IN_OPEN_FILES)) || (rootDir == SEARCH_IN_OPEN_FILES)) {
+            std::vector<LEditor*> editors;
+            clMainFrame::Get()->GetMainBook()->GetAllEditors(editors, MainBook::kGetAll_IncludeDetached );
+            
+            for (size_t n=0; n < editors.size(); ++n) {
+                LEditor* editor = dynamic_cast<LEditor*>(*(editors.begin()+n));
+                if (editor) {
+                    files.Add(editor->GetFileName().GetFullPath());
+                }
+            }
         }
     }
 
@@ -290,10 +277,16 @@ void FindInFilesDialog::OnClick(wxCommandEvent &event)
     value.Trim().Trim(false);
 
     wxArrayString fileMask = m_fileTypes->GetStrings();
-    if(!value.IsEmpty() && fileMask.Index(value) == wxNOT_FOUND) {
-        fileMask.Add(value);
+    wxArrayString fileMaskFiltered;
+    
+    // Remove the plugins mask before we save it
+    for(size_t i=0; i<fileMask.GetCount(); ++i) {
+        if ( m_pluginFileMask.Index(fileMask.Item(i)) == wxNOT_FOUND ) {
+            // not part of the plugin mask => keep it
+            fileMaskFiltered.Add( fileMask.Item(i) );
+        }
     }
-
+    fileMaskFiltered.swap( fileMask );
     m_data.SetSearchScope(m_dirPicker->GetCurrentSelection());
 
     m_data.SetFileMask( fileMask );
