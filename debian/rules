@@ -12,7 +12,7 @@ export DEB_CXXFLAGS_MAINT_APPEND = -fno-devirtualize
 	dh $@ --parallel
 
 override_dh_auto_configure:
-	dh_auto_configure -- -DCMAKE_INSTALL_LIBDIR=lib
+	dh_auto_configure -- -DCMAKE_INSTALL_LIBDIR=lib -DLLVM_VERSION=3.4
 
 override_dh_shlibdeps:
 	dh_shlibdeps -Lcodelite
