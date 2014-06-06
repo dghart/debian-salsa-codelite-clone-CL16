@@ -1,8 +1,6 @@
 #!/usr/bin/make -f
 
 PKD  = $(abspath $(dir $(MAKEFILE_LIST)))
-PKG  = $(word 2,$(shell dpkg-parsechangelog -l$(PKD)/changelog | grep ^Source))
-VER ?= $(shell dpkg-parsechangelog -l$(PKD)/changelog | perl -ne 'print $$1 if m{^Version:\s+(?:\d+:)?(\d.*)(?:\-\d+.*)};')
 
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed
@@ -22,4 +20,4 @@ override_dh_shlibdeps:
 .PHONY: get-orig-source
 ## http://wiki.debian.org/onlyjob/get-orig-source
 get-orig-source:
-	uscan --noconf --verbose --rename --destdir=$(CURDIR) --check-dirname-level=0 --force-download --upstream-version $(VER) $(PKD)
+	uscan --noconf --verbose --rename --destdir=$(CURDIR) --check-dirname-level=0 --force-download  --download-current-version $(PKD)
