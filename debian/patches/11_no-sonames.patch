@@ -1,14 +1,14 @@
 Description: Disable SONAMEs for all libraries
  Since all the libraries are private, they should not have SONAMEs
 Author: James Cowgill <james410@cowgill.org.uk>
-Last-Update: 2014-03-30
+Last-Update: 2014-06-06
 ---
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -433,5 +433,13 @@
- add_dependencies(plugin libcodelite)
- add_dependencies(codelite plugin)
+@@ -468,5 +468,13 @@
+ ## Scan for user plugins
+ CL_SCAN_FOR_PLUGINS()
  
 +# Disable SONAMES on all libraries (since none are public)
 +set_target_properties(libcodelite plugin wxshapeframework databaselayersqlite

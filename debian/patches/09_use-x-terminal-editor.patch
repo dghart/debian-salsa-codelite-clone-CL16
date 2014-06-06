@@ -2,7 +2,7 @@ Description: Use x-terminal-emulator in preference to xterm
 Author: James Cowgill <james410@cowgill.org.uk>
 Author: Alessio Treglia <alessio@debian.org>
 Forwarded: not-needed
-Last-Update: 2014-04-07
+Last-Update: 2014-06-06
 ---
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- a/CodeLite/procutils.cpp
@@ -29,7 +29,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
          if ( !tokens.IsEmpty() ) {
 --- a/LiteEditor/manager.cpp
 +++ b/LiteEditor/manager.cpp
-@@ -2108,7 +2108,7 @@
+@@ -2184,7 +2184,7 @@
      wxString terminal;
      wxArrayString tokens;
      wxArrayString configuredTerminal;
@@ -53,7 +53,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  		terminal = wxT("konsole");
 --- a/LiteEditor/app.cpp
 +++ b/LiteEditor/app.cpp
-@@ -153,7 +153,9 @@
+@@ -185,7 +185,9 @@
          char command[256];
          memset (command, 0, sizeof(command));
  

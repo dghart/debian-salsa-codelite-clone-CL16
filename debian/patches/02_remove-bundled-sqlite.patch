@@ -1,12 +1,12 @@
 Description: Remove bundled sqlite3 and wxsqlite3 from CMakeLists.txt files
 Author: James Cowgill <james410@cowgill.org.uk>
 Forwarded: not-needed
-Last-Update: 2014-03-30
+Last-Update: 2014-06-06
 ---
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -390,8 +390,6 @@
+@@ -407,8 +407,6 @@
      add_subdirectory(PCH)
  endif ( USE_PCH )
  
@@ -15,7 +15,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  add_subdirectory(sdk/wxshapeframework)
  add_subdirectory(sdk/databaselayer)
  add_subdirectory(CodeLite)
-@@ -449,14 +447,7 @@
+@@ -472,14 +470,7 @@
  ##
  ## Setup the proper dependencies
  ##
@@ -26,7 +26,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 -add_dependencies(wxsqlite3 sqlite3lib)
 -add_dependencies(databaselayersqlite wxsqlite3)
 -add_dependencies(wxshapeframework wxsqlite3)
--add_dependencies(libcodelite wxshapeframework databaselayersqlite sqlite3 wxsqlite3)
+-add_dependencies(libcodelite wxshapeframework databaselayersqlite wxsqlite3)
 +add_dependencies(libcodelite wxshapeframework databaselayersqlite)
  add_dependencies(plugin libcodelite)
  add_dependencies(codelite plugin)
@@ -111,16 +111,17 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  add_dependencies(${PLUGIN_NAME} plugin)
 --- a/CodeLite/CMakeLists.txt
 +++ b/CodeLite/CMakeLists.txt
-@@ -12,7 +12,7 @@
+@@ -12,8 +12,7 @@
  include( "${wxWidgets_USE_FILE}" )
  
  # Include paths
--include_directories("${CL_SRC_ROOT}/sdk/wxsqlite3/include" "${CL_SRC_ROOT}/sdk/codelite_indexer/network" "${CL_SRC_ROOT}/PCH")
-+include_directories("${CL_SRC_ROOT}/sdk/codelite_indexer/network" "${CL_SRC_ROOT}/PCH")
+-include_directories("${CL_SRC_ROOT}/sdk/wxsqlite3/include" 
+-                    "${CL_SRC_ROOT}/sdk/codelite_indexer/network" 
++include_directories("${CL_SRC_ROOT}/sdk/codelite_indexer/network"
+                     "${CL_SRC_ROOT}/CodeLite" 
+                     "${CL_SRC_ROOT}/PCH")
  
- set( ADDITIONAL_LIBRARIES "" )
- 
-@@ -54,9 +54,9 @@
+@@ -57,9 +56,9 @@
  # Define the output
  add_library(libcodelite SHARED ${SRCS})
  if (UNIX AND NOT APPLE )
@@ -182,15 +183,18 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
                      "${CL_SRC_ROOT}/CodeLite" "${CL_SRC_ROOT}/PCH" 
                      "${CL_SRC_ROOT}/Interfaces" 
                      "${CL_SRC_ROOT}/sdk/wxshapeframework/include"
-@@ -75,7 +74,7 @@
- 
+@@ -76,9 +75,9 @@
  # Remove the "lib" prefix from the plugin name
  set_target_properties(${PLUGIN_NAME} PROPERTIES PREFIX "")
--target_link_libraries(${PLUGIN_NAME} ${LINKER_OPTIONS} ${wxWidgets_LIBRARIES} ${LIBMYSQLCLIENT} -L"${CL_LIBPATH}" -lwxsqlite3 -lsqlite3lib -llibcodelite -lplugin -ldatabaselayersqlite -lwxshapeframework)
-+target_link_libraries(${PLUGIN_NAME} ${LINKER_OPTIONS} ${wxWidgets_LIBRARIES} ${LIBMYSQLCLIENT} -L"${CL_LIBPATH}" -lwxsqlite3-3.0 -lsqlite3 -llibcodelite -lplugin -ldatabaselayersqlite -lwxshapeframework)
+ if (GTK3_FOUND)
+-    target_link_libraries(${PLUGIN_NAME} ${LINKER_OPTIONS} ${wxWidgets_LIBRARIES} ${GTK3_LIBRARIES} ${LIBMYSQLCLIENT} -L"${CL_LIBPATH}" -lwxsqlite3 -lsqlite3lib -llibcodelite -lplugin -ldatabaselayersqlite -lwxshapeframework)
++    target_link_libraries(${PLUGIN_NAME} ${LINKER_OPTIONS} ${wxWidgets_LIBRARIES} ${GTK3_LIBRARIES} ${LIBMYSQLCLIENT} -L"${CL_LIBPATH}" -lwxsqlite3-3.3 -lsqlite3 -llibcodelite -lplugin -ldatabaselayersqlite -lwxshapeframework)
+ else()
+-    target_link_libraries(${PLUGIN_NAME} ${LINKER_OPTIONS} ${wxWidgets_LIBRARIES} ${GTK2_LIBRARIES} ${LIBMYSQLCLIENT} -L"${CL_LIBPATH}" -lwxsqlite3 -lsqlite3lib -llibcodelite -lplugin -ldatabaselayersqlite -lwxshapeframework)
++    target_link_libraries(${PLUGIN_NAME} ${LINKER_OPTIONS} ${wxWidgets_LIBRARIES} ${GTK2_LIBRARIES} ${LIBMYSQLCLIENT} -L"${CL_LIBPATH}" -lwxsqlite3-3.0 -lsqlite3 -llibcodelite -lplugin -ldatabaselayersqlite -lwxshapeframework)
+ endif()
  # Make sure that the plugin will not start build before 'plugin.so' is ready
  add_dependencies(${PLUGIN_NAME} plugin)
- install(TARGETS ${PLUGIN_NAME} DESTINATION ${PLUGINS_DIR})
 --- a/Debugger/CMakeLists.txt
 +++ b/Debugger/CMakeLists.txt
 @@ -15,7 +15,7 @@
@@ -328,18 +332,18 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  
  ## Macros
  if(WIN32)
-@@ -67,11 +67,11 @@
+@@ -80,11 +80,11 @@
  # Define the output
  add_library(plugin SHARED ${SRCS})
  if(GTK2_FOUND)
--    target_link_libraries(plugin ${LINKER_OPTIONS} ${GTK2_LIBRARIES} ${wxWidgets_LIBRARIES} -L"${CL_LIBPATH}" -lwxsqlite3 -lsqlite3lib -llibcodelite)
-+    target_link_libraries(plugin ${LINKER_OPTIONS} ${GTK2_LIBRARIES} ${wxWidgets_LIBRARIES} -L"${CL_LIBPATH}" -lwxsqlite3-3.0 -lsqlite3 -llibcodelite)
+-    target_link_libraries(plugin ${LINKER_OPTIONS} ${ADDITIONAL_LIBRARIES} ${GTK2_LIBRARIES} ${wxWidgets_LIBRARIES} -L"${CL_LIBPATH}" -lwxsqlite3 -lsqlite3lib -llibcodelite)
++    target_link_libraries(plugin ${LINKER_OPTIONS} ${ADDITIONAL_LIBRARIES} ${GTK2_LIBRARIES} ${wxWidgets_LIBRARIES} -L"${CL_LIBPATH}" -lwxsqlite3-3.0 -lsqlite3 -llibcodelite)
  elseif (GTK3_FOUND)
--    target_link_libraries(plugin ${LINKER_OPTIONS} ${GTK3_LIBRARIES} ${wxWidgets_LIBRARIES} -L"${CL_LIBPATH}" -lwxsqlite3 -lsqlite3lib -llibcodelite)
-+    target_link_libraries(plugin ${LINKER_OPTIONS} ${GTK3_LIBRARIES} ${wxWidgets_LIBRARIES} -L"${CL_LIBPATH}" -lwxsqlite3-3.0 -lsqlite3 -llibcodelite)
+-    target_link_libraries(plugin ${LINKER_OPTIONS} ${ADDITIONAL_LIBRARIES} ${GTK3_LIBRARIES} ${wxWidgets_LIBRARIES} -L"${CL_LIBPATH}" -lwxsqlite3 -lsqlite3lib -llibcodelite)
++    target_link_libraries(plugin ${LINKER_OPTIONS} ${ADDITIONAL_LIBRARIES} ${GTK3_LIBRARIES} ${wxWidgets_LIBRARIES} -L"${CL_LIBPATH}" -lwxsqlite3-3.0 -lsqlite3 -llibcodelite)
  else()
--    target_link_libraries(plugin ${LINKER_OPTIONS} ${wxWidgets_LIBRARIES} -L"${CL_LIBPATH}" -lwxsqlite3 -lsqlite3lib -llibcodelite)
-+    target_link_libraries(plugin ${LINKER_OPTIONS} ${wxWidgets_LIBRARIES} -L"${CL_LIBPATH}" -lwxsqlite3-3.0 -lsqlite3 -llibcodelite)
+-    target_link_libraries(plugin ${LINKER_OPTIONS} ${ADDITIONAL_LIBRARIES} ${wxWidgets_LIBRARIES} -L"${CL_LIBPATH}" -lwxsqlite3 -lsqlite3lib -llibcodelite)
++    target_link_libraries(plugin ${LINKER_OPTIONS} ${ADDITIONAL_LIBRARIES} ${wxWidgets_LIBRARIES} -L"${CL_LIBPATH}" -lwxsqlite3-3.0 -lsqlite3 -llibcodelite)
  endif()
  
  install(TARGETS plugin DESTINATION ${PLUGINS_DIR})
@@ -583,6 +587,13 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  
  if ( WITH_MYSQL )
      find_library(LIBMYSQLCLIENT NAMES libmysqlclient.so)
+@@ -49,5 +49,5 @@
+ 
+ # Define the output
+ add_library(databaselayersqlite SHARED ${SRCS} ${MYSQL_SRCS})
+-target_link_libraries(databaselayersqlite ${LINKER_OPTIONS} ${wxWidgets_LIBRARIES})
++target_link_libraries(databaselayersqlite ${LINKER_OPTIONS} ${wxWidgets_LIBRARIES} -lsqlite3)
+ install(TARGETS databaselayersqlite DESTINATION ${PLUGINS_DIR})
 --- a/wxformbuilder/CMakeLists.txt
 +++ b/wxformbuilder/CMakeLists.txt
 @@ -15,7 +15,7 @@
@@ -623,3 +634,79 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  
  install(TARGETS codelite-make DESTINATION ${CL_PREFIX}/bin)
  add_dependencies(codelite-make plugin)
+--- a/CodeLiteDiff/CMakeLists.txt
++++ b/CodeLiteDiff/CMakeLists.txt
+@@ -16,7 +16,6 @@
+ # Include paths
+ include_directories(
+     "${CL_SRC_ROOT}/Plugin"
+-    "${CL_SRC_ROOT}/sdk/wxsqlite3/include"
+     "${CL_SRC_ROOT}/CodeLite"
+     "${CL_SRC_ROOT}/LiteEditor"
+     "${CL_SRC_ROOT}/PCH"
+@@ -51,8 +50,8 @@
+     -L"${CL_LIBPATH}"
+     -llibcodelite
+     -lplugin
+-    -lwxsqlite3 
+-    -lsqlite3lib
++    -lwxsqlite3-3.0
++    -lsqlite3
+ )
+ 
+ # The plugin library is required
+--- a/LLDBDebugger/CMakeLists.txt
++++ b/LLDBDebugger/CMakeLists.txt
+@@ -79,7 +79,6 @@
+ 
+         # Include paths
+         include_directories("${CL_SRC_ROOT}/Plugin"
+-                            "${CL_SRC_ROOT}/sdk/wxsqlite3/include" 
+                             "${CL_SRC_ROOT}/CodeLite" 
+                             "${CL_SRC_ROOT}/PCH" 
+                             "${CL_SRC_ROOT}/Interfaces")
+@@ -110,8 +109,8 @@
+             -lLLDBProtocol
+             -llibcodelite
+             -lplugin
+-            -lwxsqlite3 
+-            -lsqlite3lib
++            -lwxsqlite3-3.0
++            -lsqlite3
+         )
+ 
+         # The plugin library is required
+--- a/LLDBDebugger/codelite-lldb/CMakeLists.txt
++++ b/LLDBDebugger/codelite-lldb/CMakeLists.txt
+@@ -23,8 +23,8 @@
+                         -lLLDBProtocol
+                         -llibcodelite
+                         -lplugin
+-                        -lwxsqlite3 
+-                        -lsqlite3lib
++                        -lwxsqlite3-3.0
++                        -lsqlite3
+                     )
+ target_link_libraries(codelite-lldb LLDBProtocol)
+ add_dependencies(codelite-lldb plugin)
+--- a/cmake/Modules/plugin.cmake
++++ b/cmake/Modules/plugin.cmake
+@@ -36,7 +36,6 @@
+ 
+     # Include paths
+     include_directories("${CL_SRC_ROOT}/Plugin"
+-                        "${CL_SRC_ROOT}/sdk/wxsqlite3/include" 
+                         "${CL_SRC_ROOT}/CodeLite" 
+                         "${CL_SRC_ROOT}/PCH" 
+                         "${CL_SRC_ROOT}/Interfaces")
+@@ -69,8 +68,8 @@
+         -L"${CL_LIBPATH}"
+         -llibcodelite
+         -lplugin
+-        -lwxsqlite3 
+-        -lsqlite3lib
++        -lwxsqlite3-3.0
++        -lsqlite3
+     )
+ 
+     # The plugin library is required

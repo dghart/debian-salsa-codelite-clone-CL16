@@ -1,16 +1,16 @@
 Description: Remove bundled cppcheck from CMakeLists.txt
 Author: James Cowgill <james410@cowgill.org.uk>
 Forwarded: not-needed
-Last-Update: 2014-03-30
+Last-Update: 2014-06-06
 ---
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -441,7 +441,6 @@
+@@ -463,7 +463,6 @@
  add_subdirectory(codelite_make)
  add_subdirectory(codelite_terminal)
  add_subdirectory(sdk/codelite_indexer)
 -add_subdirectory(sdk/codelite_cppcheck)
+ add_subdirectory(codelite_echo)
  
  if (USE_CLANG)
-     add_subdirectory(codelite_clang)

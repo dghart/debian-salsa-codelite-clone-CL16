@@ -3,12 +3,12 @@ Description: Remove bundled libclang + fix for latest clang
  CXTranslationUnit_CXX* flags which no longer exist.
 Author: James Cowgill <james410@cowgill.org.uk>
 Forwarded: not-needed
-Last-Update: 2014-03-30
+Last-Update: 2014-06-06
 ---
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -329,9 +329,10 @@
+@@ -346,9 +346,10 @@
    set( CLANG_BINARY "${CL_SRC_ROOT}/sdk/clang/lib/libclang.dylib")
  
  elseif (UNIX)
