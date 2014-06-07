@@ -1,3 +1,1 @@
-debian/codelite.1
-debian/codelite_fix_files.1
-debian/codelite-make.1
+Runtime/man1/*
