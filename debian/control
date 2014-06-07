@@ -44,7 +44,11 @@ Description: Powerful and lightweight C/C++ IDE
 
 Package: codelite-plugins
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, codelite (= ${binary:Version})
+Depends:
+ ${shlibs:Depends},
+ ${misc:Depends},
+ codelite (= ${binary:Version}),
+ lldb-3.4
 Breaks: codelite (<< 5.4+dfsg-1~exp1)
 Replaces: codelite (<< 5.4+dfsg-1~exp1)
 Recommends:
