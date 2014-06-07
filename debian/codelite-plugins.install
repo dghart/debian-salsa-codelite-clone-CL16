@@ -10,7 +10,6 @@ usr/lib/codelite/ExternalTools.so
 usr/lib/codelite/LLDBDebugger.so
 usr/lib/codelite/Outline.so
 usr/lib/codelite/QMakePlugin.so
-usr/lib/codelite/SFTP.so
 usr/lib/codelite/SnipWiz.so
 usr/lib/codelite/Subversion.so
 usr/lib/codelite/Tweaks.so
