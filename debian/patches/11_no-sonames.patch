@@ -15,7 +15,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 +    abbreviation CallGraph ContinuousBuild DebuggerGDB Wizards Outline QMakePlugin
 +    UnitTestsPP cppchecker cscope wxFormBuilder Tweaks CodeFormatter Copyright
 +    DatabaseExplorer ExternalTools SnipWiz Subversion ZoomNavigator git
-+    CMakePlugin SFTP
++    CMakePlugin SFTP CodeLiteDiff LLDBDebugger
 +    PROPERTIES NO_SONAME TRUE)
 +
  # Don't unset this earlier: it would affect the plugins' CMakeLists.txts

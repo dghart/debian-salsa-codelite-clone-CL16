@@ -28,7 +28,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  endif()
 --- a/LLDBDebugger/CMakeLists.txt
 +++ b/LLDBDebugger/CMakeLists.txt
-@@ -1,27 +1,12 @@
+@@ -1,27 +1,11 @@
  macro( FIND_LLDB_OFFICIAL )
  
 -    ## Locate the official packages
@@ -39,7 +39,6 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 +    set(LLDB_OFFICIAL_FOUND 1)
 +    set(LIBLLDB lldb)
 +    set(LIBLLDB_INCLUDE "${CLANG_INCLUDE}")
-+    set(LLDB_LIB_PATH "${CLANG_LIBDIR}")
 +    set(LIBLLDB_INSTALL_NEEDED 0)
  
 -    find_path(LIBLLDB_INCLUDE_T NAMES lldb/API/SBDebugger.h

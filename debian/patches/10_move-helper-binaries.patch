@@ -75,20 +75,6 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  
          if ( wxGetEnv ( wxT ( "LD_LIBRARY_PATH" ), &ld_lib_path ) && ld_lib_path.IsEmpty() == false ) {
              command << wxT ( "/bin/sh -f " ) << exeWrapper.GetFullPath() << wxT ( " LD_LIBRARY_PATH=" ) << ld_lib_path << wxT ( " " );
-@@ -1999,10 +1998,10 @@
-     }
-     return expression;
- }
--wxString& WrapWithQuotes(wxString& str)
-+wxString& WrapWithQuotes(wxString& str)
- {
-     if ( str.Contains(" ") ) {
-         str.Prepend("\"").Append("\"");
-     }
--    return str;
--}
-+    return str;
-+}
 --- a/LiteEditor/frame.cpp
 +++ b/LiteEditor/frame.cpp
 @@ -960,9 +960,8 @@
@@ -145,7 +131,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 -codelitegcc g++ $@
 -
 +#!/bin/sh
-+exec /usr/lib/codelite/codelitegcc g++ "$@"
++exec /usr/lib/codelite/codelite-cc g++ "$@"
  
 --- a/Runtime/clgcc
 +++ b/Runtime/clgcc
@@ -153,7 +139,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 -#!/bin/bash
 -codelitegcc gcc $@
 +#!/bin/sh
-+exec /usr/lib/codelite/codelitegcc gcc "$@"
++exec /usr/lib/codelite/codelite-cc gcc "$@"
  
 --- a/CodeLite/procutils.cpp
 +++ b/CodeLite/procutils.cpp
@@ -220,38 +206,6 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  #ifdef __WXMSW__
      path << wxT(".exe");
  #endif
---- a/Subversion2/subversion_view.cpp
-+++ b/Subversion2/subversion_view.cpp
-@@ -964,14 +964,7 @@
-         // --diff-cmd will execute external tool like this:
-         // -u -L "php-plugin/XDebugManager.cpp	(revision 447)" -L "php-plugin/XDebugManager.cpp	(working copy)" C:\src\codelite\codelitephp\.svn\pristine\ae\ae25b80b53f432c6124c455ef815679df6ed4ea4.svn-base C:\src\codelite\codelitephp\php-plugin\XDebugManager.cpp 
-         command << " diff \"" << data->GetFilepath() << "\" --diff-cmd=";
--        // We dont have proper echo on windows that can be used here, so 
--        // we provide our own batch script wrapper
--        wxFileName echoTool(wxStandardPaths::Get().GetExecutablePath());
--        echoTool.SetFullName("codelite-echo");
--#ifdef __WXMSW__
--        echoTool.SetExt("exe");
--#endif
--        command << "\"" << echoTool.GetFullPath() << "\"";
-+        command << "echo";
-         
-         wxArrayString lines;
-         {
-@@ -1372,9 +1365,9 @@
-     }
- #endif
- }
--
--void SubversionView::OnFileSaved(clCommandEvent& event)
-+
-+void SubversionView::OnFileSaved(clCommandEvent& event)
- {
-     event.Skip();
--    OnRefreshView( event );
--}
-+    OnRefreshView( event );
-+}
 --- a/LLDBDebugger/LLDBProtocol/LLDBConnector.cpp
 +++ b/LLDBDebugger/LLDBProtocol/LLDBConnector.cpp
 @@ -466,7 +466,7 @@
@@ -272,3 +226,14 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
      fnCodeLiteLLDB.SetFullName( "codelite-lldb" );
      
      wxString command;
+--- a/Subversion2/subversion_view.cpp
++++ b/Subversion2/subversion_view.cpp
+@@ -966,7 +966,7 @@
+         command << " diff \"" << data->GetFilepath() << "\" --diff-cmd=";
+         // We dont have proper echo on windows that can be used here, so 
+         // we provide our own batch script wrapper
+-        wxFileName echoTool(wxStandardPaths::Get().GetExecutablePath());
++        wxFileName echoTool(wxStandardPaths::Get().GetPluginsDir(), wxT(""));
+         echoTool.SetFullName("codelite-echo");
+ #ifdef __WXMSW__
+         echoTool.SetExt("exe");
