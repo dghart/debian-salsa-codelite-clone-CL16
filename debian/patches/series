@@ -10,3 +10,4 @@
 11_no-sonames.patch
 15_fix_about_box_license.patch
 16_llvm-version.patch
+17_lldb-link-order.patch
