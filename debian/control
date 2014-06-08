@@ -11,6 +11,7 @@ Build-Depends:
  libwxgtk3.0-dev,
  libwxsqlite3-3.0-dev,
  lldb-3.4-dev [!hurd-i386 !mips !mipsel],
+ llvm-3.4 [!hurd-i386],
  pkg-config
 Standards-Version: 3.9.5
 Homepage: http://www.codelite.org
