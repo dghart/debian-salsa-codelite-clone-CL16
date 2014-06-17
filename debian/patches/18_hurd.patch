@@ -1,0 +1,43 @@
+Description: Patches to enable building on hurd
+ Remove uses of PATH_MAX
+Author: James Cowgill <james410@cowgill.org.uk>
+Last-Update: 2014-06-18
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+--- a/Plugin/globals.cpp
++++ b/Plugin/globals.cpp
+@@ -1152,17 +1152,17 @@
+ wxString CLRealPath(const wxString& filepath)  // This is readlink on steroids: it also makes-absolute, and dereferences any symlinked dirs in the path
+ {
+ #if defined(__WXGTK__)
+-    char buf[PATH_MAX];
+     if (!filepath.empty()) {
+-        if (realpath(filepath.mb_str(wxConvUTF8), buf) == NULL) {
+-            return filepath;
++        char* buf = realpath(filepath.mb_str(wxConvUTF8), NULL);
++        if (buf != NULL) {
++            wxString result(buf, wxConvUTF8);
++            free(buf);
++            return result;
+         }
+     }
++#endif
+ 
+-    return wxString(buf, wxConvUTF8);
+-#else
+     return filepath;
+-#endif
+ }
+ 
+ 
+--- a/codelitegcc/main.cpp
++++ b/codelitegcc/main.cpp
+@@ -188,7 +188,7 @@
+ 
+         // relative path
+ 
+-        char pwd[PATH_MAX];
++        char pwd[4096];
+         size_t pwd_len;
+ 
+         if (getcwd(pwd, sizeof(pwd)) == NULL) {

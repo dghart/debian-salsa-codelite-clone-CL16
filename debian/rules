@@ -15,18 +15,21 @@ INSTALL_EXTRA :=
 
 ifeq ($(DEB_HOST_ARCH),hurd-i386)
 	CONFIG_EXTRA += -DENABLE_CLANG=0
+	INSTALL_EXTRA += -Xcodelite-clang
 endif
 
 ifneq (,$(filter hurd-i386 mips mipsel,$(DEB_HOST_ARCH)))
 	CONFIG_EXTRA += -DENABLE_LLDB=0
 	INSTALL_EXTRA += -Xcodelite-lldb -XLLDBDebugger.so
+else
+	CONFIG_EXTRA += -DLLVM_VERSION=3.4
 endif
 
 %:
 	dh $@ --parallel
 
 override_dh_auto_configure:
-	dh_auto_configure -- -DCMAKE_INSTALL_LIBDIR=lib -DLLVM_VERSION=3.4 -DENABLE_SFTP=0 $(CONFIG_EXTRA)
+	dh_auto_configure -- -DCMAKE_INSTALL_LIBDIR=lib -DENABLE_SFTP=0 $(CONFIG_EXTRA)
 
 override_dh_install:
 	dh_install $(INSTALL_EXTRA)
