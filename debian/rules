@@ -6,9 +6,6 @@ DEB_HOST_ARCH ?= $(shell dpkg-architecture -qDEB_HOST_ARCH)
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed
 
-# Workaround gcc 4.9 bug https://gcc.gnu.org/bugzilla/show_bug.cgi?id=61214
-export DEB_CXXFLAGS_MAINT_APPEND = -fno-devirtualize
-
 # Disable clang + lldb on hurd, disable lldb on mips
 CONFIG_EXTRA :=
 INSTALL_EXTRA :=
