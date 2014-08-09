@@ -6,20 +6,13 @@ DEB_HOST_ARCH ?= $(shell dpkg-architecture -qDEB_HOST_ARCH)
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed
 
-# Disable clang + lldb on hurd, disable lldb on mips
-CONFIG_EXTRA :=
-INSTALL_EXTRA :=
-
+# Disable clang + lldb on hurd
 ifeq ($(DEB_HOST_ARCH),hurd-i386)
-	CONFIG_EXTRA += -DENABLE_CLANG=0
-	INSTALL_EXTRA += -Xcodelite-clang
-endif
-
-ifneq (,$(filter hurd-i386 mips mipsel,$(DEB_HOST_ARCH)))
-	CONFIG_EXTRA += -DENABLE_LLDB=0
-	INSTALL_EXTRA += -Xcodelite-lldb -XLLDBDebugger.so
+	CONFIG_EXTRA := -DENABLE_CLANG=0 -DENABLE_LLDB=0
+	INSTALL_EXTRA := -Xcodelite-clang -Xcodelite-lldb -XLLDBDebugger.so
 else
-	CONFIG_EXTRA += -DLLVM_VERSION=3.4
+	CONFIG_EXTRA := -DLLVM_VERSION=3.4
+	INSTALL_EXTRA :=
 endif
 
 %:
