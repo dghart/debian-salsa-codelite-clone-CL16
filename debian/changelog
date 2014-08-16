@@ -1,8 +1,12 @@
-codelite (6.0.1+dfsg-1) UNRELEASED; urgency=medium
+codelite (6.0.1+dfsg-1) unstable; urgency=medium
 
-  * Unload to unstable.
+  * Upload to unstable (Closes: #749976).
+  * Drop gcc 4.9 workaround (fixed in wxwidgets)
+  * Drop manual dependency on lldb (see #750868).
+  * Re-enable lldb on mips.
+  * Remove uses of PATH_MAX for hurd.
 
- -- James Cowgill <james410@cowgill.org.uk>  Wed, 18 Jun 2014 00:01:08 +0100
+ -- James Cowgill <james410@cowgill.org.uk>  Sat, 16 Aug 2014 09:41:47 +0100
 
 codelite (6.0.1+dfsg-1~exp2) experimental; urgency=medium
 
