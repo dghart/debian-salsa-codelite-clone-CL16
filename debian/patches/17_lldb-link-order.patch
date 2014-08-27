@@ -8,7 +8,7 @@ Last-Update: 2014-06-06
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- a/LLDBDebugger/CMakeLists.txt
 +++ b/LLDBDebugger/CMakeLists.txt
-@@ -80,8 +80,8 @@
+@@ -82,8 +82,8 @@ if (WITH_LLDB MATCHES 1)
          # Define the output - shared library
          add_library(${PLUGIN_NAME} SHARED ${PLUGIN_SRCS})
  

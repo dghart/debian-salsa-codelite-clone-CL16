@@ -10,9 +10,9 @@ Last-Update: 2014-06-06
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -343,8 +343,13 @@
-   set( CLANG_BINARY "${CL_SRC_ROOT}/sdk/clang/lib/libclang.dylib")
- 
+@@ -363,8 +363,13 @@ elseif (MINGW)
+     endif ()
+   endif ()
  elseif (UNIX)
 -  execute_process(COMMAND llvm-config --includedir OUTPUT_VARIABLE CLANG_INCLUDE OUTPUT_STRIP_TRAILING_WHITESPACE)
 -  execute_process(COMMAND llvm-config --libdir OUTPUT_VARIABLE CLANG_LIBDIR OUTPUT_STRIP_TRAILING_WHITESPACE)

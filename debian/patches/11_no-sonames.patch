@@ -6,7 +6,7 @@ Last-Update: 2014-06-06
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -468,5 +468,21 @@
+@@ -499,5 +499,21 @@ include(plugin)
  ## Scan for user plugins
  CL_SCAN_FOR_PLUGINS()
  
@@ -15,7 +15,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 +    abbreviation CallGraph ContinuousBuild DebuggerGDB Wizards Outline QMakePlugin
 +    UnitTestsPP cppchecker cscope wxFormBuilder Tweaks CodeFormatter Copyright
 +    DatabaseExplorer ExternalTools SnipWiz Subversion ZoomNavigator git
-+    CMakePlugin CodeLiteDiff
++    CMakePlugin CodeLiteDiff MemCheck
 +    PROPERTIES NO_SONAME TRUE)
 +
 +if (WITH_SFTP)

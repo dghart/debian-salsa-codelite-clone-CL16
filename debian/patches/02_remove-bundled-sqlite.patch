@@ -6,16 +6,16 @@ Last-Update: 2014-06-06
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -407,8 +407,6 @@
-     add_subdirectory(PCH)
- endif ( USE_PCH )
+@@ -431,8 +431,6 @@ if ( APPLE )
+     add_definitions( -mmacosx-version-min=10.7 )
+ endif()
  
 -add_subdirectory(sqlite3)
 -add_subdirectory(sdk/wxsqlite3)
  add_subdirectory(sdk/wxshapeframework)
  add_subdirectory(sdk/databaselayer)
  add_subdirectory(CodeLite)
-@@ -472,14 +470,7 @@
+@@ -503,14 +501,7 @@ endif(USE_CLANG)
  ##
  ## Setup the proper dependencies
  ##
@@ -33,7 +33,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  
 --- a/CMakePlugin/CMakeLists.txt
 +++ b/CMakePlugin/CMakeLists.txt
-@@ -20,7 +20,6 @@
+@@ -20,7 +20,6 @@ include("${wxWidgets_USE_FILE}")
  # Include paths
  include_directories(
      "${CL_SRC_ROOT}/Plugin"
@@ -41,7 +41,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
      "${CL_SRC_ROOT}/CodeLite"
      "${CL_SRC_ROOT}/LiteEditor"
      "${CL_SRC_ROOT}/PCH"
-@@ -55,8 +54,8 @@
+@@ -57,8 +56,8 @@ target_link_libraries(${PLUGIN_NAME}
      -L"${CL_LIBPATH}"
      -llibcodelite
      -lplugin
@@ -54,7 +54,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  # The plugin library is required
 --- a/CallGraph/CMakeLists.txt
 +++ b/CallGraph/CMakeLists.txt
-@@ -15,7 +15,7 @@
+@@ -15,7 +15,7 @@ find_package(wxWidgets COMPONENTS ${WX_C
  include( "${wxWidgets_USE_FILE}" )
  
  # Include paths
@@ -63,7 +63,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  
  add_definitions(-DWXUSINGDLL_WXSQLITE3)
  add_definitions(-DWXUSINGDLL_CL)
-@@ -37,7 +37,7 @@
+@@ -39,7 +39,7 @@ add_library(${PLUGIN_NAME} SHARED ${SRCS
  
  # Remove the "lib" prefix from the plugin name
  set_target_properties(${PLUGIN_NAME} PROPERTIES PREFIX "")
@@ -74,7 +74,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  install(TARGETS ${PLUGIN_NAME} DESTINATION ${PLUGINS_DIR})
 --- a/CodeDesigner/CMakeLists.txt
 +++ b/CodeDesigner/CMakeLists.txt
-@@ -15,7 +15,7 @@
+@@ -15,7 +15,7 @@ find_package(wxWidgets COMPONENTS ${WX_C
  include( "${wxWidgets_USE_FILE}" )
  
  # Include paths
@@ -83,7 +83,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  
  add_definitions(-DWXUSINGDLL_WXSQLITE3)
  add_definitions(-DWXUSINGDLL_CL)
-@@ -31,4 +31,4 @@
+@@ -33,4 +33,4 @@ add_library(${PLUGIN_NAME} SHARED ${SRCS
  
  # Remove the "lib" prefix from the plugin name
  set_target_properties(${PLUGIN_NAME} PROPERTIES PREFIX "")
@@ -91,7 +91,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 +target_link_libraries(${PLUGIN_NAME} ${LINKER_OPTIONS} ${wxWidgets_LIBRARIES} -L"${CL_LIBPATH}" -lwxsqlite3-3.0 -lsqlite3 -llibcodelite -lplugin)
 --- a/CodeFormatter/CMakeLists.txt
 +++ b/CodeFormatter/CMakeLists.txt
-@@ -15,7 +15,7 @@
+@@ -15,7 +15,7 @@ find_package(wxWidgets COMPONENTS ${WX_C
  include( "${wxWidgets_USE_FILE}" )
  
  # Include paths
@@ -100,7 +100,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  
  add_definitions(-DWXUSINGDLL_WXSQLITE3)
  add_definitions(-DWXUSINGDLL_CL)
-@@ -37,7 +37,7 @@
+@@ -39,7 +39,7 @@ add_library(${PLUGIN_NAME} SHARED ${SRCS
  
  # Remove the "lib" prefix from the plugin name
  set_target_properties(${PLUGIN_NAME} PROPERTIES PREFIX "")
@@ -111,7 +111,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  add_dependencies(${PLUGIN_NAME} plugin)
 --- a/CodeLite/CMakeLists.txt
 +++ b/CodeLite/CMakeLists.txt
-@@ -12,8 +12,7 @@
+@@ -12,8 +12,7 @@ find_package(wxWidgets COMPONENTS std RE
  include( "${wxWidgets_USE_FILE}" )
  
  # Include paths
@@ -121,7 +121,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
                      "${CL_SRC_ROOT}/CodeLite" 
                      "${CL_SRC_ROOT}/PCH")
  
-@@ -57,9 +56,9 @@
+@@ -59,9 +58,9 @@ FILE(GLOB SRCS "*.cpp" "../sdk/codelite_
  # Define the output
  add_library(libcodelite SHARED ${SRCS})
  if (UNIX AND NOT APPLE )
@@ -131,11 +131,11 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 -    target_link_libraries(libcodelite ${LINKER_OPTIONS} ${wxWidgets_LIBRARIES} -L"${CL_LIBPATH}" -lsqlite3lib -lwxsqlite3 ${LIBSSH_LIB} ${ADDITIONAL_LIBRARIES} -lz -lcrypto)
 +    target_link_libraries(libcodelite ${LINKER_OPTIONS} ${wxWidgets_LIBRARIES} -L"${CL_LIBPATH}" -lwxsqlite3-3.0 -lsqlite3 ${LIBSSH_LIB} ${ADDITIONAL_LIBRARIES} -lz -lcrypto)
  endif ( UNIX AND NOT APPLE )
- install(TARGETS libcodelite DESTINATION ${PLUGINS_DIR})
  
+ if (NOT MINGW)
 --- a/ContinuousBuild/CMakeLists.txt
 +++ b/ContinuousBuild/CMakeLists.txt
-@@ -15,7 +15,7 @@
+@@ -15,7 +15,7 @@ find_package(wxWidgets COMPONENTS ${WX_C
  include( "${wxWidgets_USE_FILE}" )
  
  # Include paths
@@ -144,7 +144,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  
  add_definitions(-DWXUSINGDLL_WXSQLITE3)
  add_definitions(-DWXUSINGDLL_CL)
-@@ -36,7 +36,7 @@
+@@ -38,7 +38,7 @@ add_library(${PLUGIN_NAME} SHARED ${SRCS
  
  # Remove the "lib" prefix from the plugin name
  set_target_properties(${PLUGIN_NAME} PROPERTIES PREFIX "")
@@ -155,7 +155,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  install(TARGETS ${PLUGIN_NAME} DESTINATION ${PLUGINS_DIR})
 --- a/Copyright/CMakeLists.txt
 +++ b/Copyright/CMakeLists.txt
-@@ -15,7 +15,7 @@
+@@ -15,7 +15,7 @@ find_package(wxWidgets COMPONENTS ${WX_C
  include( "${wxWidgets_USE_FILE}" )
  
  # Include paths
@@ -164,7 +164,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  
  add_definitions(-DWXUSINGDLL_WXSQLITE3)
  add_definitions(-DWXUSINGDLL_CL)
-@@ -36,7 +36,7 @@
+@@ -38,7 +38,7 @@ add_library(${PLUGIN_NAME} SHARED ${SRCS
  
  # Remove the "lib" prefix from the plugin name
  set_target_properties(${PLUGIN_NAME} PROPERTIES PREFIX "")
@@ -175,7 +175,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  install(TARGETS ${PLUGIN_NAME} DESTINATION ${PLUGINS_DIR})
 --- a/DatabaseExplorer/CMakeLists.txt
 +++ b/DatabaseExplorer/CMakeLists.txt
-@@ -55,7 +55,6 @@
+@@ -55,7 +55,6 @@ endif ( USE_PCH )
  
  # Include paths
  include_directories("${CL_SRC_ROOT}/Plugin" 
@@ -183,7 +183,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
                      "${CL_SRC_ROOT}/CodeLite" "${CL_SRC_ROOT}/PCH" 
                      "${CL_SRC_ROOT}/Interfaces" 
                      "${CL_SRC_ROOT}/sdk/wxshapeframework/include"
-@@ -76,9 +75,9 @@
+@@ -78,9 +77,9 @@ add_library(${PLUGIN_NAME} SHARED ${SRCS
  # Remove the "lib" prefix from the plugin name
  set_target_properties(${PLUGIN_NAME} PROPERTIES PREFIX "")
  if (GTK3_FOUND)
@@ -197,7 +197,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  add_dependencies(${PLUGIN_NAME} plugin)
 --- a/Debugger/CMakeLists.txt
 +++ b/Debugger/CMakeLists.txt
-@@ -15,7 +15,7 @@
+@@ -15,7 +15,7 @@ find_package(wxWidgets COMPONENTS ${WX_C
  include( "${wxWidgets_USE_FILE}" )
  
  # Include paths
@@ -206,7 +206,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  
  add_definitions(-DWXUSINGDLL_WXSQLITE3)
  add_definitions(-DWXUSINGDLL_CL)
-@@ -36,7 +36,7 @@
+@@ -38,7 +38,7 @@ add_library(${PLUGIN_NAME} SHARED ${SRCS
  
  # Remove the "lib" prefix from the plugin name
  set_target_properties(${PLUGIN_NAME} PROPERTIES PREFIX "")
@@ -217,7 +217,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  install(TARGETS ${PLUGIN_NAME} DESTINATION ${PLUGINS_DIR}/debuggers)
 --- a/ExternalTools/CMakeLists.txt
 +++ b/ExternalTools/CMakeLists.txt
-@@ -15,7 +15,7 @@
+@@ -15,7 +15,7 @@ find_package(wxWidgets COMPONENTS ${WX_C
  include( "${wxWidgets_USE_FILE}" )
  
  # Include paths
@@ -226,7 +226,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  
  add_definitions(-DWXUSINGDLL_WXSQLITE3)
  add_definitions(-DWXUSINGDLL_CL)
-@@ -37,7 +37,7 @@
+@@ -39,7 +39,7 @@ add_library(${PLUGIN_NAME} SHARED ${SRCS
  
  # Remove the "lib" prefix from the plugin name
  set_target_properties(${PLUGIN_NAME} PROPERTIES PREFIX "")
@@ -237,7 +237,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  install(TARGETS ${PLUGIN_NAME} DESTINATION ${PLUGINS_DIR})
 --- a/Gizmos/CMakeLists.txt
 +++ b/Gizmos/CMakeLists.txt
-@@ -15,7 +15,7 @@
+@@ -15,7 +15,7 @@ find_package(wxWidgets COMPONENTS ${WX_C
  include( "${wxWidgets_USE_FILE}" )
  
  # Include paths
@@ -246,7 +246,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  
  add_definitions(-DWXUSINGDLL_WXSQLITE3)
  add_definitions(-DWXUSINGDLL_CL)
-@@ -36,7 +36,7 @@
+@@ -38,7 +38,7 @@ add_library(${PLUGIN_NAME} SHARED ${SRCS
  
  # Remove the "lib" prefix from the plugin name
  set_target_properties(${PLUGIN_NAME} PROPERTIES PREFIX "")
@@ -257,7 +257,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  install(TARGETS ${PLUGIN_NAME} DESTINATION ${PLUGINS_DIR})
 --- a/LiteEditor/CMakeLists.txt
 +++ b/LiteEditor/CMakeLists.txt
-@@ -17,7 +17,7 @@
+@@ -17,7 +17,7 @@ find_package(wxWidgets COMPONENTS ${WX_C
  include( "${wxWidgets_USE_FILE}" )
  
  # Include paths
@@ -266,7 +266,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  
  ## On UNIX we require GTK
  if (UNIX AND NOT APPLE)
-@@ -81,11 +81,11 @@
+@@ -90,11 +90,11 @@ else (UNIX)
  endif (UNIX)
  
  if(GTK2_FOUND)
@@ -283,7 +283,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  ##################################################################
 --- a/MacBundler/CMakeLists.txt
 +++ b/MacBundler/CMakeLists.txt
-@@ -15,7 +15,7 @@
+@@ -15,7 +15,7 @@ find_package(wxWidgets COMPONENTS ${WX_C
  include( "${wxWidgets_USE_FILE}" )
  
  # Include paths
@@ -292,7 +292,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  
  add_definitions(-DWXUSINGDLL_WXSQLITE3)
  add_definitions(-DWXUSINGDLL_CL)
-@@ -36,7 +36,7 @@
+@@ -38,7 +38,7 @@ add_library(${PLUGIN_NAME} SHARED ${SRCS
  
  # Remove the "lib" prefix from the plugin name
  set_target_properties(${PLUGIN_NAME} PROPERTIES PREFIX "")
@@ -303,7 +303,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  install(TARGETS ${PLUGIN_NAME} DESTINATION ${PLUGINS_DIR})
 --- a/Outline/CMakeLists.txt
 +++ b/Outline/CMakeLists.txt
-@@ -15,7 +15,7 @@
+@@ -15,7 +15,7 @@ find_package(wxWidgets COMPONENTS ${WX_C
  include( "${wxWidgets_USE_FILE}" )
  
  # Include paths
@@ -312,7 +312,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  
  add_definitions(-DWXUSINGDLL_WXSQLITE3)
  add_definitions(-DWXUSINGDLL_CL)
-@@ -36,7 +36,7 @@
+@@ -38,7 +38,7 @@ add_library(${PLUGIN_NAME} SHARED ${SRCS
  
  # Remove the "lib" prefix from the plugin name
  set_target_properties(${PLUGIN_NAME} PROPERTIES PREFIX "")
@@ -323,7 +323,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  install(TARGETS ${PLUGIN_NAME} DESTINATION ${PLUGINS_DIR})
 --- a/Plugin/CMakeLists.txt
 +++ b/Plugin/CMakeLists.txt
-@@ -12,7 +12,7 @@
+@@ -12,7 +12,7 @@ find_package(wxWidgets COMPONENTS ${WX_C
  include( "${wxWidgets_USE_FILE}" )
  
  # Include paths
@@ -332,7 +332,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  
  ## Macros
  if(WIN32)
-@@ -80,11 +80,11 @@
+@@ -83,11 +83,11 @@ FILE(GLOB SRCS "*.cpp")
  # Define the output
  add_library(plugin SHARED ${SRCS})
  if(GTK2_FOUND)
@@ -346,10 +346,10 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 +    target_link_libraries(plugin ${LINKER_OPTIONS} ${ADDITIONAL_LIBRARIES} ${wxWidgets_LIBRARIES} -L"${CL_LIBPATH}" -lwxsqlite3-3.0 -lsqlite3 -llibcodelite)
  endif()
  
- install(TARGETS plugin DESTINATION ${PLUGINS_DIR})
+ if (NOT MINGW)
 --- a/QmakePlugin/CMakeLists.txt
 +++ b/QmakePlugin/CMakeLists.txt
-@@ -15,7 +15,7 @@
+@@ -15,7 +15,7 @@ find_package(wxWidgets COMPONENTS ${WX_C
  include( "${wxWidgets_USE_FILE}" )
  
  # Include paths
@@ -358,7 +358,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  
  add_definitions(-DWXUSINGDLL_WXSQLITE3)
  add_definitions(-DWXUSINGDLL_CL)
-@@ -36,7 +36,7 @@
+@@ -38,7 +38,7 @@ add_library(${PLUGIN_NAME} SHARED ${SRCS
  
  # Remove the "lib" prefix from the plugin name
  set_target_properties(${PLUGIN_NAME} PROPERTIES PREFIX "")
@@ -369,7 +369,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  install(TARGETS ${PLUGIN_NAME} DESTINATION ${PLUGINS_DIR})
 --- a/SFTP/CMakeLists.txt
 +++ b/SFTP/CMakeLists.txt
-@@ -15,7 +15,7 @@
+@@ -15,7 +15,7 @@ find_package(wxWidgets COMPONENTS ${WX_C
  include( "${wxWidgets_USE_FILE}" )
  
  # Include paths
@@ -378,7 +378,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  
  add_definitions(-DWXUSINGDLL_WXSQLITE3)
  add_definitions(-DWXUSINGDLL_CL)
-@@ -36,7 +36,7 @@
+@@ -38,7 +38,7 @@ add_library(${PLUGIN_NAME} SHARED ${SRCS
  
  # Remove the "lib" prefix from the plugin name
  set_target_properties(${PLUGIN_NAME} PROPERTIES PREFIX "")
@@ -389,7 +389,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  install(TARGETS ${PLUGIN_NAME} DESTINATION ${PLUGINS_DIR})
 --- a/SnipWiz/CMakeLists.txt
 +++ b/SnipWiz/CMakeLists.txt
-@@ -15,7 +15,7 @@
+@@ -15,7 +15,7 @@ find_package(wxWidgets COMPONENTS ${WX_C
  include( "${wxWidgets_USE_FILE}" )
  
  # Include paths
@@ -398,7 +398,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  
  add_definitions(-DWXUSINGDLL_WXSQLITE3)
  add_definitions(-DWXUSINGDLL_CL)
-@@ -36,7 +36,7 @@
+@@ -38,7 +38,7 @@ add_library(${PLUGIN_NAME} SHARED ${SRCS
  
  # Remove the "lib" prefix from the plugin name
  set_target_properties(${PLUGIN_NAME} PROPERTIES PREFIX "")
@@ -409,7 +409,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  install(TARGETS ${PLUGIN_NAME} DESTINATION ${PLUGINS_DIR})
 --- a/Subversion2/CMakeLists.txt
 +++ b/Subversion2/CMakeLists.txt
-@@ -15,7 +15,7 @@
+@@ -15,7 +15,7 @@ find_package(wxWidgets COMPONENTS ${WX_C
  include( "${wxWidgets_USE_FILE}" )
  
  # Include paths
@@ -418,7 +418,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  
  add_definitions(-DWXUSINGDLL_WXSQLITE3)
  add_definitions(-DWXUSINGDLL_CL)
-@@ -36,7 +36,7 @@
+@@ -38,7 +38,7 @@ add_library(${PLUGIN_NAME} SHARED ${SRCS
  
  # Remove the "lib" prefix from the plugin name
  set_target_properties(${PLUGIN_NAME} PROPERTIES PREFIX "")
@@ -429,7 +429,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  install(TARGETS ${PLUGIN_NAME} DESTINATION ${PLUGINS_DIR})
 --- a/Tweaks/CMakeLists.txt
 +++ b/Tweaks/CMakeLists.txt
-@@ -15,7 +15,7 @@
+@@ -15,7 +15,7 @@ find_package(wxWidgets COMPONENTS ${WX_C
  include( "${wxWidgets_USE_FILE}" )
  
  # Include paths
@@ -438,7 +438,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  
  add_definitions(-DWXUSINGDLL_WXSQLITE3)
  add_definitions(-DWXUSINGDLL_CL)
-@@ -36,7 +36,7 @@
+@@ -38,7 +38,7 @@ add_library(${PLUGIN_NAME} SHARED ${SRCS
  
  # Remove the "lib" prefix from the plugin name
  set_target_properties(${PLUGIN_NAME} PROPERTIES PREFIX "")
@@ -449,7 +449,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  install(TARGETS ${PLUGIN_NAME} DESTINATION ${PLUGINS_DIR})
 --- a/UnitTestCPP/CMakeLists.txt
 +++ b/UnitTestCPP/CMakeLists.txt
-@@ -15,7 +15,7 @@
+@@ -15,7 +15,7 @@ find_package(wxWidgets COMPONENTS ${WX_C
  include( "${wxWidgets_USE_FILE}" )
  
  # Include paths
@@ -458,7 +458,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  
  add_definitions(-DWXUSINGDLL_WXSQLITE3)
  add_definitions(-DWXUSINGDLL_CL)
-@@ -36,7 +36,7 @@
+@@ -38,7 +38,7 @@ add_library(${PLUGIN_NAME} SHARED ${SRCS
  
  # Remove the "lib" prefix from the plugin name
  set_target_properties(${PLUGIN_NAME} PROPERTIES PREFIX "")
@@ -469,7 +469,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  install(TARGETS ${PLUGIN_NAME} DESTINATION ${PLUGINS_DIR})
 --- a/ZoomNavigator/CMakeLists.txt
 +++ b/ZoomNavigator/CMakeLists.txt
-@@ -15,7 +15,7 @@
+@@ -15,7 +15,7 @@ find_package(wxWidgets COMPONENTS ${WX_C
  include( "${wxWidgets_USE_FILE}" )
  
  # Include paths
@@ -478,7 +478,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  
  add_definitions(-DWXUSINGDLL_WXSQLITE3)
  add_definitions(-DWXUSINGDLL_CL)
-@@ -36,7 +36,7 @@
+@@ -38,7 +38,7 @@ add_library(${PLUGIN_NAME} SHARED ${SRCS
  
  # Remove the "lib" prefix from the plugin name
  set_target_properties(${PLUGIN_NAME} PROPERTIES PREFIX "")
@@ -489,7 +489,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  install(TARGETS ${PLUGIN_NAME} DESTINATION ${PLUGINS_DIR})
 --- a/abbreviation/CMakeLists.txt
 +++ b/abbreviation/CMakeLists.txt
-@@ -15,7 +15,7 @@
+@@ -15,7 +15,7 @@ find_package(wxWidgets COMPONENTS ${WX_C
  include( "${wxWidgets_USE_FILE}" )
  
  # Include paths
@@ -498,7 +498,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  
  add_definitions(-DWXUSINGDLL_WXSQLITE3)
  add_definitions(-DWXUSINGDLL_CL)
-@@ -36,7 +36,7 @@
+@@ -38,7 +38,7 @@ add_library(${PLUGIN_NAME} SHARED ${SRCS
  
  # Remove the "lib" prefix from the plugin name
  set_target_properties(${PLUGIN_NAME} PROPERTIES PREFIX "")
@@ -509,7 +509,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  install(TARGETS ${PLUGIN_NAME} DESTINATION ${PLUGINS_DIR})
 --- a/cppchecker/CMakeLists.txt
 +++ b/cppchecker/CMakeLists.txt
-@@ -15,7 +15,7 @@
+@@ -15,7 +15,7 @@ find_package(wxWidgets COMPONENTS ${WX_C
  include( "${wxWidgets_USE_FILE}" )
  
  # Include paths
@@ -518,7 +518,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  
  add_definitions(-DWXUSINGDLL_WXSQLITE3)
  add_definitions(-DWXUSINGDLL_CL)
-@@ -31,7 +31,7 @@
+@@ -33,7 +33,7 @@ add_library(${PLUGIN_NAME} SHARED ${SRCS
  
  # Remove the "lib" prefix from the plugin name
  set_target_properties(${PLUGIN_NAME} PROPERTIES PREFIX "")
@@ -529,7 +529,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  install(TARGETS ${PLUGIN_NAME} DESTINATION ${PLUGINS_DIR})
 --- a/cscope/CMakeLists.txt
 +++ b/cscope/CMakeLists.txt
-@@ -15,7 +15,7 @@
+@@ -15,7 +15,7 @@ find_package(wxWidgets COMPONENTS ${WX_C
  include( "${wxWidgets_USE_FILE}" )
  
  # Include paths
@@ -538,7 +538,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  
  add_definitions(-DWXUSINGDLL_WXSQLITE3)
  add_definitions(-DWXUSINGDLL_CL)
-@@ -36,7 +36,7 @@
+@@ -38,7 +38,7 @@ add_library(${PLUGIN_NAME} SHARED ${SRCS
  
  # Remove the "lib" prefix from the plugin name
  set_target_properties(${PLUGIN_NAME} PROPERTIES PREFIX "")
@@ -549,7 +549,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  install(TARGETS ${PLUGIN_NAME} DESTINATION ${PLUGINS_DIR})
 --- a/git/CMakeLists.txt
 +++ b/git/CMakeLists.txt
-@@ -15,7 +15,7 @@
+@@ -15,7 +15,7 @@ find_package(wxWidgets COMPONENTS ${WX_C
  include( "${wxWidgets_USE_FILE}" )
  
  # Include paths
@@ -558,7 +558,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  
  add_definitions(-DWXUSINGDLL_WXSQLITE3)
  add_definitions(-DWXUSINGDLL_CL)
-@@ -31,7 +31,7 @@
+@@ -33,7 +33,7 @@ add_library(${PLUGIN_NAME} SHARED ${SRCS
  
  # Remove the "lib" prefix from the plugin name
  set_target_properties(${PLUGIN_NAME} PROPERTIES PREFIX "")
@@ -569,7 +569,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  install(TARGETS ${PLUGIN_NAME} DESTINATION ${PLUGINS_DIR})
 --- a/sdk/databaselayer/CMakeLists.txt
 +++ b/sdk/databaselayer/CMakeLists.txt
-@@ -12,7 +12,7 @@
+@@ -12,7 +12,7 @@ find_package(wxWidgets COMPONENTS std RE
  include( "${wxWidgets_USE_FILE}" )
  
  # Include paths
@@ -578,16 +578,16 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  
  if ( USE_PCH )
      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -include ${CL_PCH_FILE} -Winvalid-pch ")
-@@ -25,7 +25,7 @@
+@@ -28,7 +28,7 @@ if (UNIX)
+ set (LINKER_OPTIONS -Wl,-rpath,"${PLUGINS_DIR}")
+ endif (UNIX)
  
- # Add RPATH
- SET (LINKER_OPTIONS -Wl,-rpath,"${PLUGINS_DIR}")
 -FILE(GLOB SRCS "src/dblayer/Sqlite*.cpp" "src/dblayer/Database*.cpp" "src/dblayer/Prepared*.cpp" "src/sqlite3/*.c")
 +FILE(GLOB SRCS "src/dblayer/Sqlite*.cpp" "src/dblayer/Database*.cpp" "src/dblayer/Prepared*.cpp")
  
  if ( WITH_MYSQL )
-     find_library(LIBMYSQLCLIENT NAMES libmysqlclient.so)
-@@ -49,5 +49,5 @@
+     find_library(LIBMYSQLCLIENT NAMES mysql mysqlclient mariadb mariadbclient)
+@@ -52,5 +52,5 @@ endif ( WITH_MYSQL )
  
  # Define the output
  add_library(databaselayersqlite SHARED ${SRCS} ${MYSQL_SRCS})
@@ -596,7 +596,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  install(TARGETS databaselayersqlite DESTINATION ${PLUGINS_DIR})
 --- a/wxformbuilder/CMakeLists.txt
 +++ b/wxformbuilder/CMakeLists.txt
-@@ -15,7 +15,7 @@
+@@ -15,7 +15,7 @@ find_package(wxWidgets COMPONENTS ${WX_C
  include( "${wxWidgets_USE_FILE}" )
  
  # Include paths
@@ -605,7 +605,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  
  add_definitions(-DWXUSINGDLL_WXSQLITE3)
  add_definitions(-DWXUSINGDLL_CL)
-@@ -38,7 +38,7 @@
+@@ -38,7 +38,7 @@ add_library(${PLUGIN_NAME} SHARED ${SRCS
  
  # Remove the "lib" prefix from the plugin name
  set_target_properties(${PLUGIN_NAME} PROPERTIES PREFIX "")
@@ -616,7 +616,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  install(TARGETS ${PLUGIN_NAME} DESTINATION ${PLUGINS_DIR})
 --- a/codelite_make/CMakeLists.txt
 +++ b/codelite_make/CMakeLists.txt
-@@ -26,7 +26,7 @@
+@@ -32,7 +32,7 @@ set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}
  FILE(GLOB SRCS "*.cpp")
  
  # and finally prepare list of includes directories
@@ -625,7 +625,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  
  # Define the output
  add_executable(codelite-make ${SRCS})
-@@ -35,7 +35,7 @@
+@@ -41,7 +41,7 @@ if ( UNIX )
      set( UTIL_LIB "-lutil")
  endif ( UNIX )
  
@@ -636,7 +636,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  add_dependencies(codelite-make plugin)
 --- a/CodeLiteDiff/CMakeLists.txt
 +++ b/CodeLiteDiff/CMakeLists.txt
-@@ -16,7 +16,6 @@
+@@ -16,7 +16,6 @@ include("${wxWidgets_USE_FILE}")
  # Include paths
  include_directories(
      "${CL_SRC_ROOT}/Plugin"
@@ -644,7 +644,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
      "${CL_SRC_ROOT}/CodeLite"
      "${CL_SRC_ROOT}/LiteEditor"
      "${CL_SRC_ROOT}/PCH"
-@@ -51,8 +50,8 @@
+@@ -53,8 +52,8 @@ target_link_libraries(${PLUGIN_NAME}
      -L"${CL_LIBPATH}"
      -llibcodelite
      -lplugin
@@ -657,7 +657,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  # The plugin library is required
 --- a/LLDBDebugger/CMakeLists.txt
 +++ b/LLDBDebugger/CMakeLists.txt
-@@ -79,7 +79,6 @@
+@@ -79,7 +79,6 @@ if (WITH_LLDB MATCHES 1)
  
          # Include paths
          include_directories("${CL_SRC_ROOT}/Plugin"
@@ -665,7 +665,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
                              "${CL_SRC_ROOT}/CodeLite" 
                              "${CL_SRC_ROOT}/PCH" 
                              "${CL_SRC_ROOT}/Interfaces")
-@@ -110,8 +109,8 @@
+@@ -112,8 +111,8 @@ if (WITH_LLDB MATCHES 1)
              -lLLDBProtocol
              -llibcodelite
              -lplugin
@@ -678,7 +678,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
          # The plugin library is required
 --- a/LLDBDebugger/codelite-lldb/CMakeLists.txt
 +++ b/LLDBDebugger/codelite-lldb/CMakeLists.txt
-@@ -23,8 +23,8 @@
+@@ -25,8 +25,8 @@ target_link_libraries(  codelite-lldb
                          -lLLDBProtocol
                          -llibcodelite
                          -lplugin
@@ -691,7 +691,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  add_dependencies(codelite-lldb plugin)
 --- a/cmake/Modules/plugin.cmake
 +++ b/cmake/Modules/plugin.cmake
-@@ -36,7 +36,6 @@
+@@ -36,7 +36,6 @@ function( CL_PLUGIN PLUGIN_NAME )
  
      # Include paths
      include_directories("${CL_SRC_ROOT}/Plugin"
@@ -699,7 +699,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
                          "${CL_SRC_ROOT}/CodeLite" 
                          "${CL_SRC_ROOT}/PCH" 
                          "${CL_SRC_ROOT}/Interfaces")
-@@ -69,8 +68,8 @@
+@@ -69,8 +68,8 @@ function( CL_PLUGIN PLUGIN_NAME )
          -L"${CL_LIBPATH}"
          -llibcodelite
          -lplugin
@@ -710,3 +710,22 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
      )
  
      # The plugin library is required
+--- a/MemCheck/CMakeLists.txt
++++ b/MemCheck/CMakeLists.txt
+@@ -16,7 +16,6 @@ include( "${wxWidgets_USE_FILE}" )
+ 
+ # Include paths
+ include_directories("${CL_SRC_ROOT}/Plugin" 
+-                    "${CL_SRC_ROOT}/sdk/wxsqlite3/include" 
+                     "${CL_SRC_ROOT}/CodeLite" 
+                     "${CL_SRC_ROOT}/PCH" 
+                     "${CL_SRC_ROOT}/Interfaces")
+@@ -40,7 +39,7 @@ add_library(${PLUGIN_NAME} SHARED ${SRCS
+ 
+ # Remove the "lib" prefix from the plugin name
+ set_target_properties(${PLUGIN_NAME} PROPERTIES PREFIX "")
+-target_link_libraries(${PLUGIN_NAME} ${LINKER_OPTIONS} ${wxWidgets_LIBRARIES} -L"${CL_LIBPATH}" -lwxsqlite3 -lsqlite3lib -llibcodelite -lplugin)
++target_link_libraries(${PLUGIN_NAME} ${LINKER_OPTIONS} ${wxWidgets_LIBRARIES} -L"${CL_LIBPATH}" -lwxsqlite3-3.0 -lsqlite3 -llibcodelite -lplugin)
+ 
+ # Make sure that the plugin will not start build before 'plugin.so' is ready
+ add_dependencies(${PLUGIN_NAME} plugin)
