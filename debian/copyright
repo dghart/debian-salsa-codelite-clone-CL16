@@ -11,6 +11,7 @@ Files-Excluded:
  sdk/codelite_cppcheck
  sdk/curl
  sdk/databaselayer/src/sqlite3
+ sdk/hunspell
  sdk/libssh
  sdk/lldb
  sdk/src
@@ -18,6 +19,7 @@ Files-Excluded:
  sdk/wxflatnotebook
  sdk/wxsqlite3
  sqlite3
+ SpellChecker/hunspell
  Runtime/debugserver
  Runtime/src
  Runtime/OpenTerm
@@ -26,16 +28,12 @@ Files-Excluded:
 Files: *
 Copyright: 2007-2014 Eran Ifrah <eranif@gmail.com>
            2011-2014 David Hart <david@codelite.co.uk>
+           2014      The CodeLite Team
 License: CodeLite
 
 Files: CMakePlugin/*
 Copyright: 2013 Jiří Fatka <ntsfka@gmail.com>
 License: GPL-3+
-
-Files: CodeBeautifier/UncrustifyCodeBeautifier/*
-       CodeBeautifier/win32/*
-Copyright: Ben Gardner
-License: GPL-2+
 
 Files: CodeFormatter/AS*.cpp
        CodeFormatter/astyle*
@@ -119,6 +117,10 @@ Comment: the original author, Darren Hiebert, released these
 Files: FileCrawler/trunk/fileCrawler/test.h
 Copyright: 2007 Karsten Ballueder
 License: wxWindows
+
+Files: MemCheck/*
+Copyright: 2014 pavel.iqx
+License: GPL-2+
 
 Files: Plugin/dtl/*
 Copyright: 2013 Tatsuhiko Kubo <cubicdaiya@gmail.com>
