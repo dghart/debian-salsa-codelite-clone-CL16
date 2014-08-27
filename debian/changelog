@@ -1,3 +1,9 @@
+codelite (6.1.1+dfsg-1) UNRELEASED; urgency=medium
+
+  * New upstream release.
+
+ -- James Cowgill <james410@cowgill.org.uk>  Wed, 27 Aug 2014 12:00:19 +0100
+
 codelite (6.0.1+dfsg-1) unstable; urgency=medium
 
   * Upload to unstable (Closes: #749976).
