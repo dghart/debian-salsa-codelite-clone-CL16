@@ -1,0 +1,51 @@
+Description: Use clang-format-X.Y directly instead of using a bundled "codelite-clang-format"
+Author: James Cowgill <james410@cowgill.org.uk>
+Forwarded: not-needed
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+--- a/CodeFormatter/clClangFormatLocator.cpp
++++ b/CodeFormatter/clClangFormatLocator.cpp
+@@ -12,7 +12,7 @@ clClangFormatLocator::~clClangFormatLoca
+ 
+ bool clClangFormatLocator::Locate(wxString& clangFormat)
+ {
+-    wxFileName fnClangFormat( clStandardPaths::Get().GetBinaryFullPath("codelite-clang-format") );
++    wxFileName fnClangFormat( clStandardPaths::Get().GetBinaryFullPath("clang-format" LLVM_VERSION_STR) );
+     if ( fnClangFormat.FileExists() ) {
+         clangFormat = fnClangFormat.GetFullPath();
+         return true;
+--- a/LiteEditor/CMakeLists.txt
++++ b/LiteEditor/CMakeLists.txt
+@@ -114,16 +114,6 @@ install(FILES ${CL_SRC_ROOT}/Runtime/clg
+ install(FILES ${CL_SRC_ROOT}/Runtime/clgcc DESTINATION ${CL_PREFIX}/bin PERMISSIONS ${EXE_PERM})
+ endif (UNIX)
+ 
+-# Install clang-format
+-# We name it codelite-clang-format to avoid collision with any official installation
+-if ( UNIX AND NOT APPLE )
+-    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+-        install(FILES ${CL_SRC_ROOT}/sdk/clang/Linux/x86_64/bin/codelite-clang-format DESTINATION ${CL_PREFIX}/bin PERMISSIONS ${EXE_PERM})
+-    else()
+-        install(FILES ${CL_SRC_ROOT}/sdk/clang/Linux/i386/bin/codelite-clang-format DESTINATION ${CL_PREFIX}/bin PERMISSIONS ${EXE_PERM})
+-    endif()
+-endif()
+-
+ ## codelite icons
+ install(FILES ${CL_SRC_ROOT}/Runtime/codelite-icons-fresh-farm.zip DESTINATION ${CL_PREFIX}/share/codelite)
+ install(FILES ${CL_SRC_ROOT}/Runtime/codelite-icons-dark.zip DESTINATION ${CL_PREFIX}/share/codelite)
+--- a/CodeFormatter/CMakeLists.txt
++++ b/CodeFormatter/CMakeLists.txt
+@@ -22,6 +22,13 @@ add_definitions(-DWXUSINGDLL_CL)
+ add_definitions(-DWXUSINGDLL_SDK)
+ add_definitions(-DASTYLE_LIB)
+ 
++# Tell the formatter about the LLVM version
++if (LLVM_VERSION)
++    add_definitions(-DLLVM_VERSION_STR="-${LLVM_VERSION}")
++else()
++    add_definitions(-DLLVM_VERSION)
++endif()
++
+ if ( USE_PCH )
+     add_definitions(-include "${CL_PCH_FILE}")
+     add_definitions(-Winvalid-pch)

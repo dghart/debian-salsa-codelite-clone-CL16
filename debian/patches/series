@@ -12,4 +12,5 @@
 16_llvm-version.patch
 17_lldb-link-order.patch
 18_hurd.patch
+19_remove-bundled-clang-format.patch
 20_Compilation-fix-for-non-precompiled-header-builds.patch
