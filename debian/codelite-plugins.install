@@ -8,8 +8,10 @@ usr/lib/codelite/Copyright.so
 usr/lib/codelite/DatabaseExplorer.so
 usr/lib/codelite/ExternalTools.so
 usr/lib/codelite/LLDBDebugger.so
+usr/lib/codelite/MemCheck.so
 usr/lib/codelite/Outline.so
 usr/lib/codelite/QMakePlugin.so
+usr/lib/codelite/SpellCheck.so
 usr/lib/codelite/SnipWiz.so
 usr/lib/codelite/Subversion.so
 usr/lib/codelite/Tweaks.so
@@ -24,6 +26,7 @@ usr/lib/codelite/libdatabaselayersqlite.so
 usr/lib/codelite/libwxshapeframework.so
 usr/lib/codelite/wxFormBuilder.so
 usr/lib/codelite/resources usr/share/codelite
+usr/share/codelite/dics
 usr/share/codelite/templates/codedesigner
 usr/share/codelite/templates/formbuilder
 usr/share/codelite/templates/databaselayer
