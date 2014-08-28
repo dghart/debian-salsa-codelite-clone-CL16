@@ -1,0 +1,24 @@
+From b618667d9b1f124b8cd5e6e546e8187298494dd7 Mon Sep 17 00:00:00 2001
+From: frankivo <frank@scriptzone.nl>
+Date: Wed, 27 Aug 2014 09:06:49 +0200
+Subject: [PATCH] Compilation fix for non precompiled-header builds
+
+---
+ Subversion2/svn_console.cpp | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/Subversion2/svn_console.cpp b/Subversion2/svn_console.cpp
+index a4a7021..9d95afb 100644
+--- a/Subversion2/svn_console.cpp
++++ b/Subversion2/svn_console.cpp
+@@ -39,6 +39,7 @@
+ #include "notebook_ex.h"
+ #include "event_notifier.h"
+ #include <wx/regex.h>
++#include <wx/settings.h>
+ 
+ //-------------------------------------------------------------
+ BEGIN_EVENT_TABLE(SvnConsole, wxEvtHandler)
+-- 
+2.1.0
+
