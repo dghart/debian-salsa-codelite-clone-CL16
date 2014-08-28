@@ -729,3 +729,22 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  
  # Make sure that the plugin will not start build before 'plugin.so' is ready
  add_dependencies(${PLUGIN_NAME} plugin)
+--- a/SpellChecker/CMakeLists.txt
++++ b/SpellChecker/CMakeLists.txt
+@@ -41,7 +41,6 @@ else ()
+ 
+     # Include paths
+     include_directories("${CL_SRC_ROOT}/SpellChecker" "${CL_SRC_ROOT}/Plugin" 
+-                        "${CL_SRC_ROOT}/sdk/wxsqlite3/include" 
+                         "${CL_SRC_ROOT}/CodeLite" 
+                         "${CL_SRC_ROOT}/PCH" 
+                         "${CL_SRC_ROOT}/Interfaces"
+@@ -68,7 +67,7 @@ else ()
+     # Remove the "lib" prefix from the plugin name
+     set_target_properties(${PLUGIN_NAME} PROPERTIES PREFIX "")
+     target_link_libraries(${PLUGIN_NAME} ${LIBHUNSPELL})
+-    target_link_libraries(${PLUGIN_NAME} ${LINKER_OPTIONS} ${wxWidgets_LIBRARIES} -L"${CL_LIBPATH}" -lwxsqlite3 -lsqlite3lib -llibcodelite -lplugin)
++    target_link_libraries(${PLUGIN_NAME} ${LINKER_OPTIONS} ${wxWidgets_LIBRARIES} -L"${CL_LIBPATH}" -lwxsqlite3-3.0 -lsqlite3 -llibcodelite -lplugin)
+ 
+     # Make sure that the plugin will not start build before 'plugin.so' is ready
+     add_dependencies(${PLUGIN_NAME} plugin)
