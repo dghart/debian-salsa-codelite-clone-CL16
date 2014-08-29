@@ -1,8 +1,34 @@
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+//
+// copyright            : (C) 2014 The CodeLite Team
+// file name            : cppchecksettingsdlg.cpp
+//
+// -------------------------------------------------------------------------
+// A
+//              _____           _      _     _ _
+//             /  __ \         | |    | |   (_) |
+//             | /  \/ ___   __| | ___| |    _| |_ ___
+//             | |    / _ \ / _  |/ _ \ |   | | __/ _ )
+//             | \__/\ (_) | (_| |  __/ |___| | ||  __/
+//              \____/\___/ \__,_|\___\_____/_|\__\___|
+//
+//                                                  F i l e
+//
+//    This program is free software; you can redistribute it and/or modify
+//    it under the terms of the GNU General Public License as published by
+//    the Free Software Foundation; either version 2 of the License, or
+//    (at your option) any later version.
+//
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+
 #include "cppchecksettingsdlg.h"
 #include "windowattrmanager.h"
 #include <wx/msgdlg.h>
 #include <wx/filedlg.h>
 #include <wx/textdlg.h>
+#include <wx/dirdlg.h>
 
 CppCheckSettingsDialog::CppCheckSettingsDialog(wxWindow* parent, CppCheckSettings* settings, IConfigTool *conf, const wxString& defaultpath, bool showDefsTab)
 		: CppCheckSettingsDialogBase(parent)
@@ -20,6 +46,8 @@ CppCheckSettingsDialog::CppCheckSettingsDialog(wxWindow* parent, CppCheckSetting
 	m_checkListExtraWarnings->Check(7, settings->GetC99Standards());
 	m_checkListExtraWarnings->Check(8, settings->GetCpp11Standards());
 	m_cbOptionForce->SetValue(settings->GetForce());
+    m_cbJobs->SetValue(settings->GetJobs() > 1);
+    m_spinCtrlJobs->SetValue(settings->GetJobs());        
 
 	m_listBoxExcludelist->Append(settings->GetExcludeFiles());
 	
@@ -41,7 +69,11 @@ CppCheckSettingsDialog::CppCheckSettingsDialog(wxWindow* parent, CppCheckSetting
 		m_checkListSuppress->Check(index, false);
 		m_SuppressionsKeys.Add((*iter).first);
 	}
-    
+
+    m_listBoxIncludeDirs->Append(settings->GetIncludeDirs());
+    m_checkBoxSuppressSystemIncludes->SetValue(settings->GetSuppressSystemIncludes());
+    m_checkBoxSerialiseIncludeDirs->SetValue(settings->GetSaveIncludeDirs());
+
     if (showDefsTab) {
         m_listBoxDefinelist->Append(settings->GetDefinitions());
         m_listBoxUndefineList->Append(settings->GetUndefines());
@@ -64,11 +96,21 @@ void CppCheckSettingsDialog::OnBtnOK(wxCommandEvent& e)
 	m_settings->SetC99Standards(m_checkListExtraWarnings->IsChecked(7));
 	m_settings->SetCpp11Standards(m_checkListExtraWarnings->IsChecked(8));
 	m_settings->SetForce(m_cbOptionForce->IsChecked());
+    if (m_cbJobs->IsChecked()) {
+        m_settings->SetJobs(m_spinCtrlJobs->GetValue());
+    } else {
+        m_settings->SetJobs(1);
+    }
+	m_settings->SetCheckConfig(m_cbCheckConfig->IsChecked());
 	
 	m_settings->SetExcludeFiles(m_listBoxExcludelist->GetStrings());
 
 	m_settings->SetSuppressedWarnings(m_checkListSuppress, m_SuppressionsKeys);
 	m_settings->SetSaveSuppressedWarnings(m_checkBoxSerialise->IsChecked());
+
+	m_settings->SetIncludeDirs(m_listBoxIncludeDirs->GetStrings());
+	m_settings->SetSuppressSystemIncludes(m_checkBoxSuppressSystemIncludes->IsChecked());
+	m_settings->SetSaveIncludeDirs(m_checkBoxSerialiseIncludeDirs->IsChecked());
 
     m_settings->SetDefinitions(m_listBoxDefinelist->GetStrings());
     m_settings->SetUndefines(m_listBoxUndefineList->GetStrings());
@@ -186,6 +228,24 @@ void CppCheckSettingsDialog::OnSuppressUntickAll(wxCommandEvent& WXUNUSED(e))
 	}
 }
 
+
+void CppCheckSettingsDialog::OnAddIncludeDir(wxCommandEvent& WXUNUSED(e))
+{
+	wxDirDialog dlg(this, _("Select the path containing include files"));
+    if (dlg.ShowModal() == wxID_OK) {
+        m_listBoxIncludeDirs->Append(dlg.GetPath());
+    }
+}
+
+void CppCheckSettingsDialog::OnRemoveIncludeDir(wxCommandEvent& WXUNUSED(e))
+{
+	int sel = m_listBoxIncludeDirs->GetSelection();
+	if ( sel != wxNOT_FOUND ) {
+		m_listBoxIncludeDirs->Delete((unsigned int)sel);
+	}
+}
+
+
 void CppCheckSettingsDialog::OnAddDefinition(wxCommandEvent& WXUNUSED(e))
 {
 	wxString newitem = wxGetTextFromUser("Enter a definition e.g. 'FOO' or 'BAR=1' (not '-DFoo')", "CodeLite", "", this);
@@ -198,7 +258,7 @@ void CppCheckSettingsDialog::OnRemoveDefinition(wxCommandEvent& WXUNUSED(e))
 {
 	int sel = m_listBoxDefinelist->GetSelection();
 	if ( sel != wxNOT_FOUND ) {
-		m_listBoxDefinelist->Delete((unsigned int) sel);
+		m_listBoxDefinelist->Delete((unsigned int)sel);
 	}
 }
 
@@ -252,6 +312,11 @@ void CppCheckSettingsDialog::OnChecksUntickAllUI(wxUpdateUIEvent& e)
 	e.Enable(false);
 }
 
+void CppCheckSettingsDialog::OnJobsUpdateUI(wxUpdateUIEvent& e)
+{
+	e.Enable(m_cbJobs->IsChecked());
+}
+
 void CppCheckSettingsDialog::OnRemoveFileUI(wxUpdateUIEvent& e)
 {
 	e.Enable( m_listBoxExcludelist->GetSelection() != wxNOT_FOUND );
@@ -287,6 +352,22 @@ void CppCheckSettingsDialog::OnSuppressUntickAllUI(wxUpdateUIEvent& e)
 		}
 	}
 	e.Enable(false);
+}
+
+void CppCheckSettingsDialog::OnIncludeDirsUpdateUI(wxUpdateUIEvent& event)
+{
+	bool enable(false);
+    int index = m_checkListExtraWarnings->FindString(_("Missing includes"));
+    if (index != wxNOT_FOUND) {
+        enable = m_checkListExtraWarnings->IsChecked(index);
+    }
+    // Only enable the IncludeDirs panel if the "Missing includes" warning is enabled
+    event.Enable(enable);
+}
+
+void CppCheckSettingsDialog::OnRemoveIncludeDirUI(wxUpdateUIEvent& event)
+{
+	event.Enable( m_listBoxIncludeDirs->GetSelection() != wxNOT_FOUND );
 }
 
 void CppCheckSettingsDialog::OnRemoveDefinitionUI(wxUpdateUIEvent& e)

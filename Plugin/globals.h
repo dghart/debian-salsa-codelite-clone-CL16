@@ -382,7 +382,7 @@ WXDLLIMPEXP_SDK int wxStringToInt(const wxString &str, int defval, int min = -1,
  */
 WXDLLIMPEXP_SDK wxString wxIntToString(int val);
 
-WXDLLIMPEXP_SDK unsigned int UTF8Length(const wchar_t *uptr, unsigned int tlen);
+WXDLLIMPEXP_SDK unsigned int clUTF8Length(const wchar_t *uptr, unsigned int tlen);
 
 WXDLLIMPEXP_SDK wxString DbgPrependCharPtrCastIfNeeded(const wxString &expr, const wxString &exprType);
 
@@ -449,4 +449,18 @@ WXDLLIMPEXP_SDK wxString& WrapWithQuotes(wxString &str);
  * the | represents the cart, this function will return the entire expression: variable.m_name.m_value
  */
 WXDLLIMPEXP_SDK wxString GetCppExpressionFromPos(long pos, wxStyledTextCtrl *ctrl, bool forCC);
+
+/**
+ * @brief save an xml document to file
+ */
+WXDLLIMPEXP_SDK bool SaveXmlToFile(wxXmlDocument *doc, const wxString &filename);
+
+/**
+ * @brief return true if running under Cygwin environment
+ * This function returns false under Linux/OSX and under Windows it checks the 
+ * output of the command 'uname -s'
+ */
+WXDLLIMPEXP_SDK bool clIsCygwinEnvironment();
+
+
 #endif //GLOBALS_H

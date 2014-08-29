@@ -1,3 +1,28 @@
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+//
+// copyright            : (C) 2014 The CodeLite Team
+// file name            : cppcheck_settings.cpp
+//
+// -------------------------------------------------------------------------
+// A
+//              _____           _      _     _ _
+//             /  __ \         | |    | |   (_) |
+//             | /  \/ ___   __| | ___| |    _| |_ ___
+//             | |    / _ \ / _  |/ _ \ |   | | __/ _ )
+//             | \__/\ (_) | (_| |  __/ |___| | ||  __/
+//              \____/\___/ \__,_|\___\_____/_|\__\___|
+//
+//                                                  F i l e
+//
+//    This program is free software; you can redistribute it and/or modify
+//    it under the terms of the GNU General Public License as published by
+//    the Free Software Foundation; either version 2 of the License, or
+//    (at your option) any later version.
+//
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+
 #include <wx/xrc/xmlres.h>
 #include "wx/checklst.h"
 #include <memory>
@@ -43,6 +68,7 @@ void CppCheckSettings::Serialize(Archive& arch)
 	arch.Write(wxT("option.c99Standards"),    m_C99Standards);
 	arch.Write(wxT("option.cpp11Standards"),  m_Cpp11Standards);
 	arch.Write(wxT("option.force"),           m_Force);
+    arch.Write(wxT("option.jobs"),            m_Jobs);
 
 	arch.Write(wxT("m_excludeFiles"),         m_excludeFiles);
 
@@ -57,6 +83,11 @@ void CppCheckSettings::Serialize(Archive& arch)
 		// Saving nothing would lose the original values; so save the cached originals
 		arch.Write(wxT("SuppressedWarningsStrings0"), m_SuppressedWarningsOrig0);
 		arch.Write(wxT("SuppressedWarningsStrings1"), m_SuppressedWarningsOrig1);
+	}	
+    
+    if (m_saveIncludeDirs) {
+		arch.Write(wxT("ExtraIncludeDirs"), m_IncludeDirs);
+		arch.Write(wxT("SuppressSystemIncludes"), m_SuppressSystemIncludes);
 	}
 }
 
@@ -72,11 +103,17 @@ void CppCheckSettings::DeSerialize(Archive& arch)
 	arch.Read(wxT("option.c99Standards"),    m_C99Standards);
 	arch.Read(wxT("option.cpp11Standards"),  m_Cpp11Standards);
 	arch.Read(wxT("option.force"),           m_Force);
+	arch.Read(wxT("option.jobs"),            m_Jobs);
 	
 	arch.Read(wxT("m_excludeFiles"),         m_excludeFiles);
 	
 	arch.Read(wxT("SuppressedWarningsStrings0"), m_SuppressedWarnings0);	// Unchecked ones
 	arch.Read(wxT("SuppressedWarningsStrings1"), m_SuppressedWarnings1);	// Checked ones
+    
+
+	arch.Read(wxT("ExtraIncludeDirs"), m_IncludeDirs);
+	arch.Read(wxT("SuppressSystemIncludes"), m_SuppressSystemIncludes);
+	m_saveIncludeDirs = m_IncludeDirs.GetCount() > 0; // If there are saved dirs, this must have been set last time
 }
 
 void CppCheckSettings::SetDefaultSuppressedWarnings()
@@ -154,12 +191,30 @@ wxString CppCheckSettings::GetOptions() const
 	if (GetForce()) {
 		options << wxT("--force ");
 	}
+	if (GetJobs() > 1) {
+		options << wxT("-j") << GetJobs();
+	}
+	if (GetCheckConfig()) {
+		options << wxT("--check-config "); // Though this turns off other checks, afaict it does not harm to emit them
+	}
 
 	// Now add any ticked suppressedwarnings
 	std::map<wxString, wxString>::const_iterator iter = m_SuppressedWarnings1.begin();
 	for (; iter != m_SuppressedWarnings1.end(); ++iter) {
 		options << wxT(" --suppress=") << (*iter).first;
 	}
+
+    // IncludeDirs
+    for (size_t n=0; n < m_IncludeDirs.GetCount(); ++n) {
+        wxString item = m_IncludeDirs.Item(n);
+        item.Trim().Trim(false);
+        if (!item.empty()) {
+            options << " -I" << item;
+        }
+    }
+    if (m_SuppressSystemIncludes) {
+        options << wxT(" --suppress=") << "missingIncludeSystem";
+    }
 
     // (Un)Definitions
     for (size_t n=0; n < m_definitions.GetCount(); ++n) {

@@ -1,3 +1,28 @@
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+//
+// copyright            : (C) 2014 The CodeLite Team
+// file name            : LLDBConnector.h
+//
+// -------------------------------------------------------------------------
+// A
+//              _____           _      _     _ _
+//             /  __ \         | |    | |   (_) |
+//             | /  \/ ___   __| | ___| |    _| |_ ___
+//             | |    / _ \ / _  |/ _ \ |   | | __/ _ )
+//             | \__/\ (_) | (_| |  __/ |___| | ||  __/
+//              \____/\___/ \__,_|\___\_____/_|\__\___|
+//
+//                                                  F i l e
+//
+//    This program is free software; you can redistribute it and/or modify
+//    it under the terms of the GNU General Public License as published by
+//    the Free Software Foundation; either version 2 of the License, or
+//    (at your option) any later version.
+//
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+
 #ifndef LLDBCONNECTOR_H
 #define LLDBCONNECTOR_H
 
@@ -202,7 +227,19 @@ public:
      * @brief send request to the debugger to request the local varibles
      */
     void RequestLocals();
-
+    
+    /**
+     * @brief add watch. To get the list of values, you should invoke
+     * a call to 'RequestLocals'
+     */
+    void AddWatch(const wxString& watch);
+    
+    /**
+     * @brief delete a watch. To get the list of values, you should invoke
+     * a call to 'RequestLocals'
+     */
+    void DeleteWatch(int lldbId);
+    
     /**
      * @brief request lldb to expand a variable and return its children
      * @param lldbId the unique identifier that identifies this variable

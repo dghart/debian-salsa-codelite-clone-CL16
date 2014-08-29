@@ -15,6 +15,7 @@
 #include <wx/sizer.h>
 #include <wx/stc/stc.h>
 #include <wx/button.h>
+#include <wx/statline.h>
 
 class CppCheckReportBasePage : public wxPanel
 {
@@ -22,6 +23,9 @@ protected:
     wxStyledTextCtrl* m_stc;
     wxButton* m_buttonClear;
     wxButton* m_buttonStop;
+    wxStaticLine* m_staticLine10;
+    wxButton* m_buttonUp;
+    wxButton* m_buttonDown;
 
 protected:
     virtual void OnStyleNeeded(wxStyledTextEvent& event) { event.Skip(); }
@@ -30,6 +34,10 @@ protected:
     virtual void OnClearReportUI(wxUpdateUIEvent& event) { event.Skip(); }
     virtual void OnStopChecking(wxCommandEvent& event) { event.Skip(); }
     virtual void OnStopCheckingUI(wxUpdateUIEvent& event) { event.Skip(); }
+    virtual void OnUp(wxCommandEvent& event) { event.Skip(); }
+    virtual void OnUpUI(wxUpdateUIEvent& event) { event.Skip(); }
+    virtual void OnDown(wxCommandEvent& event) { event.Skip(); }
+    virtual void OnDownUI(wxUpdateUIEvent& event) { event.Skip(); }
 
 public:
     CppCheckReportBasePage(wxWindow* parent, wxWindowID id = wxID_ANY, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize(482,238), long style = wxTAB_TRAVERSAL);

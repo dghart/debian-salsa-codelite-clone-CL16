@@ -21,7 +21,6 @@
 #include <wx/stattext.h>
 #include <wx/textctrl.h>
 #include <wx/checkbox.h>
-#include <wx/statline.h>
 #include <wx/button.h>
 
 class ImportFilesDialogNewBase : public wxDialog
@@ -35,8 +34,8 @@ protected:
     wxStaticText* m_staticText1;
     wxTextCtrl* m_textCtrSpec;
     wxCheckBox* m_checkBoxFilesWOExt;
-    wxStaticLine* m_staticline1;
-    wxButton* m_buttonOk;
+    wxStdDialogButtonSizer* m_stdBtnSizer7;
+    wxButton* m_buttonOK;
     wxButton* m_buttonCancel;
 
 protected:

@@ -38,6 +38,9 @@ SvnCommitDialogBaseClass::SvnCommitDialogBaseClass(wxWindow* parent, wxWindowID 
     flexGridSizer5->Add(m_staticText32, 0, wxALIGN_RIGHT|wxALIGN_CENTER_VERTICAL|wxALL, 5);
     
     m_textCtrlFrID = new wxTextCtrl(this, wxID_ANY, wxT(""), wxDefaultPosition, wxSize(-1,-1), 0);
+    #if wxVERSION_NUMBER >= 3000
+    m_textCtrlFrID->SetHint(wxT(""));
+    #endif
     
     flexGridSizer5->Add(m_textCtrlFrID, 0, wxALL|wxEXPAND, 5);
     
@@ -46,6 +49,9 @@ SvnCommitDialogBaseClass::SvnCommitDialogBaseClass(wxWindow* parent, wxWindowID 
     flexGridSizer5->Add(m_staticTextBugID, 0, wxALIGN_RIGHT|wxALIGN_CENTER_VERTICAL|wxALL, 5);
     
     m_textCtrlBugID = new wxTextCtrl(this, wxID_ANY, wxT(""), wxDefaultPosition, wxSize(-1,-1), 0);
+    #if wxVERSION_NUMBER >= 3000
+    m_textCtrlBugID->SetHint(wxT(""));
+    #endif
     
     flexGridSizer5->Add(m_textCtrlBugID, 0, wxALL|wxEXPAND, 5);
     
@@ -60,7 +66,7 @@ SvnCommitDialogBaseClass::SvnCommitDialogBaseClass(wxWindow* parent, wxWindowID 
     wxBoxSizer* boxSizer58 = new wxBoxSizer(wxVERTICAL);
     m_splitterPage52->SetSizer(boxSizer58);
     
-    m_splitterH = new wxSplitterWindow(m_splitterPage52, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxSP_LIVE_UPDATE|wxSP_3DSASH);
+    m_splitterH = new wxSplitterWindow(m_splitterPage52, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxSP_LIVE_UPDATE|wxSP_NO_XP_THEME|wxSP_3DSASH);
     m_splitterH->SetSashGravity(0.5);
     m_splitterH->SetMinimumPaneSize(10);
     
@@ -264,6 +270,9 @@ SvnSyncDialogBaseClass::SvnSyncDialogBaseClass(wxWindow* parent, wxWindowID id, 
     flexGridSizer37->Add(m_staticText40, 0, wxALIGN_RIGHT|wxALIGN_CENTER_VERTICAL|wxALL, 5);
     
     m_textCtrlExclude = new wxTextCtrl(this, wxID_ANY, wxT(""), wxDefaultPosition, wxSize(-1,-1), wxTE_RICH2);
+    #if wxVERSION_NUMBER >= 3000
+    m_textCtrlExclude->SetHint(wxT(""));
+    #endif
     
     flexGridSizer37->Add(m_textCtrlExclude, 0, wxEXPAND|wxALL, 5);
     
@@ -289,7 +298,7 @@ SvnSyncDialogBaseClass::SvnSyncDialogBaseClass(wxWindow* parent, wxWindowID id, 
     
     boxSizer27->Add(m_button29, 0, wxALL, 5);
     
-    SetSizeHints(500,200);
+    SetSizeHints(-1,-1);
     if ( GetSizer() ) {
          GetSizer()->Fit(this);
     }

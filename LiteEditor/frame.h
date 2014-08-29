@@ -131,7 +131,13 @@ protected:
 public:
     static clMainFrame* Get();
     static void Initialize(bool loadLastSession);
-
+    
+    /**
+     * @brief update the parser (code completion) search paths using the 
+     * default compiler as the input provider
+     */
+    void UpdateParserSearchPathsFromDefaultCompiler();
+    
     DockablePaneMenuManager *GetDockablePaneMenuManager() {
         return m_DPmenuMgr;
     }
@@ -354,7 +360,8 @@ private:
 
 public:
     void ViewPane(const wxString &paneName, bool checked);
-
+    void ShowOrHideCaptions();
+    
 protected:
     //----------------------------------------------------
     // event handlers
@@ -406,6 +413,10 @@ protected:
     void OnToggleMainTBars(wxCommandEvent &event);
     void OnTogglePluginTBars(wxCommandEvent &event);
     void OnTogglePanes(wxCommandEvent &event);
+    void OnShowStatusBar(wxCommandEvent &event);
+    void OnShowStatusBarUI(wxUpdateUIEvent &event);
+    void OnShowToolbar(wxCommandEvent& event);
+    void OnShowToolbarUI(wxUpdateUIEvent& event);
     void OnProjectNewWorkspace(wxCommandEvent &event);
     void OnProjectNewProject(wxCommandEvent &event);
     void OnReloadWorkspace(wxCommandEvent &event);
@@ -447,6 +458,7 @@ protected:
     void OnShowNavBar(wxCommandEvent &e);
     void OnShowNavBarUI(wxUpdateUIEvent &e);
     void OnOpenShellFromFilePath(wxCommandEvent &e);
+    void OnOpenFileExplorerFromFilePath(wxCommandEvent &e);
     void OnDetachEditor(wxCommandEvent &e);
     void OnDetachEditorUI(wxUpdateUIEvent &e);
     void OnQuickDebug(wxCommandEvent &e);
@@ -487,7 +499,6 @@ protected:
     void OnDebugCmdUI(wxUpdateUIEvent &e);
     void OnDebuggerSettings(wxCommandEvent &e);
     void OnLinkClicked(wxHtmlLinkEvent &e);
-    void OnLoadLastSessionUI(wxUpdateUIEvent &event);
     void OnLoadSession(wxCommandEvent &e);
     void OnShowWelcomePage(wxCommandEvent &event);
     void OnShowWelcomePageUI(wxUpdateUIEvent &event);

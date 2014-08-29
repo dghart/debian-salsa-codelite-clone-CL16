@@ -41,6 +41,7 @@ protected:
     wxColourPickerCtrl* m_highlightColor;
     wxStaticText* m_staticText54;
     wxSpinCtrl* m_spinCtrlHighlightAlpha;
+    wxCheckBox* m_clearHighlitWords;
 
 protected:
     virtual void OnBookmarkChanged(wxCommandEvent& event) { event.Skip(); }

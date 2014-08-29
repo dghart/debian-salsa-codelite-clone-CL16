@@ -1,3 +1,28 @@
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+//
+// copyright            : (C) 2014 The CodeLite Team
+// file name            : svncommand.cpp
+//
+// -------------------------------------------------------------------------
+// A
+//              _____           _      _     _ _
+//             /  __ \         | |    | |   (_) |
+//             | /  \/ ___   __| | ___| |    _| |_ ___
+//             | |    / _ \ / _  |/ _ \ |   | | __/ _ )
+//             | \__/\ (_) | (_| |  __/ |___| | ||  __/
+//              \____/\___/ \__,_|\___\_____/_|\__\___|
+//
+//                                                  F i l e
+//
+//    This program is free software; you can redistribute it and/or modify
+//    it under the terms of the GNU General Public License as published by
+//    the Free Software Foundation; either version 2 of the License, or
+//    (at your option) any later version.
+//
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+
 #include "svncommand.h"
 #include "environmentconfig.h"
 #include "subversion_strings.h"
@@ -6,6 +31,7 @@
 #include "subversion2.h"
 #include <wx/aui/framemanager.h>
 #include "imanager.h"
+#include "file_logger.h"
 
 BEGIN_EVENT_TABLE(SvnCommand, wxEvtHandler)
     EVT_COMMAND(wxID_ANY, wxEVT_PROC_DATA_READ,  SvnCommand::OnProcessOutput)
@@ -66,6 +92,7 @@ void SvnCommand::OnProcessOutput(wxCommandEvent& event)
         m_output.Append(ped->GetData().c_str());
         delete ped;
     }
+    CL_DEBUG("Subversion:\n%s", m_output);
 }
 
 void SvnCommand::OnProcessTerminated(wxCommandEvent& event)
@@ -76,7 +103,7 @@ void SvnCommand::OnProcessTerminated(wxCommandEvent& event)
     }
 
     if (m_handler) {
-
+        CL_DEBUG("Subversion output:\n%s", m_output);
         if(m_handler->TestLoginRequired(m_output)) {
             // re-issue the last command but this time with login dialog
             m_handler->GetPlugin()->GetConsole()->AppendText(_("Authentication failed. Retrying...\n"));

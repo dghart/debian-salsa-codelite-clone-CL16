@@ -30,6 +30,10 @@
 #include "build_system.h"
 #include "build_settings_config.h"
 #include <ICompilerLocator.h>
+#include <wx/regex.h>
+#include <procutils.h>
+#include "globals.h"
+#include <wx/tokenzr.h>
 
 Compiler::Compiler(wxXmlNode *node, Compiler::eRegexType regexType)
     : m_objectNameIdenticalToFileName(false)
@@ -61,6 +65,12 @@ Compiler::Compiler(wxXmlNode *node, Compiler::eRegexType regexType)
     if (node) {
         m_name = XmlUtils::ReadString(node, wxT("Name"));
         m_compilerFamily = XmlUtils::ReadString(node, "CompilerFamily");
+        
+        if ( m_compilerFamily == "GNU GCC" ) {
+            // fix wrong name 
+            m_compilerFamily = COMPILER_FAMILY_GCC;
+        }
+        
         m_isDefault = XmlUtils::ReadBool(node, "IsDefault");
         
         if (!node->HasProp(wxT("GenerateDependenciesFiles"))) {
@@ -179,6 +189,16 @@ Compiler::Compiler(wxXmlNode *node, Compiler::eRegexType regexType)
         } else if ( GetTool("AS").IsEmpty() ) {
             SetTool("AS", "as");
         }
+
+        // For backward compatibility, if the compiler / linker options are empty - add them
+        if ( IsGnuCompatibleCompiler() && m_compilerOptions.empty() ) {
+            AddDefaultGnuComplierOptions();
+        }
+
+        if ( IsGnuCompatibleCompiler() && m_linkerOptions.empty() ) {
+            AddDefaultGnuLinkerOptions();
+        }
+
     } else {
         // Create a default compiler: g++
         m_name = "";
@@ -209,6 +229,9 @@ Compiler::Compiler(wxXmlNode *node, Compiler::eRegexType regexType)
             AddPattern(eWarningPattern, "([a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([0-9]+ *)(:)([0-9:]*)?( note)", 1, 3);
             AddPattern(eWarningPattern, "([a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([0-9]+ *)(:)([0-9:]*)?([ ]+instantiated)", 1, 3);
             AddPattern(eWarningPattern, "(In file included from *)([a-zA-Z:]{0,2}[ a-zA-Z\\.0-9_/\\+\\-]+ *)(:)([0-9]+ *)(:)([0-9:]*)?", 2, 4);
+            
+            AddDefaultGnuComplierOptions();
+            AddDefaultGnuLinkerOptions();
             
         } else {
             
@@ -416,7 +439,9 @@ wxString Compiler::GetTool(const wxString &name) const
     if(name == wxT("CC") && iter->second.empty()) {
         return GetTool(wxT("CXX"));
     }
-    return iter->second;
+    wxString tool = iter->second;
+    tool.Replace("\\", "/");
+    return tool;
 }
 
 bool Compiler::GetCmpFileType(const wxString& extension, Compiler::CmpFileTypeInfo &ft)
@@ -470,4 +495,155 @@ void Compiler::SetTool(const wxString& toolname, const wxString& cmd)
         m_tools.erase(toolname);
     }
     m_tools.insert(std::make_pair(toolname, cmd));
+}
+
+void Compiler::AddCompilerOption(const wxString& name, const wxString& desc)
+{
+    CmpCmdLineOption option;
+    option.help = desc;
+    option.name = name;
+    m_compilerOptions.erase( name );
+    m_compilerOptions.insert( std::make_pair(name, option) );
+}
+
+void Compiler::AddLinkerOption(const wxString& name, const wxString& desc)
+{
+    CmpCmdLineOption option;
+    option.help = desc;
+    option.name = name;
+    m_linkerOptions.erase( name );
+    m_linkerOptions.insert( std::make_pair(name, option) );
+}
+
+bool Compiler::IsGnuCompatibleCompiler() const
+{
+    return  m_compilerFamily.IsEmpty()                  ||
+            m_compilerFamily == COMPILER_FAMILY_CLANG   || 
+            m_compilerFamily == COMPILER_FAMILY_GCC     || 
+            m_compilerFamily == COMPILER_FAMILY_MINGW;
+}
+
+void Compiler::AddDefaultGnuComplierOptions()
+{
+    // Add GCC / CLANG default compiler options
+    AddCompilerOption("-O",                         "Optimize generated code. (for speed)");
+    AddCompilerOption("-O1",                        "Optimize more (for speed)");
+    AddCompilerOption("-O2",                        "Optimize even more (for speed)");
+    AddCompilerOption("-O3",                        "Optimize fully (for speed)");
+    AddCompilerOption("-Os",                        "Optimize generated code (for size)");
+    AddCompilerOption("-O0",                        "Optimize for debugging");
+    AddCompilerOption("-W",                         "Enable standard compiler warnings");
+    AddCompilerOption("-Wall",                      "Enable all compiler warnings");
+    AddCompilerOption("-Wfatal-errors",             "Stop compiling after first error");
+    AddCompilerOption("-Wmain",                     "Warn if main() is not conformant");
+    AddCompilerOption("-ansi",                      "In C mode, support all ISO C90 programs. In C++ mode, remove GNU extensions that conflict with ISO C++");
+    AddCompilerOption("-fexpensive-optimizations",  "Expensive optimizations");
+    AddCompilerOption("-fopenmp",                   "Enable OpenMP (compilation)");
+    AddCompilerOption("-g",                         "Produce debugging information");
+    AddCompilerOption("-pedantic",                  "Enable warnings demanded by strict ISO C and ISO C++");
+    AddCompilerOption("-pedantic-errors",           "Treat as errors the warnings demanded by strict ISO C and ISO C++");
+    AddCompilerOption("-pg",                        "Profile code when executed");
+    AddCompilerOption("-w",                         "Inhibit all warning messages");
+    AddCompilerOption("-std=c99",                   "Enable ANSI C99 features");
+    AddCompilerOption("-std=c++11",                 "Enable C++11 features");
+}
+
+void Compiler::AddDefaultGnuLinkerOptions()
+{
+    // Linker options
+    AddLinkerOption("-fopenmp",   "Enable OpenMP (linkage)");
+    AddLinkerOption("-mwindows",  "Prevent a useless terminal console appearing with MSWindows GUI programs");
+    AddLinkerOption("-pg",        "Profile code when executed");
+    AddLinkerOption("-s",         "Remove all symbol table and relocation information from the executable");
+}
+
+wxArrayString Compiler::GetDefaultIncludePaths() const
+{
+    wxArrayString defaultPaths;
+    if ( GetCompilerFamily() == COMPILER_FAMILY_MINGW ) {
+        wxString ver = GetGCCVersion();
+        if ( ver.IsEmpty() ) {
+            return defaultPaths;
+        }
+        
+        // FIXME : support 64 bit compilers
+        defaultPaths.Add( GetIncludePath("lib/gcc/mingw32/" + ver + "/include/c++") );
+        defaultPaths.Add( GetIncludePath("lib/gcc/mingw32/" + ver + "/include/c++/mingw32") );
+        defaultPaths.Add( GetIncludePath("lib/gcc/mingw32/" + ver + "/include/c++/backward") );
+        defaultPaths.Add( GetIncludePath("lib/gcc/mingw32/" + ver + "/include") );
+        defaultPaths.Add( GetIncludePath("include") );
+        defaultPaths.Add( GetIncludePath("lib/gcc/mingw32/" + ver + "/include-fixed") );
+
+    } else if ( GetCompilerFamily() == COMPILER_FAMILY_CLANG || GetCompilerFamily() == COMPILER_FAMILY_GCC) {
+#ifndef __WXMSW__
+        defaultPaths = POSIXGetIncludePaths();
+#endif
+    }
+    return defaultPaths;
+}
+
+wxString Compiler::GetGCCVersion() const
+{
+    // Get the compiler version
+    static wxRegEx reVersion("([0-9]+\\.[0-9]+\\.[0-9]+)");
+    wxString command;
+    command << GetTool("CXX") << " --version";
+    wxArrayString out;
+    ProcUtils::SafeExecuteCommand(command, out);
+    if ( out.IsEmpty() ) {
+        return "";
+    }
+    
+    if ( reVersion.Matches( out.Item(0) ) ) {
+        return reVersion.GetMatch( out.Item(0) );
+    }
+    return "";
+}
+
+wxString Compiler::GetIncludePath(const wxString& pathSuffix) const
+{
+    wxString fullpath;
+    fullpath << GetInstallationPath() << "/" << pathSuffix;
+    wxFileName fn(fullpath, "");
+    return fn.GetPath();
+}
+
+wxArrayString Compiler::POSIXGetIncludePaths() const
+{
+    wxString command;
+    command << GetTool("CXX") << " -v -x c++ /dev/null -fsyntax-only";
+
+    wxString outputStr = ::wxShellExec(command, wxEmptyString);
+    
+    wxArrayString arr;
+    wxArrayString outputArr = ::wxStringTokenize(outputStr, wxT("\n\r"), wxTOKEN_STRTOK);
+    
+    // Analyze the output
+    bool collect(false);
+    for(size_t i=0; i<outputArr.GetCount(); i++) {
+        if(outputArr[i].Contains(wxT("#include <...> search starts here:"))) {
+            collect = true;
+            continue;
+        }
+
+        if(outputArr[i].Contains(wxT("End of search list."))) {
+            break;
+        }
+
+        if(collect) {
+
+            wxString file = outputArr.Item(i).Trim().Trim(false);
+
+            // on Mac, (framework directory) appears also,
+            // but it is harmless to use it under all OSs
+            file.Replace(wxT("(framework directory)"), wxT(""));
+            file.Trim().Trim(false);
+
+            wxFileName includePath(file, "");
+            includePath.Normalize();
+
+            arr.Add( includePath.GetPath() );
+        }
+    }
+    return arr;
 }

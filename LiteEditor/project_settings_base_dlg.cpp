@@ -259,18 +259,27 @@ PSCompilerPageBase::PSCompilerPageBase(wxWindow* parent, wxWindowID id, const wx
     m_pgPropPreProcessors->SetHelpString(_("macros (\"defines\") to pass to the compiler (provided as semi-colon delimited list)"));
     m_pgPropPreProcessors->SetEditor( wxT("TextCtrlAndButton") );
     
-    CATEGORY_PCH11 = m_pgMgr->Append(  new wxPropertyCategory( _("Pre Compiled Header") ) );
-    CATEGORY_PCH11->SetHelpString(wxT(""));
+    CATEGORY_PCH = m_pgMgr->Append(  new wxPropertyCategory( _("Pre Compiled Header") ) );
+    CATEGORY_PCH->SetHelpString(wxT(""));
     
-    m_pgPropPreCmpHeaderFile = m_pgMgr->AppendIn( CATEGORY_PCH11,  new wxStringProperty( _("Header File"), wxPG_LABEL, wxT("")) );
+    m_pgPropPreCmpHeaderFile = m_pgMgr->AppendIn( CATEGORY_PCH,  new wxStringProperty( _("Header File"), wxPG_LABEL, wxT("")) );
     m_pgPropPreCmpHeaderFile->SetHelpString(_("Pre compiled header"));
     m_pgPropPreCmpHeaderFile->SetEditor( wxT("TextCtrlAndButton") );
     
-    m_pgPropIncludePCH = m_pgMgr->AppendIn( CATEGORY_PCH11,  new wxBoolProperty( _("Excplicitly Include PCH"), wxPG_LABEL, 1) );
+    m_pgPropIncludePCH = m_pgMgr->AppendIn( CATEGORY_PCH,  new wxBoolProperty( _("Excplicitly Include PCH"), wxPG_LABEL, 1) );
     m_pgPropIncludePCH->SetHelpString(_("Explicitly include the PCH file in the command line using a compiler switch (.e.g -include /path/to/pch)"));
     
-    m_pgPropPCHCompileLine = m_pgMgr->AppendIn( CATEGORY_PCH11,  new wxLongStringProperty( _("PCH Compile Flags"), wxPG_LABEL, wxT("")) );
+    m_pgPropPCHCompileLine = m_pgMgr->AppendIn( CATEGORY_PCH,  new wxLongStringProperty( _("PCH Compile Flags"), wxPG_LABEL, wxT("")) );
     m_pgPropPCHCompileLine->SetHelpString(_("Use separate compilation flags for the PCH file"));
+    
+    m_pgMgrArr.Clear();
+    m_pgMgrIntArr.Clear();
+    m_pgMgrArr.Add(_("Replace"));
+    m_pgMgrArr.Add(_("Append"));
+    m_pgMgrIntArr.Add(0);
+    m_pgMgrIntArr.Add(1);
+    m_pgPropPCHPolicy = m_pgMgr->AppendIn( CATEGORY_PCH,  new wxEnumProperty( _("PCH Compile Flags Policy"), wxPG_LABEL, m_pgMgrArr, m_pgMgrIntArr, 0) );
+    m_pgPropPCHPolicy->SetHelpString(_("Set the PCH flags policy to:\n* Append - this means that the flags set in the 'PCH Compile Flags' field will be appended to default flags\n* Replace - the 'PCH Compile Flags' will replace any other flags"));
     
     SetSizeHints(-1,-1);
     if ( GetSizer() ) {
@@ -398,6 +407,9 @@ PSDebuggerPageBase::PSDebuggerPageBase(wxWindow* parent, wxWindowID id, const wx
     
     m_textCtrlDebuggerPath = new wxTextCtrl(m_panelDebugger, wxID_ANY, wxT(""), wxDefaultPosition, wxSize(-1,-1), 0);
     m_textCtrlDebuggerPath->SetFocus();
+    #if wxVERSION_NUMBER >= 3000
+    m_textCtrlDebuggerPath->SetHint(wxT(""));
+    #endif
     
     boxSizer35->Add(m_textCtrlDebuggerPath, 1, wxALL|wxALIGN_CENTER_VERTICAL, 5);
     
@@ -469,7 +481,7 @@ PSDebuggerPageBase::PSDebuggerPageBase(wxWindow* parent, wxWindowID id, const wx
     
     bSizer192->Add(m_checkBoxDbgRemote, 0, wxALL|wxALIGN_CENTER_HORIZONTAL, 5);
     
-    wxFlexGridSizer* fgSizer61 = new wxFlexGridSizer(1, 4, 0, 0);
+    wxFlexGridSizer* fgSizer61 = new wxFlexGridSizer(1, 5, 0, 0);
     fgSizer61->SetFlexibleDirection( wxBOTH );
     fgSizer61->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_SPECIFIED );
     fgSizer61->AddGrowableCol(1);
@@ -481,6 +493,9 @@ PSDebuggerPageBase::PSDebuggerPageBase(wxWindow* parent, wxWindowID id, const wx
     fgSizer61->Add(m_staticText31, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5);
     
     m_textCtrl1DbgHost = new wxTextCtrl(m_panelDebugger, wxID_ANY, wxT(""), wxDefaultPosition, wxSize(-1, -1), wxTE_NO_VSCROLL);
+    #if wxVERSION_NUMBER >= 3000
+    m_textCtrl1DbgHost->SetHint(wxT(""));
+    #endif
     
     fgSizer61->Add(m_textCtrl1DbgHost, 0, wxALL|wxEXPAND, 5);
     
@@ -489,8 +504,17 @@ PSDebuggerPageBase::PSDebuggerPageBase(wxWindow* parent, wxWindowID id, const wx
     fgSizer61->Add(m_staticText32, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5);
     
     m_textCtrlDbgPort = new wxTextCtrl(m_panelDebugger, wxID_ANY, wxT(""), wxDefaultPosition, wxSize(-1, -1), wxTE_NO_VSCROLL);
+    #if wxVERSION_NUMBER >= 3000
+    m_textCtrlDbgPort->SetHint(wxT(""));
+    #endif
     
     fgSizer61->Add(m_textCtrlDbgPort, 0, wxALL, 5);
+    
+    m_checkBoxDbgRemoteExt = new wxCheckBox(m_panelDebugger, wxID_ANY, _("Extended Protocol"), wxDefaultPosition, wxSize(-1,-1), 0);
+    m_checkBoxDbgRemoteExt->SetValue(false);
+    m_checkBoxDbgRemoteExt->SetToolTip(_("Enable extended mode. In extended mode, the remote server is made persistent.\ni.e. it does not go down after the debug session ends"));
+    
+    fgSizer61->Add(m_checkBoxDbgRemoteExt, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5);
     
     SetSizeHints(-1,-1);
     if ( GetSizer() ) {
@@ -513,6 +537,8 @@ PSDebuggerPageBase::PSDebuggerPageBase(wxWindow* parent, wxWindowID id, const wx
     m_staticText32->Connect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(PSDebuggerPageBase::OnRemoteDebugUI), NULL, this);
     m_textCtrlDbgPort->Connect(wxEVT_COMMAND_TEXT_UPDATED, wxCommandEventHandler(PSDebuggerPageBase::OnCmdEvtVModified), NULL, this);
     m_textCtrlDbgPort->Connect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(PSDebuggerPageBase::OnRemoteDebugUI), NULL, this);
+    m_checkBoxDbgRemoteExt->Connect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(PSDebuggerPageBase::OnRemoteDebugUI), NULL, this);
+    m_checkBoxDbgRemoteExt->Connect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(PSDebuggerPageBase::OnCmdEvtVModified), NULL, this);
     
 }
 
@@ -533,6 +559,8 @@ PSDebuggerPageBase::~PSDebuggerPageBase()
     m_staticText32->Disconnect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(PSDebuggerPageBase::OnRemoteDebugUI), NULL, this);
     m_textCtrlDbgPort->Disconnect(wxEVT_COMMAND_TEXT_UPDATED, wxCommandEventHandler(PSDebuggerPageBase::OnCmdEvtVModified), NULL, this);
     m_textCtrlDbgPort->Disconnect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(PSDebuggerPageBase::OnRemoteDebugUI), NULL, this);
+    m_checkBoxDbgRemoteExt->Disconnect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(PSDebuggerPageBase::OnRemoteDebugUI), NULL, this);
+    m_checkBoxDbgRemoteExt->Disconnect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(PSDebuggerPageBase::OnCmdEvtVModified), NULL, this);
     
 }
 
@@ -769,6 +797,9 @@ PSCustomBuildBasePage::PSCustomBuildBasePage(wxWindow* parent, wxWindowID id, co
     bSizer23->Add(m_staticText33, 0, wxALL|wxALIGN_RIGHT|wxALIGN_CENTER_VERTICAL, 5);
     
     m_textCtrlCustomBuildWD = new wxTextCtrl(m_customBuildPage, wxID_ANY, wxT(""), wxDefaultPosition, wxSize(-1, -1), 0);
+    #if wxVERSION_NUMBER >= 3000
+    m_textCtrlCustomBuildWD->SetHint(wxT(""));
+    #endif
     
     bSizer23->Add(m_textCtrlCustomBuildWD, 1, wxALL|wxEXPAND, 5);
     
@@ -974,6 +1005,9 @@ PSCustomMakefileBasePage::PSCustomMakefileBasePage(wxWindow* parent, wxWindowID 
     m_textDepsFont.SetFamily(wxFONTFAMILY_TELETYPE);
     #endif
     m_textDeps->SetFont(m_textDepsFont);
+    #if wxVERSION_NUMBER >= 3000
+    m_textDeps->SetHint(wxT(""));
+    #endif
     
     fgSizer5->Add(m_textDeps, 0, wxALL|wxEXPAND, 5);
     
@@ -1153,6 +1187,9 @@ ProjectCustomBuildTragetDlgBase::ProjectCustomBuildTragetDlgBase(wxWindow* paren
     flexGridSizer53->Add(m_staticTextTargetName, 0, wxALL|wxALIGN_RIGHT|wxALIGN_CENTER_VERTICAL, 5);
     
     m_textCtrlTargetName = new wxTextCtrl(this, wxID_ANY, wxT(""), wxDefaultPosition, wxSize(-1,-1), 0);
+    #if wxVERSION_NUMBER >= 3000
+    m_textCtrlTargetName->SetHint(wxT(""));
+    #endif
     
     flexGridSizer53->Add(m_textCtrlTargetName, 1, wxALL|wxEXPAND, 5);
     
