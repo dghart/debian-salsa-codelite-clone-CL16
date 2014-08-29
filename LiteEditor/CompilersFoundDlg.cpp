@@ -1,3 +1,28 @@
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+//
+// copyright            : (C) 2014 The CodeLite Team
+// file name            : CompilersFoundDlg.cpp
+//
+// -------------------------------------------------------------------------
+// A
+//              _____           _      _     _ _
+//             /  __ \         | |    | |   (_) |
+//             | /  \/ ___   __| | ___| |    _| |_ ___
+//             | |    / _ \ / _  |/ _ \ |   | | __/ _ )
+//             | \__/\ (_) | (_| |  __/ |___| | ||  __/
+//              \____/\___/ \__,_|\___\_____/_|\__\___|
+//
+//                                                  F i l e
+//
+//    This program is free software; you can redistribute it and/or modify
+//    it under the terms of the GNU General Public License as published by
+//    the Free Software Foundation; either version 2 of the License, or
+//    (at your option) any later version.
+//
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+
 #include "CompilersFoundDlg.h"
 #include <windowattrmanager.h>
 #include <compiler.h>
@@ -66,6 +91,7 @@ CompilersFoundDlg::CompilersFoundDlg(wxWindow* parent, const ICompilerLocator::C
         cols.push_back( compiler->GetInstallationPath() );
         m_dataviewModel->AppendItem(parent, cols, new CompilersFoundDlgItemData(compiler));
         if ( m_defaultCompilers.count(compiler->GetCompilerFamily()) == 0 ) {
+            compiler->SetIsDefault(true); // Per family
             m_defaultCompilers.insert( std::make_pair(compiler->GetCompilerFamily(), compiler) );
             MSWUpdateToolchain(compiler);
         }
@@ -90,6 +116,7 @@ void CompilersFoundDlg::OnItemActivated(wxDataViewEvent& event)
     CompilerPtr compiler = GetCompiler(event.GetItem());
     if ( compiler ) {
         m_defaultCompilers.erase( compiler->GetCompilerFamily() );
+        compiler->SetIsDefault(true);
         m_defaultCompilers.insert( std::make_pair(compiler->GetCompilerFamily(), compiler) );
         m_dataview->UnselectAll();
         m_dataview->CallAfter( &wxDataViewCtrl::Refresh, true, (const wxRect*)NULL );

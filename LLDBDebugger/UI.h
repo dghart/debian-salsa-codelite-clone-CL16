@@ -16,6 +16,8 @@
 #include <wx/dataview.h>
 #include <wx/pen.h>
 #include <wx/aui/auibar.h>
+#include <map>
+#include <wx/menu.h>
 #include <wx/toolbar.h>
 #include "lldbbreakpointmodel.h"
 #include <wx/dialog.h>
@@ -100,8 +102,12 @@ public:
 class LLDBLocalsViewBase : public wxPanel
 {
 protected:
+    wxAuiToolBar* m_auibar199;
 
 protected:
+    virtual void OnNewWatch(wxCommandEvent& event) { event.Skip(); }
+    virtual void OnDelete(wxCommandEvent& event) { event.Skip(); }
+    virtual void OnDeleteUI(wxUpdateUIEvent& event) { event.Skip(); }
 
 public:
     LLDBLocalsViewBase(wxWindow* parent, wxWindowID id = wxID_ANY, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize(-1,-1), long style = wxTAB_TRAVERSAL);

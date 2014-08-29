@@ -59,6 +59,7 @@ public:
         Opt_Disable_Multiselect      = 0x00080000,
         Opt_Disable_Multipaste       = 0x00100000,
         Opt_AllowCaretAfterEndOfLine = 0x00200000,
+        Opt_HideDockingWindowCaption = 0x00400000,
     };
 
 protected:
@@ -72,6 +73,7 @@ protected:
     wxString       m_bookmarkFgColours;
     wxString       m_bookmarkLabels;
     bool           m_highlightCaretLine;
+    bool           m_clearHighlitWordsOnFind;
     bool           m_displayLineNumbers;
     bool           m_showIndentationGuidelines;
     wxColour       m_caretLineColour;
@@ -109,6 +111,7 @@ protected:
     bool           m_hideOutputPaneNotIfCscope;
     bool           m_hideOutputPaneNotIfGit;
     bool           m_hideOutputPaneNotIfDebug;
+    bool           m_hideOutputPaneNotIfMemCheck;
     bool           m_findBarAtBottom;
     bool           m_TrimLine;
     bool           m_AppendLF;
@@ -320,6 +323,12 @@ public:
     const bool& GetHideOutputPaneNotIfDebug() const {
         return m_hideOutputPaneNotIfDebug;
     }
+    void SetHideOutputPaneNotIfMemCheck(const bool& HideOutpuPaneNotIfMemCheck) {
+        this->m_hideOutputPaneNotIfMemCheck = HideOutpuPaneNotIfMemCheck;
+    }
+    const bool& GetHideOutputPaneNotIfMemCheck() const {
+        return m_hideOutputPaneNotIfMemCheck;
+    }
     void SetHideChangeMarkerMargin(bool hideChangeMarkerMargin) {
         this->m_hideChangeMarkerMargin = hideChangeMarkerMargin;
     }
@@ -351,6 +360,10 @@ public:
     wxColour GetBookmarkBgColour(size_t index) const;
 
     wxString GetBookmarkLabel(size_t index) const;
+
+    bool GetClearHighlitWordsOnFind() const {
+        return m_clearHighlitWordsOnFind;
+    }
 
     bool GetHighlightCaretLine() const {
         return m_highlightCaretLine;
@@ -389,6 +402,10 @@ public:
     void SetBookmarkBgColour(wxColour c, size_t index);
     
     void SetBookmarkLabel(const wxString& label, size_t index);
+
+    void SetClearHighlitWordsOnFind(bool b) {
+        m_clearHighlitWordsOnFind = b;
+    }
 
     void SetHighlightCaretLine(bool b) {
         m_highlightCaretLine = b;
@@ -570,6 +587,15 @@ public:
     const wxColour& GetDebuggerMarkerLine() const {
         return m_debuggerMarkerLine;
     }
+    
+    void SetShowDockingWindowCaption(bool show) {
+        EnableOption(Opt_HideDockingWindowCaption, !show);
+    }
+    
+    bool IsShowDockingWindowCaption() const {
+        return !HasOption(Opt_HideDockingWindowCaption);
+    }
+    
     /**
      * Return an XML representation of this object
      * \return XML node

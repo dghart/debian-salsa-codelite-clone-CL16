@@ -1,3 +1,28 @@
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+//
+// copyright            : (C) 2014 The CodeLite Team
+// file name            : ps_debugger_page.cpp
+//
+// -------------------------------------------------------------------------
+// A
+//              _____           _      _     _ _
+//             /  __ \         | |    | |   (_) |
+//             | /  \/ ___   __| | ___| |    _| |_ ___
+//             | |    / _ \ / _  |/ _ \ |   | | __/ _ )
+//             | \__/\ (_) | (_| |  __/ |___| | ||  __/
+//              \____/\___/ \__,_|\___\_____/_|\__\___|
+//
+//                                                  F i l e
+//
+//    This program is free software; you can redistribute it and/or modify
+//    it under the terms of the GNU General Public License as published by
+//    the Free Software Foundation; either version 2 of the License, or
+//    (at your option) any later version.
+//
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+
 #include "ps_debugger_page.h"
 #include <wx/filename.h>
 #include <wx/filedlg.h>
@@ -33,6 +58,7 @@ void PSDebuggerPage::Load(BuildConfigPtr buildConf)
     m_textCtrl1DbgHost->ChangeValue(buildConf->GetDbgHostName());
     m_textCtrlDbgPort->ChangeValue(buildConf->GetDbgHostPort());
     m_textCtrlDebuggerPath->ChangeValue(buildConf->GetDebuggerPath());
+    m_checkBoxDbgRemoteExt->SetValue(buildConf->GetIsDbgRemoteExtended());
 
     const wxArrayString &searchPaths = buildConf->GetDebuggerSearchPaths();
     for(size_t i=0; i<searchPaths.GetCount(); ++i) {
@@ -50,6 +76,7 @@ void PSDebuggerPage::Save(BuildConfigPtr buildConf, ProjectSettingsPtr projSetti
     buildConf->SetDbgHostName(m_textCtrl1DbgHost->GetValue());
     buildConf->SetDbgHostPort(m_textCtrlDbgPort->GetValue());
     buildConf->SetDebuggerPath(m_textCtrlDebuggerPath->GetValue());
+    buildConf->SetIsDbgRemoteExtended(m_checkBoxDbgRemoteExt->IsChecked());
 
     wxArrayString searchPaths;
     int nCount = m_dvListCtrlDebuggerSearchPaths->GetItemCount();

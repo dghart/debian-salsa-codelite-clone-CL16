@@ -36,6 +36,7 @@
 #include "build_system.h"
 #include "json_node.h"
 #include "cl_config.h"
+#include <map>
 
 // Cookie class for the editor to provide reentrance operations
 // on various methods (such as iteration)
@@ -60,10 +61,13 @@ class WXDLLIMPEXP_SDK BuildSettingsConfig
     wxXmlDocument *m_doc;
     wxFileName     m_fileName;
     wxString       m_version;
+    std::map<wxString, CompilerPtr> m_compilers;
     
 protected:
     wxXmlNode* GetCompilerNode(const wxString& name) const;
-
+    void DoUpdateCompilers();
+    bool SaveXmlFile();
+    
 public:
     BuildSettingsConfig();
     virtual ~BuildSettingsConfig();
@@ -94,7 +98,11 @@ public:
      * Set or update a given compiler using its name as the index
      */
     void SetCompiler(CompilerPtr cmp);
-
+    
+    /**
+     * @brief return the default compiler for a given family
+     */
+    CompilerPtr GetDefaultCompiler(const wxString &compilerFamilty) const;
     /**
      * Find and return compiler by name
      */

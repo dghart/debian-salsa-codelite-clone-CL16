@@ -40,7 +40,7 @@ ImportFilesDialogNewBase::ImportFilesDialogNewBase(wxWindow* parent, wxWindowID 
     
     mainSizer->Add(m_dirPicker, 0, wxALL|wxEXPAND, 5);
     
-    m_dataview = new wxDataViewCtrl(this, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxDV_SINGLE);
+    m_dataview = new wxDataViewCtrl(this, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxDV_VERT_RULES|wxDV_ROW_LINES|wxDV_SINGLE);
     m_dataview->SetToolTip(_("Check the folders you wish to import\nfiles from"));
     
     m_dataviewModel = new FolderModel;
@@ -49,13 +49,16 @@ ImportFilesDialogNewBase::ImportFilesDialogNewBase(wxWindow* parent, wxWindowID 
     
     mainSizer->Add(m_dataview, 1, wxALL|wxEXPAND, 5);
     
-    m_dataview->AppendIconTextColumn(_("Folder"), m_dataview->GetColumnCount(), wxDATAVIEW_CELL_ACTIVATABLE, 300, wxALIGN_LEFT);
-    m_dataview->AppendToggleColumn(_("Import?"), m_dataview->GetColumnCount(), wxDATAVIEW_CELL_ACTIVATABLE, 80, wxALIGN_LEFT);
-    m_staticText1 = new wxStaticText(this, wxID_ANY, _("Files extension to import:"), wxDefaultPosition, wxSize(-1, -1), 0);
+    m_dataview->AppendToggleColumn(_("?"), m_dataview->GetColumnCount(), wxDATAVIEW_CELL_ACTIVATABLE, 20, wxALIGN_LEFT);
+    m_dataview->AppendIconTextColumn(_("Folder"), m_dataview->GetColumnCount(), wxDATAVIEW_CELL_ACTIVATABLE, 500, wxALIGN_LEFT);
+    m_staticText1 = new wxStaticText(this, wxID_ANY, _("Files extension to import (semicolon delimited):"), wxDefaultPosition, wxSize(-1, -1), 0);
     
     mainSizer->Add(m_staticText1, 0, wxALL|wxEXPAND, 5);
     
     m_textCtrSpec = new wxTextCtrl(this, wxID_ANY, wxT(""), wxDefaultPosition, wxSize(-1, -1), 0);
+    #if wxVERSION_NUMBER >= 3000
+    m_textCtrSpec->SetHint(wxT(""));
+    #endif
     
     mainSizer->Add(m_textCtrSpec, 0, wxALL|wxEXPAND, 5);
     
@@ -65,22 +68,17 @@ ImportFilesDialogNewBase::ImportFilesDialogNewBase(wxWindow* parent, wxWindowID 
     
     mainSizer->Add(m_checkBoxFilesWOExt, 0, wxALL|wxALIGN_CENTER_HORIZONTAL, 5);
     
-    m_staticline1 = new wxStaticLine(this, wxID_ANY, wxDefaultPosition, wxSize(-1, -1), wxLI_HORIZONTAL);
+    m_stdBtnSizer7 = new wxStdDialogButtonSizer();
     
-    mainSizer->Add(m_staticline1, 0, wxALL|wxEXPAND, 5);
+    mainSizer->Add(m_stdBtnSizer7, 0, wxALL|wxALIGN_CENTER_HORIZONTAL, 5);
     
-    wxBoxSizer* buttonSizer = new wxBoxSizer(wxHORIZONTAL);
+    m_buttonOK = new wxButton(this, wxID_OK, wxT(""), wxDefaultPosition, wxSize(-1, -1), 0);
+    m_buttonOK->SetDefault();
+    m_stdBtnSizer7->AddButton(m_buttonOK);
     
-    mainSizer->Add(buttonSizer, 0, wxALL|wxALIGN_CENTER_HORIZONTAL, 5);
-    
-    m_buttonOk = new wxButton(this, wxID_OK, _("&Ok"), wxDefaultPosition, wxSize(-1, -1), 0);
-    m_buttonOk->SetDefault();
-    
-    buttonSizer->Add(m_buttonOk, 0, wxALL, 5);
-    
-    m_buttonCancel = new wxButton(this, wxID_CANCEL, _("&Cancel"), wxDefaultPosition, wxSize(-1, -1), 0);
-    
-    buttonSizer->Add(m_buttonCancel, 0, wxALL, 5);
+    m_buttonCancel = new wxButton(this, wxID_CANCEL, wxT(""), wxDefaultPosition, wxSize(-1, -1), 0);
+    m_stdBtnSizer7->AddButton(m_buttonCancel);
+    m_stdBtnSizer7->Realize();
     
     SetSizeHints(400,400);
     if ( GetSizer() ) {

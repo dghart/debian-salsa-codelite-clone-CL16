@@ -1,5 +1,29 @@
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+//
+// copyright            : (C) 2014 The CodeLite Team
+// file name            : svn_command_handlers.cpp
+//
+// -------------------------------------------------------------------------
+// A
+//              _____           _      _     _ _
+//             /  __ \         | |    | |   (_) |
+//             | /  \/ ___   __| | ___| |    _| |_ ___
+//             | |    / _ \ / _  |/ _ \ |   | | __/ _ )
+//             | \__/\ (_) | (_| |  __/ |___| | ||  __/
+//              \____/\___/ \__,_|\___\_____/_|\__\___|
+//
+//                                                  F i l e
+//
+//    This program is free software; you can redistribute it and/or modify
+//    it under the terms of the GNU General Public License as published by
+//    the Free Software Foundation; either version 2 of the License, or
+//    (at your option) any later version.
+//
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+
 #include <wx/app.h>
-#include "svnblamedialog.h"
 #include <wx/tokenzr.h>
 #include <wx/regex.h>
 #include "svn_console.h"
@@ -13,6 +37,7 @@
 #include "imanager.h"
 #include "ieditor.h"
 #include "event_notifier.h"
+#include "SvnBlameFrame.h"
 
 void SvnCommitHandler::Process(const wxString& output)
 {
@@ -110,7 +135,7 @@ void SvnVersionHandler::Process(const wxString& output)
         double version(0.0);
         strVersion.ToDouble(&version);
 
-        GetPlugin()->GetConsole()->AppendText(wxString::Format(wxT("== Svn client version: %s ==\n"), strVersion.c_str()));
+        GetPlugin()->GetConsole()->AppendText(wxString::Format(wxT("-- Svn client version: %s\n"), strVersion.c_str()));
         GetPlugin()->SetSvnClientVersion(version);
     }
 }
@@ -180,8 +205,8 @@ void SvnBlameHandler::Process(const wxString& output)
 
     GetPlugin()->GetConsole()->AppendText(_("Loading Svn blame dialog...\n"));
     GetPlugin()->GetConsole()->AppendText(wxT("--------\n"));
-    SvnBlameDialog dlg(GetPlugin()->GetManager()->GetTheApp()->GetTopWindow(), output);
-    dlg.ShowModal();
+    SvnBlameFrame *blameFrame = new SvnBlameFrame(GetPlugin()->GetManager()->GetTheApp()->GetTopWindow(), m_filename, output);
+    blameFrame->Show();
 }
 
 void SvnRepoListHandler::Process(const wxString& output)

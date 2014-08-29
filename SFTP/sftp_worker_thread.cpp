@@ -1,3 +1,28 @@
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+//
+// copyright            : (C) 2014 The CodeLite Team
+// file name            : sftp_worker_thread.cpp
+//
+// -------------------------------------------------------------------------
+// A
+//              _____           _      _     _ _
+//             /  __ \         | |    | |   (_) |
+//             | /  \/ ___   __| | ___| |    _| |_ ___
+//             | |    / _ \ / _  |/ _ \ |   | | __/ _ )
+//             | \__/\ (_) | (_| |  __/ |___| | ||  __/
+//              \____/\___/ \__,_|\___\_____/_|\__\___|
+//
+//                                                  F i l e
+//
+//    This program is free software; you can redistribute it and/or modify
+//    it under the terms of the GNU General Public License as published by
+//    the Free Software Foundation; either version 2 of the License, or
+//    (at your option) any later version.
+//
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+
 #include "sftp_worker_thread.h"
 #include <libssh/sftp.h>
 #include "cl_ssh.h"
@@ -55,11 +80,11 @@ void SFTPWorkerThread::ProcessRequest(ThreadRequest* request)
             msg.Clear();
             if ( req->GetDirection() == SFTPThreadRequet::kUpload ) {
                 DoReportStatusBarMessage(wxString() << _("Uploading file: ") << req->GetRemoteFile());
-                m_sftp->Write(wxFileName(req->GetLocalFile()), req->GetRemoteFile());
+                m_sftp->CreateFile(req->GetRemoteFile(), wxFileName(req->GetLocalFile()));
                 msg << "Successfully uploaded file: " << req->GetLocalFile() << " -> " << req->GetRemoteFile();
                 DoReportMessage(accountName, msg, SFTPThreadMessage::STATUS_OK);
                 DoReportStatusBarMessage("");
-                
+
             } else {
                 DoReportStatusBarMessage(wxString() << _("Downloading file: ") << req->GetRemoteFile());
                 wxString fileContent = m_sftp->Read(req->GetRemoteFile());

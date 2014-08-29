@@ -31,7 +31,7 @@ EditorSettingsBookmarksBasePanel::EditorSettingsBookmarksBasePanel(wxWindow* par
     
     bSizer2->Add(m_displaySelection, 0, wxALL, 5);
     
-    wxFlexGridSizer* fgSizer1 = new wxFlexGridSizer(  0, 2, 0, 0);
+    wxFlexGridSizer* fgSizer1 = new wxFlexGridSizer(0, 2, 0, 0);
     fgSizer1->SetFlexibleDirection( wxBOTH );
     fgSizer1->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_SPECIFIED );
     fgSizer1->AddGrowableCol(1);
@@ -69,6 +69,9 @@ EditorSettingsBookmarksBasePanel::EditorSettingsBookmarksBasePanel(wxWindow* par
     
     m_BookmarkLabel = new wxTextCtrl(this, wxID_ANY, wxT(""), wxDefaultPosition, wxSize(-1,-1), 0);
     m_BookmarkLabel->SetToolTip(_("The label shown in e.g. a tooltip. You can set it to something descriptive if you wish."));
+    #if wxVERSION_NUMBER >= 3000
+    m_BookmarkLabel->SetHint(wxT(""));
+    #endif
     
     fgSizer1->Add(m_BookmarkLabel, 0, wxALL|wxEXPAND, 5);
     
@@ -92,7 +95,7 @@ EditorSettingsBookmarksBasePanel::EditorSettingsBookmarksBasePanel(wxWindow* par
     
     bSizer2->Add(m_staticLine18, 0, wxALL|wxEXPAND, 5);
     
-    wxFlexGridSizer* flexGridSizer4 = new wxFlexGridSizer(  0, 2, 0, 0);
+    wxFlexGridSizer* flexGridSizer4 = new wxFlexGridSizer(0, 2, 0, 0);
     flexGridSizer4->SetFlexibleDirection( wxBOTH );
     flexGridSizer4->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_SPECIFIED );
     flexGridSizer4->AddGrowableCol(1);
@@ -118,6 +121,12 @@ EditorSettingsBookmarksBasePanel::EditorSettingsBookmarksBasePanel(wxWindow* par
     m_spinCtrlHighlightAlpha->SetValue(128);
     
     flexGridSizer4->Add(m_spinCtrlHighlightAlpha, 0, wxALL|wxEXPAND|wxALIGN_RIGHT, 5);
+    
+    m_clearHighlitWords = new wxCheckBox(this, wxID_ANY, _("Find/FindNext clears highlit matching words"), wxDefaultPosition, wxSize(-1,-1), 0);
+    m_clearHighlitWords->SetValue(false);
+    m_clearHighlitWords->SetToolTip(_("By default, 'Find', FindNext and FindPrevious  will clear all  current 'Highlight Matching Word' matches. Untick this box to prevent that happening."));
+    
+    bSizer2->Add(m_clearHighlitWords, 0, wxALL, 10);
     
     SetSizeHints(-1,-1);
     if ( GetSizer() ) {

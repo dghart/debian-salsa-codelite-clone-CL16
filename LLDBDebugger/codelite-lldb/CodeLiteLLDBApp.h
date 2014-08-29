@@ -1,3 +1,28 @@
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+//
+// copyright            : (C) 2014 The CodeLite Team
+// file name            : CodeLiteLLDBApp.h
+//
+// -------------------------------------------------------------------------
+// A
+//              _____           _      _     _ _
+//             /  __ \         | |    | |   (_) |
+//             | /  \/ ___   __| | ___| |    _| |_ ___
+//             | |    / _ \ / _  |/ _ \ |   | | __/ _ )
+//             | \__/\ (_) | (_| |  __/ |___| | ||  __/
+//              \____/\___/ \__,_|\___\_____/_|\__\___|
+//
+//                                                  F i l e
+//
+//    This program is free software; you can redistribute it and/or modify
+//    it under the terms of the GNU General Public License as published by
+//    the Free Software Foundation; either version 2 of the License, or
+//    (at your option) any later version.
+//
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+
 #ifndef CODELITE_LLDB_APP_H
 #define CODELITE_LLDB_APP_H
 
@@ -19,40 +44,50 @@
 #include <wx/msgqueue.h>
 #include "LLDBProtocol/LLDBSettings.h"
 
-class CodeLiteLLDBApp 
+struct VariableWrapper
+{
+    lldb::SBValue value;
+    bool isWatch;
+    wxString expression;
+    
+    VariableWrapper() : isWatch(false) {}
+};
+
+class CodeLiteLLDBApp
 {
 public:
     typedef void (CodeLiteLLDBApp::*CommandFunc_t)(const LLDBCommand& command);
     typedef std::pair<CodeLiteLLDBApp::CommandFunc_t, LLDBCommand> QueueItem_t;
-    
+
     typedef void (CodeLiteLLDBApp::*NotifyFunc_t)();
-    
+
 protected:
-    clSocketServer                                  m_acceptSocket;
-    LLDBNetworkServerThread *                       m_networkThread;
-    LLDBProcessEventHandlerThread*                  m_lldbProcessEventThread;
-    lldb::SBDebugger                                m_debugger;
-    lldb::SBTarget                                  m_target;
-    int                                             m_debuggeePid;
-    clSocketBase::Ptr_t                             m_replySocket;
-    eInterruptReason                                m_interruptReason;
-    std::map<int, lldb::SBValue>                    m_variables;
-    wxMessageQueue<CodeLiteLLDBApp::QueueItem_t>    m_commands_queue;
-    wxMessageQueue<CodeLiteLLDBApp::NotifyFunc_t>   m_notify_queue;
-    wxString                                        m_debuggerSocketPath;
-    bool                                            m_exitMainLoop;
-    LLDBSettings                                    m_settings;
-    eLLDBDebugSessionType                           m_sessionType;
-    wxString                                        m_ip;
-    int                                             m_port;
-    
+    clSocketServer m_acceptSocket;
+    LLDBNetworkServerThread* m_networkThread;
+    LLDBProcessEventHandlerThread* m_lldbProcessEventThread;
+    lldb::SBDebugger m_debugger;
+    lldb::SBTarget m_target;
+    int m_debuggeePid;
+    clSocketBase::Ptr_t m_replySocket;
+    eInterruptReason m_interruptReason;
+    std::map<int, VariableWrapper> m_variables;
+    wxArrayString m_watches;
+    wxMessageQueue<CodeLiteLLDBApp::QueueItem_t> m_commands_queue;
+    wxMessageQueue<CodeLiteLLDBApp::NotifyFunc_t> m_notify_queue;
+    wxString m_debuggerSocketPath;
+    bool m_exitMainLoop;
+    LLDBSettings m_settings;
+    eLLDBDebugSessionType m_sessionType;
+    wxString m_ip;
+    int m_port;
+
 private:
     void Cleanup();
     void AcceptNewConnection() throw(clSocketException);
-    bool InitializeLLDB(const LLDBCommand &command);
+    bool InitializeLLDB(const LLDBCommand& command);
     void DoInitializeApp();
-    void DoExecutueShellCommand(const wxString &command, bool printOutput = true);
-    
+    void DoExecutueShellCommand(const wxString& command, bool printOutput = true);
+
 public:
     void NotifyStoppedOnFirstEntry();
     void NotifyStopped();
@@ -62,32 +97,30 @@ public:
     void NotifyRunning();
     void NotifyBreakpointsUpdated();
     void NotifyAllBreakpointsDeleted();
-    
+
     void NotifyLocals(LLDBVariable::Vect_t locals);
-    
+
     void SendReply(const LLDBReply& reply);
     bool CanInteract();
     bool IsDebugSessionInProgress();
-    
+
     /**
      * @brief push new handler to the queue
      */
-    void CallAfter( CodeLiteLLDBApp::CommandFunc_t func, const LLDBCommand& command );
+    void CallAfter(CodeLiteLLDBApp::CommandFunc_t func, const LLDBCommand& command);
 
-    void CallAfter( CodeLiteLLDBApp::NotifyFunc_t func ) {
-        m_notify_queue.Post( func );
-    }
-    
+    void CallAfter(CodeLiteLLDBApp::NotifyFunc_t func) { m_notify_queue.Post(func); }
+
     /**
-     * @brief start codelite-lldb 
+     * @brief start codelite-lldb
      */
     void MainLoop();
-    
+
 public:
-    CodeLiteLLDBApp(const wxString &socketPath);
-    CodeLiteLLDBApp(const wxString &ip, int port);
+    CodeLiteLLDBApp(const wxString& socketPath);
+    CodeLiteLLDBApp(const wxString& ip, int port);
     virtual ~CodeLiteLLDBApp();
-    
+
     /**
      * @brief intialize the application
      */
@@ -96,7 +129,7 @@ public:
      * @brief perform cleanup before exiting
      */
     virtual int OnExit();
-    
+
     // callback from the network thread
     void StartDebugger(const LLDBCommand& command);
     void RunDebugger(const LLDBCommand& command);
@@ -108,6 +141,8 @@ public:
     void DeleteAllBreakpoints(const LLDBCommand& command);
     void Next(const LLDBCommand& command);
     void NextInstruction(const LLDBCommand& command);
+    void AddWatch(const LLDBCommand& command);
+    void DeleteWatch(const LLDBCommand& command);
     void StepIn(const LLDBCommand& command);
     void StepOut(const LLDBCommand& command);
     void Interrupt(const LLDBCommand& command);

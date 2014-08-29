@@ -68,8 +68,11 @@ extern WXDLLIMPEXP_SDK const wxEventType wxEVT_DEBUGGER_TYPE_RESOLVE_ERROR;
 // sent by the debugger when 'ListRegisters' function completed
 extern WXDLLIMPEXP_SDK const wxEventType wxEVT_DEBUGGER_LIST_REGISTERS;
 
-//extern WXDLLIMPEXP_SDK const wxEventType wxEVT_DEBUGGER_QUERY_FUNCARGS;
-//extern WXDLLIMPEXP_SDK const wxEventType wxEVT_DEBUGGER_UPDATE_VAROBJECT;
+// Call stack
+extern WXDLLIMPEXP_SDK const wxEventType wxEVT_DEBUGGER_LIST_FRAMES;
+
+// frame selected (user double clicked a stack entry)
+extern WXDLLIMPEXP_SDK const wxEventType wxEVT_DEBUGGER_FRAME_SELECTED;
 
 class WXDLLIMPEXP_SDK DebuggerMgr
 {

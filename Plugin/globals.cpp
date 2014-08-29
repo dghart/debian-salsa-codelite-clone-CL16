@@ -73,6 +73,7 @@
 #include <wx/stc/stc.h>
 #include "cpp_scanner.h"
 #include "macros.h"
+#include <wx/sstream.h>
 
 #ifdef __WXMSW__
 #include <Uxtheme.h>
@@ -89,8 +90,6 @@ const wxEventType wxEVT_COMMAND_CL_INTERNAL_1_ARGS = ::wxNewEventType();
 // --------------------------------------------------------
 class clInternalEventHandlerData : public wxClientData
 {
-
-
     wxObject*     m_this;
     clEventFunc_t m_funcPtr;
     wxClientData* m_arg;
@@ -562,9 +561,12 @@ wxString DoExpandAllVariables(const wxString &expression, Workspace *workspace, 
 bool WriteFileUTF8(const wxString& fileName, const wxString& content)
 {
     wxFFile file(fileName, wxT("w+b"));
-
+    if ( !file.IsOpened() ) {
+        return false;
+    }
+    
     //first try the Utf8
-    return file.Write(content, wxConvUTF8) == content.Length();
+    return file.Write(content, wxConvUTF8);
 }
 
 bool CompareFileWithString(const wxString& filePath, const wxString& str)
@@ -758,6 +760,27 @@ time_t GetFileModificationTime(const wxString &filename)
     return buff.st_mtime;
 }
 
+bool clIsCygwinEnvironment()
+{
+#ifdef __WXMSW__
+    static bool isCygwin  = false;
+    static bool firstTime = true;
+    
+    if ( firstTime ) {
+        firstTime = false;
+        wxString out = ProcUtils::SafeExecuteCommand("uname -s");
+        if ( out.IsEmpty() ) {
+            isCygwin = false;
+        } else {
+            isCygwin = out.StartsWith("CYGWIN_NT");
+        }
+    }
+    return isCygwin;
+#else
+    return false;
+#endif
+}
+
 void WrapInShell(wxString& cmd)
 {
     wxString command;
@@ -769,6 +792,7 @@ void WrapInShell(wxString& cmd)
     command << shell << wxT(" /c \"");
     command << cmd << wxT("\"");
     cmd = command;
+
 #else
     command << wxT("/bin/sh -c '");
     // escape any single quoutes
@@ -1305,7 +1329,7 @@ enum { SURROGATE_LEAD_FIRST = 0xD800 };
 enum { SURROGATE_TRAIL_FIRST = 0xDC00 };
 enum { SURROGATE_TRAIL_LAST = 0xDFFF };
 
-unsigned int UTF8Length(const wchar_t *uptr, unsigned int tlen)
+unsigned int clUTF8Length(const wchar_t *uptr, unsigned int tlen)
 {
     unsigned int len = 0;
     for (unsigned int i = 0; i < tlen && uptr[i];) {
@@ -1326,162 +1350,162 @@ unsigned int UTF8Length(const wchar_t *uptr, unsigned int tlen)
     return len;
 }
 
-void UTF8FromUTF16(const wchar_t *uptr, unsigned int tlen, char *putf, unsigned int len)
-{
-    int k = 0;
-    for (unsigned int i = 0; i < tlen && uptr[i];) {
-        unsigned int uch = uptr[i];
-        if (uch < 0x80) {
-            putf[k++] = static_cast<char>(uch);
-        } else if (uch < 0x800) {
-            putf[k++] = static_cast<char>(0xC0 | (uch >> 6));
-            putf[k++] = static_cast<char>(0x80 | (uch & 0x3f));
-        } else if ((uch >= SURROGATE_LEAD_FIRST) &&
-                   (uch <= SURROGATE_TRAIL_LAST)) {
-            // Half a surrogate pair
-            i++;
-            unsigned int xch = 0x10000 + ((uch & 0x3ff) << 10) + (uptr[i] & 0x3ff);
-            putf[k++] = static_cast<char>(0xF0 | (xch >> 18));
-            putf[k++] = static_cast<char>(0x80 | ((xch >> 12) & 0x3f));
-            putf[k++] = static_cast<char>(0x80 | ((xch >> 6) & 0x3f));
-            putf[k++] = static_cast<char>(0x80 | (xch & 0x3f));
-        } else {
-            putf[k++] = static_cast<char>(0xE0 | (uch >> 12));
-            putf[k++] = static_cast<char>(0x80 | ((uch >> 6) & 0x3f));
-            putf[k++] = static_cast<char>(0x80 | (uch & 0x3f));
-        }
-        i++;
-    }
-    putf[len] = '\0';
-}
+//void UTF8FromUTF16(const wchar_t *uptr, unsigned int tlen, char *putf, unsigned int len)
+//{
+//    int k = 0;
+//    for (unsigned int i = 0; i < tlen && uptr[i];) {
+//        unsigned int uch = uptr[i];
+//        if (uch < 0x80) {
+//            putf[k++] = static_cast<char>(uch);
+//        } else if (uch < 0x800) {
+//            putf[k++] = static_cast<char>(0xC0 | (uch >> 6));
+//            putf[k++] = static_cast<char>(0x80 | (uch & 0x3f));
+//        } else if ((uch >= SURROGATE_LEAD_FIRST) &&
+//                   (uch <= SURROGATE_TRAIL_LAST)) {
+//            // Half a surrogate pair
+//            i++;
+//            unsigned int xch = 0x10000 + ((uch & 0x3ff) << 10) + (uptr[i] & 0x3ff);
+//            putf[k++] = static_cast<char>(0xF0 | (xch >> 18));
+//            putf[k++] = static_cast<char>(0x80 | ((xch >> 12) & 0x3f));
+//            putf[k++] = static_cast<char>(0x80 | ((xch >> 6) & 0x3f));
+//            putf[k++] = static_cast<char>(0x80 | (xch & 0x3f));
+//        } else {
+//            putf[k++] = static_cast<char>(0xE0 | (uch >> 12));
+//            putf[k++] = static_cast<char>(0x80 | ((uch >> 6) & 0x3f));
+//            putf[k++] = static_cast<char>(0x80 | (uch & 0x3f));
+//        }
+//        i++;
+//    }
+//    putf[len] = '\0';
+//}
 
-unsigned int UTF8CharLength(unsigned char ch)
-{
-    if (ch < 0x80) {
-        return 1;
-    } else if (ch < 0x80 + 0x40 + 0x20) {
-        return 2;
-    } else if (ch < 0x80 + 0x40 + 0x20 + 0x10) {
-        return 3;
-    } else {
-        return 4;
-    }
-}
+//unsigned int UTF8CharLength(unsigned char ch)
+//{
+//    if (ch < 0x80) {
+//        return 1;
+//    } else if (ch < 0x80 + 0x40 + 0x20) {
+//        return 2;
+//    } else if (ch < 0x80 + 0x40 + 0x20 + 0x10) {
+//        return 3;
+//    } else {
+//        return 4;
+//    }
+//}
 
-unsigned int UTF16Length(const char *s, unsigned int len)
-{
-    unsigned int ulen = 0;
-    unsigned int charLen;
-    for (unsigned int i=0; i<len;) {
-        unsigned char ch = static_cast<unsigned char>(s[i]);
-        if (ch < 0x80) {
-            charLen = 1;
-        } else if (ch < 0x80 + 0x40 + 0x20) {
-            charLen = 2;
-        } else if (ch < 0x80 + 0x40 + 0x20 + 0x10) {
-            charLen = 3;
-        } else {
-            charLen = 4;
-            ulen++;
-        }
-        i += charLen;
-        ulen++;
-    }
-    return ulen;
-}
-
-unsigned int UTF16FromUTF8(const char *s, unsigned int len, wchar_t *tbuf, unsigned int tlen)
-{
-    unsigned int ui=0;
-    const unsigned char *us = reinterpret_cast<const unsigned char *>(s);
-    unsigned int i=0;
-    while ((i<len) && (ui<tlen)) {
-        unsigned char ch = us[i++];
-        if (ch < 0x80) {
-            tbuf[ui] = ch;
-        } else if (ch < 0x80 + 0x40 + 0x20) {
-            tbuf[ui] = static_cast<wchar_t>((ch & 0x1F) << 6);
-            ch = us[i++];
-            tbuf[ui] = static_cast<wchar_t>(tbuf[ui] + (ch & 0x7F));
-        } else if (ch < 0x80 + 0x40 + 0x20 + 0x10) {
-            tbuf[ui] = static_cast<wchar_t>((ch & 0xF) << 12);
-            ch = us[i++];
-            tbuf[ui] = static_cast<wchar_t>(tbuf[ui] + ((ch & 0x7F) << 6));
-            ch = us[i++];
-            tbuf[ui] = static_cast<wchar_t>(tbuf[ui] + (ch & 0x7F));
-        } else {
-            // Outside the BMP so need two surrogates
-            int val = (ch & 0x7) << 18;
-            ch = us[i++];
-            val += (ch & 0x3F) << 12;
-            ch = us[i++];
-            val += (ch & 0x3F) << 6;
-            ch = us[i++];
-            val += (ch & 0x3F);
-            tbuf[ui] = static_cast<wchar_t>(((val - 0x10000) >> 10) + SURROGATE_LEAD_FIRST);
-            ui++;
-            tbuf[ui] = static_cast<wchar_t>((val & 0x3ff) + SURROGATE_TRAIL_FIRST);
-        }
-        ui++;
-    }
-    return ui;
-}
+//unsigned int UTF16Length(const char *s, unsigned int len)
+//{
+//    unsigned int ulen = 0;
+//    unsigned int charLen;
+//    for (unsigned int i=0; i<len;) {
+//        unsigned char ch = static_cast<unsigned char>(s[i]);
+//        if (ch < 0x80) {
+//            charLen = 1;
+//        } else if (ch < 0x80 + 0x40 + 0x20) {
+//            charLen = 2;
+//        } else if (ch < 0x80 + 0x40 + 0x20 + 0x10) {
+//            charLen = 3;
+//        } else {
+//            charLen = 4;
+//            ulen++;
+//        }
+//        i += charLen;
+//        ulen++;
+//    }
+//    return ulen;
+//}
+//
+//unsigned int UTF16FromUTF8(const char *s, unsigned int len, wchar_t *tbuf, unsigned int tlen)
+//{
+//    unsigned int ui=0;
+//    const unsigned char *us = reinterpret_cast<const unsigned char *>(s);
+//    unsigned int i=0;
+//    while ((i<len) && (ui<tlen)) {
+//        unsigned char ch = us[i++];
+//        if (ch < 0x80) {
+//            tbuf[ui] = ch;
+//        } else if (ch < 0x80 + 0x40 + 0x20) {
+//            tbuf[ui] = static_cast<wchar_t>((ch & 0x1F) << 6);
+//            ch = us[i++];
+//            tbuf[ui] = static_cast<wchar_t>(tbuf[ui] + (ch & 0x7F));
+//        } else if (ch < 0x80 + 0x40 + 0x20 + 0x10) {
+//            tbuf[ui] = static_cast<wchar_t>((ch & 0xF) << 12);
+//            ch = us[i++];
+//            tbuf[ui] = static_cast<wchar_t>(tbuf[ui] + ((ch & 0x7F) << 6));
+//            ch = us[i++];
+//            tbuf[ui] = static_cast<wchar_t>(tbuf[ui] + (ch & 0x7F));
+//        } else {
+//            // Outside the BMP so need two surrogates
+//            int val = (ch & 0x7) << 18;
+//            ch = us[i++];
+//            val += (ch & 0x3F) << 12;
+//            ch = us[i++];
+//            val += (ch & 0x3F) << 6;
+//            ch = us[i++];
+//            val += (ch & 0x3F);
+//            tbuf[ui] = static_cast<wchar_t>(((val - 0x10000) >> 10) + SURROGATE_LEAD_FIRST);
+//            ui++;
+//            tbuf[ui] = static_cast<wchar_t>((val & 0x3ff) + SURROGATE_TRAIL_FIRST);
+//        }
+//        ui++;
+//    }
+//    return ui;
+//}
 
 // [CHANGED] BEGIN
-void UTF8FromUCS2(const wchar_t *uptr, unsigned int tlen, char *putf, unsigned int len)
-{
-    int k = 0;
-    for (unsigned int i = 0; i < tlen && uptr[i]; i++) {
-        unsigned int uch = uptr[i];
-        if (uch < 0x80) {
-            putf[k++] = static_cast<char>(uch);
-        } else if (uch < 0x800) {
-            putf[k++] = static_cast<char>(0xC0 | (uch >> 6));
-            putf[k++] = static_cast<char>(0x80 | (uch & 0x3f));
-        } else {
-            putf[k++] = static_cast<char>(0xE0 | (uch >> 12));
-            putf[k++] = static_cast<char>(0x80 | ((uch >> 6) & 0x3f));
-            putf[k++] = static_cast<char>(0x80 | (uch & 0x3f));
-        }
-    }
-    putf[len] = '\0';
-}
+//void UTF8FromUCS2(const wchar_t *uptr, unsigned int tlen, char *putf, unsigned int len)
+//{
+//    int k = 0;
+//    for (unsigned int i = 0; i < tlen && uptr[i]; i++) {
+//        unsigned int uch = uptr[i];
+//        if (uch < 0x80) {
+//            putf[k++] = static_cast<char>(uch);
+//        } else if (uch < 0x800) {
+//            putf[k++] = static_cast<char>(0xC0 | (uch >> 6));
+//            putf[k++] = static_cast<char>(0x80 | (uch & 0x3f));
+//        } else {
+//            putf[k++] = static_cast<char>(0xE0 | (uch >> 12));
+//            putf[k++] = static_cast<char>(0x80 | ((uch >> 6) & 0x3f));
+//            putf[k++] = static_cast<char>(0x80 | (uch & 0x3f));
+//        }
+//    }
+//    putf[len] = '\0';
+//}
 
-unsigned int UCS2Length(const char *s, unsigned int len)
-{
-    unsigned int ulen = 0;
-    for (unsigned int i=0; i<len; i++) {
-        unsigned char ch = static_cast<unsigned char>(s[i]);
-        if ((ch < 0x80) || (ch > (0x80 + 0x40)))
-            ulen++;
-    }
-    return ulen;
-}
+//unsigned int UCS2Length(const char *s, unsigned int len)
+//{
+//    unsigned int ulen = 0;
+//    for (unsigned int i=0; i<len; i++) {
+//        unsigned char ch = static_cast<unsigned char>(s[i]);
+//        if ((ch < 0x80) || (ch > (0x80 + 0x40)))
+//            ulen++;
+//    }
+//    return ulen;
+//}
 
-unsigned int UCS2FromUTF8(const char *s, unsigned int len, wchar_t *tbuf, unsigned int tlen)
-{
-    unsigned int ui=0;
-    const unsigned char *us = reinterpret_cast<const unsigned char *>(s);
-    unsigned int i=0;
-    while ((i<len) && (ui<tlen)) {
-        unsigned char ch = us[i++];
-        if (ch < 0x80) {
-            tbuf[ui] = ch;
-        } else if (ch < 0x80 + 0x40 + 0x20) {
-            tbuf[ui] = static_cast<wchar_t>((ch & 0x1F) << 6);
-            ch = us[i++];
-            tbuf[ui] = static_cast<wchar_t>(tbuf[ui] + (ch & 0x7F));
-        } else {
-            tbuf[ui] = static_cast<wchar_t>((ch & 0xF) << 12);
-            ch = us[i++];
-            tbuf[ui] = static_cast<wchar_t>(tbuf[ui] + ((ch & 0x7F) << 6));
-            ch = us[i++];
-            tbuf[ui] = static_cast<wchar_t>(tbuf[ui] + (ch & 0x7F));
-        }
-        ui++;
-    }
-    return ui;
-}
+//unsigned int UCS2FromUTF8(const char *s, unsigned int len, wchar_t *tbuf, unsigned int tlen)
+//{
+//    unsigned int ui=0;
+//    const unsigned char *us = reinterpret_cast<const unsigned char *>(s);
+//    unsigned int i=0;
+//    while ((i<len) && (ui<tlen)) {
+//        unsigned char ch = us[i++];
+//        if (ch < 0x80) {
+//            tbuf[ui] = ch;
+//        } else if (ch < 0x80 + 0x40 + 0x20) {
+//            tbuf[ui] = static_cast<wchar_t>((ch & 0x1F) << 6);
+//            ch = us[i++];
+//            tbuf[ui] = static_cast<wchar_t>(tbuf[ui] + (ch & 0x7F));
+//        } else {
+//            tbuf[ui] = static_cast<wchar_t>((ch & 0xF) << 12);
+//            ch = us[i++];
+//            tbuf[ui] = static_cast<wchar_t>(tbuf[ui] + ((ch & 0x7F) << 6));
+//            ch = us[i++];
+//            tbuf[ui] = static_cast<wchar_t>(tbuf[ui] + (ch & 0x7F));
+//        }
+//        ui++;
+//    }
+//    return ui;
+//}
 // [CHANGED] END
 
 wxString DbgPrependCharPtrCastIfNeeded(const wxString &expr, const wxString &exprType)
@@ -1644,7 +1668,16 @@ void LaunchTerminalForDebugger(const wxString &title, wxString &tty, long &pid)
     
 #else
     // Non Windows machines
-    static wxString SLEEP_COMMAND = "sleep 85765";
+    
+    // generate a random value to differntiate this instance of codelite
+    // from other instances
+    time_t curtime = time(NULL);
+    int randomSeed = (curtime % 947);
+    wxString secondsToSleep;
+    
+    secondsToSleep << ( 85765 + randomSeed );
+    wxString SLEEP_COMMAND;
+    SLEEP_COMMAND << "sleep " << secondsToSleep;
     
 #if defined(__WXMAC__)
     wxString consoleCommand;
@@ -2005,4 +2038,16 @@ wxString& WrapWithQuotes(wxString& str)
         str.Prepend("\"").Append("\"");
     }
     return str;
+}
+
+bool SaveXmlToFile(wxXmlDocument* doc, const wxString& filename)
+{
+    CHECK_PTR_RET_FALSE(doc);
+    
+    wxString content;
+    wxStringOutputStream sos( &content );
+    if ( doc->Save( sos ) ) {
+        return ::WriteFileUTF8( filename, content );
+    }
+    return false;
 }

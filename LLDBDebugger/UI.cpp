@@ -144,11 +144,17 @@ LLDBNewBreakpointDlgBase::LLDBNewBreakpointDlgBase(wxWindow* parent, wxWindowID 
     
     m_textCtrlFile = new wxTextCtrl(this, wxID_ANY, wxT(""), wxDefaultPosition, wxSize(-1,-1), 0);
     m_textCtrlFile->SetToolTip(_("File name"));
+    #if wxVERSION_NUMBER >= 3000
+    m_textCtrlFile->SetHint(wxT(""));
+    #endif
     
     flexGridSizer41->Add(m_textCtrlFile, 0, wxALL|wxEXPAND|wxALIGN_CENTER_VERTICAL, 5);
     
     m_textCtrlLine = new wxTextCtrl(this, wxID_ANY, wxT(""), wxDefaultPosition, wxSize(-1,-1), 0);
     m_textCtrlLine->SetToolTip(_("Line number"));
+    #if wxVERSION_NUMBER >= 3000
+    m_textCtrlLine->SetHint(wxT(""));
+    #endif
     
     flexGridSizer41->Add(m_textCtrlLine, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5);
     
@@ -158,6 +164,9 @@ LLDBNewBreakpointDlgBase::LLDBNewBreakpointDlgBase(wxWindow* parent, wxWindowID 
     flexGridSizer41->Add(m_checkBoxFuncName, 0, wxALL|wxALIGN_RIGHT|wxALIGN_CENTER_VERTICAL, 5);
     
     m_textCtrlFunctionName = new wxTextCtrl(this, wxID_ANY, wxT(""), wxDefaultPosition, wxSize(-1,-1), 0);
+    #if wxVERSION_NUMBER >= 3000
+    m_textCtrlFunctionName->SetHint(wxT(""));
+    #endif
     
     flexGridSizer41->Add(m_textCtrlFunctionName, 0, wxALL|wxEXPAND|wxALIGN_CENTER_VERTICAL, 5);
     
@@ -212,16 +221,35 @@ LLDBLocalsViewBase::LLDBLocalsViewBase(wxWindow* parent, wxWindowID id, const wx
     wxBoxSizer* boxSizer67 = new wxBoxSizer(wxVERTICAL);
     this->SetSizer(boxSizer67);
     
+    m_auibar199 = new wxAuiToolBar(this, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxAUI_TB_PLAIN_BACKGROUND|wxAUI_TB_DEFAULT_STYLE);
+    m_auibar199->SetToolBitmapSize(wxSize(16,16));
+    
+    boxSizer67->Add(m_auibar199, 0, wxEXPAND, 5);
+    
+    m_auibar199->AddTool(wxID_NEW, _("Add Watch..."), wxArtProvider::GetBitmap(wxART_PLUS, wxART_TOOLBAR, wxSize(16, 16)), wxNullBitmap, wxITEM_NORMAL, _("Add Watch..."), _("Add Watch..."), NULL);
+    
+    m_auibar199->AddTool(wxID_DELETE, _("Delete Watch"), wxArtProvider::GetBitmap(wxART_DELETE, wxART_TOOLBAR, wxSize(16, 16)), wxNullBitmap, wxITEM_NORMAL, _("Delete Watch"), _("Delete Watch"), NULL);
+    m_auibar199->Realize();
+    
     SetMinSize( wxSize(200,200) );
     SetSizeHints(-1,-1);
     if ( GetSizer() ) {
          GetSizer()->Fit(this);
     }
     Centre(wxBOTH);
+    // Connect events
+    this->Connect(wxID_NEW, wxEVT_COMMAND_TOOL_CLICKED, wxCommandEventHandler(LLDBLocalsViewBase::OnNewWatch), NULL, this);
+    this->Connect(wxID_DELETE, wxEVT_COMMAND_TOOL_CLICKED, wxCommandEventHandler(LLDBLocalsViewBase::OnDelete), NULL, this);
+    this->Connect(wxID_DELETE, wxEVT_UPDATE_UI, wxUpdateUIEventHandler(LLDBLocalsViewBase::OnDeleteUI), NULL, this);
+    
 }
 
 LLDBLocalsViewBase::~LLDBLocalsViewBase()
 {
+    this->Disconnect(wxID_NEW, wxEVT_COMMAND_TOOL_CLICKED, wxCommandEventHandler(LLDBLocalsViewBase::OnNewWatch), NULL, this);
+    this->Disconnect(wxID_DELETE, wxEVT_COMMAND_TOOL_CLICKED, wxCommandEventHandler(LLDBLocalsViewBase::OnDelete), NULL, this);
+    this->Disconnect(wxID_DELETE, wxEVT_UPDATE_UI, wxUpdateUIEventHandler(LLDBLocalsViewBase::OnDeleteUI), NULL, this);
+    
 }
 
 LLDBSettingDialogBase::LLDBSettingDialogBase(wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style)
@@ -466,8 +494,8 @@ LLDBTooltipBase::LLDBTooltipBase(wxWindow* parent,long style)
     m_panel134->SetSizer(boxSizer136);
     
     m_treeCtrl = new wxTreeCtrl(m_panel134, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxTR_DEFAULT_STYLE);
-    m_treeCtrl->SetBackgroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_INFOBK));
-    m_treeCtrl->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_INFOTEXT));
+    m_treeCtrl->SetBackgroundColour(wxColour(wxT("rgb(251,234,160)")));
+    m_treeCtrl->SetForegroundColour(wxColour(wxT("rgb(33,33,33)")));
     
     boxSizer136->Add(m_treeCtrl, 1, wxALL|wxEXPAND, 1);
     
@@ -552,6 +580,9 @@ FolderMappingBaseDlg::FolderMappingBaseDlg(wxWindow* parent, wxWindowID id, cons
     
     m_textCtrlRemote = new wxTextCtrl(this, wxID_ANY, wxT(""), wxDefaultPosition, wxSize(-1,-1), 0);
     m_textCtrlRemote->SetToolTip(_("Remote Folder"));
+    #if wxVERSION_NUMBER >= 3000
+    m_textCtrlRemote->SetHint(wxT(""));
+    #endif
     
     flexGridSizer187->Add(m_textCtrlRemote, 0, wxALL|wxEXPAND, 5);
     

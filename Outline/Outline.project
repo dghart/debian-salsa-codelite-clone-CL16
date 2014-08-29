@@ -12,6 +12,7 @@
     <File Name="outline.cpp"/>
     <File Name="outline_tab.h"/>
     <File Name="outline_tab.cpp"/>
+    <File Name="CMakeLists.txt"/>
   </VirtualDirectory>
   <VirtualDirectory Name="include">
     <File Name="outline_symbol_tree.h"/>
@@ -198,7 +199,7 @@
       </Completion>
     </Configuration>
   </Settings>
-  <Dependencies Name="Win_wxWidgets_29"/>
-  <Dependencies Name="WinReleaseUnicode"/>
   <Dependencies Name="WinDebugUnicode"/>
+  <Dependencies Name="WinReleaseUnicode"/>
+  <Dependencies Name="Win_wxWidgets_29"/>
 </CodeLite_Project>

@@ -1,3 +1,28 @@
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+//
+// copyright            : (C) 2014 The CodeLite Team
+// file name            : ImportFilesDialogNew.cpp
+//
+// -------------------------------------------------------------------------
+// A
+//              _____           _      _     _ _
+//             /  __ \         | |    | |   (_) |
+//             | /  \/ ___   __| | ___| |    _| |_ ___
+//             | |    / _ \ / _  |/ _ \ |   | | __/ _ )
+//             | \__/\ (_) | (_| |  __/ |___| | ||  __/
+//              \____/\___/ \__,_|\___\_____/_|\__\___|
+//
+//                                                  F i l e
+//
+//    This program is free software; you can redistribute it and/or modify
+//    it under the terms of the GNU General Public License as published by
+//    the Free Software Foundation; either version 2 of the License, or
+//    (at your option) any later version.
+//
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+
 #include "ImportFilesDialogNew.h"
 #include <wx/dir.h>
 #include <wx/filefn.h>
@@ -50,6 +75,8 @@ public:
 ImportFilesDialogNew::ImportFilesDialogNew(wxWindow* parent)
     : ImportFilesDialogNewBase(parent)
 {
+    m_dataview->SetExpanderColumn(m_dataview->GetColumn(1));
+    m_dataview->SetIndent(16);
     ImportFilesSettings options;
     if(!EditorConfigST::Get()->ReadObject(wxT("import_dir_options"), &options)) {
         //first time, read the settings from the ctags options
@@ -95,8 +122,8 @@ void ImportFilesDialogNew::DoBuildTree(const wxDataViewItem& parent, const wxDir
     while (cont ) {
 
         wxVector<wxVariant> cols;
-        cols.push_back( MakeIconText(path, PluginManager::Get()->GetStdIcons()->LoadBitmap("mime/16/folder") ) );
         cols.push_back(initialState);
+        cols.push_back( MakeIconText(path, PluginManager::Get()->GetStdIcons()->LoadBitmap("mime/16/folder") ) );
 
         wxDir childDir( dir.GetNameWithSep() + path );
         wxDataViewItem child = m_dataviewModel->AppendItem(parent, cols, new ImportFilesDlgData( childDir.GetName(), initialState ));
@@ -104,8 +131,8 @@ void ImportFilesDialogNew::DoBuildTree(const wxDataViewItem& parent, const wxDir
         // Add dummy columns
         if ( childDir.IsOpened() && childDir.HasSubDirs() ) {
             wxVector<wxVariant> dummyCols;
-            dummyCols.push_back( MakeIconText("dummy", PluginManager::Get()->GetStdIcons()->LoadBitmap("mime/16/folder") ) );
             dummyCols.push_back( false );
+            dummyCols.push_back( MakeIconText("dummy", PluginManager::Get()->GetStdIcons()->LoadBitmap("mime/16/folder") ) );
             m_dataviewModel->AppendItem( child, dummyCols, new ImportFilesDlgData("", false, true) );
         }
         cont = dir.GetNext(&path);
@@ -128,8 +155,8 @@ void ImportFilesDialogNew::DoBuildTree()
     }
 
     wxVector<wxVariant> cols;
-    cols.push_back( MakeIconText(m_dirPicker->GetPath(), PluginManager::Get()->GetStdIcons()->LoadBitmap("mime/16/folder") ) );
     cols.push_back(false);
+    cols.push_back( MakeIconText(m_dirPicker->GetPath(), PluginManager::Get()->GetStdIcons()->LoadBitmap("mime/16/folder") ) );
 
     m_root = m_dataviewModel->AppendItem(wxDataViewItem(0), cols, new ImportFilesDlgData(m_dirPicker->GetPath(), false));
 
@@ -146,7 +173,7 @@ void ImportFilesDialogNew::OnValueChanged(wxDataViewEvent& event)
     event.Skip();
     wxVector<wxVariant> cols = m_dataviewModel->GetItemColumnsData(event.GetItem());
     if ( cols.size() > 1 ) {
-        bool isChecked = cols.at(1).GetBool();
+        bool isChecked = cols.at(0).GetBool();
         ImportFilesDlgData *cd = reinterpret_cast<ImportFilesDlgData*>(m_dataviewModel->GetClientObject(event.GetItem()));
         if ( cd ) {
             cd->SetIsChecked( isChecked );
@@ -177,7 +204,7 @@ void ImportFilesDialogNew::DoCheckChildren(const wxDataViewItem& parent, bool ch
 
             // First, update the UI by replacing the columns
             wxDataViewItem item = children.Item(i);
-            m_dataviewModel->SetValue(wxVariant( check ), item, 1);
+            m_dataviewModel->SetValue(wxVariant( check ), item, 0);
 
             // Update the client data
             ImportFilesDlgData *cd = dynamic_cast<ImportFilesDlgData*>(m_dataviewModel->GetClientObject(item));

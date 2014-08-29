@@ -1,3 +1,28 @@
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+//
+// copyright            : (C) 2014 The CodeLite Team
+// file name            : cl_sftp.cpp
+//
+// -------------------------------------------------------------------------
+// A
+//              _____           _      _     _ _
+//             /  __ \         | |    | |   (_) |
+//             | /  \/ ___   __| | ___| |    _| |_ ___
+//             | |    / _ \ / _  |/ _ \ |   | | __/ _ )
+//             | \__/\ (_) | (_| |  __/ |___| | ||  __/
+//              \____/\___/ \__,_|\___\_____/_|\__\___|
+//
+//                                                  F i l e
+//
+//    This program is free software; you can redistribute it and/or modify
+//    it under the terms of the GNU General Public License as published by
+//    the Free Software Foundation; either version 2 of the License, or
+//    (at your option) any later version.
+//
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+
 #if USE_SFTP
 #include "cl_sftp.h"
 #include <wx/ffile.h>
@@ -261,6 +286,51 @@ SFTPAttribute::Ptr_t clSFTP::Stat(const wxString& path) throw (clException)
     }
     SFTPAttribute::Ptr_t pattr( new SFTPAttribute(attr) );
     return pattr;
+}
+
+void clSFTP::CreateFile(const wxString& remoteFullPath, const wxString &content) throw (clException)
+{
+    // Create the path to the file
+    Mkpath(wxFileName(remoteFullPath).GetPath());
+    Write(content, remoteFullPath);
+}
+
+void clSFTP::Mkpath(const wxString& remoteDirFullpath) throw (clException)
+{
+    if ( !m_sftp ) {
+        throw clException("SFTP is not initialized");
+    }
+    
+    wxString tmpPath = remoteDirFullpath;
+    tmpPath.Replace("\\", "/");
+    if ( !tmpPath.StartsWith("/") ) {
+        throw clException("Mkpath: path must be absolute");
+    }
+    
+    wxFileName fn(remoteDirFullpath, "");
+    const wxArrayString& dirs = fn.GetDirs();
+    wxString curdir;
+    
+    curdir << "/";
+    for(size_t i=0; i<dirs.GetCount(); ++i) {
+        curdir << dirs.Item(i);
+        sftp_attributes attr = sftp_stat(m_sftp, curdir.mb_str(wxConvISO8859_1).data());
+        if ( !attr ) {
+            // directory does not exists
+            CreateDir(curdir);
+            
+        } else {
+            // directory already exists
+            sftp_attributes_free( attr );
+        }
+        curdir << "/";
+    }
+}
+
+void clSFTP::CreateFile(const wxString& remoteFullPath, const wxFileName& localFile) throw (clException)
+{
+    Mkpath(wxFileName(remoteFullPath).GetPath());
+    Write(localFile, remoteFullPath);
 }
 
 #endif // USE_SFTP

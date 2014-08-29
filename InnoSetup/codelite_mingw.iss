@@ -11,7 +11,7 @@ DefaultDirName={reg:HKLM\Software\codelite\settings,InstalPath|{pf}\CodeLite}
 DefaultGroupName=CodeLite
 LicenseFile=license.txt
 OutputDir=output
-OutputBaseFilename=codelite-mingw4.8.1
+OutputBaseFilename=codelite-6.1.1-mingw4.8.1
 ChangesEnvironment=yes
 FlatComponentsList=yes
 SetupIconFile=box_software.ico
@@ -40,21 +40,21 @@ Source: "..\Runtime\codelite-make.exe"; DestDir: "{app}"; Flags: ignoreversion; 
 Source: "..\Runtime\codelite-terminal.exe"; DestDir: "{app}"; Flags: ignoreversion; Components: Editor
 Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion; Components: Editor
 
-;; ---- wxWidgets DLLs 
-Source: "D:\src\wxWidgets-3.0.0\lib\gcc_dll\wxbase30u_gcc_cl.dll";         DestDir: "{app}"; Flags: ignoreversion; Components: Editor
-Source: "D:\src\wxWidgets-3.0.0\lib\gcc_dll\wxbase30u_net_gcc_cl.dll";     DestDir: "{app}"; Flags: ignoreversion; Components: Editor
-Source: "D:\src\wxWidgets-3.0.0\lib\gcc_dll\wxbase30u_xml_gcc_cl.dll";     DestDir: "{app}"; Flags: ignoreversion; Components: Editor
-Source: "D:\src\wxWidgets-3.0.0\lib\gcc_dll\wxmsw30u_adv_gcc_cl.dll";      DestDir: "{app}"; Flags: ignoreversion; Components: Editor
-Source: "D:\src\wxWidgets-3.0.0\lib\gcc_dll\wxmsw30u_aui_gcc_cl.dll";      DestDir: "{app}"; Flags: ignoreversion; Components: Editor
-Source: "D:\src\wxWidgets-3.0.0\lib\gcc_dll\wxmsw30u_core_gcc_cl.dll";     DestDir: "{app}"; Flags: ignoreversion; Components: Editor
-Source: "D:\src\wxWidgets-3.0.0\lib\gcc_dll\wxmsw30u_html_gcc_cl.dll";     DestDir: "{app}"; Flags: ignoreversion; Components: Editor
-Source: "D:\src\wxWidgets-3.0.0\lib\gcc_dll\wxmsw30u_xrc_gcc_cl.dll";      DestDir: "{app}"; Flags: ignoreversion; Components: Editor
-Source: "D:\src\wxWidgets-3.0.0\lib\gcc_dll\wxmsw30u_richtext_gcc_cl.dll"; DestDir: "{app}"; Flags: ignoreversion; Components: Editor
-Source: "D:\src\wxWidgets-3.0.0\lib\gcc_dll\wxmsw30u_stc_gcc_cl.dll";      DestDir: "{app}"; Flags: ignoreversion; Components: Editor
-Source: "D:\src\wxWidgets-3.0.0\lib\gcc_dll\wxmsw30u_propgrid_gcc_cl.dll"; DestDir: "{app}"; Flags: ignoreversion; Components: Editor
-Source: "D:\src\wxWidgets-3.0.0\lib\gcc_dll\wxmsw30u_webview_gcc_cl.dll";  DestDir: "{app}"; Flags: ignoreversion; Components: Editor
-Source: "D:\src\wxWidgets-3.0.0\lib\gcc_dll\wxmsw30u_ribbon_gcc_cl.dll";   DestDir: "{app}"; Flags: ignoreversion; Components: Editor
-Source: "D:\src\wxWidgets-3.0.0\lib\gcc_dll\wxrc.exe";                     DestDir: "{app}"; Flags: ignoreversion; Components: Editor
+;; ---- wxWidgets DLLs
+Source: "D:\src\wxWidgets-3.0.1\lib\gcc_dll\wxbase30u_gcc_cl.dll";         DestDir: "{app}"; Flags: ignoreversion; Components: Editor
+Source: "D:\src\wxWidgets-3.0.1\lib\gcc_dll\wxbase30u_net_gcc_cl.dll";     DestDir: "{app}"; Flags: ignoreversion; Components: Editor
+Source: "D:\src\wxWidgets-3.0.1\lib\gcc_dll\wxbase30u_xml_gcc_cl.dll";     DestDir: "{app}"; Flags: ignoreversion; Components: Editor
+Source: "D:\src\wxWidgets-3.0.1\lib\gcc_dll\wxmsw30u_adv_gcc_cl.dll";      DestDir: "{app}"; Flags: ignoreversion; Components: Editor
+Source: "D:\src\wxWidgets-3.0.1\lib\gcc_dll\wxmsw30u_aui_gcc_cl.dll";      DestDir: "{app}"; Flags: ignoreversion; Components: Editor
+Source: "D:\src\wxWidgets-3.0.1\lib\gcc_dll\wxmsw30u_core_gcc_cl.dll";     DestDir: "{app}"; Flags: ignoreversion; Components: Editor
+Source: "D:\src\wxWidgets-3.0.1\lib\gcc_dll\wxmsw30u_html_gcc_cl.dll";     DestDir: "{app}"; Flags: ignoreversion; Components: Editor
+Source: "D:\src\wxWidgets-3.0.1\lib\gcc_dll\wxmsw30u_xrc_gcc_cl.dll";      DestDir: "{app}"; Flags: ignoreversion; Components: Editor
+Source: "D:\src\wxWidgets-3.0.1\lib\gcc_dll\wxmsw30u_richtext_gcc_cl.dll"; DestDir: "{app}"; Flags: ignoreversion; Components: Editor
+Source: "D:\src\wxWidgets-3.0.1\lib\gcc_dll\wxmsw30u_stc_gcc_cl.dll";      DestDir: "{app}"; Flags: ignoreversion; Components: Editor
+Source: "D:\src\wxWidgets-3.0.1\lib\gcc_dll\wxmsw30u_propgrid_gcc_cl.dll"; DestDir: "{app}"; Flags: ignoreversion; Components: Editor
+Source: "D:\src\wxWidgets-3.0.1\lib\gcc_dll\wxmsw30u_webview_gcc_cl.dll";  DestDir: "{app}"; Flags: ignoreversion; Components: Editor
+Source: "D:\src\wxWidgets-3.0.1\lib\gcc_dll\wxmsw30u_ribbon_gcc_cl.dll";   DestDir: "{app}"; Flags: ignoreversion; Components: Editor
+
 
 Source: "..\InnoSetup\license.txt"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
 Source: "..\sdk\wxconfig\wx-config.exe"; DestDir: "{app}"; Components: Editor
@@ -68,6 +68,7 @@ Source: "..\Runtime\astyle.sample"; DestDir: "{app}"; Flags: ignoreversion ; Com
 Source: "..\Runtime\config\codelite.layout.default"; DestDir: "{app}\config"; DestName: codelite.layout; Flags: ignoreversion ; Components: Editor
 Source: "..\sdk\codelite_cppcheck\cfg\*.cfg"; DestDir: "{app}\config\cppcheck"; Flags: ignoreversion ; Components: Editor
 Source: "..\Runtime\templates\*"; DestDir: "{app}\templates"; Flags: recursesubdirs ; Components: Editor
+Source: "..\SpellChecker\dics\*"; DestDir: "{app}\dics"; Flags: recursesubdirs ; Components: Editor
 
 ; Override with Windows specific files
 Source: "..\Runtime\templates\projects\dynamic-library\dynamic-library.project.windows"; DestName: dynamic-library.project; DestDir: "{app}\templates\projects\dynamic-library"; Flags: ignoreversion ; Components: Editor
@@ -102,14 +103,17 @@ Source: "..\Runtime\plugins\CMakePlugin.dll"; DestDir: "{app}\plugins"; Flags: i
 Source: "..\Runtime\plugins\CodeLiteDiff.dll"; DestDir: "{app}\plugins"; Flags: ignoreversion ; Components: Editor
 Source: "..\Runtime\plugins\LLDBDebugger.dll"; DestDir: "{app}\plugins"; Flags: ignoreversion ; Components: Editor
 Source: "..\Runtime\plugins\wxcrafter.dll"; DestDir: "{app}\plugins"; Flags: ignoreversion ; Components: Editor
+Source: "..\Runtime\plugins\SpellCheck.dll"; DestDir: "{app}\plugins"; Flags: ignoreversion ; Components: Editor
 
 Source: "..\lib\gcc_lib\libwxsqlite3u.dll"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
 Source: "..\lib\gcc_lib\libcodeliteu.dll"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
 Source: "..\lib\gcc_lib\libplugin_sdku.dll"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
 Source: "..\lib\gcc_lib\libdatabaselayersqliteu.dll"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
 Source: "..\lib\gcc_lib\libwxshapeframeworku.dll"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
-Source: "..\sdk\clang\lib\liblibclang.dll"; DestDir: "{app}\"; Flags: ignoreversion ; Components: Editor
+Source: "..\sdk\clang\lib\libclang.dll"; DestDir: "{app}\"; Flags: ignoreversion ; Components: Editor
+Source: "..\sdk\clang\lib\clang-format.exe"; DestDir: "{app}\"; Flags: ignoreversion ; Components: Editor
 Source: "..\sdk\libssh\lib\libssh.dll"; DestDir: "{app}\"; Flags: ignoreversion ; Components: Editor
+Source: "..\sdk\clang\lib\clang-format.exe"; DestDir: "{app}\"; DestName: "codelite-clang-format.exe"; Flags: ignoreversion ; Components: Editor
 Source: "..\Runtime\plugins\resources\*"; DestDir: "{app}\plugins\resources\"; Flags: ignoreversion ; Components: Editor
 Source: "..\Runtime\codelite_indexer.exe"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
 Source: "..\Runtime\codelite_launcher.exe"; DestDir: "{app}"; Flags: ignoreversion ; Components: Editor
@@ -154,6 +158,9 @@ Root: HKLM; Subkey: "Software\codelite\settings"; ValueType: string; ValueName: 
 Root: HKLM; Subkey: "Software\codelite\settings"; ValueType: string; ValueName: "PluginsDir";  ValueData: "{app}\plugins"
 Root: HKLM; Subkey: "Software\codelite\settings"; ValueType: string; ValueName: "MinGW"; ValueData: "{code:GetMinGWInstallDir}"
 Root: HKLM; Subkey: "Software\codelite\settings"; ValueType: string; ValueName: "MinGW_Version"; ValueData: "4.8.1"
+
+[UninstallDelete]
+Type: filesandordirs; Name: "{app}"
 
 [Code]
 var
@@ -206,6 +213,29 @@ begin
   CreateUnitTestPPPage();
 end;
 
+procedure DeleteFolder(ADirName: string);
+var
+  FindRec: TFindRec;
+begin
+  if FindFirst(ADirName + '\*', FindRec) then begin
+    try
+      repeat
+        if FindRec.Attributes and FILE_ATTRIBUTE_DIRECTORY <> 0 then begin
+          if (FindRec.Name <> '.') and (FindRec.Name <> '..') then begin
+            DeleteFolder(ADirName + '\' + FindRec.Name);
+            RemoveDir(ADirName + '\' + FindRec.Name);
+          end;
+        end else
+          DeleteFile(ADirName + '\' + FindRec.Name);
+      until not FindNext(FindRec);
+    finally
+      FindClose(FindRec);
+    end;
+  end;
+  // Remove the folder itself
+  RemoveDir(ADirName);
+end;
+
 // Uninstall
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 begin
@@ -213,6 +243,11 @@ begin
     usUninstall:
       begin
         RegDeleteKeyIncludingSubkeys(HKCR, '*\shell\Open With CodeLite');
+        // Prompt the user to delete all his settings, default to "No"
+        if MsgBox('Do you want to delete all user settings as well?', mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES 
+        then begin
+            DeleteFolder(ExpandConstant('{userappdata}') + '\codelite');
+        end;
       end;
     usPostUninstall:
       begin

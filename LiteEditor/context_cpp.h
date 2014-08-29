@@ -59,7 +59,7 @@ class ContextCpp : public ContextBase
     static wxBitmap m_otherFileBmp;
 protected:
     void OnShowCodeNavMenu(clCodeCompletionEvent &e);
-    
+
 private:
     bool TryOpenFile(const wxFileName &fileName, bool lookInEntireWorkspace = true);
     bool IsJavaScript() const;
@@ -73,6 +73,7 @@ private:
     void DoUpdateCalltipHighlight();
 
 public:
+    virtual void ColourContextTokens(const wxArrayString& workspaceTokens);
     /**
      * @brief
      * @return
@@ -193,6 +194,13 @@ private:
      * @param editor
      */
     void DoFormatEditor(LEditor *editor);
+    
+    /**
+     * @brief return position of the first C++ comment style on a line
+     * the line number is calculated from the 'from' value
+     * @return position or wxNOT_FOUND when not found
+     */
+    int GetFirstCxxCommentPos(LEditor& editor, int from);
 };
 
 #endif // CONTEXT_CPP_H

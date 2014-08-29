@@ -1,9 +1,35 @@
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+//
+// copyright            : (C) 2014 The CodeLite Team
+// file name            : CompilerLocatorMinGW.cpp
+//
+// -------------------------------------------------------------------------
+// A
+//              _____           _      _     _ _
+//             /  __ \         | |    | |   (_) |
+//             | /  \/ ___   __| | ___| |    _| |_ ___
+//             | |    / _ \ / _  |/ _ \ |   | | __/ _ )
+//             | \__/\ (_) | (_| |  __/ |___| | ||  __/
+//              \____/\___/ \__,_|\___\_____/_|\__\___|
+//
+//                                                  F i l e
+//
+//    This program is free software; you can redistribute it and/or modify
+//    it under the terms of the GNU General Public License as published by
+//    the Free Software Foundation; either version 2 of the License, or
+//    (at your option) any later version.
+//
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+
 #include "CompilerLocatorMinGW.h"
 #include <wx/dir.h>
 #include <wx/filefn.h>
 #include <wx/tokenzr.h>
 #include <globals.h>
 #include "file_logger.h"
+#include "procutils.h"
 
 #ifdef __WXMSW__
 #   include <wx/msw/registry.h>
@@ -16,6 +42,41 @@ CompilerLocatorMinGW::CompilerLocatorMinGW()
 
 CompilerLocatorMinGW::~CompilerLocatorMinGW()
 {
+}
+
+CompilerPtr CompilerLocatorMinGW::Locate(const wxString& folder)
+{
+    m_compilers.clear();
+    wxFileName gcc(folder, "gcc");
+#ifdef __WXMSW__
+    gcc.SetExt("exe");
+#endif
+
+    bool found = gcc.FileExists();
+    if ( ! found ) {
+        // try to see if we have a bin folder here
+        gcc.AppendDir("bin");
+        found = gcc.FileExists();
+    }
+    
+    if ( found ) {
+        AddTools(gcc.GetPath(), GetGCCVersion(gcc.GetFullPath() ));
+        return *m_compilers.begin();
+    }
+    return NULL;
+}
+
+wxString CompilerLocatorMinGW::GetGCCVersion(const wxString& gccBinary)
+{
+    wxString command;
+    wxArrayString stdoutArr;
+    command << gccBinary << " --version";
+    ProcUtils::SafeExecuteCommand(command, stdoutArr);
+    if ( !stdoutArr.IsEmpty() ) {
+        wxString versionString = stdoutArr.Item(0).Trim().Trim(false);
+        return versionString;
+    }
+    return "";
 }
 
 bool CompilerLocatorMinGW::Locate()
@@ -112,7 +173,13 @@ bool CompilerLocatorMinGW::Locate()
             wxFileName gccComp( pathArray.Item(i), "gcc.exe" );
             if ( gccComp.GetDirs().Last() == "bin" && gccComp.Exists() ) {
                 // We found gcc.exe
-                AddTools( gccComp.GetPath() );
+                wxString pathToGcc = gccComp.GetPath();
+                pathToGcc.MakeLower();
+                
+                // Don't mix cygwin and mingw
+                if ( !pathToGcc.Contains("cygwin") ) {
+                    AddTools( gccComp.GetPath() );
+                }
             }
         }
     }
@@ -168,6 +235,9 @@ void CompilerLocatorMinGW::AddTools(const wxString& binFolder, const wxString& n
     if ( wxThread::GetCPUCount() > 1 ) {
         makeExtraArgs << "-j" << wxThread::GetCPUCount();
     }
+    
+    // This is needed under MinGW
+    makeExtraArgs <<  " SHELL=cmd.exe ";
     
     if ( toolFile.FileExists() ) {
         AddTool(compiler, "MAKE", toolFile.GetFullPath(), makeExtraArgs);

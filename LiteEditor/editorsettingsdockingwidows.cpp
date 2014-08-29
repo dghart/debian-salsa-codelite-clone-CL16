@@ -1,3 +1,28 @@
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+//
+// copyright            : (C) 2014 The CodeLite Team
+// file name            : editorsettingsdockingwidows.cpp
+//
+// -------------------------------------------------------------------------
+// A
+//              _____           _      _     _ _
+//             /  __ \         | |    | |   (_) |
+//             | /  \/ ___   __| | ___| |    _| |_ ___
+//             | |    / _ \ / _  |/ _ \ |   | | __/ _ )
+//             | \__/\ (_) | (_| |  __/ |___| | ||  __/
+//              \____/\___/ \__,_|\___\_____/_|\__\___|
+//
+//                                                  F i l e
+//
+//    This program is free software; you can redistribute it and/or modify
+//    it under the terms of the GNU General Public License as published by
+//    the Free Software Foundation; either version 2 of the License, or
+//    (at your option) any later version.
+//
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+
 #include "editorsettingsdockingwidows.h"
 #include "editor_config.h"
 
@@ -20,10 +45,12 @@ EditorSettingsDockingWindows::EditorSettingsDockingWindows( wxWindow* parent )
     m_checkBoxHideOutputPaneNotIfCscope->SetValue    (options->GetHideOutputPaneNotIfCscope());
     m_checkBoxHideOutputPaneNotIfGit->SetValue       (options->GetHideOutputPaneNotIfGit());
     m_checkBoxHideOutputPaneNotIfDebug->SetValue     (options->GetHideOutputPaneNotIfDebug());
+    m_checkBoxHideOutputPaneNotIfMemCheck->SetValue  (options->GetHideOutputPaneNotIfMemCheck());
     m_checkBoxFindBarAtBottom->SetValue              (options->GetFindBarAtBottom());
     m_checkBoxDontFoldSearchResults->SetValue        (options->GetDontAutoFoldResults());
     m_checkBoxShowDebugOnRun->SetValue               (options->GetShowDebugOnRun());
     m_radioBoxHint->SetSelection                     (options->GetDockingStyle());
+    m_checkBoxHideCaptions->SetValue                 (!options->IsShowDockingWindowCaption());
 
     int tabStyle (0); // Glossy
     m_startingFlags = OptionsConfig::TabGlossy;
@@ -56,11 +83,13 @@ void EditorSettingsDockingWindows::Save(OptionsConfigPtr options)
     options->SetHideOutputPaneNotIfCscope( m_checkBoxHideOutputPaneNotIfCscope->IsChecked() );
     options->SetHideOutputPaneNotIfGit( m_checkBoxHideOutputPaneNotIfGit->IsChecked() );
     options->SetHideOutputPaneNotIfDebug( m_checkBoxHideOutputPaneNotIfDebug->IsChecked() );
+    options->SetHideOutputPaneNotIfMemCheck( m_checkBoxHideOutputPaneNotIfMemCheck->IsChecked() );
     options->SetFindBarAtBottom( m_checkBoxFindBarAtBottom->IsChecked() );
     options->SetDontAutoFoldResults( m_checkBoxDontFoldSearchResults->IsChecked() );
     options->SetShowDebugOnRun( m_checkBoxShowDebugOnRun->IsChecked() );
     options->SetDockingStyle( m_radioBoxHint->GetSelection() );
-
+    options->SetShowDockingWindowCaption( !m_checkBoxHideCaptions->IsChecked() );
+    
     size_t flags(options->GetOptions());
     m_endFlags = 0;
     // set the tab control options:

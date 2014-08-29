@@ -62,7 +62,7 @@ protected:
     void SetName(const wxString &name) {
         m_name = name;
     }
-    void DoApplySettings(LexerConfPtr lexPtr);
+    void DoApplySettings(LexerConf::Ptr_t lexPtr);
     void PrependMenuItem(wxMenu* menu, const wxString &text, wxObjectEventFunction func, int eventId = -1);
     void PrependMenuItem(wxMenu* menu, const wxString &text, int id);
     void PrependMenuItemSeparator(wxMenu* menu);
@@ -178,6 +178,14 @@ public:
 
     //override this method if you wish to provide context based right click menu
     virtual wxMenu *GetMenu() ;
+    
+    /**
+     * @brief colour tokens in the current editor
+     * @param workspaceTokens list of token that are associated with the workspace
+     */
+    virtual void ColourContextTokens( const wxArrayString& workspaceTokens ) {
+        wxUnusedVar(workspaceTokens);
+    }
 };
 
 typedef SmartPtr<ContextBase> ContextBasePtr;
