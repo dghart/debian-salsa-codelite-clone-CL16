@@ -54,7 +54,8 @@ Replaces: codelite (<< 5.4+dfsg-1~exp1)
 Recommends:
  cppcheck (>= 1.54),
  libunittest++-dev (>= 1.3),
- qt4-qmake
+ qt4-qmake,
+ valgrind
 Description: Powerful and lightweight C/C++ IDE - plugins
  CodeLite is a powerful and lightweight C/C++ IDE which comes with but is not
  limited to the following features:
