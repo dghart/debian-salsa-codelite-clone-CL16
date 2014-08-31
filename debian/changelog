@@ -1,8 +1,23 @@
-codelite (6.1.1+dfsg-1) UNRELEASED; urgency=medium
+codelite (6.1.1+dfsg-1) unstable; urgency=medium
 
   * New upstream release.
 
- -- James Cowgill <james410@cowgill.org.uk>  Wed, 27 Aug 2014 12:00:19 +0100
+  * debian/control
+    - Build depend on libhunspell-dev.
+    - Re-enable SFTP support using libssh-gcrypt.
+    - Recommend valgrind (for new MemChecker plugin).
+  * debian/copyright
+    - Remove bundled version of hunspell.
+  * debian/patches
+    - Refresh patches.
+    - Patch 10_move-helper-binaries.patch rewritten due to upstream changes.
+    - Add 19_remove-bundled-clang-format.patch to fix clang-format paths.
+    - Add 20_Compilation-fix-for-non-precompiled-header-builds.patch from
+      upstream to fix build.
+  * debian/*.1
+    - Remove manpages in debian/ - moved to upstream
+
+ -- James Cowgill <james410@cowgill.org.uk>  Mon, 01 Sep 2014 00:23:18 +0100
 
 codelite (6.0.1+dfsg-1) unstable; urgency=medium
 
