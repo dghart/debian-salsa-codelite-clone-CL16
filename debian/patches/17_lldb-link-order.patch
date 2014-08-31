@@ -2,8 +2,8 @@ Description: Link the LLDBDebugger plugin with the LLDBProtocol libary first
  Make LLDDebugger link against LLDBProtocol before lldb itself so the lldb
  library doesn't get dropped when using -Wl,--as-needed. 
 Author: James Cowgill <james410@cowgill.org.uk>
-Forwarded: no
-Last-Update: 2014-06-06
+Forwarded: https://github.com/eranif/codelite/pull/539
+Applied-Upstream: https://github.com/eranif/codelite/commit/330431c44bb044dd41e449f2e68ee197624ed814
 ---
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- a/LLDBDebugger/CMakeLists.txt

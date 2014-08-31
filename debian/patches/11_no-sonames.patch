@@ -1,7 +1,6 @@
 Description: Disable SONAMEs for all libraries
  Since all the libraries are private, they should not have SONAMEs
 Author: James Cowgill <james410@cowgill.org.uk>
-Last-Update: 2014-06-06
 ---
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- a/CMakeLists.txt

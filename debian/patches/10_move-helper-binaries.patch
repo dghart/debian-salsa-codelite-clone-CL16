@@ -1,7 +1,5 @@
 Description: Move most helper binaries to /usr/lib/codelite
- Use /usr/bin/cppcheck as the path to cppcheck
 Author: James Cowgill <james410@cowgill.org.uk>
-Last-Update: 2014-06-06
 ---
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- a/LiteEditor/manager.cpp

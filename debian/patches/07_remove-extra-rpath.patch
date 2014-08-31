@@ -3,7 +3,6 @@ Description: Remove duplicate RPATH settings in CMakeLists.txt
  settings produce 2 RPATH entries.
 Author: James Cowgill <james410@cowgill.org.uk>
 Forwarded: http://forums.codelite.org/viewtopic.php?f=13&t=2506
-Last-Update: 2014-06-06
 ---
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- a/CMakeLists.txt

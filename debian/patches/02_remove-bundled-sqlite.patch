@@ -1,7 +1,6 @@
 Description: Remove bundled sqlite3 and wxsqlite3 from CMakeLists.txt files
 Author: James Cowgill <james410@cowgill.org.uk>
 Forwarded: not-needed
-Last-Update: 2014-06-06
 ---
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- a/CMakeLists.txt

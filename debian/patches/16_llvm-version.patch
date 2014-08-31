@@ -5,7 +5,6 @@ Description: Add LLVM_VERSION option to set the current llvm version
  that option to the cmake script.
 Author: James Cowgill <james410@cowgill.org.uk>
 Forwarded: not-needed
-Last-Update: 2014-06-06
 ---
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- a/CMakeLists.txt

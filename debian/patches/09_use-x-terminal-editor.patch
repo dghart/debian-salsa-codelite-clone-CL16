@@ -2,7 +2,6 @@ Description: Use x-terminal-emulator in preference to xterm
 Author: James Cowgill <james410@cowgill.org.uk>
 Author: Alessio Treglia <alessio@debian.org>
 Forwarded: not-needed
-Last-Update: 2014-06-06
 ---
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- a/CodeLite/procutils.cpp

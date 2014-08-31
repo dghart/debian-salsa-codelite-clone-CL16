@@ -2,7 +2,6 @@ Description: Disable binary stripping at build time
  Stripping is now done by dh_strip separately.
 Author: James Cowgill <james410@cowgill.org.uk>
 Forwarded: not-needed
-Last-Update: 2014-06-06
 ---
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- a/CMakeLists.txt

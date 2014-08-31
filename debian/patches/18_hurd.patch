@@ -1,7 +1,8 @@
 Description: Patches to enable building on hurd
  Remove uses of PATH_MAX
 Author: James Cowgill <james410@cowgill.org.uk>
-Last-Update: 2014-06-18
+Forwarded: https://github.com/eranif/codelite/pull/538
+Applied-Upstream: https://github.com/eranif/codelite/commit/35c3181ed0d64cbc148039d8816f18d949d8eed9
 ---
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- a/Plugin/globals.cpp

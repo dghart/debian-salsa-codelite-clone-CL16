@@ -3,7 +3,6 @@ Description: Remove bundled libclang + fix for latest clang
  CXTranslationUnit_CXX* flags which no longer exist.
 Author: James Cowgill <james410@cowgill.org.uk>
 Forwarded: not-needed
-Last-Update: 2014-06-06
 ---
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- a/CMakeLists.txt
