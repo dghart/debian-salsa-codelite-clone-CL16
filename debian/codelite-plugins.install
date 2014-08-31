@@ -11,6 +11,7 @@ usr/lib/codelite/LLDBDebugger.so
 usr/lib/codelite/MemCheck.so
 usr/lib/codelite/Outline.so
 usr/lib/codelite/QMakePlugin.so
+usr/lib/codelite/SFTP.so
 usr/lib/codelite/SpellCheck.so
 usr/lib/codelite/SnipWiz.so
 usr/lib/codelite/Subversion.so
