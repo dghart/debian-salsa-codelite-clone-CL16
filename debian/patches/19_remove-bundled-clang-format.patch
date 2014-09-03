@@ -43,7 +43,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 +if (LLVM_VERSION)
 +    add_definitions(-DLLVM_VERSION_STR="-${LLVM_VERSION}")
 +else()
-+    add_definitions(-DLLVM_VERSION)
++    add_definitions(-DLLVM_VERSION_STR)
 +endif()
 +
  if ( USE_PCH )

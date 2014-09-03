@@ -1,3 +1,9 @@
+codelite (6.1.1+dfsg-2) unstable; urgency=medium
+
+  * Fix typo causing build failure on hurd.
+
+ -- James Cowgill <james410@cowgill.org.uk>  Wed, 03 Sep 2014 22:39:46 +0100
+
 codelite (6.1.1+dfsg-1) unstable; urgency=medium
 
   * New upstream release.
