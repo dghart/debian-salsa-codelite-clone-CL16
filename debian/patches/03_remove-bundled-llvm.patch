@@ -22,23 +22,6 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  endif()
  
  message( "-- clang link line ${CLANG_LIBRARY} ")
---- a/LiteEditor/clang_pch_maker_thread.cpp
-+++ b/LiteEditor/clang_pch_maker_thread.cpp
-@@ -434,12 +434,10 @@ CXTranslationUnit ClangWorkerThread::DoC
-     // First time, need to create it
-     unsigned flags;
-     if(reparse) {
--        flags = CXTranslationUnit_CXXPrecompiledPreamble
--                | CXTranslationUnit_CacheCompletionResults
-+        flags = CXTranslationUnit_CacheCompletionResults
-                 | CXTranslationUnit_PrecompiledPreamble
-                 | CXTranslationUnit_Incomplete
--                | CXTranslationUnit_DetailedPreprocessingRecord
--                | CXTranslationUnit_CXXChainedPCH;
-+                | CXTranslationUnit_DetailedPreprocessingRecord;
-     } else {
-         flags = CXTranslationUnit_Incomplete
-                 | CXTranslationUnit_SkipFunctionBodies
 --- a/LLDBDebugger/CMakeLists.txt
 +++ b/LLDBDebugger/CMakeLists.txt
 @@ -1,27 +1,11 @@

@@ -12,3 +12,4 @@
 17_lldb-link-order.patch
 18_hurd.patch
 20_Compilation-fix-for-non-precompiled-header-builds.patch
+21_remove-deprecated-clang-constants.patch
