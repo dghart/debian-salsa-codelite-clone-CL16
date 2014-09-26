@@ -7,7 +7,7 @@ Forwarded: http://forums.codelite.org/viewtopic.php?f=13&t=2506
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -403,16 +403,6 @@ if ( APPLE )
+@@ -408,16 +408,6 @@ if ( APPLE )
      execute_process(COMMAND cp ${CMAKE_SOURCE_DIR}/Runtime/make_mac_bundle.sh pack)
  endif( APPLE )
  

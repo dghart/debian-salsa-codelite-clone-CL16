@@ -1,0 +1,128 @@
+Description: Remove bundled LLVM binaries
+ This patch removes libclang and clang-format, and forces the version of LLVM
+ to be the one specified at compile time (using LLVM_VERSION). Fixing the LLVM
+ version is needed due to LLVM api changes and liblldb-dev (generic version)
+ not being in Debian.
+Author: James Cowgill <james410@cowgill.org.uk>
+Forwarded: not-needed
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -366,9 +366,15 @@ elseif (MINGW)
+     endif ()
+   endif ()
+ elseif (UNIX)
+-  set( CLANG_INCLUDE "${CL_SRC_ROOT}/sdk/clang/Linux/${ARCH_NAME}/include" )
+-  set( CLANG_LIBRARY "-L${CL_SRC_ROOT}/sdk/clang/Linux/${ARCH_NAME}/lib -lclang" )
+-  set( CLANG_BINARY "${CL_SRC_ROOT}/sdk/clang/Linux/${ARCH_NAME}/lib/libclang.so")
++  set(LLVM_CONFIG_BIN "llvm-config")
++  if(LLVM_VERSION)
++    set(LLVM_CONFIG_BIN "llvm-config-${LLVM_VERSION}")
++  endif()
++
++  execute_process(COMMAND ${LLVM_CONFIG_BIN} --includedir OUTPUT_VARIABLE CLANG_INCLUDE OUTPUT_STRIP_TRAILING_WHITESPACE)
++  execute_process(COMMAND ${LLVM_CONFIG_BIN} --libdir OUTPUT_VARIABLE CLANG_LIBDIR OUTPUT_STRIP_TRAILING_WHITESPACE)
++  set( CLANG_LIBRARY "-L${CLANG_LIBDIR} -lclang" )
++  set( CLANG_BINARY "" )
+ endif()
+ 
+ message( "-- clang link line ${CLANG_LIBRARY} ")
+--- a/LiteEditor/clang_pch_maker_thread.cpp
++++ b/LiteEditor/clang_pch_maker_thread.cpp
+@@ -434,12 +434,10 @@ CXTranslationUnit ClangWorkerThread::DoC
+     // First time, need to create it
+     unsigned flags;
+     if(reparse) {
+-        flags = CXTranslationUnit_CXXPrecompiledPreamble
+-                | CXTranslationUnit_CacheCompletionResults
++        flags = CXTranslationUnit_CacheCompletionResults
+                 | CXTranslationUnit_PrecompiledPreamble
+                 | CXTranslationUnit_Incomplete
+-                | CXTranslationUnit_DetailedPreprocessingRecord
+-                | CXTranslationUnit_CXXChainedPCH;
++                | CXTranslationUnit_DetailedPreprocessingRecord;
+     } else {
+         flags = CXTranslationUnit_Incomplete
+                 | CXTranslationUnit_SkipFunctionBodies
+--- a/LLDBDebugger/CMakeLists.txt
++++ b/LLDBDebugger/CMakeLists.txt
+@@ -1,27 +1,11 @@
+ macro( FIND_LLDB_OFFICIAL )
+ 
+-    ## Locate the official packages
+-    find_library(LIBLLDB_T
+-                 NAMES liblldb.so
+-                 HINTS  /usr/lib /usr/local/lib ${CMAKE_INSTALL_LIBDIR})
++    # Use CLANG_INCLUDE and CLANG_LIBDIR (from toplevel CMakeLists.txt)
++    set(LLDB_OFFICIAL_FOUND 1)
++    set(LIBLLDB lldb)
++    set(LIBLLDB_INCLUDE "${CLANG_INCLUDE}")
++    set(LIBLLDB_INSTALL_NEEDED 0)
+ 
+-    find_path(LIBLLDB_INCLUDE_T NAMES lldb/API/SBDebugger.h
+-              HINTS 
+-              /usr/lib/llvm-3.5/include 
+-              /usr/include/llvm-3.5 
+-              /usr/include/llvm
+-              /usr/local/include
+-              )
+-
+-    if ( LIBLLDB_T STREQUAL "LIBLLDB_T-NOTFOUND" OR LIBLLDB_INCLUDE_T STREQUAL "LIBLLDB_INCLUDE_T-NOTFOUND" )
+-        set(LIBLLDB "LIBLLDB-NOTFOUND")
+-        set(LIBLLDB_INCLUDE "LIBLLDB_INCLUDE-NOTFOUND")
+-    else()
+-        set( LLDB_OFFICIAL_FOUND 1 )
+-        set(LIBLLDB ${LIBLLDB_T})
+-        set(LIBLLDB_INCLUDE ${LIBLLDB_INCLUDE_T})
+-        set(LIBLLDB_INSTALL_NEEDED 0)
+-    endif()
+ endmacro()
+ 
+ set( BUILD_LLDB 0 )
+--- a/CodeFormatter/clClangFormatLocator.cpp
++++ b/CodeFormatter/clClangFormatLocator.cpp
+@@ -12,7 +12,7 @@ clClangFormatLocator::~clClangFormatLoca
+ 
+ bool clClangFormatLocator::Locate(wxString& clangFormat)
+ {
+-    wxFileName fnClangFormat( clStandardPaths::Get().GetBinaryFullPath("codelite-clang-format") );
++    wxFileName fnClangFormat( clStandardPaths::Get().GetBinaryFullPath("clang-format" LLVM_VERSION_STR) );
+     if ( fnClangFormat.FileExists() ) {
+         clangFormat = fnClangFormat.GetFullPath();
+         return true;
+--- a/LiteEditor/CMakeLists.txt
++++ b/LiteEditor/CMakeLists.txt
+@@ -114,16 +114,6 @@ install(FILES ${CL_SRC_ROOT}/Runtime/clg
+ install(FILES ${CL_SRC_ROOT}/Runtime/clgcc DESTINATION ${CL_PREFIX}/bin PERMISSIONS ${EXE_PERM})
+ endif (UNIX)
+ 
+-# Install clang-format
+-# We name it codelite-clang-format to avoid collision with any official installation
+-if ( UNIX AND NOT APPLE )
+-    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+-        install(FILES ${CL_SRC_ROOT}/sdk/clang/Linux/x86_64/bin/codelite-clang-format DESTINATION ${CL_PREFIX}/bin PERMISSIONS ${EXE_PERM})
+-    else()
+-        install(FILES ${CL_SRC_ROOT}/sdk/clang/Linux/i386/bin/codelite-clang-format DESTINATION ${CL_PREFIX}/bin PERMISSIONS ${EXE_PERM})
+-    endif()
+-endif()
+-
+ ## codelite icons
+ install(FILES ${CL_SRC_ROOT}/Runtime/codelite-icons-fresh-farm.zip DESTINATION ${CL_PREFIX}/share/codelite)
+ install(FILES ${CL_SRC_ROOT}/Runtime/codelite-icons-dark.zip DESTINATION ${CL_PREFIX}/share/codelite)
+--- a/CodeFormatter/CMakeLists.txt
++++ b/CodeFormatter/CMakeLists.txt
+@@ -22,6 +22,13 @@ add_definitions(-DWXUSINGDLL_CL)
+ add_definitions(-DWXUSINGDLL_SDK)
+ add_definitions(-DASTYLE_LIB)
+ 
++# Tell the formatter about the LLVM version
++if (LLVM_VERSION)
++    add_definitions(-DLLVM_VERSION_STR="-${LLVM_VERSION}")
++else()
++    add_definitions(-DLLVM_VERSION_STR="")
++endif()
++
+ if ( USE_PCH )
+     add_definitions(-include "${CL_PCH_FILE}")
+     add_definitions(-Winvalid-pch)
