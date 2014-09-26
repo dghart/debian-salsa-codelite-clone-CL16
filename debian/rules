@@ -11,7 +11,7 @@ ifeq ($(DEB_HOST_ARCH),hurd-i386)
 	CONFIG_EXTRA := -DENABLE_CLANG=0 -DENABLE_LLDB=0
 	INSTALL_EXTRA := -Xcodelite-clang -Xcodelite-lldb -XLLDBDebugger.so
 else
-	CONFIG_EXTRA := -DLLVM_VERSION=3.4
+	CONFIG_EXTRA := -DLLVM_VERSION=3.5
 	INSTALL_EXTRA :=
 endif
 
