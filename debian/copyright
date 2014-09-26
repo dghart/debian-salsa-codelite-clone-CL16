@@ -73,7 +73,7 @@ License: other
  WARRANTIES  OF  MERCHANTABILITY  AND  FITNESS  LE_FOR  A  PARTICULAR 
  PURPOSE.
 
-Files: Codelite/cJSON.*
+Files: CodeLite/cJSON.*
 Copyright: 2009 Dave Gamble
 License: MIT
 
