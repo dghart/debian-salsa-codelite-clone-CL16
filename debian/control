@@ -15,7 +15,7 @@ Build-Depends:
  libwxsqlite3-3.0-dev,
  llvm-3.5 [!hurd-i386],
  pkg-config
-Standards-Version: 3.9.5
+Standards-Version: 3.9.6
 Homepage: http://www.codelite.org
 Vcs-Git: git://anonscm.debian.org/collab-maint/codelite.git
 Vcs-Browser: http://anonscm.debian.org/gitweb/?p=collab-maint/codelite.git
