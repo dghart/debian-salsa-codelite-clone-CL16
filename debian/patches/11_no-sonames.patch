@@ -5,7 +5,7 @@ Author: James Cowgill <james410@cowgill.org.uk>
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -504,5 +504,21 @@ include(plugin)
+@@ -498,5 +498,21 @@ include(plugin)
  ## Scan for user plugins
  CL_SCAN_FOR_PLUGINS()
  

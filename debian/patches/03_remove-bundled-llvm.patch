@@ -9,21 +9,15 @@ Forwarded: not-needed
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -366,9 +366,15 @@ elseif (MINGW)
+@@ -366,9 +366,9 @@ elseif (MINGW)
      endif ()
    endif ()
  elseif (UNIX)
 -  set( CLANG_INCLUDE "${CL_SRC_ROOT}/sdk/clang/Linux/${ARCH_NAME}/include" )
 -  set( CLANG_LIBRARY "-L${CL_SRC_ROOT}/sdk/clang/Linux/${ARCH_NAME}/lib -lclang" )
 -  set( CLANG_BINARY "${CL_SRC_ROOT}/sdk/clang/Linux/${ARCH_NAME}/lib/libclang.so")
-+  set(LLVM_CONFIG_BIN "llvm-config")
-+  if(LLVM_VERSION)
-+    set(LLVM_CONFIG_BIN "llvm-config-${LLVM_VERSION}")
-+  endif()
-+
-+  execute_process(COMMAND ${LLVM_CONFIG_BIN} --includedir OUTPUT_VARIABLE CLANG_INCLUDE OUTPUT_STRIP_TRAILING_WHITESPACE)
-+  execute_process(COMMAND ${LLVM_CONFIG_BIN} --libdir OUTPUT_VARIABLE CLANG_LIBDIR OUTPUT_STRIP_TRAILING_WHITESPACE)
-+  set( CLANG_LIBRARY "-L${CLANG_LIBDIR} -lclang" )
++  execute_process(COMMAND "llvm-config-${LLVM_VERSION}" --includedir OUTPUT_VARIABLE CLANG_INCLUDE OUTPUT_STRIP_TRAILING_WHITESPACE)
++  set( CLANG_LIBRARY "-lclang-${LLVM_VERSION}" )
 +  set( CLANG_BINARY "" )
  endif()
  
@@ -56,7 +50,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 -                 HINTS  /usr/lib /usr/local/lib ${CMAKE_INSTALL_LIBDIR})
 +    # Use CLANG_INCLUDE and CLANG_LIBDIR (from toplevel CMakeLists.txt)
 +    set(LLDB_OFFICIAL_FOUND 1)
-+    set(LIBLLDB lldb)
++    set(LIBLLDB lldb-${LLVM_VERSION})
 +    set(LIBLLDB_INCLUDE "${CLANG_INCLUDE}")
 +    set(LIBLLDB_INSTALL_NEEDED 0)
  
