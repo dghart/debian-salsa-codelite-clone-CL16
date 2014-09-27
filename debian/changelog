@@ -1,8 +1,13 @@
-codelite (6.1.1+dfsg-4) UNRELEASED; urgency=medium
+codelite (6.1.1+dfsg-4) unstable; urgency=medium
 
-  *
+  * Switch to LLVM 3.5.
+    - Reworked the LLVM related patches into 2 patch files to make more
+      logical sense and due to dependencies between the patches.
+  * Bump standards version to 3.9.6 (no changes).
+  * Fix typo in debian/copyright.
+  * Sort build-dependencies.
 
- -- James Cowgill <james410@cowgill.org.uk>  Fri, 26 Sep 2014 11:06:40 +0100
+ -- James Cowgill <james410@cowgill.org.uk>  Sat, 27 Sep 2014 11:57:16 +0100
 
 codelite (6.1.1+dfsg-3) unstable; urgency=medium
 
