@@ -1,0 +1,10 @@
+CodeLite for Debian
+-------------------
+Debian's version of CodeLite is as close to upstreams version as possible, with
+the following exceptions:
+ * Lots of bundles libraries removed and replaced with versions packaged within
+   Debian.
+ * Various unnessesary and unsource binaries removed from the source archive.
+ * Non free image (codelitephp/resources/php-folder-128.png) removed.
+
+ * Uses the system default terminal emulator instead of directly opening xterm.
