@@ -23,43 +23,21 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 
-#ifndef CLAUI_TAB_ART_H
-#define CLAUI_TAB_ART_H
+#ifndef CLAUINOTEBOOKTABART_H
+#define CLAUINOTEBOOKTABART_H
 
-#include <wx/aui/auibook.h>
-#include <wx/pen.h>
 #include "codelite_exports.h"
-#include <wx/dcgraph.h>
-#include <wx/colour.h>
+#include "clAuiMainNotebookTabArt.h"
 
-// -- GUI helper classes and functions --
-
-class WXDLLIMPEXP_SDK clAuiGlossyTabArt : public wxAuiDefaultTabArt
+class WXDLLIMPEXP_SDK clAuiGlossyTabArt : public clAuiMainNotebookTabArt
 {
-    wxColour m_bgColour;
-    wxColour m_penColour;
-    
 protected:
-    void DoDrawInactiveTabSeparator(wxGCDC& gdc, const wxRect& tabRect);
-    void DoGetTabAreaBackgroundColour(wxColour& bgColour, wxColour& penColour);
-    
+    virtual void DoSetColours();
+
 public:
     clAuiGlossyTabArt();
     virtual ~clAuiGlossyTabArt();
-
-    virtual wxAuiTabArt* Clone() {
-        return new clAuiGlossyTabArt(*this);
-    }
-    virtual void DrawBackground(wxDC& dc, wxWindow* wnd, const wxRect& rect) ;
-    virtual void DrawTab(wxDC& dc,
-                         wxWindow* wnd,
-                         const wxAuiNotebookPage& page,
-                         const wxRect& in_rect,
-                         int close_button_state,
-                         wxRect* out_tab_rect,
-                         wxRect* out_button_rect,
-                         int* x_extent);
-    virtual wxSize GetTabSize(wxDC& dc, wxWindow* wnd, const wxString& caption, const wxBitmap& bitmap, bool active, int closeButtonState, int* xExtent) ;
+    virtual wxAuiTabArt* Clone() { return new clAuiGlossyTabArt(*this); }
 };
 
-#endif // CLAUI_TAB_ART_H
+#endif // CLAUINOTEBOOKTABART_H

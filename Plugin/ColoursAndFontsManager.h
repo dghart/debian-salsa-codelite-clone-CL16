@@ -7,8 +7,24 @@
 #include <map>
 #include <wx/string.h>
 #include <wx/filename.h>
+#include <wx/event.h>
+#include "cl_command_event.h"
 
-class WXDLLIMPEXP_SDK ColoursAndFontsManager
+// Upgrade macros
+#define LEXERS_VERSION_STRING "LexersVersion"
+#define LEXERS_VERSION 2
+
+// Define the upgrade steps
+
+// When the version is 0, it means that we need to upgrade the colours for the line numbers
+// and for the default state
+#define LEXERS_UPGRADE_LINENUM_DEFAULT_COLOURS 0
+
+wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_SDK, wxEVT_UPGRADE_LEXERS_START, clCommandEvent);
+wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_SDK, wxEVT_UPGRADE_LEXERS_END, clCommandEvent);
+wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_SDK, wxEVT_UPGRADE_LEXERS_PROGRESS, clCommandEvent);
+
+class WXDLLIMPEXP_SDK ColoursAndFontsManager : public wxEvtHandler
 {
     typedef std::vector<LexerConf::Ptr_t> Vec_t;
     typedef std::map<wxString, ColoursAndFontsManager::Vec_t> Map_t;
@@ -19,12 +35,14 @@ protected:
     ColoursAndFontsManager::Vec_t m_allLexers;
     wxColour m_globalBgColour;
     wxColour m_globalFgColour;
-
+    LexerConf::Ptr_t m_defaultLexer;
+    int m_lexersVersion;
+    
 private:
     ColoursAndFontsManager();
     virtual ~ColoursAndFontsManager();
 
-    void LoadNewXmls(const wxString& path);
+    void LoadNewXmls(const std::vector<wxXmlDocument*>& xmlFiles, bool userLexers = false);
     void LoadOldXmls(const wxString& path);
     LexerConf::Ptr_t DoAddLexer(wxXmlNode* node);
     void Clear();
@@ -33,10 +51,19 @@ private:
 
 public:
     static ColoursAndFontsManager& Get();
-
+    
+    /**
+     * @brief adjust the lexer colours to fit codelite's general look and feel
+     */
+    void UpdateLexerColours(LexerConf::Ptr_t lexer, bool force);
+    
     const wxColour& GetGlobalBgColour() const { return m_globalBgColour; }
     const wxColour& GetGlobalFgColour() const { return m_globalFgColour; }
-
+    
+    bool IsUpgradeNeeded() const {
+        return m_lexersVersion != LEXERS_VERSION;
+    }
+    
     /**
      * @brief create new theme for a lexer by copying an existing theme 'sourceTheme'
      * @param lexerName the lexer name
@@ -68,7 +95,7 @@ public:
     /**
      * @brief save the lexers into their proper file name
      */
-    void Save();
+    void Save(bool userLexers = false);
 
     /**
      * @brief save a single lexer
@@ -100,17 +127,24 @@ public:
      * @brief return lexer for a file
      */
     LexerConf::Ptr_t GetLexerForFile(const wxString& filename) const;
-    
+
     /**
      * @brief restore the default colours
      * This is done by deleting the user defined XML files and
      */
     void RestoreDefaults();
-    
+
     /**
      * @brief import an eclipse theme into codelite
      */
-    bool ImportEclipseTheme(const wxString &eclipseXml, wxString &outputFile);
+    bool ImportEclipseTheme(const wxString& eclipseXml);
+
+    /**
+     * @brief callback called by the helper thread indicating that it finished caching
+     * the XML files
+     */
+    void OnLexerFilesLoaded(const std::vector<wxXmlDocument*>& defaultLexers,
+                            const std::vector<wxXmlDocument*>& userLexers);
 };
 
 #endif // LEXERCONFMANAGER_H

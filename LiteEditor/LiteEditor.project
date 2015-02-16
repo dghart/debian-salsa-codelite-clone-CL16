@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<CodeLite_Project Name="LiteEditor">
+<CodeLite_Project Name="CodeLiteIDE">
   <Plugins>
     <Plugin Name="qmake">
-      <![CDATA[00110001N0011CMake_Debug0000000000000001N0013CMake_Release0000000000000001N0009OSX_Debug0000000000000001N0004Unix0000000000000001N0011Unix_Make_J0000000000000001N0010Unix_Wx_290000000000000001N0015WinDebugUnicode0000000000000001N0011WinDebug_290000000000000001N0017WinReleaseUnicode0000000000000001N0013WinRelease_290000000000000001N0016Win_wxWidgets_29000000000000]]>
+      <![CDATA[00130001N0011CMake_Debug0000000000000001N0013CMake_Release0000000000000001N0009OSX_Debug0000000000000001N0004Unix0000000000000001N0011Unix_Make_J0000000000000001N0010Unix_Wx_290000000000000001N0015WinDebugUnicode0000000000000001N0011WinDebug_290000000000000001N0017WinReleaseUnicode0000000000000001N0013WinRelease_290000000000000001N0016Win_wxWidgets_290000000000000001N0013Win_x64_Debug0000000000000001N0015Win_x64_Release000000000000]]>
     </Plugin>
     <Plugin Name="CMakePlugin">
       <![CDATA[[{
@@ -52,6 +52,33 @@
   "parentProject": ""
  }, {
   "name": "WinReleaseUnicode",
+  "enabled": false,
+  "buildDirectory": "build",
+  "sourceDirectory": "$(ProjectPath)",
+  "generator": "",
+  "buildType": "",
+  "arguments": [],
+  "parentProject": ""
+ }, {
+  "name": "Win_x64_Debug",
+  "enabled": false,
+  "buildDirectory": "build",
+  "sourceDirectory": "$(ProjectPath)",
+  "generator": "",
+  "buildType": "",
+  "arguments": [],
+  "parentProject": ""
+ }, {
+  "name": "Win_x64_Release",
+  "enabled": false,
+  "buildDirectory": "build",
+  "sourceDirectory": "$(ProjectPath)",
+  "generator": "",
+  "buildType": "",
+  "arguments": [],
+  "parentProject": ""
+ }, {
+  "name": "Win_x86_Release",
   "enabled": false,
   "buildDirectory": "build",
   "sourceDirectory": "$(ProjectPath)",
@@ -184,9 +211,9 @@
             <File Name="editoroptionsgeneralsavepanelbase.cpp"/>
             <File Name="editoroptionsgeneralsavepanelbase.h"/>
           </VirtualDirectory>
-          <VirtualDirectory Name="CopyPaste">
-            <File Name="EditorOptionsCopyPaste.h"/>
-            <File Name="EditorOptionsCopyPaste.cpp"/>
+          <VirtualDirectory Name="Edit">
+            <File Name="EditorOptionsGeneralEdit.h"/>
+            <File Name="EditorOptionsGeneralEdit.cpp"/>
           </VirtualDirectory>
         </VirtualDirectory>
         <VirtualDirectory Name="Comments">
@@ -403,9 +430,9 @@
     <VirtualDirectory Name="Accelerators">
       <File Name="acceltabledlg.h"/>
       <File Name="acceltabledlg.cpp"/>
-      <File Name="newkeyshortcutdlg.h"/>
-      <File Name="newkeyshortcutdlg.cpp"/>
       <File Name="AccelTableBaseDlg.wxcp"/>
+      <File Name="keyboardaccelemodel.cpp"/>
+      <File Name="keyboardaccelemodel.h"/>
     </VirtualDirectory>
     <VirtualDirectory Name="About">
       <File Name="aboutdlg.cpp"/>
@@ -445,7 +472,8 @@
       <File Name="../formbuilder/setters_getters.wxcp"/>
       <File Name="../formbuilder/rename_symbool_dlg.wxcp"/>
     </VirtualDirectory>
-    <File Name="NewKeyShortcutBaseDlg.wxcp"/>
+    <File Name="OpenFolderDlg.h"/>
+    <File Name="OpenFolderDlg.cpp"/>
   </VirtualDirectory>
   <VirtualDirectory Name="Application">
     <File Name="app.cpp"/>
@@ -474,6 +502,8 @@
     <File Name="theme_handler.cpp"/>
     <File Name="wxcl_log_text_ctrl.h"/>
     <File Name="wxcl_log_text_ctrl.cpp"/>
+    <File Name="clInitializeDialog.h"/>
+    <File Name="clInitializeDialog.cpp"/>
   </VirtualDirectory>
   <VirtualDirectory Name="Controls">
     <File Name="checktreectrl.cpp"/>
@@ -533,6 +563,8 @@
     <File Name="editorframe.cpp"/>
     <File Name="cl_unredo.cpp"/>
     <File Name="cl_unredo.h"/>
+    <File Name="ContextPhp.h"/>
+    <File Name="ContextPhp.cpp"/>
   </VirtualDirectory>
   <VirtualDirectory Name="Manager">
     <File Name="manager.h"/>
@@ -577,6 +609,8 @@
     <File Name="../InnoSetup/modpath.iss"/>
     <File Name="../codelite-icons-dark/manifest.ini"/>
     <File Name="../README.md"/>
+    <File Name="../InnoSetup/codelite_php.iss"/>
+    <File Name="../InnoSetup/codelite64_mingw.iss"/>
   </VirtualDirectory>
   <VirtualDirectory Name="Docking Windows">
     <File Name="output_pane.cpp"/>
@@ -628,18 +662,20 @@
     </VirtualDirectory>
     <File Name="editor_options_docking_windows.wxcp"/>
     <File Name="editor_options_docking_windows_liteeditor_bitmaps.cpp"/>
+    <File Name="ClangOutputTab.h"/>
+    <File Name="ClangOutputTab.cpp"/>
+    <File Name="FileExplorerTabToolBar.h"/>
+    <File Name="FileExplorerTabToolBar.cpp"/>
   </VirtualDirectory>
   <VirtualDirectory Name="Plugins">
     <File Name="pluginmanager.h"/>
     <File Name="pluginmanager.cpp"/>
-    <File Name="keyboardmanager.cpp"/>
-    <File Name="keyboardmanager.h"/>
   </VirtualDirectory>
   <Dependencies>
     <Project Name="wxscintilla"/>
     <Project Name="sqlite3"/>
     <Project Name="wxsqlite3"/>
-    <Project Name="CodeLite"/>
+    <Project Name="libCodeLite"/>
     <Project Name="plugin_sdk"/>
     <Project Name="CodeFormatter"/>
     <Project Name="DebuggerGDB"/>
@@ -655,6 +691,7 @@
     <File Name="../make_src_targz.sh"/>
     <File Name="../mac-build.sh"/>
     <File Name="../Runtime/excludes"/>
+    <File Name="../Runtime/update64.bat"/>
   </VirtualDirectory>
   <VirtualDirectory Name="formbuilder">
     <File Name="newversionbasedlg.fbp"/>
@@ -697,7 +734,7 @@
     <Project Name="wxscintilla"/>
     <Project Name="sqlite3"/>
     <Project Name="wxsqlite3"/>
-    <Project Name="CodeLite"/>
+    <Project Name="libCodeLite"/>
     <Project Name="plugin_sdk"/>
     <Project Name="CodeFormatter"/>
     <Project Name="DebuggerGDB"/>
@@ -714,7 +751,7 @@
     <Project Name="wxscintilla"/>
     <Project Name="sqlite3"/>
     <Project Name="wxsqlite3"/>
-    <Project Name="CodeLite"/>
+    <Project Name="libCodeLite"/>
     <Project Name="plugin_sdk"/>
     <Project Name="CodeFormatter"/>
     <Project Name="DebuggerGDB"/>
@@ -736,11 +773,11 @@
     <Project Name="wxscintilla"/>
     <Project Name="sqlite3"/>
     <Project Name="wxsqlite3"/>
-    <Project Name="CodeLite"/>
+    <Project Name="libCodeLite"/>
     <Project Name="plugin_sdk"/>
     <Project Name="DebuggerGDB"/>
   </Dependencies>
-  <VirtualDirectory Name="ClangCodeCompletion">
+  <VirtualDirectory Name="CodeCompletion">
     <File Name="clang_code_completion.h"/>
     <File Name="clang_code_completion.cpp"/>
     <File Name="clangpch_cache.h"/>
@@ -759,8 +796,6 @@
     </VirtualDirectory>
     <File Name="clang_utils.h"/>
     <File Name="clang_utils.cpp"/>
-    <File Name="clang_macro_handler.h"/>
-    <File Name="clang_macro_handler.cpp"/>
     <File Name="clang_unsaved_files.h"/>
     <File Name="clang_unsaved_files.cpp"/>
     <File Name="code_completion_box.h"/>
@@ -769,12 +804,16 @@
     <File Name="clang_compilation_db_thread.cpp"/>
     <File Name="clang_cleaner_thread.h"/>
     <File Name="clang_cleaner_thread.cpp"/>
+    <File Name="CxxPreProcessorThread.h"/>
+    <File Name="CxxPreProcessorThread.cpp"/>
+    <File Name="CxxUsingNamespaceCollectorThread.h"/>
+    <File Name="CxxUsingNamespaceCollectorThread.cpp"/>
   </VirtualDirectory>
   <Dependencies Name="WinRelease_29">
     <Project Name="wxscintilla"/>
     <Project Name="sqlite3"/>
     <Project Name="wxsqlite3"/>
-    <Project Name="CodeLite"/>
+    <Project Name="libCodeLite"/>
     <Project Name="plugin_sdk"/>
     <Project Name="DebuggerGDB"/>
     <Project Name="CodeFormatter"/>
@@ -819,12 +858,8 @@
       <File Name="rename_symbool_dlg.cpp"/>
       <File Name="compiler_pages.h"/>
       <File Name="compiler_pages.cpp"/>
-      <File Name="NewKeyShortcutBaseDlg.h"/>
-      <File Name="NewKeyShortcutBaseDlg.cpp"/>
       <File Name="AccelTableBaseDlg.h"/>
       <File Name="AccelTableBaseDlg.cpp"/>
-      <File Name="editor_options_copy_paste.h"/>
-      <File Name="editor_options_copy_paste.cpp"/>
       <File Name="new_virtual_folder.h"/>
       <File Name="new_virtual_folder.cpp"/>
       <File Name="editor_options_caret.h"/>
@@ -835,6 +870,8 @@
       <File Name="compilersfoundmodel.h"/>
       <File Name="CompilersFoundDlgBase.h"/>
       <File Name="CompilersFoundDlgBase.cpp"/>
+      <File Name="CodeLiteUpgradeFrameBase.h"/>
+      <File Name="CodeLiteUpgradeFrameBase.cpp"/>
     </VirtualDirectory>
     <VirtualDirectory Name="resources">
       <File Name="wxcrafter_liteeditor_bitmaps.cpp"/>
@@ -854,12 +891,10 @@
       <File Name="workspacesettingsbase_liteeditor_bitmaps.cpp"/>
       <File Name="compiler_page_plugin_bitmaps.cpp"/>
       <File Name="messagepane_liteeditor_bitmaps.cpp"/>
-      <File Name="NewKeyShortcutBaseDlg_liteeditor_bitmaps.cpp"/>
       <File Name="AccelTableBaseDlg_liteeditor_bitmaps.cpp"/>
       <File Name="AddIncludeFile_liteeditor_bitmaps.cpp"/>
       <File Name="tags_options_base_dlg_formbuilder_bitmaps.cpp"/>
       <File Name="editor_options_guides_liteeditor_bitmaps.cpp"/>
-      <File Name="editor_options_copy_paste_liteeditor_bitmaps.cpp"/>
       <File Name="editor_options_terminal_liteeditor_bitmaps.cpp"/>
       <File Name="optionsdialogbase2_liteeditor_bitmaps.cpp"/>
       <File Name="new_virtual_folder_liteeditor_bitmaps.cpp"/>
@@ -873,6 +908,7 @@
       <File Name="CompilersFoundDlg_liteeditor_bitmaps.cpp"/>
       <File Name="new_workspace_dlg_liteeditor_bitmaps.cpp"/>
       <File Name="quickdebug_formbuilder_bitmaps.cpp"/>
+      <File Name="CodeLiteUpgradeFrame_liteeditor_bitmaps.cpp"/>
     </VirtualDirectory>
     <File Name="../formbuilder/editorsettingslocalbase.wxcp"/>
     <File Name="../formbuilder/findinfiles_dlg.wxcp"/>
@@ -881,15 +917,16 @@
     <File Name="newquickwatch.wxcp"/>
     <File Name="../formbuilder/listctrlpanel.wxcp"/>
     <File Name="editor_options_comments_doxygen.wxcp"/>
-    <File Name="editor_options_copy_paste.wxcp"/>
     <File Name="new_virtual_folder.wxcp"/>
     <File Name="quickfindbarbase.wxcp"/>
     <File Name="CompilersFoundDlg.wxcp"/>
+    <File Name="ReplaceInFilesPageBase.wxcp"/>
+    <File Name="CodeLiteUpgradeFrame.wxcp"/>
   </VirtualDirectory>
   <Dependencies Name="Unix">
     <Project Name="sqlite3"/>
     <Project Name="wxsqlite3"/>
-    <Project Name="CodeLite"/>
+    <Project Name="libCodeLite"/>
     <Project Name="plugin_sdk"/>
     <Project Name="CodeFormatter"/>
     <Project Name="DebuggerGDB"/>
@@ -901,7 +938,7 @@
   <Dependencies Name="Unix_Make_J">
     <Project Name="sqlite3"/>
     <Project Name="wxsqlite3"/>
-    <Project Name="CodeLite"/>
+    <Project Name="libCodeLite"/>
     <Project Name="plugin_sdk"/>
     <Project Name="CodeFormatter"/>
     <Project Name="DebuggerGDB"/>
@@ -914,7 +951,7 @@
   <Dependencies Name="Unix_Wx_29">
     <Project Name="sqlite3"/>
     <Project Name="wxsqlite3"/>
-    <Project Name="CodeLite"/>
+    <Project Name="libCodeLite"/>
     <Project Name="plugin_sdk"/>
     <Project Name="CodeFormatter"/>
     <Project Name="DebuggerGDB"/>
@@ -927,7 +964,7 @@
   <Dependencies Name="Win_wxWidgets_29">
     <Project Name="sqlite3"/>
     <Project Name="wxsqlite3"/>
-    <Project Name="CodeLite"/>
+    <Project Name="libCodeLite"/>
     <Project Name="plugin_sdk"/>
     <Project Name="CodeFormatter"/>
     <Project Name="DebuggerGDB"/>
@@ -962,13 +999,240 @@
     <File Name="reconcileprojectbase.cpp"/>
     <File Name="reconcileprojectbase.h"/>
   </VirtualDirectory>
-  <Dependencies Name="WinDebugUnicode">
+  <Dependencies Name="CMake_Debug">
+    <Project Name="wxscintilla"/>
+    <Project Name="sqlite3"/>
+    <Project Name="wxsqlite3"/>
+    <Project Name="libCodeLite"/>
+    <Project Name="plugin_sdk"/>
+    <Project Name="CodeFormatter"/>
+    <Project Name="DebuggerGDB"/>
+    <Project Name="Subversion"/>
+    <Project Name="Gizmos"/>
+    <Project Name="Cscope"/>
+    <Project Name="Copyright"/>
+    <Project Name="UnitTestPP"/>
+  </Dependencies>
+  <Dependencies Name="CMake_Debug_DBE_MySQL">
+    <Project Name="wxscintilla"/>
+    <Project Name="sqlite3"/>
+    <Project Name="wxsqlite3"/>
+    <Project Name="libCodeLite"/>
+    <Project Name="plugin_sdk"/>
+    <Project Name="CodeFormatter"/>
+    <Project Name="DebuggerGDB"/>
+    <Project Name="Subversion"/>
+    <Project Name="Gizmos"/>
+    <Project Name="Cscope"/>
+    <Project Name="Copyright"/>
+    <Project Name="UnitTestPP"/>
+  </Dependencies>
+  <Dependencies Name="CMake_Debug_Essential">
+    <Project Name="wxscintilla"/>
+    <Project Name="sqlite3"/>
+    <Project Name="wxsqlite3"/>
+    <Project Name="libCodeLite"/>
+    <Project Name="plugin_sdk"/>
+    <Project Name="CodeFormatter"/>
+    <Project Name="DebuggerGDB"/>
+    <Project Name="Subversion"/>
+    <Project Name="Gizmos"/>
+    <Project Name="Cscope"/>
+    <Project Name="Copyright"/>
+    <Project Name="UnitTestPP"/>
+  </Dependencies>
+  <Dependencies Name="CMake_Release">
+    <Project Name="wxscintilla"/>
+    <Project Name="sqlite3"/>
+    <Project Name="wxsqlite3"/>
+    <Project Name="libCodeLite"/>
+    <Project Name="plugin_sdk"/>
+    <Project Name="CodeFormatter"/>
+    <Project Name="DebuggerGDB"/>
+    <Project Name="Subversion"/>
+    <Project Name="Gizmos"/>
+    <Project Name="Cscope"/>
+    <Project Name="Copyright"/>
+    <Project Name="UnitTestPP"/>
+  </Dependencies>
+  <Dependencies Name="CMake_Release_DBE_MySQL">
+    <Project Name="wxscintilla"/>
+    <Project Name="sqlite3"/>
+    <Project Name="wxsqlite3"/>
+    <Project Name="libCodeLite"/>
+    <Project Name="plugin_sdk"/>
+    <Project Name="CodeFormatter"/>
+    <Project Name="DebuggerGDB"/>
+    <Project Name="Subversion"/>
+    <Project Name="Gizmos"/>
+    <Project Name="Cscope"/>
+    <Project Name="Copyright"/>
+    <Project Name="UnitTestPP"/>
+  </Dependencies>
+  <Dependencies Name="CMake_Release_Essential">
+    <Project Name="wxscintilla"/>
+    <Project Name="sqlite3"/>
+    <Project Name="wxsqlite3"/>
+    <Project Name="libCodeLite"/>
+    <Project Name="plugin_sdk"/>
+    <Project Name="CodeFormatter"/>
+    <Project Name="DebuggerGDB"/>
+    <Project Name="Subversion"/>
+    <Project Name="Gizmos"/>
+    <Project Name="Cscope"/>
+    <Project Name="Copyright"/>
+    <Project Name="UnitTestPP"/>
+  </Dependencies>
+  <Dependencies Name="OSX_Debug">
+    <Project Name="wxscintilla"/>
+    <Project Name="sqlite3"/>
+    <Project Name="wxsqlite3"/>
+    <Project Name="libCodeLite"/>
+    <Project Name="plugin_sdk"/>
+    <Project Name="CodeFormatter"/>
+    <Project Name="DebuggerGDB"/>
+    <Project Name="Subversion"/>
+    <Project Name="Gizmos"/>
+    <Project Name="Cscope"/>
+    <Project Name="Copyright"/>
+    <Project Name="UnitTestPP"/>
+  </Dependencies>
+  <Dependencies Name="OSX_Release">
+    <Project Name="wxscintilla"/>
+    <Project Name="sqlite3"/>
+    <Project Name="wxsqlite3"/>
+    <Project Name="libCodeLite"/>
+    <Project Name="plugin_sdk"/>
+    <Project Name="CodeFormatter"/>
+    <Project Name="DebuggerGDB"/>
+    <Project Name="Subversion"/>
+    <Project Name="Gizmos"/>
+    <Project Name="Cscope"/>
+    <Project Name="Copyright"/>
+    <Project Name="UnitTestPP"/>
+  </Dependencies>
+  <Dependencies Name="Win_x86_Release">
     <Project Name="PCH"/>
     <Project Name="sqlite3"/>
     <Project Name="wxsqlite3"/>
     <Project Name="databaselayer_sqlite"/>
     <Project Name="wxshapeframework"/>
-    <Project Name="CodeLite"/>
+    <Project Name="libCodeLite"/>
+    <Project Name="plugin_sdk"/>
+    <Project Name="DebuggerGDB"/>
+    <Project Name="CodeFormatter"/>
+    <Project Name="Gizmos"/>
+    <Project Name="Cscope"/>
+    <Project Name="Copyright"/>
+    <Project Name="UnitTestPP"/>
+    <Project Name="ExternalTools"/>
+    <Project Name="snipwiz"/>
+    <Project Name="wxFormBuilder"/>
+    <Project Name="abbreviation"/>
+    <Project Name="ContinuousBuild"/>
+    <Project Name="QMakePlugin"/>
+    <Project Name="CppChecker"/>
+    <Project Name="Subversion2"/>
+    <Project Name="Outline"/>
+    <Project Name="git"/>
+    <Project Name="DatabaseExplorer"/>
+    <Project Name="CallGraph"/>
+    <Project Name="ZoomNavigator"/>
+    <Project Name="SFTP"/>
+    <Project Name="Tweaks"/>
+    <Project Name="CMakePlugin"/>
+    <Project Name="CodeLiteDiff"/>
+    <Project Name="LLDBDebugger"/>
+    <Project Name="hunspell"/>
+    <Project Name="SpellCheck"/>
+    <Project Name="PHPParser"/>
+    <Project Name="PHPPlugin"/>
+    <Project Name="WordCompletion"/>
+  </Dependencies>
+  <Dependencies Name="Win_x64_Debug">
+    <Project Name="PCH"/>
+    <Project Name="sqlite3"/>
+    <Project Name="wxsqlite3"/>
+    <Project Name="databaselayer_sqlite"/>
+    <Project Name="wxshapeframework"/>
+    <Project Name="libCodeLite"/>
+    <Project Name="plugin_sdk"/>
+    <Project Name="CodeFormatter"/>
+    <Project Name="DebuggerGDB"/>
+    <Project Name="Gizmos"/>
+    <Project Name="Cscope"/>
+    <Project Name="Copyright"/>
+    <Project Name="UnitTestPP"/>
+    <Project Name="ExternalTools"/>
+    <Project Name="snipwiz"/>
+    <Project Name="wxFormBuilder"/>
+    <Project Name="abbreviation"/>
+    <Project Name="ContinuousBuild"/>
+    <Project Name="QMakePlugin"/>
+    <Project Name="CppChecker"/>
+    <Project Name="Subversion2"/>
+    <Project Name="Outline"/>
+    <Project Name="git"/>
+    <Project Name="DatabaseExplorer"/>
+    <Project Name="CallGraph"/>
+    <Project Name="ZoomNavigator"/>
+    <Project Name="SFTP"/>
+    <Project Name="Tweaks"/>
+    <Project Name="CMakePlugin"/>
+    <Project Name="CodeLiteDiff"/>
+    <Project Name="hunspell"/>
+    <Project Name="LLDBDebugger"/>
+    <Project Name="SpellCheck"/>
+    <Project Name="PHPParser"/>
+    <Project Name="PHPPlugin"/>
+    <Project Name="WordCompletion"/>
+  </Dependencies>
+  <Dependencies Name="Win_x64_Release">
+    <Project Name="wxscintilla"/>
+    <Project Name="sqlite3"/>
+    <Project Name="wxsqlite3"/>
+    <Project Name="libCodeLite"/>
+    <Project Name="plugin_sdk"/>
+    <Project Name="DebuggerGDB"/>
+    <Project Name="CodeFormatter"/>
+    <Project Name="Subversion"/>
+    <Project Name="Gizmos"/>
+    <Project Name="Cscope"/>
+    <Project Name="Copyright"/>
+    <Project Name="UnitTestPP"/>
+    <Project Name="CMakePlugin"/>
+    <Project Name="CallGraph"/>
+    <Project Name="CodeLiteDiff"/>
+    <Project Name="ContinuousBuild"/>
+    <Project Name="CppChecker"/>
+    <Project Name="wxshapeframework"/>
+    <Project Name="databaselayer_sqlite"/>
+    <Project Name="DatabaseExplorer"/>
+    <Project Name="ExternalTools"/>
+    <Project Name="LLDBDebugger"/>
+    <Project Name="Outline"/>
+    <Project Name="PCH"/>
+    <Project Name="PHPParser"/>
+    <Project Name="PHPPlugin"/>
+    <Project Name="QMakePlugin"/>
+    <Project Name="SFTP"/>
+    <Project Name="hunspell"/>
+    <Project Name="SpellCheck"/>
+    <Project Name="Subversion2"/>
+    <Project Name="Tweaks"/>
+    <Project Name="WordCompletion"/>
+    <Project Name="ZoomNavigator"/>
+    <Project Name="abbreviation"/>
+    <Project Name="git"/>
+    <Project Name="snipwiz"/>
+    <Project Name="wxFormBuilder"/>
+  </Dependencies>
+  <Dependencies Name="Win_x64_Debug">
+    <Project Name="sqlite3"/>
+    <Project Name="wxsqlite3"/>
+    <Project Name="databaselayer_sqlite"/>
+    <Project Name="wxshapeframework"/>
+    <Project Name="libCodeLite"/>
     <Project Name="plugin_sdk"/>
     <Project Name="CodeFormatter"/>
     <Project Name="DebuggerGDB"/>
@@ -997,188 +1261,8 @@
     <Project Name="hunspell"/>
     <Project Name="SpellCheck"/>
     <Project Name="LLDBDebugger"/>
-  </Dependencies>
-  <Dependencies Name="CMake_Debug">
-    <Project Name="wxscintilla"/>
-    <Project Name="sqlite3"/>
-    <Project Name="wxsqlite3"/>
-    <Project Name="CodeLite"/>
-    <Project Name="plugin_sdk"/>
-    <Project Name="CodeFormatter"/>
-    <Project Name="DebuggerGDB"/>
-    <Project Name="Subversion"/>
-    <Project Name="Gizmos"/>
-    <Project Name="Cscope"/>
-    <Project Name="Copyright"/>
-    <Project Name="UnitTestPP"/>
-  </Dependencies>
-  <Dependencies Name="CMake_Debug_DBE_MySQL">
-    <Project Name="wxscintilla"/>
-    <Project Name="sqlite3"/>
-    <Project Name="wxsqlite3"/>
-    <Project Name="CodeLite"/>
-    <Project Name="plugin_sdk"/>
-    <Project Name="CodeFormatter"/>
-    <Project Name="DebuggerGDB"/>
-    <Project Name="Subversion"/>
-    <Project Name="Gizmos"/>
-    <Project Name="Cscope"/>
-    <Project Name="Copyright"/>
-    <Project Name="UnitTestPP"/>
-  </Dependencies>
-  <Dependencies Name="CMake_Debug_Essential">
-    <Project Name="wxscintilla"/>
-    <Project Name="sqlite3"/>
-    <Project Name="wxsqlite3"/>
-    <Project Name="CodeLite"/>
-    <Project Name="plugin_sdk"/>
-    <Project Name="CodeFormatter"/>
-    <Project Name="DebuggerGDB"/>
-    <Project Name="Subversion"/>
-    <Project Name="Gizmos"/>
-    <Project Name="Cscope"/>
-    <Project Name="Copyright"/>
-    <Project Name="UnitTestPP"/>
-  </Dependencies>
-  <Dependencies Name="CMake_Release">
-    <Project Name="wxscintilla"/>
-    <Project Name="sqlite3"/>
-    <Project Name="wxsqlite3"/>
-    <Project Name="CodeLite"/>
-    <Project Name="plugin_sdk"/>
-    <Project Name="CodeFormatter"/>
-    <Project Name="DebuggerGDB"/>
-    <Project Name="Subversion"/>
-    <Project Name="Gizmos"/>
-    <Project Name="Cscope"/>
-    <Project Name="Copyright"/>
-    <Project Name="UnitTestPP"/>
-  </Dependencies>
-  <Dependencies Name="CMake_Release_DBE_MySQL">
-    <Project Name="wxscintilla"/>
-    <Project Name="sqlite3"/>
-    <Project Name="wxsqlite3"/>
-    <Project Name="CodeLite"/>
-    <Project Name="plugin_sdk"/>
-    <Project Name="CodeFormatter"/>
-    <Project Name="DebuggerGDB"/>
-    <Project Name="Subversion"/>
-    <Project Name="Gizmos"/>
-    <Project Name="Cscope"/>
-    <Project Name="Copyright"/>
-    <Project Name="UnitTestPP"/>
-  </Dependencies>
-  <Dependencies Name="CMake_Release_Essential">
-    <Project Name="wxscintilla"/>
-    <Project Name="sqlite3"/>
-    <Project Name="wxsqlite3"/>
-    <Project Name="CodeLite"/>
-    <Project Name="plugin_sdk"/>
-    <Project Name="CodeFormatter"/>
-    <Project Name="DebuggerGDB"/>
-    <Project Name="Subversion"/>
-    <Project Name="Gizmos"/>
-    <Project Name="Cscope"/>
-    <Project Name="Copyright"/>
-    <Project Name="UnitTestPP"/>
-  </Dependencies>
-  <Dependencies Name="OSX_Debug">
-    <Project Name="wxscintilla"/>
-    <Project Name="sqlite3"/>
-    <Project Name="wxsqlite3"/>
-    <Project Name="CodeLite"/>
-    <Project Name="plugin_sdk"/>
-    <Project Name="CodeFormatter"/>
-    <Project Name="DebuggerGDB"/>
-    <Project Name="Subversion"/>
-    <Project Name="Gizmos"/>
-    <Project Name="Cscope"/>
-    <Project Name="Copyright"/>
-    <Project Name="UnitTestPP"/>
-  </Dependencies>
-  <Dependencies Name="OSX_Release">
-    <Project Name="wxscintilla"/>
-    <Project Name="sqlite3"/>
-    <Project Name="wxsqlite3"/>
-    <Project Name="CodeLite"/>
-    <Project Name="plugin_sdk"/>
-    <Project Name="CodeFormatter"/>
-    <Project Name="DebuggerGDB"/>
-    <Project Name="Subversion"/>
-    <Project Name="Gizmos"/>
-    <Project Name="Cscope"/>
-    <Project Name="Copyright"/>
-    <Project Name="UnitTestPP"/>
-  </Dependencies>
-  <Dependencies Name="WinDebugUnicode">
-    <Project Name="PCH"/>
-    <Project Name="sqlite3"/>
-    <Project Name="wxsqlite3"/>
-    <Project Name="databaselayer_sqlite"/>
-    <Project Name="wxshapeframework"/>
-    <Project Name="CodeLite"/>
-    <Project Name="plugin_sdk"/>
-    <Project Name="CodeFormatter"/>
-    <Project Name="DebuggerGDB"/>
-    <Project Name="Gizmos"/>
-    <Project Name="Cscope"/>
-    <Project Name="Copyright"/>
-    <Project Name="UnitTestPP"/>
-    <Project Name="ExternalTools"/>
-    <Project Name="snipwiz"/>
-    <Project Name="wxFormBuilder"/>
-    <Project Name="abbreviation"/>
-    <Project Name="ContinuousBuild"/>
-    <Project Name="QMakePlugin"/>
-    <Project Name="CppChecker"/>
-    <Project Name="Subversion2"/>
-    <Project Name="Outline"/>
-    <Project Name="git"/>
-    <Project Name="DatabaseExplorer"/>
-    <Project Name="CallGraph"/>
-    <Project Name="ZoomNavigator"/>
-    <Project Name="SFTP"/>
-    <Project Name="Tweaks"/>
-    <Project Name="CMakePlugin"/>
-    <Project Name="CodeLiteDiff"/>
-    <Project Name="hunspell"/>
-    <Project Name="LLDBDebugger"/>
-    <Project Name="SpellCheck"/>
-  </Dependencies>
-  <Dependencies Name="WinReleaseUnicode">
-    <Project Name="PCH"/>
-    <Project Name="sqlite3"/>
-    <Project Name="wxsqlite3"/>
-    <Project Name="databaselayer_sqlite"/>
-    <Project Name="wxshapeframework"/>
-    <Project Name="CodeLite"/>
-    <Project Name="plugin_sdk"/>
-    <Project Name="DebuggerGDB"/>
-    <Project Name="CodeFormatter"/>
-    <Project Name="Gizmos"/>
-    <Project Name="Cscope"/>
-    <Project Name="Copyright"/>
-    <Project Name="UnitTestPP"/>
-    <Project Name="ExternalTools"/>
-    <Project Name="snipwiz"/>
-    <Project Name="wxFormBuilder"/>
-    <Project Name="abbreviation"/>
-    <Project Name="ContinuousBuild"/>
-    <Project Name="QMakePlugin"/>
-    <Project Name="CppChecker"/>
-    <Project Name="Subversion2"/>
-    <Project Name="Outline"/>
-    <Project Name="git"/>
-    <Project Name="DatabaseExplorer"/>
-    <Project Name="CallGraph"/>
-    <Project Name="ZoomNavigator"/>
-    <Project Name="SFTP"/>
-    <Project Name="Tweaks"/>
-    <Project Name="CMakePlugin"/>
-    <Project Name="CodeLiteDiff"/>
-    <Project Name="LLDBDebugger"/>
-    <Project Name="hunspell"/>
-    <Project Name="SpellCheck"/>
+    <Project Name="PHPParser"/>
+    <Project Name="PHPPlugin"/>
   </Dependencies>
   <Settings Type="Executable">
     <GlobalSettings>
@@ -1215,7 +1299,7 @@
       <PostBuild/>
       <CustomBuild Enabled="yes">
         <Target Name="install">make install</Target>
-        <Target Name="cmake">cmake -DWITH_WXC=1 -DPREFIX=/home/eran/root   -DCMAKE_BUILD_TYPE=Debug .. -DCMAKE_EXPORT_COMPILE_COMMANDS=1</Target>
+        <Target Name="cmake">cmake -DWITH_WXC=1 -DPREFIX=/home/eran/root   -DCMAKE_BUILD_TYPE=Debug .. -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DWITH_FLEX=1</Target>
         <RebuildCommand>make clean &amp;&amp; make -j8</RebuildCommand>
         <CleanCommand>make clean</CleanCommand>
         <BuildCommand>make -j8</BuildCommand>
@@ -1234,6 +1318,62 @@
         <ClangCmpFlags/>
         <ClangPP/>
         <SearchPaths>$LLVM_HOME/tools/lldb/include</SearchPaths>
+      </Completion>
+    </Configuration>
+    <Configuration Name="CMake_Debug_Aui_Book" CompilerType="gnu g++" DebuggerType="GNU gdb debugger" Type="Executable" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
+      <Compiler Options="$(shell wx-config --cxxflags --debug=no --unicode=yes);-O2;$(shell pkg-config --cflags gtk+-2.0);-Wall;-fno-strict-aliasing" C_Options="$(shell wx-config --cxxflags --debug=no --unicode=yes);-O2;$(shell pkg-config --cflags gtk+-2.0);-Wall;-fno-strict-aliasing" Assembler="" Required="yes" PreCompiledHeader="" PCHInCommandLine="no" PCHFlags="" PCHFlagsPolicy="0">
+        <IncludePath Value="."/>
+        <IncludePath Value="../CodeLite"/>
+        <IncludePath Value="../sdk/wxsqlite3/include"/>
+        <IncludePath Value="../sdk/wxscintilla/include"/>
+        <IncludePath Value="../Plugin"/>
+        <IncludePath Value="../Interfaces"/>
+        <Preprocessor Value="__WX__"/>
+        <Preprocessor Value="WXUSINGDLL"/>
+      </Compiler>
+      <Linker Options="-O2;$(shell wx-config --libs std,stc --unicode=yes --debug=no);$(shell pkg-config --libs gtk+-2.0)" Required="yes">
+        <LibraryPath Value="../lib/gcc_lib"/>
+        <Library Value="libCodeLiteu.a"/>
+        <Library Value="libplugin_sdku.a"/>
+        <Library Value="libwxsqlite3u.a"/>
+        <Library Value="libsqlite3.a"/>
+      </Linker>
+      <ResourceCompiler Options="$(shell wx-config --rcflags)" Required="no"/>
+      <General OutputFile="../Runtime/codelite" IntermediateDirectory="./ReleaseUnicode" Command="/home/eran/root/bin/codelite" CommandArguments="" UseSeparateDebugArgs="yes" DebugArguments="--g-fatal-warnings" WorkingDirectory="" PauseExecWhenProcTerminates="no" IsGUIProgram="no" IsEnabled="yes"/>
+      <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="">
+        <![CDATA[SUDO_ASKPASS=/usr/bin/ssh-askpass
+LD_LIBRARY_PATH=/home/eran/root/lib/codelite/]]>
+      </Environment>
+      <Debugger IsRemote="no" RemoteHostName="" RemoteHostPort="" DebuggerPath="" IsExtended="no">
+        <DebuggerSearchPaths/>
+        <PostConnectCommands/>
+        <StartupCommands/>
+      </Debugger>
+      <PreBuild/>
+      <PostBuild/>
+      <CustomBuild Enabled="yes">
+        <Target Name="install">make install</Target>
+        <Target Name="cmake">cmake -DCMAKE_BUILD_TYPE=Debug  -DWITH_WXC=1 .. -DMAKE_DEB=1 -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DWITH_PCH=1 -DGTK_USE_AUIBOOK=1 -DPREFIX=/home/eran/root</Target>
+        <RebuildCommand>make clean &amp;&amp; make -j8</RebuildCommand>
+        <CleanCommand>make clean</CleanCommand>
+        <BuildCommand>make -e -j 8</BuildCommand>
+        <PreprocessFileCommand/>
+        <SingleFileCommand/>
+        <MakefileGenerationCommand>./configure</MakefileGenerationCommand>
+        <ThirdPartyToolName>None</ThirdPartyToolName>
+        <WorkingDirectory>$(WorkspacePath)/build-debug-aui</WorkingDirectory>
+      </CustomBuild>
+      <AdditionalRules>
+        <CustomPostBuild/>
+        <CustomPreBuild>resources.cpp
+resources.cpp: resources.xrc
+	wxrc -c -v -o resources.cpp resources.xrc</CustomPreBuild>
+      </AdditionalRules>
+      <Completion EnableCpp11="no">
+        <ClangCmpFlagsC/>
+        <ClangCmpFlags/>
+        <ClangPP/>
+        <SearchPaths/>
       </Completion>
     </Configuration>
     <Configuration Name="CMake_Debug_DBE_MySQL" CompilerType="gnu g++" DebuggerType="GNU gdb debugger" Type="Executable" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
@@ -1354,7 +1494,7 @@ LD_LIBRARY_PATH=/home/eran/root/lib/codelite/]]>
       <PreBuild/>
       <PostBuild/>
       <CustomBuild Enabled="yes">
-        <Target Name="cmake">cmake -DCMAKE_BUILD_TYPE=Release  -DWITH_WXC=1 .. -DMAKE_DEB=1 -DCMAKE_EXPORT_COMPILE_COMMANDS=1</Target>
+        <Target Name="cmake">cmake -DCMAKE_BUILD_TYPE=Release  -DWITH_WXC=1 .. -DMAKE_DEB=1 -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DWITH_PCH=1</Target>
         <RebuildCommand>make clean &amp;&amp; make -j8</RebuildCommand>
         <CleanCommand>make clean</CleanCommand>
         <BuildCommand>make -e -j 8</BuildCommand>
@@ -1363,6 +1503,61 @@ LD_LIBRARY_PATH=/home/eran/root/lib/codelite/]]>
         <MakefileGenerationCommand>./configure</MakefileGenerationCommand>
         <ThirdPartyToolName>None</ThirdPartyToolName>
         <WorkingDirectory>$(WorkspacePath)/build-release</WorkingDirectory>
+      </CustomBuild>
+      <AdditionalRules>
+        <CustomPostBuild/>
+        <CustomPreBuild>resources.cpp
+resources.cpp: resources.xrc
+	wxrc -c -v -o resources.cpp resources.xrc</CustomPreBuild>
+      </AdditionalRules>
+      <Completion EnableCpp11="no">
+        <ClangCmpFlagsC/>
+        <ClangCmpFlags/>
+        <ClangPP/>
+        <SearchPaths/>
+      </Completion>
+    </Configuration>
+    <Configuration Name="CMake_Release_Aui_Book" CompilerType="gnu g++" DebuggerType="GNU gdb debugger" Type="Executable" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
+      <Compiler Options="$(shell wx-config --cxxflags --debug=no --unicode=yes);-O2;$(shell pkg-config --cflags gtk+-2.0);-Wall;-fno-strict-aliasing" C_Options="$(shell wx-config --cxxflags --debug=no --unicode=yes);-O2;$(shell pkg-config --cflags gtk+-2.0);-Wall;-fno-strict-aliasing" Assembler="" Required="yes" PreCompiledHeader="" PCHInCommandLine="no" PCHFlags="" PCHFlagsPolicy="0">
+        <IncludePath Value="."/>
+        <IncludePath Value="../CodeLite"/>
+        <IncludePath Value="../sdk/wxsqlite3/include"/>
+        <IncludePath Value="../sdk/wxscintilla/include"/>
+        <IncludePath Value="../Plugin"/>
+        <IncludePath Value="../Interfaces"/>
+        <Preprocessor Value="__WX__"/>
+        <Preprocessor Value="WXUSINGDLL"/>
+      </Compiler>
+      <Linker Options="-O2;$(shell wx-config --libs std,stc --unicode=yes --debug=no);$(shell pkg-config --libs gtk+-2.0)" Required="yes">
+        <LibraryPath Value="../lib/gcc_lib"/>
+        <Library Value="libCodeLiteu.a"/>
+        <Library Value="libplugin_sdku.a"/>
+        <Library Value="libwxsqlite3u.a"/>
+        <Library Value="libsqlite3.a"/>
+      </Linker>
+      <ResourceCompiler Options="$(shell wx-config --rcflags)" Required="no"/>
+      <General OutputFile="../Runtime/codelite" IntermediateDirectory="./ReleaseUnicode" Command="/home/eran/root/bin/codelite" CommandArguments="" UseSeparateDebugArgs="yes" DebugArguments="--g-fatal-warnings" WorkingDirectory="" PauseExecWhenProcTerminates="no" IsGUIProgram="no" IsEnabled="yes"/>
+      <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="">
+        <![CDATA[SUDO_ASKPASS=/usr/bin/ssh-askpass
+LD_LIBRARY_PATH=/home/eran/root/lib/codelite/]]>
+      </Environment>
+      <Debugger IsRemote="no" RemoteHostName="" RemoteHostPort="" DebuggerPath="" IsExtended="no">
+        <DebuggerSearchPaths/>
+        <PostConnectCommands/>
+        <StartupCommands/>
+      </Debugger>
+      <PreBuild/>
+      <PostBuild/>
+      <CustomBuild Enabled="yes">
+        <Target Name="cmake">cmake -DCMAKE_BUILD_TYPE=Release  -DWITH_WXC=1 .. -DMAKE_DEB=1 -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DWITH_PCH=1 -DGTK_USE_AUIBOOK=1</Target>
+        <RebuildCommand>make clean &amp;&amp; make -j8</RebuildCommand>
+        <CleanCommand>make clean</CleanCommand>
+        <BuildCommand>make -e -j 8</BuildCommand>
+        <PreprocessFileCommand/>
+        <SingleFileCommand/>
+        <MakefileGenerationCommand>./configure</MakefileGenerationCommand>
+        <ThirdPartyToolName>None</ThirdPartyToolName>
+        <WorkingDirectory>$(WorkspacePath)/build-release-aui</WorkingDirectory>
       </CustomBuild>
       <AdditionalRules>
         <CustomPostBuild/>
@@ -1462,6 +1657,61 @@ resources.cpp: resources.xrc
         <SearchPaths/>
       </Completion>
     </Configuration>
+    <Configuration Name="CMake_Release_NO_SFTP" CompilerType="gnu g++" DebuggerType="GNU gdb debugger" Type="Executable" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
+      <Compiler Options="$(shell wx-config --cxxflags --debug=no --unicode=yes);-O2;$(shell pkg-config --cflags gtk+-2.0);-Wall;-fno-strict-aliasing" C_Options="$(shell wx-config --cxxflags --debug=no --unicode=yes);-O2;$(shell pkg-config --cflags gtk+-2.0);-Wall;-fno-strict-aliasing" Assembler="" Required="yes" PreCompiledHeader="" PCHInCommandLine="no" PCHFlags="" PCHFlagsPolicy="0">
+        <IncludePath Value="."/>
+        <IncludePath Value="../CodeLite"/>
+        <IncludePath Value="../sdk/wxsqlite3/include"/>
+        <IncludePath Value="../sdk/wxscintilla/include"/>
+        <IncludePath Value="../Plugin"/>
+        <IncludePath Value="../Interfaces"/>
+        <Preprocessor Value="__WX__"/>
+        <Preprocessor Value="WXUSINGDLL"/>
+      </Compiler>
+      <Linker Options="-O2;$(shell wx-config --libs std,stc --unicode=yes --debug=no);$(shell pkg-config --libs gtk+-2.0)" Required="yes">
+        <LibraryPath Value="../lib/gcc_lib"/>
+        <Library Value="libCodeLiteu.a"/>
+        <Library Value="libplugin_sdku.a"/>
+        <Library Value="libwxsqlite3u.a"/>
+        <Library Value="libsqlite3.a"/>
+      </Linker>
+      <ResourceCompiler Options="$(shell wx-config --rcflags)" Required="no"/>
+      <General OutputFile="../Runtime/codelite" IntermediateDirectory="./ReleaseUnicode" Command="/home/eran/root/bin/codelite" CommandArguments="" UseSeparateDebugArgs="yes" DebugArguments="--g-fatal-warnings" WorkingDirectory="" PauseExecWhenProcTerminates="no" IsGUIProgram="no" IsEnabled="yes"/>
+      <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="">
+        <![CDATA[SUDO_ASKPASS=/usr/bin/ssh-askpass
+LD_LIBRARY_PATH=/home/eran/root/lib/codelite/]]>
+      </Environment>
+      <Debugger IsRemote="no" RemoteHostName="" RemoteHostPort="" DebuggerPath="" IsExtended="no">
+        <DebuggerSearchPaths/>
+        <PostConnectCommands/>
+        <StartupCommands/>
+      </Debugger>
+      <PreBuild/>
+      <PostBuild/>
+      <CustomBuild Enabled="yes">
+        <Target Name="cmake">cmake -DCMAKE_BUILD_TYPE=Release  .. -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DENABLE_SFTP=0 -DWITH_PCH=1</Target>
+        <RebuildCommand>make clean &amp;&amp; make -j8</RebuildCommand>
+        <CleanCommand>make clean</CleanCommand>
+        <BuildCommand>make -e -j 8</BuildCommand>
+        <PreprocessFileCommand/>
+        <SingleFileCommand/>
+        <MakefileGenerationCommand>./configure</MakefileGenerationCommand>
+        <ThirdPartyToolName>None</ThirdPartyToolName>
+        <WorkingDirectory>$(WorkspacePath)/build-release-no-sftp</WorkingDirectory>
+      </CustomBuild>
+      <AdditionalRules>
+        <CustomPostBuild/>
+        <CustomPreBuild>resources.cpp
+resources.cpp: resources.xrc
+	wxrc -c -v -o resources.cpp resources.xrc</CustomPreBuild>
+      </AdditionalRules>
+      <Completion EnableCpp11="no">
+        <ClangCmpFlagsC/>
+        <ClangCmpFlags/>
+        <ClangPP/>
+        <SearchPaths/>
+      </Completion>
+    </Configuration>
     <Configuration Name="OSX_Debug" CompilerType="gnu g++" DebuggerType="LLDB Debugger" Type="Executable" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
       <Compiler Options="-g -Wall" C_Options="" Assembler="" Required="yes" PreCompiledHeader="" PCHInCommandLine="no" PCHFlags="" PCHFlagsPolicy="0">
         <IncludePath Value="."/>
@@ -1546,8 +1796,8 @@ resources.cpp: resources.xrc
         <SearchPaths/>
       </Completion>
     </Configuration>
-    <Configuration Name="WinDebugUnicode" CompilerType="gnu g++" DebuggerType="GNU gdb debugger" Type="Executable" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
-      <Compiler Options="-g;-Wall;$(shell wx-config --debug=yes --cxxflags --unicode=yes);-Winvalid-pch" C_Options="-Wall" Assembler="" Required="yes" PreCompiledHeader="../PCH/precompiled_header_dbg.h" PCHInCommandLine="yes" PCHFlags="$(shell wx-config --cxxflags --debug=yes --unicode=yes) -g" PCHFlagsPolicy="0">
+    <Configuration Name="Win_x64_Debug" CompilerType="g++-64" DebuggerType="GNU gdb debugger" Type="Executable" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
+      <Compiler Options="-g;-Wall;$(shell wx-config --debug=yes --cxxflags --unicode=yes);-Winvalid-pch" C_Options="-Wall" Assembler="" Required="yes" PreCompiledHeader="" PCHInCommandLine="no" PCHFlags="" PCHFlagsPolicy="0">
         <IncludePath Value="."/>
         <IncludePath Value="../CodeLite"/>
         <IncludePath Value="../sdk/wxsqlite3/include"/>
@@ -1555,7 +1805,7 @@ resources.cpp: resources.xrc
         <IncludePath Value="../Plugin"/>
         <IncludePath Value="../Interfaces"/>
         <IncludePath Value="../sdk/clang/include"/>
-        <Preprocessor Value="HAS_LIBCLANG"/>
+        <Preprocessor Value="HAS_LIBCLANG=1"/>
       </Compiler>
       <Linker Options="-g;$(shell wx-config --debug=yes --libs std,stc,propgrid --unicode=yes);-Wl,--subsystem,windows -mwindows;" Required="yes">
         <LibraryPath Value="."/>
@@ -1564,10 +1814,10 @@ resources.cpp: resources.xrc
         <Library Value="libplugin_sdkud.dll"/>
         <Library Value="libCodeLiteud.dll"/>
         <Library Value="libwxsqlite3ud.dll"/>
-        <Library Value="libclang.dll"/>
+        <Library Value="libclang64.dll"/>
       </Linker>
       <ResourceCompiler Options="$(shell wx-config --rcflags)" Required="yes"/>
-      <General OutputFile="$(IntermediateDirectory)/codelite-dbg.exe" IntermediateDirectory="./Debug" Command=".\codelite-dbg.exe" CommandArguments="-b ." UseSeparateDebugArgs="no" DebugArguments="-b . --no-plugins" WorkingDirectory="../Runtime" PauseExecWhenProcTerminates="no" IsGUIProgram="no" IsEnabled="yes"/>
+      <General OutputFile="$(IntermediateDirectory)/codelite-dbg.exe" IntermediateDirectory="$(ConfigurationName)" Command=".\codelite-dbg.exe" CommandArguments="-b . " UseSeparateDebugArgs="no" DebugArguments="-b . --no-plugins" WorkingDirectory="../Runtime" PauseExecWhenProcTerminates="no" IsGUIProgram="no" IsEnabled="yes"/>
       <Environment EnvVarSetName="Default" DbgSetName="">
         <![CDATA[PATH=../sdk/clang/lib;$(WXWIN)\lib\gcc_dll;$(PATH)]]>
       </Environment>
@@ -1608,7 +1858,65 @@ resources.cpp: resources.xrc
         <SearchPaths>../sdk/clang/include</SearchPaths>
       </Completion>
     </Configuration>
-    <Configuration Name="WinReleaseUnicode" CompilerType="gnu g++" DebuggerType="GNU gdb debugger" Type="Executable" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
+    <Configuration Name="Win_x64_Release" CompilerType="g++-64" DebuggerType="GNU gdb debugger" Type="Executable" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
+      <Compiler Options="-O2;-std=c++11;$(shell wx-config --debug=no --cxxflags --unicode=yes);-Winvalid-pch" C_Options="-O2" Assembler="" Required="yes" PreCompiledHeader="..\PCH\precompiled_header_release.h" PCHInCommandLine="yes" PCHFlags="$(shell wx-config --cxxflags --unicode=yes --debug=no) -O2" PCHFlagsPolicy="0">
+        <IncludePath Value="."/>
+        <IncludePath Value="../CodeLite"/>
+        <IncludePath Value="../sdk/wxsqlite3/include"/>
+        <IncludePath Value="../sdk/wxscintilla/include"/>
+        <IncludePath Value="../Plugin"/>
+        <IncludePath Value="../Interfaces"/>
+        <IncludePath Value="../PCH"/>
+        <IncludePath Value="../sdk/clang/include"/>
+        <Preprocessor Value="HAS_LIBCLANG=1"/>
+      </Compiler>
+      <Linker Options="-s;$(shell wx-config --debug=no --unicode=yes --libs std,stc,propgrid);-Wl,--subsystem,windows -mwindows;-O2;-s" Required="yes">
+        <LibraryPath Value="."/>
+        <LibraryPath Value="../lib/gcc_lib"/>
+        <LibraryPath Value="../sdk/clang/lib"/>
+        <Library Value="libplugin_sdku.dll"/>
+        <Library Value="libcodeliteu.dll"/>
+        <Library Value="libwxsqlite3u.dll"/>
+        <Library Value="libclang64.dll"/>
+      </Linker>
+      <ResourceCompiler Options="$(shell wx-config --rcflags)" Required="yes"/>
+      <General OutputFile="$(IntermediateDirectory)/codelite.exe" IntermediateDirectory="$(ConfigurationName)" Command=".\codelite.exe" CommandArguments="-b . " UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="../Runtime" PauseExecWhenProcTerminates="no" IsGUIProgram="yes" IsEnabled="yes"/>
+      <Environment EnvVarSetName="Default" DbgSetName="">
+        <![CDATA[PATH=$WXWIN\lib\gcc_dll;../sdk/clang/lib;../sdk/libssh/lib;$(PATH)]]>
+      </Environment>
+      <Debugger IsRemote="no" RemoteHostName="" RemoteHostPort="" DebuggerPath="" IsExtended="no">
+        <DebuggerSearchPaths/>
+        <PostConnectCommands/>
+        <StartupCommands/>
+      </Debugger>
+      <PreBuild/>
+      <PostBuild>
+        <Command Enabled="yes">copy "$(IntermediateDirectory)\codelite.exe" ..\Runtime</Command>
+      </PostBuild>
+      <CustomBuild Enabled="no">
+        <RebuildCommand/>
+        <CleanCommand>mingw32-make -f LiteEditor_wsp.mk type=ReleaseANSI clean</CleanCommand>
+        <BuildCommand>mingw32-make -f LiteEditor_wsp.mk type=ReleaseANSI</BuildCommand>
+        <PreprocessFileCommand/>
+        <SingleFileCommand/>
+        <MakefileGenerationCommand/>
+        <ThirdPartyToolName>None</ThirdPartyToolName>
+        <WorkingDirectory/>
+      </CustomBuild>
+      <AdditionalRules>
+        <CustomPostBuild/>
+        <CustomPreBuild>resources.cpp
+resources.cpp: resources.xrc
+	wxrc /c /v /o resources.cpp resources.xrc</CustomPreBuild>
+      </AdditionalRules>
+      <Completion EnableCpp11="yes">
+        <ClangCmpFlagsC/>
+        <ClangCmpFlags/>
+        <ClangPP/>
+        <SearchPaths/>
+      </Completion>
+    </Configuration>
+    <Configuration Name="Win_x86_Release" CompilerType="gnu g++" DebuggerType="GNU gdb debugger" Type="Executable" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
       <Compiler Options="-O2;;$(shell wx-config --debug=no --cxxflags --unicode=yes);-Winvalid-pch" C_Options="-O2" Assembler="" Required="yes" PreCompiledHeader="..\PCH\precompiled_header_release.h" PCHInCommandLine="yes" PCHFlags="$(shell wx-config --cxxflags --unicode=yes --debug=no) -O2" PCHFlagsPolicy="0">
         <IncludePath Value="."/>
         <IncludePath Value="../CodeLite"/>
@@ -1618,9 +1926,9 @@ resources.cpp: resources.xrc
         <IncludePath Value="../Interfaces"/>
         <IncludePath Value="../PCH"/>
         <IncludePath Value="../sdk/clang/include"/>
-        <Preprocessor Value="HAS_LIBCLANG"/>
+        <Preprocessor Value="HAS_LIBCLANG=1"/>
       </Compiler>
-      <Linker Options="-s;$(shell wx-config --debug=no --unicode=yes --libs std,stc,propgrid);-Wl,--subsystem,windows -mwindows;-O2" Required="yes">
+      <Linker Options="-s;$(shell wx-config --debug=no --unicode=yes --libs std,stc,propgrid);-Wl,--subsystem,windows -mwindows;-O2;-s" Required="yes">
         <LibraryPath Value="."/>
         <LibraryPath Value="../lib/gcc_lib"/>
         <LibraryPath Value="../sdk/clang/lib"/>
@@ -1630,7 +1938,7 @@ resources.cpp: resources.xrc
         <Library Value="libclang.dll"/>
       </Linker>
       <ResourceCompiler Options="$(shell wx-config --rcflags)" Required="yes"/>
-      <General OutputFile="$(IntermediateDirectory)/codelite.exe" IntermediateDirectory="./Release" Command=".\codelite.exe" CommandArguments="-b ." UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="../Runtime" PauseExecWhenProcTerminates="no" IsGUIProgram="yes" IsEnabled="yes"/>
+      <General OutputFile="$(IntermediateDirectory)/codelite.exe" IntermediateDirectory="./Release" Command=".\codelite.exe" CommandArguments="-b . " UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="../Runtime" PauseExecWhenProcTerminates="no" IsGUIProgram="yes" IsEnabled="yes"/>
       <Environment EnvVarSetName="Default" DbgSetName="">
         <![CDATA[PATH=../sdk/clang/lib;$(WXWIN)\lib\gcc_dll;$(PATH)]]>
       </Environment>

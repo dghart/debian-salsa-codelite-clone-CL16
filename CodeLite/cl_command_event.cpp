@@ -28,12 +28,14 @@
 clCommandEvent::clCommandEvent(wxEventType commandType, int winid)
     : wxCommandEvent(commandType, winid)
     , m_answer(false)
+    , m_allowed(true)
 {
 }
 
 clCommandEvent::clCommandEvent(const clCommandEvent& event)
     : wxCommandEvent(event)
     , m_answer(false)
+    , m_allowed(true)
 {
     *this = event;
 }
@@ -45,7 +47,9 @@ clCommandEvent& clCommandEvent::operator=(const clCommandEvent& src)
     m_strings.insert(m_strings.end(), src.m_strings.begin(), src.m_strings.end());
     m_fileName = src.m_fileName;
     m_answer = src.m_answer;
-
+    m_allowed = src.m_allowed;
+    m_oldName = src.m_oldName;
+    
     // Copy wxCommandEvent members here
     m_eventType = src.m_eventType;
     m_id = src.m_id;
@@ -99,7 +103,7 @@ clCodeCompletionEvent& clCodeCompletionEvent::operator=(const clCodeCompletionEv
 {
     // Call parent operator =
     clCommandEvent::operator=(src);
-    // Implemnt our copy ctor
+    // Implement our copy c tor
     m_tags = src.m_tags;
     m_editor = src.m_editor;
     m_word = src.m_word;
@@ -107,6 +111,7 @@ clCodeCompletionEvent& clCodeCompletionEvent::operator=(const clCodeCompletionEv
     m_tooltip = src.m_tooltip;
     m_insideCommentOrString = src.m_insideCommentOrString;
     m_tagEntry = src.m_tagEntry;
+    m_definitions = src.m_definitions;
     return *this;
 }
 
@@ -146,6 +151,8 @@ clBuildEvent::clBuildEvent(const clBuildEvent& event) { *this = event; }
 clBuildEvent::clBuildEvent(wxEventType commandType, int winid)
     : clCommandEvent(commandType, winid)
     , m_projectOnly(false)
+    , m_warningCount(0)
+    , m_errorCount(0)
 {
 }
 
@@ -159,6 +166,8 @@ clBuildEvent& clBuildEvent::operator=(const clBuildEvent& src)
     m_configurationName = src.m_configurationName;
     m_command = src.m_command;
     m_projectOnly = src.m_projectOnly;
+    m_errorCount = src.m_errorCount;
+    m_warningCount = src.m_warningCount;
     return *this;
 }
 
@@ -267,7 +276,69 @@ clContextMenuEvent& clContextMenuEvent::operator=(const clContextMenuEvent& src)
     clCommandEvent::operator=(src);
     m_editor = src.m_editor;
     m_menu = src.m_menu;
+    m_path = src.m_path;
     return *this;
 }
 
 clContextMenuEvent::~clContextMenuEvent() {}
+
+//-------------------------------------------------------------------------
+// clExecuteEvent
+//-------------------------------------------------------------------------
+
+clExecuteEvent::clExecuteEvent(const clExecuteEvent& event) { *this = event; }
+clExecuteEvent::~clExecuteEvent() {}
+clExecuteEvent& clExecuteEvent::operator=(const clExecuteEvent& src)
+{
+    clCommandEvent::operator=(src);
+    m_targetName = src.m_targetName;
+    return *this;
+}
+
+clExecuteEvent::clExecuteEvent(wxEventType commandType, int winid)
+    : clCommandEvent(commandType, winid)
+{
+}
+
+//------------------------------------------------------------------------
+// clProjectSettingsEvent
+//------------------------------------------------------------------------
+clProjectSettingsEvent& clProjectSettingsEvent::operator=(const clProjectSettingsEvent& src)
+{
+    clCommandEvent::operator=(src);
+    m_configName = src.m_configName;
+    m_projectName = src.m_projectName;
+    return *this;
+}
+
+clProjectSettingsEvent::clProjectSettingsEvent(const clProjectSettingsEvent& event) { *this = event; }
+
+clProjectSettingsEvent::clProjectSettingsEvent(wxEventType commandType, int winid)
+    : clCommandEvent(commandType, winid)
+{
+}
+
+clProjectSettingsEvent::~clProjectSettingsEvent() {}
+
+//------------------------------------------------------------------------
+// clParseEvent
+//------------------------------------------------------------------------
+
+clParseEvent::clParseEvent(const clParseEvent& event) { *this = event; }
+
+clParseEvent::clParseEvent(wxEventType commandType, int winid)
+    : clCommandEvent(commandType, winid)
+    , m_curfileIndex(0)
+    , m_totalFiles(0)
+{
+}
+
+clParseEvent::~clParseEvent() {}
+
+clParseEvent& clParseEvent::operator=(const clParseEvent& src)
+{
+    clCommandEvent::operator=(src);
+    m_curfileIndex = src.m_curfileIndex;
+    m_totalFiles = src.m_totalFiles;
+    return *this;
+}

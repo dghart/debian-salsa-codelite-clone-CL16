@@ -40,6 +40,8 @@
 #include "tabgroupspane.h"
 #include "globals.h"
 #include <algorithm>
+#include "pluginmanager.h"
+#include "ieditor.h"
 
 TabgroupsPane::TabgroupsPane(wxWindow* parent, const wxString& caption) : wxPanel(parent, wxID_ANY)
 {
@@ -413,7 +415,7 @@ void TabgroupsPane::OnEndLabelEdit(wxTreeEvent& event)
     // If we're here, the event won't be vetoed, so the tree shows the new name
     // Update the file system correspondingly
     if (wxRenameFile(oldfilepath.GetFullPath(), newfilepath.GetFullPath(), true)) {
-        clMainFrame::Get()->SetStatusMessage(_("Tabgroup renamed"), 0);
+        clMainFrame::Get()->GetStatusBar()->SetMessage(_("Tabgroup renamed"));
         return;
     }
 }
@@ -471,8 +473,14 @@ void TabgroupsPane::AddTabgroupItem()
     if (!selection.IsOk()) {
         return;
     }
-
-    wxString newfilepath = wxGetTextFromUser(_("What is the filepath to use for the new tabgroup item?"), _("Add a new tabgroup item"), wxT(""), this);
+    
+    wxString defaultPath;
+    IEditor* editor = PluginManager::Get()->GetActiveEditor();
+    if(editor) {
+        defaultPath = editor->GetFileName().GetPath();
+    }
+    
+    wxString newfilepath = ::wxFileSelector(_("Select the file you want to add"), defaultPath);
     if (newfilepath.IsEmpty()) {
         return;
     }
@@ -591,7 +599,7 @@ void TabgroupsPane::PasteTabgroupItem(wxTreeItemId itemtopaste /*= wxTreeItemId(
             }
         }
 
-        clMainFrame::Get()->SetStatusMessage(_("Tabgroup item pasted"), 0);
+        clMainFrame::Get()->GetStatusBar()->SetMessage(_("Tabgroup item pasted"));
     }
 }
 
@@ -630,7 +638,7 @@ void TabgroupsPane::DeleteTabgroup()
 
         wxRemoveFile(filepath);
 
-        clMainFrame::Get()->SetStatusMessage(_("Tabgroup deleted"), 0);
+        clMainFrame::Get()->GetStatusBar()->SetMessage(_("Tabgroup deleted"));
     }
 }
 
@@ -667,7 +675,7 @@ void TabgroupsPane::DuplicateTabgroup()
     }
     // Do the rest in a separate method, which is also called by Frame::OnFileSaveTabGroup
     if (AddNewTabgroupToTree(newfilepath.GetFullPath(), selection)) {
-        clMainFrame::Get()->SetStatusMessage(_("Tabgroup duplicated"), 0);
+        clMainFrame::Get()->GetStatusBar()->SetMessage(_("Tabgroup duplicated"));
     }
 }
 
@@ -723,7 +731,7 @@ void TabgroupsPane::CopyTabgroupItem(wxTreeItemId itemtocopy /*= wxTreeItemId()*
     delete m_node;
     m_node =  new wxXmlNode(*node);
     m_copieditem_filepath = itemfilepath;
-    clMainFrame::Get()->SetStatusMessage(_("Tabgroup item copied"), 0);
+    clMainFrame::Get()->GetStatusBar()->SetMessage(_("Tabgroup item copied"));
 }
 
 void TabgroupsPane::DeleteTabgroupItem(bool DoCut /*=false*/, wxTreeItemId itemtocut /*= wxTreeItemId()*/)
@@ -769,9 +777,9 @@ void TabgroupsPane::DeleteTabgroupItem(bool DoCut /*=false*/, wxTreeItemId itemt
                 // If we're cutting, store the deleted node ready for paste
                 m_node = new wxXmlNode(*TabInfoNode);
                 m_copieditem_filepath = itemfilepath;
-                clMainFrame::Get()->SetStatusMessage(_("Tabgroup item Cut"), 0);
+                clMainFrame::Get()->GetStatusBar()->SetMessage(_("Tabgroup item Cut"));
             } else {
-                clMainFrame::Get()->SetStatusMessage(_("Tabgroup item deleted"), 0);
+                clMainFrame::Get()->GetStatusBar()->SetMessage(_("Tabgroup item deleted"));
             }
             return;
         }

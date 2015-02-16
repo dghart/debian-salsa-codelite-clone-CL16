@@ -47,6 +47,7 @@
 #include "event_notifier.h"
 #include "cc_box_tip_window.h"
 #include "cl_command_event.h"
+#include "CxxTemplateFunction.h"
 
 #ifdef __WXGTK__
 #define TIP_TIMER 100
@@ -114,6 +115,7 @@ CCBox::CCBox(LEditor* parent, bool autoHide, bool autoInsertSingleChoice)
 
     // assign the image list and let the control take owner ship (i.e. delete it)
     m_listCtrl->AssignImageList(il, wxIMAGE_LIST_SMALL);
+    m_listCtrl->EnableAlternateRowColours();
     m_listCtrl->InsertColumn(0, wxT("Name"));
     m_listCtrl->SetColumnWidth(0, m_listCtrl->GetClientSize().x - wxSystemSettings::GetMetric(wxSYS_VSCROLL_X));
     m_constructing = false;
@@ -165,7 +167,7 @@ void CCBox::OnItemSelected(wxListEvent& event)
     PostSelectItem(m_selectedItem);
 }
 
-void CCBox::Show(const TagEntryPtrVector_t& tags, const wxString& word, bool isKeywordsList, wxEvtHandler* owner)
+void CCBox::Show(const TagEntryPtrVector_t& tags, const wxString& word, bool autoRefreshList, wxEvtHandler* owner)
 {
     if(tags.empty()) {
         return;
@@ -174,7 +176,7 @@ void CCBox::Show(const TagEntryPtrVector_t& tags, const wxString& word, bool isK
 
     m_displayingFileList = (m_tags.at(0)->GetKind() == "FileCpp") || (m_tags.at(0)->GetKind() == "FileHeader");
     m_owner = owner;
-    m_isKeywordsList = isKeywordsList;
+    m_autoRefershList = autoRefreshList;
     Show(word);
 }
 
@@ -292,15 +294,34 @@ bool CCBox::SelectWord(const wxString& word)
             return true;
         }
 
-    } else if(m_isKeywordsList) {
-        // When there is no match and the list box is of type "Keywords"
-        // hide it...
-        HideCCBox();
+    } else {
+        // Before we dismiss the code completion box, test to see if the cause
+        // of the 'no-match' is due to typo
+        bool typoError = false;
+        if(word.length() > 1) {
+            wxString word2 = word.Mid(0, word.length()-1);
+            long where = m_listCtrl->FindMatch(word2, fullMatch);
+            if(where != wxNOT_FOUND) {
+                typoError = true;
+            }
+        }
+        
+        if(typoError) {
+            // typo error, just unselect the match
+            m_listCtrl->Select(m_selectedItem, false);
+        } else {
+            // Not a typo, the match does not exist in the results
+            // hide the code completion box
+            if(m_editor) {
+                m_editor->CallAfter(&LEditor::CodeComplete, true);
+            }
+            HideCCBox();
+        }
         return false;
     }
 
     m_refreshListTimer->Stop();
-    if(!m_isKeywordsList) {
+    if(m_autoRefershList) {
         m_refreshListTimer->Start(TIP_TIMER, true);
     }
     return fullMatch;
@@ -480,8 +501,39 @@ void CCBox::DoInsertSelection(const wxString& word, bool triggerTip)
             // if full declaration was selected, dont do anything,
             // otherwise, append '()' to the inserted string, place the caret
             // in the middle, and trigger the function tooltip
+            if(itemInfo.tag.IsTemplateFunction()) {
 
-            if(word.Find(wxT("(")) == wxNOT_FOUND && triggerTip) {
+                /////////////////////////////////////////////////////////////
+                // Entering C++ zone here:
+                /////////////////////////////////////////////////////////////
+
+                // a template function was found - insert the following:
+                // <>()
+                // There is however, one condition where we don't want to automatically
+                // enter "<|>()" and place the caret between the angle brackets:
+                // the template arguments can be deduced from the function signaure
+                TagEntryPtr t(new TagEntry(itemInfo.tag));
+                CxxTemplateFunction tf(t);
+                if(tf.CanTemplateArgsDeduced()) {
+                    m_editor->InsertText(m_editor->GetCurrentPos(), wxT("()"));
+                    int pos = m_editor->GetCurrentPos();
+                    m_editor->SetSelectionStart(pos);
+                    m_editor->SetSelectionEnd(pos);
+                    m_editor->CharRight();
+                    m_editor->SetIndicatorCurrent(MATCH_INDICATOR);
+                    m_editor->IndicatorFillRange(pos, 1);
+                } else {
+                    m_editor->InsertText(m_editor->GetCurrentPos(), wxT("<>()"));
+                    int pos = m_editor->GetCurrentPos();
+                    m_editor->SetSelectionStart(pos);
+                    m_editor->SetSelectionEnd(pos);
+                    m_editor->CharRight();
+                    m_editor->SetIndicatorCurrent(MATCH_INDICATOR);
+                    m_editor->IndicatorFillRange(pos, 1);
+                    // trigger function tip
+                    m_editor->CodeComplete();
+                }
+            } else if(word.Find(wxT("(")) == wxNOT_FOUND && triggerTip) {
 
                 // If the char after the insertion is '(' dont place another '()'
                 int dummyPos = wxNOT_FOUND;
@@ -498,8 +550,6 @@ void CCBox::DoInsertSelection(const wxString& word, bool triggerTip)
                 m_editor->CharRight();
                 m_editor->SetIndicatorCurrent(MATCH_INDICATOR);
                 m_editor->IndicatorFillRange(pos, 1);
-                // trigger function tip
-                m_editor->CodeComplete();
 
                 // select the tag to display to match the current one
                 TagEntryPtr tt(new TagEntry(itemInfo.tag));
@@ -508,6 +558,14 @@ void CCBox::DoInsertSelection(const wxString& word, bool triggerTip)
                 std::vector<clTipInfo> tips;
                 clCallTip::FormatTagsToTips(tags, tips);
 
+                // trigger function tip if we have at least 1 calltip and
+                // the signature does not match "()"
+                if(tips.size() == 1 && tips.at(0).str == "()") {
+                    m_editor->CharRight();
+                } else {
+                    m_editor->CodeComplete();
+                }
+                
                 // post an event to select the proper signature
                 if(!tips.empty()) {
                     m_editor->GetFunctionTip()->SelectSignature(tips.at(0).str);
@@ -963,11 +1021,15 @@ void CCBox::OnDisplayTooltip(wxTimerEvent& event)
 
 void CCBox::OnRefreshList(wxTimerEvent& event)
 {
-    if(!m_isKeywordsList) {
+    if(m_autoRefershList) {
 
         // clang is already slow... don't re-invoke the list
         if(m_tags.empty() == false && m_tags.at(0)->GetIsClangTag()) return;
-
+        
+        // Tags with user data are from plugins. So we disable the auto-refresh feature of the 
+        // completion box
+        if(!m_tags.empty() && m_tags.at(0)->GetUserData()) return;
+        
         wxCommandEvent event(wxEVT_COMMAND_MENU_SELECTED, XRCID("complete_word_refresh_list"));
         event.SetEventObject(clMainFrame::Get());
         clMainFrame::Get()->GetEventHandler()->AddPendingEvent(event);

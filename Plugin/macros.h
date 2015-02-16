@@ -111,7 +111,7 @@ const wxString USE_GLOBAL_SETTINGS         = _("<Use Defaults>");
 const wxString TERMINAL_CMD         = wxT("");
 #endif
 
-#ifdef __WXMSW__
+#if defined(__WXMSW__) && !defined(USE_POSIX_LAYOUT)
 #define PATH_SEP wxT("\\")
 #else
 #define PATH_SEP wxT("/")
@@ -139,9 +139,21 @@ typedef std::map<wxString, wxString> wxStringMap_t;
 #define CHECK_PTR_RET_NULL(p) if ( !p ) return NULL
 #define CHECK_PTR_RET_EMPTY_STRING(p) if ( !p ) return wxEmptyString
 
+#define CHECK_COND_RET(p) if ( !(p) ) return
+#define CHECK_COND_RET_FALSE(p) if ( !(p) ) return false
+#define CHECK_COND_RET_NULL(p) if ( !(p) ) return NULL
+#define CHECK_COND_RET_EMPTY_STRING(p) if ( !(p) ) return wxEmptyString
+
 #define CHECK_ITEM_RET(item) if ( !item.IsOk() ) return
 #define CHECK_ITEM_RET_FALSE(item) if ( !item.IsOk() ) return false
 #define CHECK_ITEM_RET_NULL(item) if ( !item.IsOk() ) return NULL
 #define CHECK_ITEM_RET_EMPTY_STRING(item) if ( !item.IsOk() ) return wxEmptyString
+
+// PATH environment variable separator
+#ifdef __WXMSW__
+#define clPATH_SEPARATOR ";"
+#else
+#define clPATH_SEPARATOR ":"
+#endif
 
 #endif // MACROS_H

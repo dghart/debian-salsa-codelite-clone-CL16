@@ -71,6 +71,11 @@ void SvnUpdateHandler::Process(const wxString& output)
         }
     }
 
+    // Post event about file system updated
+    clFileSystemEvent fsEvent(wxEVT_FILE_SYSTEM_UPDATED);
+    fsEvent.SetPath(GetPlugin()->GetSvnView()->GetRootDir());
+    EventNotifier::Get()->AddPendingEvent(fsEvent);
+
     // And finally, update the Subversion view
     SvnDefaultCommandHandler::Process(output);
 }
@@ -152,7 +157,7 @@ void SvnLogHandler::Process(const wxString& output)
     ChangeLogPage *page = new ChangeLogPage(GetPlugin()->GetManager()->GetTheApp()->GetTopWindow(), GetPlugin());
     page->SetUrl(m_url);
     page->AppendText( changeLog );
-    GetPlugin()->GetManager()->AddPage( page, _("Change Log"), wxNullBitmap, true );
+    GetPlugin()->GetManager()->AddPage( page, _("Change Log"), _("Change Log"), wxNullBitmap, true );
 }
 
 wxString SvnLogHandler::Compact(const wxString& message)

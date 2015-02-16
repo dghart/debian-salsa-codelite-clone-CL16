@@ -26,7 +26,7 @@ SubversionPageBase::SubversionPageBase(wxWindow* parent, wxWindowID id, const wx
     wxBoxSizer* mainSizer = new wxBoxSizer(wxVERTICAL);
     this->SetSizer(mainSizer);
     
-    m_splitter17 = new wxSplitterWindow(this, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxSP_LIVE_UPDATE|wxSP_NO_XP_THEME|wxSP_3DSASH);
+    m_splitter17 = new wxSplitterWindow(this, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxSP_LIVE_UPDATE|wxSP_3DSASH);
     m_splitter17->SetSashGravity(0.5);
     m_splitter17->SetMinimumPaneSize(10);
     
@@ -39,7 +39,7 @@ SubversionPageBase::SubversionPageBase(wxWindow* parent, wxWindowID id, const wx
     
     m_treeCtrl = new wxTreeCtrl(m_splitterPageLeft, wxID_ANY, wxDefaultPosition, wxSize(-1, -1), wxTR_DEFAULT_STYLE|wxTR_MULTIPLE);
     
-    boxSizer27->Add(m_treeCtrl, 1, wxEXPAND, 5);
+    boxSizer27->Add(m_treeCtrl, 1, wxALL|wxEXPAND, 2);
     
     m_splitterPageRight = new wxPanel(m_splitter17, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxTAB_TRAVERSAL);
     m_splitter17->SplitVertically(m_splitterPageLeft, m_splitterPageRight, 0);
@@ -96,6 +96,7 @@ SubversionPageBase::SubversionPageBase(wxWindow* parent, wxWindowID id, const wx
     m_sci->Connect(wxEVT_STC_UPDATEUI, wxStyledTextEventHandler(SubversionPageBase::OnUpdateUI), NULL, this);
     m_sci->Connect(wxEVT_STC_CHARADDED, wxStyledTextEventHandler(SubversionPageBase::OnCharAdded), NULL, this);
     m_sci->Connect(wxEVT_KEY_DOWN, wxKeyEventHandler(SubversionPageBase::OnKeyDown), NULL, this);
+    m_sci->Connect(wxEVT_STC_CHANGE, wxStyledTextEventHandler(SubversionPageBase::OnSciStcChange), NULL, this);
     
 }
 
@@ -106,6 +107,7 @@ SubversionPageBase::~SubversionPageBase()
     m_sci->Disconnect(wxEVT_STC_UPDATEUI, wxStyledTextEventHandler(SubversionPageBase::OnUpdateUI), NULL, this);
     m_sci->Disconnect(wxEVT_STC_CHARADDED, wxStyledTextEventHandler(SubversionPageBase::OnCharAdded), NULL, this);
     m_sci->Disconnect(wxEVT_KEY_DOWN, wxKeyEventHandler(SubversionPageBase::OnKeyDown), NULL, this);
+    m_sci->Disconnect(wxEVT_STC_CHANGE, wxStyledTextEventHandler(SubversionPageBase::OnSciStcChange), NULL, this);
     
 }
 
@@ -1204,5 +1206,30 @@ SvnBlameFrameBase::SvnBlameFrameBase(wxWindow* parent, wxWindowID id, const wxSt
 }
 
 SvnBlameFrameBase::~SvnBlameFrameBase()
+{
+}
+
+SubversionImages::SubversionImages()
+    : wxImageList(16, 16, true)
+{
+    if ( !bBitmapLoaded ) {
+        // We need to initialise the default bitmap handler
+        wxXmlResource::Get()->AddHandler(new wxBitmapXmlHandler);
+        wxC95F2InitBitmapResources();
+        bBitmapLoaded = true;
+    }
+    
+    {
+        wxBitmap bmp;
+        wxIcon icn;
+        bmp = wxXmlResource::Get()->LoadBitmap(wxT("m_bmpSvn"));
+        icn.CopyFromBitmap( bmp );
+        this->Add( icn );
+        m_bitmaps.insert( std::make_pair(wxT("m_bmpSvn"), bmp ) );
+    }
+    
+}
+
+SubversionImages::~SubversionImages()
 {
 }

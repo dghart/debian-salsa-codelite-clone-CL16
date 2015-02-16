@@ -49,6 +49,9 @@
 #include <wx/filedlg.h>
 #include "EclipseCXXThemeImporter.h"
 #include <wx/msgdlg.h>
+#include "EclipseThemeImporterManager.h"
+
+#define CXX_AND_JAVASCRIPT "c++/javascript"
 
 SyntaxHighlightDlg::SyntaxHighlightDlg(wxWindow* parent)
     : SyntaxHighlightBaseDlg(parent)
@@ -61,13 +64,20 @@ SyntaxHighlightDlg::SyntaxHighlightDlg(wxWindow* parent)
     if(editor) {
         lexerName = editor->GetContext()->GetName().Lower();
     }
+    
+    for(size_t i=0; i<lexers.GetCount(); ++i) {
+        if(lexers.Item(i) == "c++") {
+            m_listBox->Append(CXX_AND_JAVASCRIPT);
+        } else {
+            m_listBox->Append(lexers.Item(i));
+        }
+    }
 
-    m_listBox->Append(lexers);
     if(!m_listBox->IsEmpty()) {
         if(lexerName.IsEmpty()) {
             m_listBox->Select(0);
         } else {
-            m_listBox->SetStringSelection(lexerName);
+            m_listBox->SetStringSelection(lexerName == "c++" ? CXX_AND_JAVASCRIPT : lexerName);
         }
         LoadLexer(""); // Load the default active theme
     }
@@ -128,7 +138,11 @@ void SyntaxHighlightDlg::LoadLexer(const wxString& themeName)
     Clear();
     wxString lexer = m_listBox->GetStringSelection();
     if(lexer.IsEmpty()) return;
-
+    
+    if(lexer == CXX_AND_JAVASCRIPT) {
+        lexer = "c++";
+    }
+    
     m_lexer = ColoursAndFontsManager::Get().GetLexer(lexer, themeName);
     CreateLexerPage();
     m_isModified = false;
@@ -455,6 +469,10 @@ StyleProperty::List_t::iterator SyntaxHighlightDlg::GetSelectedStyle()
 void SyntaxHighlightDlg::OnLexerSelected(wxCommandEvent& event)
 {
     wxString lexerName = m_listBox->GetStringSelection();
+    if(lexerName == CXX_AND_JAVASCRIPT) {
+        lexerName = "c++";
+    }
+    
     if(m_isModified) {
         SaveChanges();
     }
@@ -580,7 +598,7 @@ void SyntaxHighlightDlg::OnRestoreDefaults(wxCommandEvent& event)
 {
     // Ask for confirmation
     if(::wxMessageBox(_("Are you sure you want to restore colours to factory defaults?\nBy choosing 'Yes', you will "
-                        "lose your modifications"),
+                        "lose all your local modifications"),
                       _("Confirm"),
                       wxICON_WARNING | wxYES_NO | wxCANCEL | wxNO_DEFAULT | wxCENTER,
                       this) == wxYES) {
@@ -596,17 +614,26 @@ void SyntaxHighlightDlg::OnRestoreDefaults(wxCommandEvent& event)
 
 void SyntaxHighlightDlg::OnImportEclipseTheme(wxAuiToolBarEvent& event)
 {
+#if 0
+    EclipseThemeImporterManager importer;
+    importer.ImportCxxToAll();
+    ColoursAndFontsManager::Get().Reload();
+    EndModal(wxID_OK);
+    wxCommandEvent openEvent(wxEVT_COMMAND_MENU_SELECTED, XRCID("syntax_highlight"));
+    clMainFrame::Get()->GetEventHandler()->AddPendingEvent(openEvent);
+#else
     wxString eclipseThemeXml =
         ::wxFileSelector(_("Select eclipse XML theme file"), "", "", "", "Eclipse Theme Files (*.xml)|*.xml");
-    wxString outputFile;
-    if(ColoursAndFontsManager::Get().ImportEclipseTheme(eclipseThemeXml, outputFile)) {
-        ::wxMessageBox(_("File imported successfully!\n") + outputFile);
+    
+    if(ColoursAndFontsManager::Get().ImportEclipseTheme(eclipseThemeXml)) {
+        ::wxMessageBox(_("File imported successfully!"));
         // Dismiss the dialog
         EndModal(wxID_OK);
         // and reload it
         wxCommandEvent openEvent(wxEVT_COMMAND_MENU_SELECTED, XRCID("syntax_highlight"));
         clMainFrame::Get()->GetEventHandler()->AddPendingEvent(openEvent);
     }
+#endif
 }
 
 void SyntaxHighlightDlg::OnLoadEclipseThemeWebsite(wxCommandEvent& event)

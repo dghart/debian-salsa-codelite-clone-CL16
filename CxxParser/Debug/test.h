@@ -1,1 +1,1 @@
-enum ENUM_VAL k;
+void foo(int i, char* b) const final;

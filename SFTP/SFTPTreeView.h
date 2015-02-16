@@ -31,7 +31,9 @@
 #include "bitmap_loader.h"
 #include "ssh_account_info.h"
 #include <vector>
+#include "cl_command_event.h"
 
+class SSHTerminal;
 class MyClientData;
 class SFTP;
 
@@ -39,23 +41,29 @@ typedef std::vector<MyClientData*> MyClientDataVect_t;
 
 class SFTPTreeView : public SFTPTreeViewBase
 {
-    clSFTP::Ptr_t  m_sftp;
-    BitmapLoader   m_bmpLoader;
+    clSFTP::Ptr_t m_sftp;
+    BitmapLoader m_bmpLoader;
     SSHAccountInfo m_account;
-    SFTP*          m_plugin;
-
+    SFTP* m_plugin;
+    wxString m_commandOutput;
+    SSHTerminal* m_terminal;
+    
 public:
     enum {
-        ID_SFTP_BOOKMARK_FIRST    = 13000,
-        ID_SFTP_BOOKMARK_LAST     = 13100,
+        ID_SFTP_BOOKMARK_FIRST = 13000,
+        ID_SFTP_BOOKMARK_LAST = 13100,
         ID_SFTP_BOOKMARK_SETTINGS = 13101,
     };
     
 public:
     SFTPTreeView(wxWindow* parent, SFTP* plugin);
     virtual ~SFTPTreeView();
+    bool IsConnected() const { return m_sftp && m_sftp->IsConnected(); }
 
 protected:
+    virtual void OnOpenTerminal(wxCommandEvent& event);
+    virtual void OnOpenTerminalUI(wxUpdateUIEvent& event);
+    virtual void OnConnection(wxCommandEvent& event);
     virtual void OnSelectionChanged(wxTreeListEvent& event);
     virtual void OnChoiceAccount(wxCommandEvent& event);
     virtual void OnChoiceAccountUI(wxUpdateUIEvent& event);
@@ -68,23 +76,34 @@ protected:
     virtual void OnDisconnectUI(wxUpdateUIEvent& event);
     virtual void OnConnectUI(wxUpdateUIEvent& event);
     virtual void OnConnect(wxCommandEvent& event);
-    virtual void OnMenuNew(wxCommandEvent &event);
-    virtual void OnMenuOpen(wxCommandEvent &event);
-    virtual void OnMenuDelete(wxCommandEvent &event);
-    virtual void OnMenuRename(wxCommandEvent &event);
-    virtual void OnMenuNewFile(wxCommandEvent &event);
+    virtual void OnMenuNew(wxCommandEvent& event);
+    virtual void OnMenuOpen(wxCommandEvent& event);
+    virtual void OnMenuDelete(wxCommandEvent& event);
+    virtual void OnMenuRename(wxCommandEvent& event);
+    virtual void OnMenuNewFile(wxCommandEvent& event);
+    virtual void OnMenuRefreshFolder(wxCommandEvent& event);
+    virtual void OnTerminalClosed(clCommandEvent& event);
+    // Edit events
+    void OnCopy(wxCommandEvent& event);
+    void OnCut(wxCommandEvent& event);
+    void OnPaste(wxCommandEvent& event);
+    void OnSelectAll(wxCommandEvent& event);
+    void OnUndo(wxCommandEvent& event);
+    void OnRedo(wxCommandEvent& event);
 
     void DoCloseSession();
+    void DoOpenSession();
     bool DoExpandItem(const wxTreeListItem& item);
-    void DoBuildTree(const wxString &initialFolder);
+    void DoBuildTree(const wxString& initialFolder);
     void ManageBookmarks();
-    
-    wxTreeListItem DoAddFolder(const wxTreeListItem& parent, const wxString &path);
-    wxTreeListItem DoAddFile(const wxTreeListItem& parent, const wxString &path);
+
+    wxTreeListItem DoAddFolder(const wxTreeListItem& parent, const wxString& path);
+    wxTreeListItem DoAddFile(const wxTreeListItem& parent, const wxString& path);
 
     MyClientData* GetItemData(const wxTreeListItem& item);
     MyClientDataVect_t GetSelectionsItemData();
-
+    bool DoOpenFile(const wxTreeListItem& item);
+    
 protected:
     virtual void OnItemActivated(wxTreeListEvent& event);
     virtual void OnItemExpanding(wxTreeListEvent& event);

@@ -52,6 +52,7 @@
 #define USER_INDICATOR 3
 #define HYPERLINK_INDICATOR 4
 
+class IManager;
 class wxFindReplaceDialog;
 class CCBox;
 class clEditorTipWindow;
@@ -66,8 +67,7 @@ enum sci_annotation_styles { eAnnotationStyleError = 128, eAnnotationStyleWarnin
 * @class BPtoMarker
 * Holds which marker and mask are associated with each breakpoint type
 */
-typedef struct _BPtoMarker
-{
+typedef struct _BPtoMarker {
     enum BreakpointType bp_type; // An enum of possible break/watchpoint types. In debugger.h
     sci_marker_types marker;
     marker_mask_type mask;
@@ -99,11 +99,91 @@ extern const wxEventType wxCMD_EVENT_ENABLE_WORD_HIGHLIGHT;
  */
 class LEditor : public wxStyledTextCtrl, public IEditor
 {
+private:
+    struct SelectionInfo {
+        std::vector<std::pair<int, int> > selections;
+
+        SelectionInfo() {}
+
+        /**
+         * @brief add selection range
+         * @param from selection start position
+         * @param to selectio end position
+         */
+        void AddSelection(int from, int to) { this->selections.push_back(std::make_pair(from, to)); }
+
+        /**
+         * @brief return the number of selections
+         */
+        size_t GetCount() const { return this->selections.size(); }
+
+        /**
+         * @brief return the selection at position i
+         * @param from
+         * @param to
+         */
+        void At(size_t i, int& from, int& to) const
+        {
+            const std::pair<int, int>& pair = this->selections.at(i);
+            from = pair.first;
+            to = pair.second;
+        }
+
+        /**
+         * @brief clear the selection info
+         */
+        void Clear() { this->selections.clear(); }
+
+        /**
+         * @brief is this object OK?
+         */
+        bool IsOk() const { return !this->selections.empty(); }
+
+        /**
+         * @brief sort the selections from top to bottom
+         */
+        void Sort();
+    };
+
+    struct MarkWordInfo {
+    private:
+        bool m_hasMarkers;
+        int m_firstOffset;
+        wxString m_word;
+
+    public:
+        MarkWordInfo()
+            : m_hasMarkers(false)
+            , m_firstOffset(wxNOT_FOUND)
+        {
+        }
+
+        void Clear()
+        {
+            m_hasMarkers = false;
+            m_firstOffset = wxNOT_FOUND;
+            m_word.Clear();
+        }
+
+        bool IsValid(wxStyledTextCtrl* ctrl) const
+        {
+            return ctrl->PositionFromLine(ctrl->GetFirstVisibleLine()) == m_firstOffset && m_hasMarkers;
+        }
+        
+        // setters/getters
+        void SetFirstOffset(int firstOffset) { this->m_firstOffset = firstOffset; }
+        void SetHasMarkers(bool hasMarkers) { this->m_hasMarkers = hasMarkers; }
+        void SetWord(const wxString& word) { this->m_word = word; }
+        int GetFirstOffset() const { return m_firstOffset; }
+        bool IsHasMarkers() const { return m_hasMarkers; }
+        const wxString& GetWord() const { return m_word; }
+    };
+
+protected:
     wxFileName m_fileName;
     wxString m_project;
     wxStopWatch m_watch;
     ContextBasePtr m_context;
-    wxMenu* m_rightClickMenu;
     EditorDeltasHolder* m_deltas; // Holds any text position changes, in case they affect FindinFiles results
     std::vector<wxMenuItem*> m_dynItems;
     std::vector<BPtoMarker> m_BPstoMarkers;
@@ -135,21 +215,28 @@ class LEditor : public wxStyledTextCtrl, public IEditor
     BOM m_fileBom;
     int m_positionToEnsureVisible;
     bool m_preserveSelection;
-    bool m_fullLineCopyCut;
     std::vector<std::pair<int, int> > m_savedMarkers;
     bool m_findBookmarksActive;
     std::map<int, wxString> m_compilerMessagesMap;
     CLCommandProcessor m_commandsProcessor;
-
+    wxString m_preProcessorsWords;
+    SelectionInfo m_prevSelectionInfo;
+    MarkWordInfo m_highlightedWordInfo;
+    wxTimer *m_timerHighlightMarkers;
+    IManager* m_mgr;
 public:
     static bool m_ccShowPrivateMembers;
     static bool m_ccShowItemsComments;
     static bool m_ccInitialized;
     typedef std::vector<LEditor*> Vec_t;
-
+    
+    IManager* GetManager() { return m_mgr; }
+    
 public:
     static FindReplaceData& GetFindReplaceData() { return m_findReplaceData; }
 
+    void SetPreProcessorsWords(const wxString& preProcessorsWords) { this->m_preProcessorsWords = preProcessorsWords; }
+    const wxString& GetPreProcessorsWords() const { return m_preProcessorsWords; }
     void SetLineVisible(int lineno);
 
     void SetReloadingFile(const bool& reloadingFile) { this->m_reloadingFile = reloadingFile; }
@@ -158,11 +245,6 @@ public:
     clEditorTipWindow* GetFunctionTip() { return m_functionTip; }
 
     bool IsFocused() const;
-
-    void SetFullLineCopyCut(bool fullLineCopyCut) { this->m_fullLineCopyCut = fullLineCopyCut; }
-
-    bool IsFullLineCopyCut() const { return m_fullLineCopyCut; }
-
     CLCommandProcessor& GetCommandsProcessor() { return m_commandsProcessor; }
 
 public:
@@ -178,7 +260,13 @@ public:
     // Save content of the editor to a given file (Save As...)
     // this function prompts the user for selecting file name
     bool SaveFileAs();
-
+    
+    /**
+     * @brief split the current selection into multiple carets.
+     * i.e. place a caret at the end of each line in the selection
+     */
+    void SplitSelection();
+    
     void SetDisableSmartIndent(bool disableSmartIndent) { this->m_disableSmartIndent = disableSmartIndent; }
 
     bool GetDisableSmartIndent() const { return m_disableSmartIndent; }
@@ -207,11 +295,15 @@ public:
     const wxString& GetProject() const { return m_project; }
     // Set the project name
     void SetProject(const wxString& proj) { m_project = proj; }
-
-    // Attempt to display a list of members
-    // after a '.' or '->' operator has been inserted into
-    // the code
-    void CodeComplete();
+    
+    /**
+     * @brief attempt to code complete the expression up until the caret position
+     * @param refreshingList when set to true, it means that the 'CodeComplete' was invoked
+     * by the code completion box itself in attempt to request new items for the list
+     * This feature is only supported internally for C++ and is not exposed to plugins
+     * i.e. the event wxEVT_CC_CODE_COMPLETE is fired only when refreshingList == false
+     */
+    void CodeComplete(bool refreshingList = false);
 
     // User clicked Ctrl+.
     void GotoDefinition();
@@ -293,7 +385,12 @@ public:
      * marker (warning or error)
      */
     bool HasCompilerMarkers();
-
+    
+    /**
+     * @brief center the line in the editor
+     */
+    void CenterLine(int line, int col = wxNOT_FOUND);
+    
     // Is there currently a marker at the current line?
     bool LineIsMarked(enum marker_mask_type mask);
     // Toggle marker at the current line
@@ -326,21 +423,9 @@ public:
     void OnChangeActiveBookmarkType(wxCommandEvent& event);
 
     /**
-     * Sets the currently-active bookmark level, caching the old value
-     * \param type the new type
-     */
-    void SetActiveBookmarkType(sci_marker_types type);
-
-    /**
      * Returns the currently-active bookmark level
      */
     int GetActiveBookmarkType() const;
-
-    /**
-     * Sets the currently-active bookmark mask
-     * \param mask the new mask
-     */
-    void SetActiveBookmarkMask(marker_mask_type mask);
 
     /**
      * Returns the mask for the currently-active bookmark level
@@ -526,10 +611,10 @@ public:
     virtual void UnHighlightAll();
 
     // compiler warnings and errors
-    void SetWarningMarker(int lineno, const wxString& annotationText);
-    void SetErrorMarker(int lineno, const wxString& annotationText);
-    void InitializeAnnotations();
-    void DelAllCompilerMarkers();
+    virtual void SetWarningMarker(int lineno, const wxString& annotationText);
+    virtual void SetErrorMarker(int lineno, const wxString& annotationText);
+    virtual void DelAllCompilerMarkers();
+    
     void DoShowCalltip(int pos, const wxString& tip);
     void DoCancelCalltip();
     int DoGetOpenBracePos();
@@ -559,13 +644,8 @@ public:
      * @brief display completion box. This function also moves the completion box to the current position
      * @param tags list of tags to work with
      * @param word part of the word
-     * @param showFullDecl display full function declaration
      */
-    void ShowCompletionBox(const std::vector<TagEntryPtr>& tags,
-                           const wxString& word,
-                           bool showFullDecl,
-                           bool autoHide = false,
-                           bool autoInsertSingleChoice = true);
+    void ShowCompletionBox(const std::vector<TagEntryPtr>& tags, const wxString& word);
 
     /**
      * @brief displays teh code completion box. Unlike the previous metho, this method accepts owner and sends an event
@@ -641,6 +721,7 @@ public:
     virtual void InsertText(int pos, const wxString& text) { wxStyledTextCtrl::InsertText(pos, text); }
     virtual int GetLength() { return wxStyledTextCtrl::GetLength(); }
     virtual bool IsModified() { return wxStyledTextCtrl::GetModify(); }
+    virtual void Save() { SaveFile(); }
     virtual int GetEOL() { return wxStyledTextCtrl::GetEOLMode(); }
     virtual int GetCurrentLine();
     virtual void ReplaceSelection(const wxString& text);
@@ -767,6 +848,7 @@ public:
 
 private:
     void DoUpdateTLWTitle(bool raise);
+    void DoWrapPrevSelectionWithChars(wxChar first, wxChar last);
 
     void FillBPtoMarkerArray();
     BPtoMarker GetMarkerForBreakpt(enum BreakpointType bp_type);
@@ -776,7 +858,6 @@ private:
     void BraceMatch(const bool& bSelRegion);
     void BraceMatch(long pos);
     void DoHighlightWord();
-    void DoSetStatusMessage(const wxString& msg, int col, int seconds_to_live = wxID_ANY);
     bool IsOpenBrace(int position);
     bool IsCloseBrace(int position);
     size_t GetCodeNavModifier();
@@ -812,7 +893,6 @@ private:
     void OnKeyUp(wxKeyEvent& event);
     void OnLeftDown(wxMouseEvent& event);
     void OnRightDown(wxMouseEvent& event);
-    void OnRightUp(wxMouseEvent& event);
     void OnMotion(wxMouseEvent& event);
     void OnLeftUp(wxMouseEvent& event);
     void OnLeaveWindow(wxMouseEvent& event);
@@ -830,6 +910,7 @@ private:
     void OnSetActive(wxCommandEvent& e);
     void OnFileFormatDone(wxCommandEvent& e);
     void OnFileFormatStarting(wxCommandEvent& e);
+    void OnTimer(wxTimerEvent& event);
 };
 
 #endif // LITEEDITOR_EDITOR_H

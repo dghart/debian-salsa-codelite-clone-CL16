@@ -33,7 +33,7 @@
 /// A container that allows fast insertions / retrieval of elements
 /// And also maintains the order of which elements where inserted
 template<typename Key, typename Value>
-class WXDLLIMPEXP_CL wxOrderedMap
+class wxOrderedMap
 {
     typedef std::pair<Key, Value> Pair_t;
     typedef std::list<Pair_t> List_t;
@@ -80,7 +80,7 @@ public:
             Remove(k);
         }
         Iterator iter = m_list.insert(m_list.end(), Pair_t(k, v));
-        m_map.insert(std::make_pair<Key, Iterator>(k, iter));
+        m_map.insert(std::make_pair(k, iter));
     }
     
     void PushFront(const Key& k, const Value& v) {

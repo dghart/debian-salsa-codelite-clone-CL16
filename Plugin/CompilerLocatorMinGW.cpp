@@ -84,7 +84,8 @@ bool CompilerLocatorMinGW::Locate()
     m_compilers.clear();
     m_locatedFolders.clear();
     
-#ifdef __WXMSW__ // for wxRegKey
+    // for wxRegKey
+#ifdef __WXMSW__ 
 
     // HKEY_LOCAL_MACHINE\SOFTWARE\codelite\settings
     wxRegKey regClMinGW(wxRegKey::HKLM, "SOFTWARE\\codelite\\settings");
@@ -99,23 +100,21 @@ bool CompilerLocatorMinGW::Locate()
         }
     }
 
-    // Check registry for TDM-GCC
-    // HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\TDM-GCC
-    wxRegKey regTDM(wxRegKey::HKLM, "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\TDM-GCC");
+    // Check registry for TDM-GCC-64 
+    wxRegKey regTDM(wxRegKey::HKCU, "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\TDM-GCC");
     wxString tdmInstallFolder;
     if ( regTDM.QueryValue("InstallLocation", tdmInstallFolder) ) {
         wxFileName fnTDMBinFolder( tdmInstallFolder, "" );
         fnTDMBinFolder.AppendDir("bin");
-        AddTools(fnTDMBinFolder.GetPath(), "TDM-GCC");
+        AddTools(fnTDMBinFolder.GetPath(), "TDM-GCC-64");
     }
     
-    // 64 bit
-    // HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\TDM-GCC
-    wxRegKey regTDM_64(wxRegKey::HKLM, "SOFTWARE\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall");
-    if ( regTDM_64.QueryValue("InstallLocation", tdmInstallFolder) ) {
+    // Check for 32 bit
+    wxRegKey regTDM_32(wxRegKey::HKLM, "SOFTWARE\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\TDM-GCC");
+    if ( regTDM_32.QueryValue("InstallLocation", tdmInstallFolder) ) {
         wxFileName fnTDMBinFolder( tdmInstallFolder, "" );
         fnTDMBinFolder.AppendDir("bin");
-        AddTools(fnTDMBinFolder.GetPath(), "TDM-GCC-64");
+        AddTools(fnTDMBinFolder.GetPath(), "TDM-GCC-32");
     }
     
     // locate codeblock's MinGW
@@ -247,6 +246,11 @@ void CompilerLocatorMinGW::AddTools(const wxString& binFolder, const wxString& n
         if ( toolFile.FileExists() ) {
             AddTool(compiler, "MAKE", toolFile.GetFullPath(), makeExtraArgs);
         }
+    }
+    
+    toolFile.SetFullName("gdb.exe");
+    if(toolFile.Exists()) {
+        AddTool(compiler, "Debugger", toolFile.GetFullPath());
     }
 }
 

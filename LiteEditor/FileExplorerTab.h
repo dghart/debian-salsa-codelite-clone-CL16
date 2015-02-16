@@ -32,9 +32,7 @@
 
 class FileExplorerTab : public FileExplorerBase
 {
-protected:
-    wxMenu* m_rclickMenu;
-    
+    wxMenu* GetBaseContextMenu();
 public:
     FileExplorerTab(wxWindow* parent);
     virtual ~FileExplorerTab();
@@ -57,6 +55,15 @@ public:
      * If multiple selections are made, return the first one
      */
     bool GetSelection(wxFileName& path);
+        
+    /**
+     * @brief return list of selected folders only (filter out non folder entries)
+     */
+    void GetSelectedDirectories(wxArrayString& paths);
+    /**
+     * @brief return 2 arrays one for files and second for folders
+     */
+    void GetSelections(wxArrayString &folders, wxArrayString &files);
     
 protected:
     virtual void OnContextMenu(wxTreeEvent& event);

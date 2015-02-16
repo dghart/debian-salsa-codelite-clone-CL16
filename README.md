@@ -18,7 +18,7 @@ More information can be found here:
 ![Linux logo][7] Building CodeLite on Linux
 ----
 
-To build CodeLite on you computer you will need these packages:
+To build CodeLite on your computer you will need these packages:
 
  - wxWidgets 3.0 or later
  - The gtk development package: often called libgtk2.0-dev or wxGTK-devel or similar
@@ -49,6 +49,57 @@ Run cmake and build codelite:
 
 ----------
 
+![Apple logo][12] Building CodeLite on OS X
+----
+Prerequisites:
+ - wxWidgets 3.x
+ - CMake
+ - HomeBrew
+ - git
+ - XCode
+ - XCode command-line tools
+ 
+Preparation:
+ - (Optional) Make a separate folder for building if you want to get rid of all except the .app file after building
+ - Install XCode from Mac App Store
+ - Install XCode command-line tools `xcode-select --install`
+ - Install HomeBrew :
+```
+ ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+```
+ - Update HomeBrew : `brew update`
+ - (Optional) Upgrade HomeBrew packages : `brew upgrade`
+ - Install git : `brew install git`
+ - Install CMake : `brew install cmake`
+ - Install wxWidgets : `brew install wxmac --dev --use-llvm`
+ 
+
+Clone the repo :
+
+  ```bash
+  cd /Your/experiments/dir
+  git clone https://github.com/eranif/codelite.git
+  ```
+ 
+ Make the build directories and run cmake :
+ 
+  ```bash
+  cd /Your/experiments/dir
+  mkdir codelite-build-local
+  cd codelite-build-local
+  sudo cmake .. -DCMAKE_BUILD_TYPE=Release
+  make -j4
+  ```
+ 
+ Make the .app file :
+ Assuming you're in `codelite-build-local` directory
+ 
+  ```bash
+  cd pack
+  ./make_mac_bundle.sh
+  ```
+Now you will see the .app file. Happy coding!
+
 ![Windows Logo][9] Building CodeLite on Windows
 ----
 Git clone the sources
@@ -59,12 +110,13 @@ Git clone the sources
  - Download codelite installer for Windows from our [Download Page][10]
  - Download wxWidgets 3.0 installer. Also from our [Download Page][11]
  - Open the workspace **LiteEditor.workspace** (located in the codelite folder)
- - Select the configuration **Win Release Unicode** hit **F7**
+ - Make sure that the project **CodeLiteIDE** is selected (the active project uses **bold** font)
+ - Select the **Win_x64_Release** or  **Win_x86_Release** (depending if you want to build a 32 or 64 bit version of CodeLite) and hit **F7**
  - When the compilation is over, close the workspace
  - Next, locate the workspace **codelite_utils/codelite_utils.workspce** and open it
- - Select the **Release** build configuration hit F7 and wait for the compilation to end
+ - Select the **Win_x64_Release** or  **Win_x86_Release** (depending if you want to build a 32 or 64 bit version of CodeLite) hit **F7** and wait for the compilation to end
  - Close CodeLite
- - To update your installation with the new codelite, close codelite and from a CMD.EXE window navigate to codelite-sources/Runtime/ and run the file 
+ - To update your installation with the new codelite, close codelite and from a CMD.EXE window navigate to codelite-sources/Runtime/ and run the file **update.bat** OR **update64.bat** (again, depending on your selected arch)
 
 
   [1]: http://codelite.org/images/logo.png
@@ -78,3 +130,4 @@ Git clone the sources
   [9]: http://wxcrafter.codelite.org/img/windows.png
   [10]: http://codelite.org/support.php
   [11]: http://codelite.org/support.php
+  [12]: https://lh6.googleusercontent.com/-OMHi1w_3gNk/AAAAAAAAAAI/AAAAAAAAAAA/NrDEagpDUQI/s46-c-k-no/photo.jpg

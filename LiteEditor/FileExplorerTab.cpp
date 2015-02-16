@@ -38,11 +38,12 @@
 #include <wx/mimetype.h>
 #include "editor_config.h"
 #include "fileutils.h"
+#include "cl_command_event.h"
+#include "event_notifier.h"
 
 FileExplorerTab::FileExplorerTab(wxWindow* parent)
     : FileExplorerBase(parent)
 {
-    m_rclickMenu = wxXmlResource::Get()->LoadMenu(wxT("file_explorer_menu"));
     Connect(XRCID("open_file"),
             wxEVT_COMMAND_MENU_SELECTED,
             wxCommandEventHandler(FileExplorerTab::OnOpenFile),
@@ -93,7 +94,7 @@ FileExplorerTab::FileExplorerTab(wxWindow* parent)
             wxCommandEventHandler(FileExplorerTab::OnOpenShell),
             NULL,
             this);
-    Connect(XRCID("open_file_explorer"),
+    Connect(XRCID("fe_open_file_explorer"),
             wxEVT_COMMAND_MENU_SELECTED,
             wxCommandEventHandler(FileExplorerTab::OnOpenExplorer),
             NULL,
@@ -107,17 +108,96 @@ FileExplorerTab::FileExplorerTab(wxWindow* parent)
             this);
 }
 
-FileExplorerTab::~FileExplorerTab() { wxDELETE(m_rclickMenu); }
+FileExplorerTab::~FileExplorerTab()
+{
+    Disconnect(XRCID("open_file"),
+            wxEVT_COMMAND_MENU_SELECTED,
+            wxCommandEventHandler(FileExplorerTab::OnOpenFile),
+            NULL,
+            this);
+    Disconnect(XRCID("open_file_in_text_editor"),
+            wxEVT_COMMAND_MENU_SELECTED,
+            wxCommandEventHandler(FileExplorerTab::OnOpenFileInTextEditor),
+            NULL,
+            this);
+    Disconnect(XRCID("refresh_node"),
+            wxEVT_COMMAND_MENU_SELECTED,
+            wxCommandEventHandler(FileExplorerTab::OnRefreshNode),
+            NULL,
+            this);
+    Disconnect(XRCID("delete_node"),
+            wxEVT_COMMAND_MENU_SELECTED,
+            wxCommandEventHandler(FileExplorerTab::OnDeleteNode),
+            NULL,
+            this);
+    Disconnect(XRCID("search_node"),
+            wxEVT_COMMAND_MENU_SELECTED,
+            wxCommandEventHandler(FileExplorerTab::OnSearchNode),
+            NULL,
+            this);
+    Disconnect(XRCID("tags_add_global_include"),
+            wxEVT_COMMAND_MENU_SELECTED,
+            wxCommandEventHandler(FileExplorerTab::OnTagNode),
+            NULL,
+            this);
+    Disconnect(XRCID("tags_add_global_exclude"),
+            wxEVT_COMMAND_MENU_SELECTED,
+            wxCommandEventHandler(FileExplorerTab::OnTagNode),
+            NULL,
+            this);
+    Disconnect(XRCID("tags_add_workspace_include"),
+            wxEVT_COMMAND_MENU_SELECTED,
+            wxCommandEventHandler(FileExplorerTab::OnTagNode),
+            NULL,
+            this);
+    Disconnect(XRCID("tags_add_workspace_exclude"),
+            wxEVT_COMMAND_MENU_SELECTED,
+            wxCommandEventHandler(FileExplorerTab::OnTagNode),
+            NULL,
+            this);
+    Disconnect(XRCID("open_shell"),
+            wxEVT_COMMAND_MENU_SELECTED,
+            wxCommandEventHandler(FileExplorerTab::OnOpenShell),
+            NULL,
+            this);
+    Disconnect(XRCID("fe_open_file_explorer"),
+            wxEVT_COMMAND_MENU_SELECTED,
+            wxCommandEventHandler(FileExplorerTab::OnOpenExplorer),
+            NULL,
+            this);
+    Disconnect(GetId(), wxEVT_COMMAND_TREE_KEY_DOWN, wxTreeEventHandler(FileExplorerTab::OnKeyDown));
+
+    Disconnect(XRCID("open_with_default_application"),
+            wxEVT_COMMAND_MENU_SELECTED,
+            wxCommandEventHandler(FileExplorerTab::OnOpenWidthDefaultApp),
+            NULL,
+            this);
+}
 
 void FileExplorerTab::OnContextMenu(wxTreeEvent& event)
 {
     wxTreeItemId item = event.GetItem();
-    if(item.IsOk() && m_rclickMenu) {
-        // let the plugins hook their content. HookPopupMenu can work only once
-        // further calls are harmless
-        PluginManager::Get()->HookPopupMenu(m_rclickMenu, MenuTypeFileExplorer);
-        PopupMenu(m_rclickMenu);
+    wxMenu* menu = GetBaseContextMenu();
+    if(item.IsOk() && menu) {
+        wxArrayString folders, files;
+        GetSelections(folders, files);
+        if(!files.IsEmpty() && folders.IsEmpty()) {
+            // Let the plugins alter it
+            clContextMenuEvent fileMenuEvent(wxEVT_CONTEXT_MENU_FILE);
+            fileMenuEvent.SetMenu(menu);
+            fileMenuEvent.SetStrings(files);
+            EventNotifier::Get()->ProcessEvent(fileMenuEvent);
+        } else if(folders.GetCount() == 1) {
+            clContextMenuEvent folderMenuEvent(wxEVT_CONTEXT_MENU_FOLDER);
+            folderMenuEvent.SetMenu(menu);
+            folderMenuEvent.SetPath(folders.Item(0));
+            EventNotifier::Get()->ProcessEvent(folderMenuEvent);
+        }
+
+        PluginManager::Get()->HookPopupMenu(menu, MenuTypeFileExplorer);
+        PopupMenu(menu);
     }
+    wxDELETE(menu);
 }
 
 void FileExplorerTab::OnItemActivated(wxTreeEvent& event)
@@ -143,9 +223,9 @@ void FileExplorerTab::DoOpenItem(const wxString& path)
     } else {
 
         // Send event to the plugins to see if any plugin want to handle this file differently
-        if(SendCmdEvent(wxEVT_TREE_ITEM_FILE_ACTIVATED, &fp)) {
-            return;
-        }
+        clCommandEvent event(wxEVT_TREE_ITEM_FILE_ACTIVATED);
+        event.SetFileName(fp);
+        if(EventNotifier::Get()->ProcessEvent(event)) return;
 
         clMainFrame::Get()->GetMainBook()->OpenFile(fp, wxEmptyString);
     }
@@ -296,12 +376,10 @@ void FileExplorerTab::OnRefreshNode(wxCommandEvent& event)
 
 void FileExplorerTab::OnSearchNode(wxCommandEvent& event)
 {
-    wxFileName fn;
-    if(!GetSelection(fn)) return;
-
-    wxCommandEvent ff(wxEVT_COMMAND_MENU_SELECTED, XRCID("find_in_files"));
-    ff.SetString(fn.GetPath());
-    clMainFrame::Get()->GetEventHandler()->AddPendingEvent(ff);
+    wxArrayString paths;
+    GetSelectedDirectories(paths);
+    if(paths.IsEmpty()) return;
+    PluginManager::Get()->OpenFindInFileForPaths(paths);
 }
 
 void FileExplorerTab::OnTagNode(wxCommandEvent& event)
@@ -412,4 +490,34 @@ bool FileExplorerTab::GetSelection(wxFileName& path)
         path = wxFileName(paths.Item(0));
     }
     return true;
+}
+
+void FileExplorerTab::GetSelectedDirectories(wxArrayString& paths)
+{
+    wxArrayString files;
+    GetSelections(paths, files);
+}
+
+wxMenu* FileExplorerTab::GetBaseContextMenu()
+{
+    wxMenu* menu = wxXmlResource::Get()->LoadMenu(wxT("file_explorer_menu"));
+    wxMenuItem* searchNodeItem = menu->FindItem(XRCID("search_node"));
+    if(searchNodeItem) {
+        searchNodeItem->SetBitmap(wxXmlResource::Get()->LoadBitmap("m_bmpFindInFiles"));
+    }
+    return menu;
+}
+
+void FileExplorerTab::GetSelections(wxArrayString& folders, wxArrayString& files)
+{
+    wxArrayString selections;
+    m_genericDirCtrl->GetPaths(selections);
+
+    for(size_t i = 0; i < selections.GetCount(); ++i) {
+        if(wxFileName::DirExists(selections.Item(i))) {
+            folders.Add(selections.Item(i));
+        } else if(wxFileName::FileExists(selections.Item(i))) {
+            files.Add(selections.Item(i));
+        }
+    }
 }

@@ -45,7 +45,7 @@ class MainBook : public wxPanel
 private:
     FileHistory m_recentFiles;
     NavBar* m_navBar;
-    Notebook* m_book;
+    Notebook2* m_book;
     QuickFindBar* m_quickFindBar;
     MessagePane* m_messagePane;
     bool m_useBuffereLimit;
@@ -53,7 +53,7 @@ private:
     bool m_isWorkspaceReloading;
     bool m_reloadingDoRaise; // Prevents multiple Raises() during RestoreSession()
     FilesModifiedDlg* m_filesModifiedDlg;
-
+    
 public:
     enum {
         kGetAll_Default = 0x00000000,         // booked editors only
@@ -63,7 +63,7 @@ public:
     };
 
 private:
-    FilesModifiedDlg *GetFilesModifiedDlg();
+    FilesModifiedDlg* GetFilesModifiedDlg();
     void CreateGuiControls();
     void ConnectEvents();
 
@@ -78,7 +78,6 @@ private:
     void OnWorkspaceLoaded(wxCommandEvent& e);
     void OnWorkspaceClosed(wxCommandEvent& e);
     void OnDebugEnded(wxCommandEvent& e);
-    void OnStringHighlight(wxCommandEvent& e);
     void OnInitDone(wxCommandEvent& e);
     void OnDetachedEditorClosed(clCommandEvent& e);
 
@@ -99,9 +98,7 @@ public:
     void ClearFileHistory();
     void GetRecentlyOpenedFiles(wxArrayString& files);
     FileHistory& GetRecentlyOpenedFilesClass() { return m_recentFiles; }
-
     void ShowQuickBarForPlugins() { m_quickFindBar->ShowForPlugins(); }
-
     void ShowQuickBar(bool s = true) { m_quickFindBar->Show(s); }
     void ShowQuickBar(const wxString& findWhat) { m_quickFindBar->Show(findWhat); }
     void ShowMessage(const wxString& message,
@@ -111,16 +108,31 @@ public:
                      const ButtonDetails& btn2 = ButtonDetails(),
                      const ButtonDetails& btn3 = ButtonDetails(),
                      const CheckboxDetails& cb = CheckboxDetails());
-
+    
+    void ShowTabBar(bool b);
     void ShowNavBar(bool s = true);
     void UpdateNavBar(LEditor* editor);
     bool IsNavBarShown() { return m_navBar->IsShown(); }
 
-    void SaveSession(SessionEntry& session, wxArrayInt& intArr);
+    void SaveSession(SessionEntry& session, wxArrayInt* excludeArr = NULL);
     void RestoreSession(SessionEntry& session);
+    /**
+     * @brief create session from current IDE state
+     */
+    void CreateSession(SessionEntry& session, wxArrayInt* excludeArr = NULL);
 
     LEditor* GetActiveEditor(bool includeDetachedEditors = false);
+    /**
+     * @brief return vector of all editors in the notebook. This function only returns instances of type LEditor
+     * @param editors [output]
+     * @param flags kGetAll_*
+     */
     void GetAllEditors(LEditor::Vec_t& editors, size_t flags);
+    /**
+     * @brief return vector of all tabs in the notebook
+     * @param tabs [output]
+     */
+    void GetAllTabs(clTab::Vec_t& tabs);
     LEditor* FindEditor(const wxString& fileName);
     bool CloseEditor(const wxString& fileName) { return ClosePage(FindEditor(fileName)); }
 
@@ -144,6 +156,7 @@ public:
 
     bool AddPage(wxWindow* win,
                  const wxString& text,
+                 const wxString& tooltip = wxEmptyString,
                  const wxBitmap& bmp = wxNullBitmap,
                  bool selected = false,
                  size_t insert_at_index = wxNOT_FOUND);
