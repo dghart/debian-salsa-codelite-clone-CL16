@@ -1,3 +1,9 @@
+codelite (7.0+dfsg-1) UNRELEASED; urgency=medium
+
+  * New upstream release.
+
+ -- James Cowgill <james410@cowgill.org.uk>  Mon, 16 Feb 2015 21:28:15 +0000
+
 codelite (6.1.1+dfsg-4) unstable; urgency=medium
 
   * Switch to LLVM 3.5.
