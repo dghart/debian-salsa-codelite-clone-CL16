@@ -1,7 +1,7 @@
 {
  "metadata": {
   "m_generatedFilesDir": ".",
-  "m_objCounter": 43,
+  "m_objCounter": 45,
   "m_includeFiles": [],
   "m_bitmapFunction": "wxC95F2InitBitmapResources",
   "m_bitmapsFile": "subversion2_subversion2_bitmaps.cpp",
@@ -127,7 +127,7 @@
        "border": 5,
        "gbSpan": "1,1",
        "gbPosition": "0,0",
-       "m_styles": ["wxSP_LIVE_UPDATE", "wxSP_NO_XP_THEME", "wxSP_3DSASH"],
+       "m_styles": ["wxSP_LIVE_UPDATE", "wxSP_3DSASH"],
        "m_sizerFlags": ["wxEXPAND"],
        "m_properties": [{
          "type": "winid",
@@ -296,11 +296,11 @@
            "m_children": [{
              "m_type": 4422,
              "proportion": 1,
-             "border": 5,
+             "border": 2,
              "gbSpan": ",",
              "gbPosition": ",",
              "m_styles": ["wxTR_DEFAULT_STYLE", "wxTR_MULTIPLE"],
-             "m_sizerFlags": ["wxEXPAND"],
+             "m_sizerFlags": ["wxALL", "wxLEFT", "wxRIGHT", "wxTOP", "wxBOTTOM", "wxEXPAND"],
              "m_properties": [{
                "type": "winid",
                "m_label": "ID:",
@@ -602,6 +602,13 @@
                "m_eventHandler": "wxKeyEventHandler",
                "m_functionNameAndSignature": "OnKeyDown(wxKeyEvent& event)",
                "m_description": "Process a wxEVT_KEY_DOWN event (any key has been pressed)",
+               "m_noBody": false
+              }, {
+               "m_eventName": "wxEVT_STC_CHANGE",
+               "m_eventClass": "wxStyledTextEvent",
+               "m_eventHandler": "wxStyledTextEventHandler",
+               "m_functionNameAndSignature": "OnSciStcChange(wxStyledTextEvent& event)",
+               "m_description": "",
                "m_noBody": false
               }],
              "m_children": []
@@ -11458,6 +11465,60 @@
           }]
         }]
       }]
+    }]
+  }, {
+   "m_type": 4481,
+   "proportion": 0,
+   "border": 5,
+   "gbSpan": "1,1",
+   "gbPosition": "0,0",
+   "m_styles": [],
+   "m_sizerFlags": [],
+   "m_properties": [{
+     "type": "string",
+     "m_label": "Name:",
+     "m_value": "SubversionImages"
+    }, {
+     "type": "string",
+     "m_label": "File:",
+     "m_value": ""
+    }, {
+     "type": "virtualFolderPicker",
+     "m_label": "Virtual Folder:",
+     "m_path": "Subversion2:UI"
+    }, {
+     "type": "string",
+     "m_label": "Class Decorator",
+     "m_value": ""
+    }, {
+     "type": "integer",
+     "m_label": "Bitmap Size:",
+     "m_value": 16
+    }, {
+     "type": "bool",
+     "m_label": "Bitmap Mask",
+     "m_value": true
+    }],
+   "m_events": [],
+   "m_children": [{
+     "m_type": 4482,
+     "proportion": 0,
+     "border": 5,
+     "gbSpan": "1,1",
+     "gbPosition": "0,0",
+     "m_styles": [],
+     "m_sizerFlags": [],
+     "m_properties": [{
+       "type": "string",
+       "m_label": "Name:",
+       "m_value": "m_bmpSvn"
+      }, {
+       "type": "filePicker",
+       "m_label": "Bitmap File:",
+       "m_path": "../codelite-icons/subversion/16/svn.png"
+      }],
+     "m_events": [],
+     "m_children": []
     }]
   }]
 }

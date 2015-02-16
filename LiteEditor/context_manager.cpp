@@ -28,6 +28,7 @@
 #include "context_diff.h"
 #include "context_base.h"
 #include "context_html.h"
+#include "ContextPhp.h"
 #include "generic_context.h"
 #include "editor_config.h"
 #include "ColoursAndFontsManager.h"
@@ -56,7 +57,7 @@ ContextBasePtr ContextManager::NewContext(LEditor* parent, const wxString& lexer
 
 ContextBasePtr ContextManager::NewContextByFileName(LEditor* parent, const wxFileName& fileName)
 {
-    LexerConf::Ptr_t lexer = EditorConfigST::Get()->GetLexerForFile(fileName.GetFullName());
+    LexerConf::Ptr_t lexer = EditorConfigST::Get()->GetLexerForFile(fileName.GetFullPath());
     if(!lexer) {
         // could not locate a lexer for this file name, return the default text lexer
         return ContextManager::Get()->NewContext(parent, wxT("Text"));
@@ -73,6 +74,7 @@ void ContextManager::Initialize()
     m_contextPool["c++"] = new ContextCpp();
     m_contextPool["diff"] = new ContextDiff();
     m_contextPool["html"] = new ContextHtml();
+    m_contextPool["php"] = new ContextPhp();
 
     // load generic lexers
     wxArrayString names = ColoursAndFontsManager::Get().GetAllLexersNames();

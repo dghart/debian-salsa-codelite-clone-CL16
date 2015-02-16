@@ -3,7 +3,6 @@
 #include <set>
 #include <string>
 #include <list>
-#include <multimap>
 #include <wx/arrstr.h>
 #include <wx/string.h>
 #include <memory>
@@ -76,3 +75,12 @@ public:
 void foo_bar(struct wxString *s) {
     
 }
+} // Namespace Baz
+
+class ClassWithTemplateFunction {
+public:
+    void* m_type;
+    template <typename T> 
+    T* Get() { return (T*)m_type; }
+};
+

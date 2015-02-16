@@ -41,81 +41,27 @@ void EditHandler::ProcessCommandEvent(wxWindow *owner, wxCommandEvent &event)
     OptionsConfigPtr options = editor->GetOptions();
     // hide completion box
     editor->HideCompletionBox();
-    bool isSelectionEmpty = editor->GetSelectedText().IsEmpty();
     
     if (event.GetId() == wxID_COPY) {
-        
-        // reset the 'full line' copy/cut flag
-        editor->SetFullLineCopyCut(false);
-        
-        if ( isSelectionEmpty && options->HasOption( OptionsConfig::Opt_CopyNothing) ) {
-            // do nothing
-            
-        } else if ( isSelectionEmpty && options->HasOption( OptionsConfig::Opt_CopyLineIfLineNotEmpty ) ) {
-            // Copy the line content only when the caret line is not empty
-            int lineNumber = editor->GetCurrentLine();
-            wxString lineContent = editor->GetLine(lineNumber);
-            if ( !lineContent.Trim().Trim(false).IsEmpty() ) {
-                editor->CopyAllowLine();
-                editor->SetFullLineCopyCut(true);
-            }
-        } else if ( isSelectionEmpty ) {
-            // default behavior
-            editor->CopyAllowLine();
-            editor->SetFullLineCopyCut(true);
-
-        } else {
-            editor->Copy();
-        }
+        editor->CopyAllowLine();
 
     } else if (event.GetId() == wxID_CUT) {
+        editor->Cut();
         
-        // reset the 'full line' copy/cut flag
-        editor->SetFullLineCopyCut(false);
-        
-        if ( isSelectionEmpty && options->HasOption( OptionsConfig::Opt_CopyNothing) ) {
-            // do nothing
-            
-        } else if ( isSelectionEmpty && options->HasOption( OptionsConfig::Opt_CopyLineIfLineNotEmpty ) ) {
-            // Copy the line content only when the caret line is not empty
-            int lineNumber = editor->GetCurrentLine();
-            wxString lineContent = editor->GetLine(lineNumber);
-            if ( !lineContent.Trim().Trim(false).IsEmpty() ) {
-                editor->CopyAllowLine();
-                editor->LineDelete();
-                editor->SetFullLineCopyCut(true);
-            }
-        } else if ( isSelectionEmpty ) {
-            
-            // default behavior
-            editor->CopyAllowLine();
-            editor->LineDelete();
-            editor->SetFullLineCopyCut(true);
-        
-        } else {
-            editor->Cut();
-        }
-
     } else if (event.GetId() == wxID_PASTE) {
-        if ( editor->IsFullLineCopyCut() ) {
-            // paste one line above the caret
-            editor->PasteLineAbove();
-            
-        } else {
-            // paste at caret position
-            editor->Paste();
-            
-        }
+        editor->Paste();
 
     } else if (event.GetId() == wxID_UNDO) {
         if (editor->GetCommandsProcessor().CanUndo()) {
             editor->Undo();
+            editor->GetCommandsProcessor().CloseSciUndoAction();
             editor->GetCommandsProcessor().DecrementCurrentCommand();
         }
 
     } else if (event.GetId() == wxID_REDO) {
         if (editor->GetCommandsProcessor().CanRedo()) {
             editor->Redo();
+            editor->GetCommandsProcessor().CloseSciUndoAction(); // Is this necessary? At least it does no harm
             editor->GetCommandsProcessor().IncrementCurrentCommand();
         }
 
@@ -319,11 +265,7 @@ void GotoHandler::ProcessCommandEvent(wxWindow *owner, wxCommandEvent &event)
             }
 
             if (line > 0) {
-                int pos = editor->PositionFromLine(line - 1);
-                // Clear any existing selection, which otherwise becomes the Goto target
-                editor->SetSelectionStart(pos);
-                editor->SetSelectionEnd(pos);
-                editor->SetEnsureCaretIsVisible(pos);
+                editor->CenterLine(line-1);
                 break;
             } else {
                 editor->GotoLine(0);

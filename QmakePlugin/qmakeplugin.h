@@ -61,14 +61,14 @@ public:
     virtual void UnPlug();
 
     // event handlers
-    void OnSaveConfig(wxCommandEvent& event);
+    void OnSaveConfig(clProjectSettingsEvent& event);
     void OnBuildStarting(clBuildEvent& event);
     void OnSettings(wxCommandEvent& event);
     void OnGetCleanCommand(clBuildEvent& event);
     void OnGetBuildCommand(clBuildEvent& event);
     void OnGetIsPluginMakefile(clBuildEvent& event);
     void OnNewQmakeBasedProject(wxCommandEvent& event);
-    void OnOpenFile(wxCommandEvent& event);
+    void OnOpenFile(clCommandEvent& event);
     void OnExportMakefile(wxCommandEvent& event);
     void OnQmakeOutput(wxCommandEvent& event);
     void OnQmakeTerminated(wxCommandEvent &event);

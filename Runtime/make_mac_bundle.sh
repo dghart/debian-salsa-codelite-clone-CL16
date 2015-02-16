@@ -57,25 +57,6 @@ fix_non_plugins_depends() {
     done
 }
 
-fix_codelite_clang_deps() {
-    echo "fix_codelite_clang_deps..."
-    if test -f ./codelite.app/Contents/MacOS/codelite-clang ; then
-        echo otool -L ./codelite.app/Contents/MacOS/codelite-clang  | grep libwx_* | awk '{print $1;}'
-        orig_path=`otool -L ./codelite.app/Contents/MacOS/codelite-clang  | grep libwx_* | awk '{print $1;}'`
-
-        ## Loop over the files, and update the path of the wx library
-        for path in ${orig_path}
-        do
-            new_path=`echo ${path} | xargs basename`
-            echo install_name_tool -change ${path} @executable_path/../MacOS/${new_path} ./codelite.app/Contents/MacOS/codelite-clang
-            install_name_tool -change ${path} @executable_path/../MacOS/${new_path} ./codelite.app/Contents/MacOS/codelite-clang
-        done
-        echo install_name_tool -change @rpath/libclang.dylib @executable_path/../MacOS/libclang.dylib ./codelite.app/Contents/MacOS/codelite-clang
-        install_name_tool -change @rpath/libclang.dylib @executable_path/../MacOS/libclang.dylib ./codelite.app/Contents/MacOS/codelite-clang
-    fi
-    echo "fix_codelite_clang_deps... done"
-}
-
 fix_codelite_lldb_deps() {
     if test -f ./codelite.app/Contents/MacOS/codelite-lldb ; then
         orig_path=`otool -L ./codelite.app/Contents/MacOS/codelite-lldb  | grep libwx_* | awk '{print $1;}'`
@@ -256,6 +237,7 @@ cp ../lib/SFTP.dylib ./codelite.app/Contents/SharedSupport/plugins/
 cp ../lib/CMakePlugin.dylib ./codelite.app/Contents/SharedSupport/plugins/
 cp ../lib/CodeLiteDiff.dylib ./codelite.app/Contents/SharedSupport/plugins/
 cp ../lib/SpellCheck.dylib ./codelite.app/Contents/SharedSupport/plugins/
+cp ../lib/WordCompletion.dylib ./codelite.app/Contents/SharedSupport/plugins/
 
 ## Copy hunspell dylib to its proper location
 echo cp ../../sdk/hunspell/lib/osx/libhunspell-1.3.dylib ./codelite.app/Contents/SharedSupport/
@@ -294,8 +276,12 @@ install_name_tool -change @rpath/liblldb.3.5.0.dylib @executable_path/../SharedS
 if [ -f ../lib/wxcrafter.dylib ]; then
     cp ../lib/wxcrafter.dylib ./codelite.app/Contents/SharedSupport/plugins/
     cp -pr ../../Runtime/../wxcrafter/wxgui.zip ./codelite.app/Contents/SharedSupport/
-    cp -pr ../../Runtime/../wxcrafter/wxcrafter.accelerators ./codelite.app/Contents/SharedSupport/plugins/resources
 fi
+
+## PHP Plugin
+cp -pr ../../Runtime/PHP.zip ./codelite.app/Contents/SharedSupport/
+cp ../lib/codelitephp.dylib ./codelite.app/Contents/SharedSupport/plugins/
+## PHP Plugin - END
 
 cp ../lib/libplugin.dylib ./codelite.app/Contents/MacOS/
 cp ../lib/liblibcodelite.dylib ./codelite.app/Contents/MacOS/
@@ -304,10 +290,6 @@ cp ../lib/libdatabaselayersqlite.dylib ./codelite.app/Contents/MacOS/
 cp ../lib/libwxshapeframework.dylib ./codelite.app/Contents/MacOS/
 
 cp ../bin/codelite_indexer  ./codelite.app/Contents/MacOS/
-
-if test -f ../bin/codelite-clang ; then
-    cp ../bin/codelite-clang  ./codelite.app/Contents/MacOS/
-fi
 
 cp ../bin/codelite-cc  ./codelite.app/Contents/MacOS/
 cp ../bin/codelite-echo  ./codelite.app/Contents/MacOS/
@@ -328,7 +310,6 @@ fix_codelite_indexer_deps
 fix_codelite_make_deps
 fix_codelite_terminal_deps
 fix_wxrc_deps
-fix_codelite_clang_deps
 fix_shared_object_depends libwx_
 
 ## the blow fixes the paths embedded in the executable located under codelite.app/Contents/MacOS/

@@ -21,7 +21,7 @@ cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
 ##      -DPREVENT_WX_ASSERTS=1|0                   // Prevent those annoying wxASSERTS. In release builds the default is 1, in debug 0                          #
 ##      -DAUTOGEN_REVISION=1|0                     // Should cmake generate makefiles that auto generates the autoversion.cpp file - default is 1               #
 ##      -DWITH_PCH=1|0                             // Enable Pre Compiled Header?                                                                               #
-##      -DGTK_USE_AUIBOOK=1|0                      // Under GTK, use wxAuiNotebook instead of wxNotebook. Default is set to 0                                   #
+##      -DGTK_USE_NATIVEBOOK=1|0                   // Under GTK, use the native notebook instead of wxAuiNoteook. Default is set to 0                           #
 ##      -DWITH_WXPATH=<fullpath>                   // Specify a particular wxWidgets build to use. The format must be /path/to/different_wx-config/directory/   #
 ##      -DMAKE_DEB=1|0                             // When set to 1, you can use make package to create .deb file for codelite                                  #
 ##      -DENABLE_SFTP=1|0                          // When set to 1 codelite is built with SFTP support. Default is build _with_ SFTP support                   #
@@ -98,6 +98,9 @@ if (UNIX OR MINGW)
              )
         endif()
         if (MINGW)
+          execute_process(COMMAND sh ${WX_TOOL} --debug=no --rescomp OUTPUT_VARIABLE WX_RC_FLAGS OUTPUT_STRIP_TRAILING_WHITESPACE)
+          string(REGEX REPLACE "windres" "" WX_RC_FLAGS ${WX_RC_FLAGS})
+          set (CMAKE_RC_FLAGS "${CMAKE_RC_FLAGS} ${WX_RC_FLAGS}")
           add_definitions(-D__WXMSW__)
         endif (MINGW)
     endif()
@@ -208,22 +211,27 @@ unset(COPY_WX_LIBS CACHE)
 
 set( PLUGINS_DIR "${CL_PREFIX}/${CL_INSTALL_LIBDIR}/codelite")
 add_definitions(-DYY_NEVER_INTERACTIVE=1)
+if (NOT MINGW)
 add_definitions(-DINSTALL_DIR=\"${CL_PREFIX}/share/codelite\")
 add_definitions(-DPLUGINS_DIR=\"${PLUGINS_DIR}\")
+else()
+add_definitions(-DNDEBUG)
+add_definitions(-DUSE_POSIX_LAYOUT)
+endif()
 
 message("-- PLUGINS_DIR is set to ${PLUGINS_DIR}")
 
 ## Allow user to use wxAuiNotebook instead of the native notebook
-if ( GTK_USE_AUIBOOK )
-    add_definitions( -DGTK_USE_NATIVEBOOK=0 )
-    message("-- Using wxAuiNotebook")
-    
-else ( GTK_USE_AUIBOOK )
+if ( GTK_USE_NATIVEBOOK )
     add_definitions( -DGTK_USE_NATIVEBOOK=1 )
     message("-- Using wxNotebook")
     
-endif ( GTK_USE_AUIBOOK )
-unset(GTK_USE_AUIBOOK CACHE)
+else ( GTK_USE_NATIVEBOOK )
+    add_definitions( -DGTK_USE_NATIVEBOOK=0 )
+    message("-- Using wxAuiNotebook")
+    
+endif ( GTK_USE_NATIVEBOOK )
+unset(GTK_USE_NATIVEBOOK CACHE)
 
 #############################################
 ## Global optimizations
@@ -335,7 +343,7 @@ if ( MAKE_DEB )
 
     set(CPACK_GENERATOR                   "DEB")
     set(CPACK_PACKAGE_NAME                "codelite")
-    set(CPACK_PACKAGE_VERSION             "6.1")
+    set(CPACK_PACKAGE_VERSION             "7.0")
     set(CPACK_DEBIAN_PACKAGE_MAINTAINER   "Eran Ifrah <eran.ifrah@gmail.com>") #required
     set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "codelite IDE for C/C++")
     set(CPACK_DEBIAN_PACKAGE_SECTION      "devel")
@@ -428,7 +436,7 @@ if ( USE_PCH )
 endif ( USE_PCH )
 
 if ( APPLE )
-    add_definitions( -mmacosx-version-min=10.7 )
+    add_definitions( -mmacosx-version-min=10.8 )
 endif()
 
 add_subdirectory(sqlite3)
@@ -486,6 +494,8 @@ endif(WITH_SFTP)
 if (WITH_LLDB)
     add_subdirectory(LLDBDebugger)
 endif()
+add_subdirectory(codelitephp)
+add_subdirectory(WordCompletion)
 
 ## Executables
 add_subdirectory(LiteEditor)
@@ -495,11 +505,6 @@ add_subdirectory(codelite_terminal)
 add_subdirectory(sdk/codelite_indexer)
 add_subdirectory(sdk/codelite_cppcheck)
 add_subdirectory(codelite_echo)
-
-if (USE_CLANG)
-    add_subdirectory(codelite_clang)
-endif(USE_CLANG)
-
 
 ##
 ## Setup the proper dependencies

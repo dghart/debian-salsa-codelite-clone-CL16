@@ -27,16 +27,27 @@
 
 #include "wx/filename.h"
 #include "codelite_exports.h"
+#include <wx/filename.h>
 
 class WXDLLIMPEXP_CL FileUtils
 {
 public:
-    static bool ReadFileUTF8(const wxFileName& fn, wxString& data);
-
+    static bool ReadFileContent(const wxFileName& fn, wxString& data, const wxMBConv& conv = wxConvUTF8);
+    
+    /**
+     * @brief set the file content (replacing it)
+     */
+    static bool WriteFileContent(const wxFileName& fn, const wxString &content, const wxMBConv& conv = wxConvUTF8);
+    
     /**
      * @brief open file explorer at given path
      */
     static void OpenFileExplorer(const wxString& path);
+    
+    /**
+     * @brief open file explorer at given path and select the input file
+     */
+    static void OpenFileExplorerAndSelect(const wxFileName& filename);
     
     /**
      * @brief launch the OS default terminal at a given path

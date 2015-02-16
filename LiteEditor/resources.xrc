@@ -3,7 +3,6 @@
 	<object class="wxBitmap" name="read_only">res/lock.png</object>
 	<object class="wxBitmap" name="memory_view">res/memory_view.png</object>
 	<object class="wxBitmap" name="About">res/about_img.png</object>
-	<object class="wxBitmap" name="link_editor">res/link_editor.png</object>
     <object class="wxBitmap" name="build">res/rebuild.png</object>
 	<object class="wxBitmap" name="word_wrap">res/wrap_arrow.png</object>
 	<object class="wxBitmap" name="debug_window">res/trace.png</object>
@@ -24,8 +23,6 @@
 	<object class="wxBitmap" name="new_class_title">res/new_class.png</object>
 	<object class="wxBitmap" name="wx_project_header">res/wxproject.png</object>
 	<object class="wxBitmap" name="colourise">res/package_utilities.png</object>
-	<object class="wxBitmap" name="collapse">res/collapse.png</object>
-	<object class="wxBitmap" name="gohome">res/gohome.png</object>
 	<object class="wxBitmap" name="text_view">res/view_text.png</object>
 	<object class="wxBitmap" name="eraser">res/eraser.png</object>
 	<object class="wxBitmap" name="cursor">res/cursor.png</object>
@@ -43,12 +40,21 @@
 	<object class="wxBitmap" name="code_format16">res/16/formatter.png</object>
 
 	<!-- Notebook icons -->
-	<object class="wxBitmap" name="tab_x_close">res/notebook/fileclose-blue.png</object>
-	<object class="wxBitmap" name="tab_x_close_pressed">res/notebook/fileclose-pressed-blue.png</object>
-	<object class="wxBitmap" name="tab_x_close_red">res/notebook/fileclose.png</object>
-	<object class="wxBitmap" name="tab_x_close_active">res/notebook/fileclose-highlight.png</object>
-	<object class="wxBitmap" name="tab_x_close_pressed_red">res/notebook/fileclose-pressed.png</object>
-	<object class="wxBitmap" name="tab_x_close_disabled">res/notebook/fileclose-blue.png</object>
-	<object class="wxBitmap" name="tab_x_close_disabled_red">res/notebook/fileclose.png</object>
+    
+    <!-- light theme buttons -->
+    <object class="wxBitmap" name="tab_x_close">res/notebook/fileclose-dark.png</object>
+    <object class="wxBitmap" name="tab_x_close_pressed">res/notebook/fileclose.png</object>
+    <object class="wxBitmap" name="tab_x_close_hover">res/notebook/fileclose-dark.png</object>
+    
+    <!-- dark theme buttons -->
+    <object class="wxBitmap" name="tab_x_close_dark">res/notebook/fileclose-white.png</object>
+    <object class="wxBitmap" name="tab_x_close_dark_pressed">res/notebook/fileclose.png</object>
+    <object class="wxBitmap" name="tab_x_close_dark_hover">res/notebook/fileclose-white.png</object>
+
+    <!-- dark theme buttons -->
+    <object class="wxBitmap" name="build-error">../icons/build-error.png</object>
+    <object class="wxBitmap" name="build-warning">../icons/build-warning.png</object>
+    <object class="wxBitmap" name="build-building">../icons/cogs.png</object>
+    <object class="wxBitmap" name="build-animation-sprite">../icons/build-animation-sprite.png</object>
 
 </resource>

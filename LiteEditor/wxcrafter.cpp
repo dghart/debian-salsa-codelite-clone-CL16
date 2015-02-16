@@ -314,6 +314,24 @@ NewProjImgList::NewProjImgList()
         m_bitmaps.insert( std::make_pair(wxT("cmake"), bmp ) );
     }
     
+    {
+        wxBitmap bmp;
+        wxIcon icn;
+        bmp = wxXmlResource::Get()->LoadBitmap(wxT("clang16"));
+        icn.CopyFromBitmap( bmp );
+        this->Add( icn );
+        m_bitmaps.insert( std::make_pair(wxT("clang16"), bmp ) );
+    }
+    
+    {
+        wxBitmap bmp;
+        wxIcon icn;
+        bmp = wxXmlResource::Get()->LoadBitmap(wxT("m_bmpFindInFiles"));
+        icn.CopyFromBitmap( bmp );
+        this->Add( icn );
+        m_bitmaps.insert( std::make_pair(wxT("m_bmpFindInFiles"), bmp ) );
+    }
+    
 }
 
 NewProjImgList::~NewProjImgList()
@@ -496,7 +514,7 @@ WelcomePageBase::WelcomePageBase(wxWindow* parent, wxWindowID id, const wxPoint&
     wxBoxSizer* boxSizer195 = new wxBoxSizer(wxVERTICAL);
     m_panel191->SetSizer(boxSizer195);
     
-    m_staticBitmap161 = new wxStaticBitmap(m_panel191, wxID_ANY, wxXmlResource::Get()->LoadBitmap(wxT("splashscreen")), wxDefaultPosition, wxSize(-1,-1), 0 );
+    m_staticBitmap161 = new wxStaticBitmap(m_panel191, wxID_ANY, wxXmlResource::Get()->LoadBitmap(wxT("codelite-logo-no-bg")), wxDefaultPosition, wxSize(-1,-1), 0 );
     
     boxSizer195->Add(m_staticBitmap161, 0, wxALL|wxALIGN_CENTER_HORIZONTAL|wxALIGN_TOP, 5);
     
@@ -504,29 +522,35 @@ WelcomePageBase::WelcomePageBase(wxWindow* parent, wxWindowID id, const wxPoint&
     
     boxSizer195->Add(gridSizer235, 0, wxALL|wxALIGN_CENTER_HORIZONTAL, 5);
     
+    m_cmdLnkBtnNewWorkspace = new wxCommandLinkButton(m_panel191, wxID_ANY, _("New Workspace"), _("Create a new workspace"), wxDefaultPosition, wxSize(-1,-1), wxBU_LEFT);
+    m_cmdLnkBtnNewWorkspace->SetToolTip(_("Create a new workspace"));
+    
+    gridSizer235->Add(m_cmdLnkBtnNewWorkspace, 0, wxALL|wxEXPAND, 5);
+    
+    m_cmdLnkBtnNewProject = new wxCommandLinkButton(m_panel191, wxID_ANY, _("Open Workspace"), _("Open an existing workspace"), wxDefaultPosition, wxSize(-1,-1), wxBU_LEFT);
+    m_cmdLnkBtnNewProject->SetToolTip(_("Click to create a new project.\nIf NO workspace is open, it will auto create a workspace before creating the project"));
+    
+    gridSizer235->Add(m_cmdLnkBtnNewProject, 0, wxALL|wxEXPAND, 5);
+    
     m_cmdLnkBtnWorkspaces = new wxCommandLinkButton(m_panel191, wxID_ANY, _("Recent workspaces"), _("Open a recently used workspace"), wxDefaultPosition, wxSize(-1,100), wxBU_LEFT);
+    m_cmdLnkBtnWorkspaces->SetToolTip(_("Open a workspace from a list of recently opened workspaces"));
     
     gridSizer235->Add(m_cmdLnkBtnWorkspaces, 0, wxALL|wxEXPAND, 5);
     
     m_cmdLnkBtnFilesMenu = new wxCommandLinkButton(m_panel191, wxID_ANY, _("Recent files"), _("Open a recently used file"), wxDefaultPosition, wxSize(-1,-1), wxBU_LEFT);
+    m_cmdLnkBtnFilesMenu->SetToolTip(_("Open a file from the revcently opened files"));
     
     gridSizer235->Add(m_cmdLnkBtnFilesMenu, 0, wxALL|wxEXPAND, 5);
     
-    m_cmdLnkBtn157 = new wxCommandLinkButton(m_panel191, wxID_ANY, _("New"), _("Start a new project"), wxDefaultPosition, wxSize(-1,-1), wxBU_LEFT);
+    m_cmdLnkBtnForum = new wxCommandLinkButton(m_panel191, wxID_ANY, _("Forums"), _("Visit codelite's forums"), wxDefaultPosition, wxSize(-1,-1), wxBU_LEFT);
+    m_cmdLnkBtnForum->SetToolTip(_("Click to open a web browser in CodeLite's forums"));
     
-    gridSizer235->Add(m_cmdLnkBtn157, 0, wxALL|wxEXPAND, 5);
+    gridSizer235->Add(m_cmdLnkBtnForum, 0, wxALL|wxEXPAND, 5);
     
-    m_cmdLnkBtn231 = new wxCommandLinkButton(m_panel191, wxID_ANY, _("Open"), _("Open a workspace"), wxDefaultPosition, wxSize(-1,-1), wxBU_LEFT);
+    m_cmdLnkBtnWiki = new wxCommandLinkButton(m_panel191, wxID_ANY, _("Wiki"), _("Search codelite's wiki pages"), wxDefaultPosition, wxSize(-1,-1), wxBU_LEFT);
+    m_cmdLnkBtnWiki->SetToolTip(_("Click to open a web browser in CodeLite's wiki main documentation page"));
     
-    gridSizer235->Add(m_cmdLnkBtn231, 0, wxALL|wxEXPAND, 5);
-    
-    m_cmdLnkBtn155 = new wxCommandLinkButton(m_panel191, wxID_ANY, _("Forums"), _("Visit codelite's forums"), wxDefaultPosition, wxSize(-1,-1), wxBU_LEFT);
-    
-    gridSizer235->Add(m_cmdLnkBtn155, 0, wxALL|wxEXPAND, 5);
-    
-    m_cmdLnkBtn151 = new wxCommandLinkButton(m_panel191, wxID_ANY, _("Wiki"), _("Search codelite's wiki pages"), wxDefaultPosition, wxSize(-1,-1), wxBU_LEFT);
-    
-    gridSizer235->Add(m_cmdLnkBtn151, 0, wxALL|wxEXPAND, 5);
+    gridSizer235->Add(m_cmdLnkBtnWiki, 0, wxALL|wxEXPAND, 5);
     
     boxSizer195->Add(0, 0, 0, wxALL|wxEXPAND, 5);
     
@@ -537,28 +561,28 @@ WelcomePageBase::WelcomePageBase(wxWindow* parent, wxWindowID id, const wxPoint&
     Centre(wxBOTH);
     // Connect events
     this->Connect(wxEVT_SIZE, wxSizeEventHandler(WelcomePageBase::OnSize), NULL, this);
+    m_cmdLnkBtnNewWorkspace->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(WelcomePageBase::OnNewWorkspace), NULL, this);
+    m_cmdLnkBtnNewProject->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(WelcomePageBase::OnOpenWorkspace), NULL, this);
     m_cmdLnkBtnWorkspaces->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(WelcomePageBase::OnShowWorkspaceMenu), NULL, this);
     m_cmdLnkBtnWorkspaces->Connect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(WelcomePageBase::OnRecentProjectUI), NULL, this);
     m_cmdLnkBtnFilesMenu->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(WelcomePageBase::OnShowFileseMenu), NULL, this);
     m_cmdLnkBtnFilesMenu->Connect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(WelcomePageBase::OnRecentFileUI), NULL, this);
-    m_cmdLnkBtn157->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(WelcomePageBase::OnNewProject), NULL, this);
-    m_cmdLnkBtn231->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(WelcomePageBase::OnOpenWorkspace), NULL, this);
-    m_cmdLnkBtn155->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(WelcomePageBase::OnOpenForums), NULL, this);
-    m_cmdLnkBtn151->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(WelcomePageBase::OnOpenWiki), NULL, this);
+    m_cmdLnkBtnForum->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(WelcomePageBase::OnOpenForums), NULL, this);
+    m_cmdLnkBtnWiki->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(WelcomePageBase::OnOpenWiki), NULL, this);
     
 }
 
 WelcomePageBase::~WelcomePageBase()
 {
     this->Disconnect(wxEVT_SIZE, wxSizeEventHandler(WelcomePageBase::OnSize), NULL, this);
+    m_cmdLnkBtnNewWorkspace->Disconnect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(WelcomePageBase::OnNewWorkspace), NULL, this);
+    m_cmdLnkBtnNewProject->Disconnect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(WelcomePageBase::OnOpenWorkspace), NULL, this);
     m_cmdLnkBtnWorkspaces->Disconnect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(WelcomePageBase::OnShowWorkspaceMenu), NULL, this);
     m_cmdLnkBtnWorkspaces->Disconnect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(WelcomePageBase::OnRecentProjectUI), NULL, this);
     m_cmdLnkBtnFilesMenu->Disconnect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(WelcomePageBase::OnShowFileseMenu), NULL, this);
     m_cmdLnkBtnFilesMenu->Disconnect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(WelcomePageBase::OnRecentFileUI), NULL, this);
-    m_cmdLnkBtn157->Disconnect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(WelcomePageBase::OnNewProject), NULL, this);
-    m_cmdLnkBtn231->Disconnect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(WelcomePageBase::OnOpenWorkspace), NULL, this);
-    m_cmdLnkBtn155->Disconnect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(WelcomePageBase::OnOpenForums), NULL, this);
-    m_cmdLnkBtn151->Disconnect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(WelcomePageBase::OnOpenWiki), NULL, this);
+    m_cmdLnkBtnForum->Disconnect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(WelcomePageBase::OnOpenForums), NULL, this);
+    m_cmdLnkBtnWiki->Disconnect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(WelcomePageBase::OnOpenWiki), NULL, this);
     
 }
 
@@ -920,6 +944,8 @@ NewProjectWizardBase::NewProjectWizardBase(wxWindow* parent, wxWindowID id, cons
     m_textCtrlProjectPath->Connect(wxEVT_COMMAND_TEXT_UPDATED, wxCommandEventHandler(NewProjectWizardBase::OnProjectPathUpdated), NULL, this);
     m_buttonBrowse->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(NewProjectWizardBase::OnBrowseProjectPath), NULL, this);
     m_cbSeparateDir->Connect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(NewProjectWizardBase::OnProjectNameChanged), NULL, this);
+    m_choiceCompiler->Connect(wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler(NewProjectWizardBase::OnCompilerSelected), NULL, this);
+    m_choiceDebugger->Connect(wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler(NewProjectWizardBase::OnDebuggerSelected), NULL, this);
     
 }
 
@@ -932,5 +958,199 @@ NewProjectWizardBase::~NewProjectWizardBase()
     m_textCtrlProjectPath->Disconnect(wxEVT_COMMAND_TEXT_UPDATED, wxCommandEventHandler(NewProjectWizardBase::OnProjectPathUpdated), NULL, this);
     m_buttonBrowse->Disconnect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(NewProjectWizardBase::OnBrowseProjectPath), NULL, this);
     m_cbSeparateDir->Disconnect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(NewProjectWizardBase::OnProjectNameChanged), NULL, this);
+    m_choiceCompiler->Disconnect(wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler(NewProjectWizardBase::OnCompilerSelected), NULL, this);
+    m_choiceDebugger->Disconnect(wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler(NewProjectWizardBase::OnDebuggerSelected), NULL, this);
     
+}
+
+ClangOutputTabBase::ClangOutputTabBase(wxWindow* parent, wxWindowID id, const wxPoint& pos, const wxSize& size, long style)
+    : wxPanel(parent, id, pos, size, style)
+{
+    if ( !bBitmapLoaded ) {
+        // We need to initialise the default bitmap handler
+        wxXmlResource::Get()->AddHandler(new wxBitmapXmlHandler);
+        wxC3F25InitBitmapResources();
+        bBitmapLoaded = true;
+    }
+    
+    wxBoxSizer* boxSizer424 = new wxBoxSizer(wxVERTICAL);
+    this->SetSizer(boxSizer424);
+    
+    m_auibar = new wxAuiToolBar(this, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxAUI_TB_PLAIN_BACKGROUND|wxAUI_TB_DEFAULT_STYLE);
+    m_auibar->SetToolBitmapSize(wxSize(16,16));
+    
+    boxSizer424->Add(m_auibar, 0, wxALL|wxEXPAND, 0);
+    
+    m_checkBoxEnableClang = new wxCheckBox(m_auibar, wxID_ANY, _("Enable Clang"), wxDefaultPosition, wxSize(-1,-1), 0);
+    m_checkBoxEnableClang->SetValue(false);
+    m_checkBoxEnableClang->SetToolTip(_("Enable Clang code completion"));
+    m_auibar->AddControl(m_checkBoxEnableClang);
+    
+    m_auibar->AddSeparator();
+    
+    m_auibar->AddTool(ID_TOOL_CLEAR_LOG, _("Clear Log"), wxXmlResource::Get()->LoadBitmap(wxT("clear")), wxNullBitmap, wxITEM_NORMAL, _("Clear Log"), _("Clear Log"), NULL);
+    
+    m_auibar->AddTool(ID_TOOL_CLEAR_ALL, _("Clear Clang Cache"), wxXmlResource::Get()->LoadBitmap(wxT("clean")), wxNullBitmap, wxITEM_NORMAL, _("Clear Clang Cache"), _("Clear Clang Cache"), NULL);
+    
+    m_auibar->AddStretchSpacer(1);
+    
+    m_auibar->AddLabel(wxID_ANY, _("Cache policy:"), -1);
+    
+    wxArrayString m_choiceCacheArr;
+    m_choiceCache = new wxChoice(m_auibar, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), m_choiceCacheArr, 0);
+    m_auibar->AddControl(m_choiceCache);
+    m_auibar->Realize();
+    
+    m_stc = new wxStyledTextCtrl(this, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), 0);
+    // Configure the fold margin
+    m_stc->SetMarginType     (4, wxSTC_MARGIN_SYMBOL);
+    m_stc->SetMarginMask     (4, wxSTC_MASK_FOLDERS);
+    m_stc->SetMarginSensitive(4, true);
+    m_stc->SetMarginWidth    (4, 0);
+    
+    // Configure the tracker margin
+    m_stc->SetMarginWidth(1, 0);
+    
+    // Configure the symbol margin
+    m_stc->SetMarginType (2, wxSTC_MARGIN_SYMBOL);
+    m_stc->SetMarginMask (2, ~(wxSTC_MASK_FOLDERS));
+    m_stc->SetMarginWidth(2, 0);
+    m_stc->SetMarginSensitive(2, true);
+    
+    // Configure the line numbers margin
+    m_stc->SetMarginType(0, wxSTC_MARGIN_NUMBER);
+    m_stc->SetMarginWidth(0,0);
+    
+    // Configure the line symbol margin
+    m_stc->SetMarginType(3, wxSTC_MARGIN_FORE);
+    m_stc->SetMarginMask(3, 0);
+    m_stc->SetMarginWidth(3,0);
+    // Select the lexer
+    m_stc->SetLexer(wxSTC_LEX_NULL);
+    // Set default font / styles
+    m_stc->StyleClearAll();
+    m_stc->SetWrapMode(0);
+    m_stc->SetIndentationGuides(0);
+    m_stc->SetKeyWords(0, wxT(""));
+    m_stc->SetKeyWords(1, wxT(""));
+    m_stc->SetKeyWords(2, wxT(""));
+    m_stc->SetKeyWords(3, wxT(""));
+    m_stc->SetKeyWords(4, wxT(""));
+    
+    boxSizer424->Add(m_stc, 1, wxALL|wxEXPAND, 2);
+    
+    SetSizeHints(500,300);
+    if ( GetSizer() ) {
+         GetSizer()->Fit(this);
+    }
+    Centre(wxBOTH);
+    // Connect events
+    m_checkBoxEnableClang->Connect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(ClangOutputTabBase::OnEnableClang), NULL, this);
+    this->Connect(ID_TOOL_CLEAR_LOG, wxEVT_COMMAND_TOOL_CLICKED, wxCommandEventHandler(ClangOutputTabBase::OnClearText), NULL, this);
+    this->Connect(ID_TOOL_CLEAR_LOG, wxEVT_UPDATE_UI, wxUpdateUIEventHandler(ClangOutputTabBase::OnClearTextUI), NULL, this);
+    this->Connect(ID_TOOL_CLEAR_ALL, wxEVT_COMMAND_TOOL_CLICKED, wxCommandEventHandler(ClangOutputTabBase::OnClearCache), NULL, this);
+    this->Connect(ID_TOOL_CLEAR_ALL, wxEVT_UPDATE_UI, wxUpdateUIEventHandler(ClangOutputTabBase::OnClearCacheUI), NULL, this);
+    m_choiceCache->Connect(wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler(ClangOutputTabBase::OnPolicy), NULL, this);
+    m_choiceCache->Connect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(ClangOutputTabBase::OnPolicyUI), NULL, this);
+    
+}
+
+ClangOutputTabBase::~ClangOutputTabBase()
+{
+    m_checkBoxEnableClang->Disconnect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(ClangOutputTabBase::OnEnableClang), NULL, this);
+    this->Disconnect(ID_TOOL_CLEAR_LOG, wxEVT_COMMAND_TOOL_CLICKED, wxCommandEventHandler(ClangOutputTabBase::OnClearText), NULL, this);
+    this->Disconnect(ID_TOOL_CLEAR_LOG, wxEVT_UPDATE_UI, wxUpdateUIEventHandler(ClangOutputTabBase::OnClearTextUI), NULL, this);
+    this->Disconnect(ID_TOOL_CLEAR_ALL, wxEVT_COMMAND_TOOL_CLICKED, wxCommandEventHandler(ClangOutputTabBase::OnClearCache), NULL, this);
+    this->Disconnect(ID_TOOL_CLEAR_ALL, wxEVT_UPDATE_UI, wxUpdateUIEventHandler(ClangOutputTabBase::OnClearCacheUI), NULL, this);
+    m_choiceCache->Disconnect(wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler(ClangOutputTabBase::OnPolicy), NULL, this);
+    m_choiceCache->Disconnect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(ClangOutputTabBase::OnPolicyUI), NULL, this);
+    
+}
+
+FileExplorerTabToolBarBase::FileExplorerTabToolBarBase(wxWindow *parent, wxWindowID id, const wxPoint &position, const wxSize &size, long style)
+    : wxAuiToolBar(parent, id, position, size, style)
+{
+    if ( !bBitmapLoaded ) {
+        // We need to initialise the default bitmap handler
+        wxXmlResource::Get()->AddHandler(new wxBitmapXmlHandler);
+        wxC3F25InitBitmapResources();
+        bBitmapLoaded = true;
+    }
+    SetToolBitmapSize(wxSize(16,16));
+    
+    this->AddTool(XRCID("link_editor"), _("Link Editor"), wxXmlResource::Get()->LoadBitmap(wxT("link_editor")), wxNullBitmap, wxITEM_CHECK, _("Link Editor"), _("Link Editor"), NULL);
+    
+    this->AddTool(XRCID("collapse_all"), _("Collapse All"), wxXmlResource::Get()->LoadBitmap(wxT("collapse")), wxNullBitmap, wxITEM_NORMAL, _("Collapse All"), _("Collapse All"), NULL);
+    
+    this->AddTool(XRCID("go_home"), _("Go Home"), wxXmlResource::Get()->LoadBitmap(wxT("gohome")), wxNullBitmap, wxITEM_NORMAL, _("Go Home"), _("Go Home"), NULL);
+    
+    this->AddTool(ID_TOOL_EXPLORER_BOOKMARKS, _("Bookmark"), wxXmlResource::Get()->LoadBitmap(wxT("bookmark")), wxNullBitmap, wxITEM_NORMAL, _("Bookmark Selected Folder"), _("Bookmark Selected Folder"), NULL);
+    wxAuiToolBarItem* m_toolbarItemBookmark = this->FindToolByIndex(this->GetToolCount()-1);
+    if (m_toolbarItemBookmark) {
+        m_toolbarItemBookmark->SetHasDropDown(true);
+    }
+    
+    this->AddTool(ID_TOOL_GOTO_FOLDER, _("GoTo"), wxXmlResource::Get()->LoadBitmap(wxT("goto")), wxNullBitmap, wxITEM_NORMAL, _("Goto Folder"), _("Goto Folder"), NULL);
+    this->Realize();
+    
+}
+
+FileExplorerTabToolBarBase::~FileExplorerTabToolBarBase()
+{
+}
+
+OpenFolderDlgBase::OpenFolderDlgBase(wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style)
+    : wxDialog(parent, id, title, pos, size, style)
+{
+    if ( !bBitmapLoaded ) {
+        // We need to initialise the default bitmap handler
+        wxXmlResource::Get()->AddHandler(new wxBitmapXmlHandler);
+        wxC3F25InitBitmapResources();
+        bBitmapLoaded = true;
+    }
+    
+    wxBoxSizer* boxSizer471 = new wxBoxSizer(wxVERTICAL);
+    this->SetSizer(boxSizer471);
+    
+    wxFlexGridSizer* flexGridSizer483 = new wxFlexGridSizer(0, 2, 0, 0);
+    flexGridSizer483->SetFlexibleDirection( wxBOTH );
+    flexGridSizer483->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_SPECIFIED );
+    flexGridSizer483->AddGrowableCol(1);
+    
+    boxSizer471->Add(flexGridSizer483, 1, wxALL|wxEXPAND, 5);
+    
+    m_staticText479 = new wxStaticText(this, wxID_ANY, _("Goto Folder:"), wxDefaultPosition, wxSize(-1,-1), 0);
+    
+    flexGridSizer483->Add(m_staticText479, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5);
+    
+    m_textCtrlFolder = new wxTextCtrl(this, wxID_ANY, wxT(""), wxDefaultPosition, wxSize(-1,-1), 0);
+    m_textCtrlFolder->SetFocus();
+    #if wxVERSION_NUMBER >= 3000
+    m_textCtrlFolder->SetHint(_("Type the folder path"));
+    #endif
+    m_textCtrlFolder->AutoCompleteDirectories();
+    
+    flexGridSizer483->Add(m_textCtrlFolder, 0, wxALL|wxEXPAND, 5);
+    
+    m_stdBtnSizer473 = new wxStdDialogButtonSizer();
+    
+    boxSizer471->Add(m_stdBtnSizer473, 0, wxALL|wxALIGN_CENTER_HORIZONTAL, 5);
+    
+    m_button475 = new wxButton(this, wxID_OK, wxT(""), wxDefaultPosition, wxSize(-1, -1), 0);
+    m_button475->SetDefault();
+    m_stdBtnSizer473->AddButton(m_button475);
+    
+    m_button477 = new wxButton(this, wxID_CANCEL, wxT(""), wxDefaultPosition, wxSize(-1, -1), 0);
+    m_stdBtnSizer473->AddButton(m_button477);
+    m_stdBtnSizer473->Realize();
+    
+    SetSizeHints(-1,-1);
+    if ( GetSizer() ) {
+         GetSizer()->Fit(this);
+    }
+    Centre(wxBOTH);
+}
+
+OpenFolderDlgBase::~OpenFolderDlgBase()
+{
 }

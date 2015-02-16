@@ -91,21 +91,22 @@ SpellCheck::~SpellCheck()
 {
     m_topWin->Disconnect(
         IDM_SETTINGS, wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(SpellCheck::OnSettings), NULL, this);
-    m_topWin->Disconnect(
-        XRCID(s_doCheckID), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(SpellCheck::OnCheck), NULL, this);
-    m_topWin->Disconnect(XRCID(s_contCheckID),
+    m_topWin->Disconnect(XRCID(s_doCheckID.ToUTF8()),
+                         wxEVT_COMMAND_MENU_SELECTED,
+                         wxCommandEventHandler(SpellCheck::OnCheck),
+                         NULL,
+                         this);
+    m_topWin->Disconnect(XRCID(s_contCheckID.ToUTF8()),
                          wxEVT_COMMAND_MENU_SELECTED,
                          wxCommandEventHandler(SpellCheck::OnContinousCheck),
                          NULL,
                          this);
     m_timer.Disconnect(wxEVT_TIMER, wxTimerEventHandler(SpellCheck::OnTimer), NULL, this);
     m_topWin->Disconnect(wxEVT_CMD_EDITOR_CONTEXT_MENU, wxCommandEventHandler(SpellCheck::OnContextMenu), NULL, this);
-    //	m_topWin->Disconnect( wxEVT_WORKSPACE_LOADED, wxCommandEventHandler( SpellCheck::OnWspLoaded ), NULL, this );
     m_topWin->Disconnect(wxEVT_WORKSPACE_CLOSED, wxCommandEventHandler(SpellCheck::OnWspClosed), NULL, this);
-
-    if(m_pEngine != NULL)
-        wxDELETE(m_pEngine);
+    if(m_pEngine != NULL) wxDELETE(m_pEngine);
 }
+
 // ------------------------------------------------------------
 void SpellCheck::Init()
 {
@@ -125,28 +126,18 @@ void SpellCheck::Init()
         wxString userDictPath = wxStandardPaths::Get().GetUserDataDir();
         userDictPath << wxFILE_SEP_PATH << wxT("spellcheck") << wxFILE_SEP_PATH;
 
-        if(!wxFileName::DirExists(userDictPath))
-            wxFileName::Mkdir(userDictPath);
+        if(!wxFileName::DirExists(userDictPath)) wxFileName::Mkdir(userDictPath);
 
         m_pEngine->SetUserDictPath(userDictPath);
         m_pEngine->SetPlugIn(this);
 
-        if(!m_options.GetDictionaryFileName().IsEmpty())
-            m_pEngine->InitEngine();
+        if(!m_options.GetDictionaryFileName().IsEmpty()) m_pEngine->InitEngine();
     }
     m_timer.Connect(wxEVT_TIMER, wxTimerEventHandler(SpellCheck::OnTimer), NULL, this);
     m_topWin->Connect(wxEVT_CMD_EDITOR_CONTEXT_MENU, wxCommandEventHandler(SpellCheck::OnContextMenu), NULL, this);
     m_topWin->Connect(wxEVT_WORKSPACE_LOADED, wxCommandEventHandler(SpellCheck::OnWspLoaded), NULL, this);
     m_topWin->Connect(wxEVT_WORKSPACE_CLOSED, wxCommandEventHandler(SpellCheck::OnWspClosed), NULL, this);
-
-    EventNotifier::Get()->Connect(wxEVT_CONTEXT_MENU_EDITOR_SHOWING,
-                                  clContextMenuEventHandler(SpellCheck::OnEditorContextMenuShowing),
-                                  NULL,
-                                  this);
-    EventNotifier::Get()->Connect(wxEVT_CONTEXT_MENU_EDITOR_DISMISSED,
-                                  clContextMenuEventHandler(SpellCheck::OnEditorContextMenuDismissed),
-                                  NULL,
-                                  this);
+    EventNotifier::Get()->Bind(wxEVT_CONTEXT_MENU_EDITOR, &SpellCheck::OnEditorContextMenuShowing, this);
 }
 // ------------------------------------------------------------
 clToolBar* SpellCheck::CreateToolBar(wxWindow* parent)
@@ -158,30 +149,39 @@ clToolBar* SpellCheck::CreateToolBar(wxWindow* parent)
         m_pToolbar->SetToolBitmapSize(wxSize(size, size));
 
         if(size == 24) {
-            wxMemoryInputStream png_stream(spellcheck22_png, sizeof(spellcheck22_png));
-            wxBitmap bitmap(wxImage(png_stream, wxBITMAP_TYPE_PNG));
-            m_pToolbar->AddTool(XRCID(s_doCheckID), _("Check spelling..."), bitmap, _("Run spell-checker"));
-            wxMemoryInputStream png_stream2(contcheck22_png, sizeof(contcheck22_png));
-            wxBitmap bitmap2(wxImage(png_stream2, wxBITMAP_TYPE_PNG));
-            m_pToolbar->AddTool(
-                XRCID(s_contCheckID), _("Check continuous"), bitmap2, _("Run continuous check"), wxITEM_CHECK);
+            SpellCheckerImages24 images;
+            m_pToolbar->AddTool(XRCID(s_doCheckID.ToUTF8()),
+                                _("Check spelling..."),
+                                images.Bitmap("spellChecker24"),
+                                _("Run spell-checker"));
+            m_pToolbar->AddTool(XRCID(s_contCheckID.ToUTF8()),
+                                _("Check continuous"),
+                                images.Bitmap("spellChecker24Cont"),
+                                _("Run continuous check"),
+                                wxITEM_CHECK);
         } else {
-            wxMemoryInputStream png_stream(spellcheck16_png, sizeof(spellcheck16_png));
-            wxBitmap bitmap(wxImage(png_stream, wxBITMAP_TYPE_PNG));
-            m_pToolbar->AddTool(XRCID(s_doCheckID), _("Check spelling..."), bitmap, _("Run spell-checker"));
-            wxMemoryInputStream png_stream2(contcheck16_png, sizeof(contcheck16_png));
-            wxBitmap bitmap2(wxImage(png_stream2, wxBITMAP_TYPE_PNG));
-            m_pToolbar->AddTool(
-                XRCID(s_contCheckID), _("Check continuous"), bitmap2, _("Start continuous check"), wxITEM_CHECK);
+            SpellCheckerImages16 images;
+            m_pToolbar->AddTool(XRCID(s_doCheckID.ToUTF8()),
+                                _("Check spelling..."),
+                                images.Bitmap("spellChecker16"),
+                                _("Run spell-checker"));
+            m_pToolbar->AddTool(XRCID(s_contCheckID.ToUTF8()),
+                                _("Check continuous"),
+                                images.Bitmap("spellChecker16Cont"),
+                                _("Start continuous check"),
+                                wxITEM_CHECK);
         }
 #if defined(__WXMAC__)
         m_pToolbar->AddSeparator();
 #endif
         m_pToolbar->Realize();
     }
-    parent->Connect(
-        XRCID(s_doCheckID), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(SpellCheck::OnCheck), NULL, this);
-    parent->Connect(XRCID(s_contCheckID),
+    parent->Connect(XRCID(s_doCheckID.ToUTF8()),
+                    wxEVT_COMMAND_MENU_SELECTED,
+                    wxCommandEventHandler(SpellCheck::OnCheck),
+                    NULL,
+                    this);
+    parent->Connect(XRCID(s_contCheckID.ToUTF8()),
                     wxEVT_COMMAND_MENU_SELECTED,
                     wxCommandEventHandler(SpellCheck::OnContinousCheck),
                     NULL,
@@ -207,51 +207,34 @@ wxMenu* SpellCheck::CreateSubMenu()
     wxMenu* menu = new wxMenu();
 
     wxMenuItem* pItem(NULL);
-    pItem = new wxMenuItem(menu, XRCID(s_doCheckID), _("Check..."), _("Check..."), wxITEM_NORMAL);
+    pItem = new wxMenuItem(menu, XRCID(s_doCheckID.ToUTF8()), _("Check..."), _("Check..."), wxITEM_NORMAL);
     menu->Append(pItem);
-    pItem =
-        new wxMenuItem(menu, XRCID(s_contCheckID), _("Check continuous"), _("Start continuous check"), wxITEM_CHECK);
+    pItem = new wxMenuItem(
+        menu, XRCID(s_contCheckID.ToUTF8()), _("Check continuous"), _("Start continuous check"), wxITEM_CHECK);
     menu->Append(pItem);
     return menu;
 }
 // ------------------------------------------------------------
 void SpellCheck::HookPopupMenu(wxMenu* menu, MenuType type)
 {
-    if(type == MenuTypeEditor) {
-        if(!m_sepItem) {
-            m_sepItem = menu->AppendSeparator();
-        }
-
-        if(!menu->FindItem(IDM_BASE)) {
-            wxMenu* newMenu = CreateSubMenu();
-            menu->Append(IDM_BASE, s_plugName, newMenu);
-        }
-    }
+    wxUnusedVar(menu);
+    wxUnusedVar(type);
 }
+
 // ------------------------------------------------------------
 void SpellCheck::UnHookPopupMenu(wxMenu* menu, MenuType type)
 {
-    if(type == MenuTypeEditor) {
-        if(type == MenuTypeEditor) {
-            wxMenuItem* item = menu->FindItem(IDM_BASE);
-
-            if(item) {
-                menu->Destroy(item);
-            }
-
-            if(m_sepItem) {
-                menu->Destroy(m_sepItem);
-                m_sepItem = NULL;
-            }
-        }
-    }
+    wxUnusedVar(menu);
+    wxUnusedVar(type);
 }
+
 // ------------------------------------------------------------
 void SpellCheck::UnPlug()
 {
-    if(m_timer.IsRunning())
-        m_timer.Stop();
+    EventNotifier::Get()->Unbind(wxEVT_CONTEXT_MENU_EDITOR, &SpellCheck::OnEditorContextMenuShowing, this);
+    if(m_timer.IsRunning()) m_timer.Stop();
 }
+
 // ------------------------------------------------------------
 // returns pointer to editor
 IEditor* SpellCheck::GetEditor()
@@ -295,8 +278,7 @@ void SpellCheck::OnCheck(wxCommandEvent& e)
 {
     IEditor* editor = GetEditor();
 
-    if(!editor)
-        return;
+    if(!editor) return;
     wxString text = editor->GetEditorText();
     text += wxT(" "); // prevents indicator flickering at end of file
 
@@ -365,12 +347,12 @@ void SpellCheck::OnContinousCheck(wxCommandEvent& e)
     }
 
     if(m_pEngine != NULL) {
-        if( e.GetInt() == 0 ) {
+        if(e.GetInt() == 0) {
             SetCheckContinuous(false);
             ClearIndicatorsFromEditors();
             return;
         }
-        
+
         SetCheckContinuous(true);
         wxString text = editor->GetEditorText();
 
@@ -398,13 +380,11 @@ void SpellCheck::OnTimer(wxTimerEvent& e)
 {
     wxTopLevelWindow* pWnd = dynamic_cast<wxTopLevelWindow*>(GetTopWnd());
 
-    if(!pWnd->IsActive())
-        return;
+    if(!pWnd->IsActive()) return;
 
     IEditor* editor = m_mgr->GetActiveEditor();
 
-    if(!editor)
-        return;
+    if(!editor) return;
 
     if(GetCheckContinuous()) {
         switch(editor->GetLexerId()) {
@@ -479,15 +459,14 @@ void SpellCheck::SetCheckContinuous(bool value)
     if(value) {
         m_timer.Start(PARSE_TIME);
         if(m_pToolbar) {
-            m_pToolbar->ToggleTool(XRCID(s_contCheckID), true);
+            m_pToolbar->ToggleTool(XRCID(s_contCheckID.ToUTF8()), true);
             m_pToolbar->Refresh();
         }
     } else {
-        if(m_timer.IsRunning())
-            m_timer.Stop();
+        if(m_timer.IsRunning()) m_timer.Stop();
 
         if(m_pToolbar) {
-            m_pToolbar->ToggleTool(XRCID(s_contCheckID), false);
+            m_pToolbar->ToggleTool(XRCID(s_contCheckID.ToUTF8()), false);
             m_pToolbar->Refresh();
         }
     }
@@ -508,15 +487,12 @@ void SpellCheck::OnWspLoaded(wxCommandEvent& e)
 } // ------------------------------------------------------------
 void SpellCheck::OnWspClosed(wxCommandEvent& e) { e.Skip(); }
 
-void SpellCheck::OnEditorContextMenuDismissed(clContextMenuEvent& e) { e.Skip(); }
-
 void SpellCheck::OnEditorContextMenuShowing(clContextMenuEvent& e)
 {
     e.Skip();
-    wxMenu* menu(NULL);
-    if(e.GetMenu()->FindItem(IDM_BASE, &menu) && menu) {
-        menu->Check(XRCID(s_contCheckID), m_checkContinuous);
-    }
+    wxMenu* menu = CreateSubMenu();
+    menu->Check(XRCID(s_contCheckID.ToUTF8()), m_checkContinuous);
+    e.GetMenu()->Append(IDM_BASE, _("Spell Checker"), menu);
 }
 
 void SpellCheck::ClearIndicatorsFromEditors()

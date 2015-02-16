@@ -33,7 +33,6 @@
 #include "wx/treectrl.h"
 #include "dynamiclibrary.h"
 #include "plugindata.h"
-#include "keyboardmanager.h"
 #include "project.h"
 #include <set>
 #include <map>
@@ -51,7 +50,6 @@ class PluginManager : public IManager
     std::map<wxString, IPlugin*> m_plugins;
     std::list<clDynamicLibrary*> m_dl;
     PluginInfoArray m_pluginsData;
-    KeyboardManager m_keyboardMgr;
     BitmapLoader* m_bmpLoader;
     std::set<MenuType> m_menusToBeHooked;
     std::map<wxString, wxString> m_backticks;
@@ -83,7 +81,7 @@ public:
     virtual Notebook* GetOutputPaneNotebook();
     virtual Notebook* GetWorkspacePaneNotebook();
     virtual bool
-        OpenFile(const wxString& fileName, const wxString& projectName = wxEmptyString, int lineno = wxNOT_FOUND);
+    OpenFile(const wxString& fileName, const wxString& projectName = wxEmptyString, int lineno = wxNOT_FOUND);
     virtual bool OpenFile(const BrowseRecord& rec);
     virtual wxString GetStartupDirectory() const;
     virtual void AddProject(const wxString& path);
@@ -104,7 +102,6 @@ public:
     virtual wxEvtHandler* GetOutputWindow();
     virtual bool SaveAll();
     virtual wxString GetInstallDirectory() const;
-    virtual IKeyboard* GetKeyboardManager();
     virtual bool CreateVirtualDirectory(const wxString& parentPath, const wxString& vdName);
     virtual OptionsConfigPtr GetEditorSettings();
     virtual void FindAndSelect(const wxString& pattern, const wxString& name, int pos = 0);
@@ -119,17 +116,18 @@ public:
     virtual wxString GetProjectNameByFile(const wxString& fullPathFileName);
     virtual BuildManager* GetBuildManager();
     virtual BuildSettingsConfig* GetBuildSettingsConfigManager();
-    virtual bool ClosePage(const wxString& text);
+    virtual bool ClosePage(const wxString& title);
+    virtual bool ClosePage(const wxFileName& filename);
     virtual wxWindow* FindPage(const wxString& text);
     virtual bool
-        AddPage(wxWindow* win, const wxString& text, const wxBitmap& bmp = wxNullBitmap, bool selected = false);
+    AddPage(wxWindow* win, const wxString& text, const wxString& tooltip = wxEmptyString, const wxBitmap& bmp = wxNullBitmap, bool selected = false);
     virtual bool SelectPage(wxWindow* win);
     virtual NavMgr* GetNavigationMgr();
     virtual IEditor* NewEditor();
     virtual bool IsShutdownInProgress() const;
     virtual BitmapLoader* GetStdIcons();
     virtual wxArrayString GetProjectCompileFlags(const wxString& projectName, bool isCppFile);
-    virtual void AddEditorPage(wxWindow* page, const wxString& name);
+    virtual void AddEditorPage(wxWindow* page, const wxString& name,const wxString& tooltip = wxEmptyString);
     virtual wxPanel* GetEditorPaneNotebook();
     virtual wxWindow* GetActivePage();
     virtual wxWindow* GetPage(size_t page);
@@ -140,6 +138,7 @@ public:
     virtual void RedefineProjFiles(ProjectPtr proj, const wxString& path, std::vector<wxString>& files);
     virtual IEditor* FindEditor(const wxString& filename) const;
     virtual size_t GetAllEditors(IEditor::List_t& editors, bool inOrder = false);
+    virtual size_t GetAllTabs(clTab::Vec_t& tabs);
     virtual size_t GetAllBreakpoints(BreakpointInfo::Vec_t& breakpoints);
     virtual void DeleteAllBreakpoints();
     virtual void SetBreakpoints(const BreakpointInfo::Vec_t& breakpoints);
@@ -148,6 +147,15 @@ public:
     virtual void ProcessEditEvent(wxCommandEvent& e, IEditor* editor);
     virtual void AppendOutputTabText(eOutputPaneTab tab, const wxString& text);
     virtual void ClearOutputTab(eOutputPaneTab tab);
+    virtual void AddWorkspaceToRecentlyUsedList(const wxFileName& filename);
+    virtual void StoreWorkspaceSession(const wxFileName& workspaceFile);
+    virtual void LoadWorkspaceSession(const wxFileName& workspaceFile);
+    virtual void OpenFindInFileForPath(const wxString &path);
+    virtual void OpenFindInFileForPaths(const wxArrayString &paths);
+    virtual void ShowOutputPane(const wxString &selectedWindow = "");
+    virtual void ToggleOutputPane(const wxString &selectedWindow = "");
+    virtual clStatusBar* GetStatusBar();
+    
     //------------------------------------
     // End of IManager interface
     //------------------------------------
@@ -158,7 +166,7 @@ public:
     // (Un)Hook the project settings tab
     virtual void HookProjectSettingsTab(wxBookCtrlBase* book, const wxString& projectName, const wxString& configName);
     virtual void
-        UnHookProjectSettingsTab(wxBookCtrlBase* book, const wxString& projectName, const wxString& configName);
+    UnHookProjectSettingsTab(wxBookCtrlBase* book, const wxString& projectName, const wxString& configName);
 };
 
 #endif // PLUGINMANAGER_H

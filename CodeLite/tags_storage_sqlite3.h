@@ -33,7 +33,7 @@
 #include <wx/wxsqlite3.h>
 #include "codelite_exports.h"
 
-const wxString gTagsDatabaseVersion(wxT("CodeLite Version 3.0"));
+const wxString gTagsDatabaseVersion(wxT("CodeLite Version 7.0"));
 
 /**
  * TagsDatabase is a wrapper around wxSQLite3 database with tags specific functions.
@@ -115,7 +115,9 @@ public:
     }
 
     void Close() {
-        wxSQLite3Database::Close();
+        if (IsOpen())
+            wxSQLite3Database::Close();
+
         m_statements.clear();
     }
 
@@ -424,7 +426,12 @@ public:
      * @param tags
      */
     virtual void GetTagsByFileAndLine (const wxString &file, int line, std::vector<TagEntryPtr> &tags);
-
+    
+    /**
+     * @brief return tag entry above (or equal) line
+     */
+    TagEntryPtr GetTagAboveFileAndLine(const wxString& file, int line);
+    
     /**
      * @brief return list by kind and scope
      * @param scope

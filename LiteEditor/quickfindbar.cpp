@@ -56,13 +56,14 @@ DEFINE_EVENT_TYPE(QUICKFIND_COMMAND_EVENT)
 
 void PostCommandEvent(wxWindow* destination, wxWindow* FocusedControl)
 {
-#if wxVERSION_NUMBER >= 2900
     // Posts an event that signals for SelectAll() to be done after a delay
     // This is often needed in >2.9, as scintilla seems to steal the selection
+    const static int DELAY_COUNT = 10;
+
     wxCommandEvent event(QUICKFIND_COMMAND_EVENT);
+    event.SetInt(DELAY_COUNT);
     event.SetEventObject(FocusedControl);
     wxPostEvent(destination, event);
-#endif
 }
 
 QuickFindBar::QuickFindBar(wxWindow* parent, wxWindowID id)
@@ -74,9 +75,23 @@ QuickFindBar::QuickFindBar(wxWindow* parent, wxWindowID id)
     , m_optionsWindow(NULL)
     , m_regexType(kRegexNone)
 {
-    m_bar = new wxFlatButtonBar(this, wxFlatButton::kThemeNormal);
+    m_bar = new wxFlatButtonBar(this, wxFlatButton::kThemeNormal, 0, 9);
+    
+    //-------------------------------------------------------------
+    // Find / Replace bar
+    //-------------------------------------------------------------
+    // [x][A]["][*][/][..............][find][find prev][find all]
+    // [-][-][-][-][-][..............][replace]
+    //-------------------------------------------------------------
+    m_bar->SetExpandableColumn(5);
     GetSizer()->Add(m_bar, 1, wxEXPAND | wxALL, 2);
     QuickFindBarImages images;
+    
+    // Add the 'close' button
+    m_closeButton = m_bar->AddButton("", images.Bitmap("find-bar-close-16"), wxSize(24, -1));
+    m_closeButton->SetToolTip(_("Close"));
+    m_closeButton->Bind(wxEVT_KEY_DOWN, &QuickFindBar::OnKeyDown, this);
+    m_closeButton->Bind(wxEVT_CMD_FLATBUTTON_CLICK, &QuickFindBar::OnHideBar, this);
     
     // Add the 'case sensitive' button
     m_caseSensitive = m_bar->AddButton("", images.Bitmap("case-sensitive"), wxSize(24, -1));
@@ -105,15 +120,15 @@ QuickFindBar::QuickFindBar(wxWindow* parent, wxWindowID id)
     m_regexOrWildMenu->Bind(wxEVT_COMMAND_MENU_SELECTED, &QuickFindBar::OnUseRegex, this, ID_MENU_REGEX);
     m_regexOrWildMenu->Bind(wxEVT_COMMAND_MENU_SELECTED, &QuickFindBar::OnUseWildcards, this, ID_MENU_WILDCARD);
     m_regexOrWildMenu->Bind(wxEVT_COMMAND_MENU_SELECTED, &QuickFindBar::OnNoRegex, this, ID_MENU_NO_REGEX);
-
+    
+    // Marker button
     wxFlatButton* btnMarker = m_bar->AddButton("", images.Bitmap("marker-16"), wxSize(24, -1));
     btnMarker->SetTogglable(true);
     btnMarker->Bind(wxEVT_CMD_FLATBUTTON_CLICK, &QuickFindBar::OnHighlightMatches, this);
     btnMarker->Bind(wxEVT_UPDATE_UI, &QuickFindBar::OnHighlightMatchesUI, this);
     btnMarker->Bind(wxEVT_KEY_DOWN, &QuickFindBar::OnKeyDown, this);
     btnMarker->SetToolTip(_("Highlight Occurences"));
-
-    // Add the controls
+    
     //=======----------------------
     // Find what:
     //=======----------------------
@@ -125,45 +140,45 @@ QuickFindBar::QuickFindBar(wxWindow* parent, wxWindowID id)
     m_findWhat->SetFocus();
     m_findWhat->SetHint(_("Type to start a search..."));
     m_bar->AddControl(m_findWhat, 1, wxEXPAND | wxALL | wxALIGN_CENTER_VERTICAL);
-
-    m_bar->AddSpacer(2);
+    
+    // Find 
     wxFlatButton* btnNext = m_bar->AddButton(_("Find"), wxNullBitmap, wxSize(100, -1), wxBORDER_SIMPLE);
     btnNext->Bind(wxEVT_CMD_FLATBUTTON_CLICK, &QuickFindBar::OnButtonNext, this);
     btnNext->Bind(wxEVT_KEY_DOWN, &QuickFindBar::OnKeyDown, this);
     btnNext->Bind(wxEVT_UPDATE_UI, &QuickFindBar::OnButtonNextUI, this);
     btnNext->SetToolTip(_("Find Next"));
-
+    
+    // Find Prev
     wxFlatButton* btnPrev = m_bar->AddButton(_("Find Prev"), wxNullBitmap, wxSize(100, -1), wxBORDER_SIMPLE);
     btnPrev->Bind(wxEVT_CMD_FLATBUTTON_CLICK, &QuickFindBar::OnButtonPrev, this);
     btnPrev->Bind(wxEVT_KEY_DOWN, &QuickFindBar::OnKeyDown, this);
     btnPrev->Bind(wxEVT_UPDATE_UI, &QuickFindBar::OnButtonPrevUI, this);
     btnPrev->SetToolTip(_("Find Previous"));
-
+    
+    // Find All
     wxFlatButton* btnAll = m_bar->AddButton(_("Find All"), wxNullBitmap, wxSize(100, -1), wxBORDER_SIMPLE);
     btnAll->Bind(wxEVT_CMD_FLATBUTTON_CLICK, &QuickFindBar::OnFindAll, this);
     btnAll->Bind(wxEVT_UPDATE_UI, &QuickFindBar::OnButtonPrevUI, this);
     btnAll->SetToolTip(_("Find and select all occurrences"));
     
-    // Add the 'Show Replace' controls
-    m_showReplaceControls = m_bar->AddButton("", images.Bitmap("replace-controls"), wxSize(24, -1));
-    m_showReplaceControls->SetTogglable(true);
-    m_showReplaceControls->SetToolTip(_("Show the 'Replace' buttons"));
-    m_showReplaceControls->Bind(wxEVT_KEY_DOWN, &QuickFindBar::OnKeyDown, this);
-    m_showReplaceControls->Bind(wxEVT_CMD_FLATBUTTON_CLICK, &QuickFindBar::OnShowReplaceControls, this);
+    //=======----------------------
+    // Replace with (new row)
+    //=======----------------------
+    // We first need to add 5 spacers
+    m_bar->AddSpacer(0);
+    m_bar->AddSpacer(0);
+    m_bar->AddSpacer(0);
+    m_bar->AddSpacer(0);
+    m_bar->AddSpacer(0);
     
-    //=======----------------------
-    // Replace with:
-    //=======----------------------
     wxArrayString m_replaceWithArr;
     m_replaceWith = new wxComboBox(
         m_bar, wxID_ANY, wxT(""), wxDefaultPosition, wxSize(-1, -1), m_replaceWithArr, wxTE_PROCESS_ENTER);
     m_replaceWith->SetToolTip(_("Type the replacement string and hit ENTER to perform the replacement"));
     m_replaceWith->SetHint(_("Type any replacement string..."));
-    m_replaceWith->Hide();
     m_bar->AddControl(m_replaceWith, 1, wxEXPAND | wxALL | wxALIGN_CENTER_VERTICAL);
     
     m_buttonReplace = m_bar->AddButton(_("Replace"), wxNullBitmap, wxSize(100, -1), wxBORDER_SIMPLE);
-    m_buttonReplace->Show(false);
     m_buttonReplace->SetToolTip(_("Replace the current selection"));
     m_buttonReplace->Bind(wxEVT_CMD_FLATBUTTON_CLICK, &QuickFindBar::OnButtonReplace, this);
     m_buttonReplace->Bind(wxEVT_UPDATE_UI, &QuickFindBar::OnButtonReplaceUI, this);
@@ -173,6 +188,7 @@ QuickFindBar::QuickFindBar(wxWindow* parent, wxWindowID id)
     m_findWhat->Bind(wxEVT_COMMAND_TEXT_ENTER, &QuickFindBar::OnEnter, this);
     m_findWhat->Bind(wxEVT_COMMAND_TEXT_UPDATED, &QuickFindBar::OnText, this);
     m_findWhat->Bind(wxEVT_KEY_DOWN, &QuickFindBar::OnKeyDown, this);
+    m_findWhat->Bind(wxEVT_MOUSEWHEEL, &QuickFindBar::OnFindMouseWheel, this);
     m_replaceWith->Bind(wxEVT_KEY_DOWN, &QuickFindBar::OnReplaceKeyDown, this);
     m_replaceWith->Bind(wxEVT_COMMAND_TEXT_ENTER, &QuickFindBar::OnReplace, this);
     btnNext->Bind(wxEVT_KEY_DOWN, &QuickFindBar::OnKeyDown, this);
@@ -296,7 +312,7 @@ void QuickFindBar::DoSearch(size_t searchFlags, int posToSearchFrom)
 void QuickFindBar::OnHide(wxCommandEvent& e)
 {
     // Kill any "...continued from start" statusbar message
-    clMainFrame::Get()->SetStatusMessage(wxEmptyString, 0);
+    clMainFrame::Get()->GetStatusBar()->SetMessage(wxEmptyString);
 
     Show(false);
     e.Skip();
@@ -811,10 +827,18 @@ void QuickFindBar::OnReceivingFocus(wxFocusEvent& event)
 
 void QuickFindBar::OnQuickFindCommandEvent(wxCommandEvent& event)
 {
+    if (event.GetInt() > 0) {
+        // We need to delay further, or focus might be set too soon
+        event.SetInt(event.GetInt()-1);
+        wxPostEvent(this, event);
+    }
+
     if(event.GetEventObject() == m_findWhat) {
+        m_findWhat->SetFocus();
         m_findWhat->SelectAll();
 
     } else if(event.GetEventObject() == m_replaceWith) {
+        m_replaceWith->SetFocus();
         m_replaceWith->SelectAll();
     }
 }
@@ -1039,4 +1063,16 @@ void QuickFindBar::OnButtonReplace(wxFlatButtonEvent& e)
 void QuickFindBar::OnButtonReplaceUI(wxUpdateUIEvent& e)
 {
     e.Enable(!m_replaceWith->GetValue().IsEmpty());
+}
+
+void QuickFindBar::OnHideBar(wxFlatButtonEvent& e)
+{
+    OnHide(e);
+}
+
+void QuickFindBar::OnFindMouseWheel(wxMouseEvent& e)
+{
+    // Do nothing and disable the mouse wheel
+    // by not calling 'skip'
+    wxUnusedVar(e);
 }

@@ -55,6 +55,8 @@
 #include "debugger.h"
 #include "cl_standard_paths.h"
 #include "new_build_tab.h"
+#include "clKeyboardManager.h"
+#include "sessionmanager.h"
 
 PluginManager* PluginManager::Get()
 {
@@ -124,8 +126,9 @@ void PluginManager::Load()
     CodeLiteApp* app = static_cast<CodeLiteApp*>(GetTheApp());
     CodeLiteApp::PluginPolicy pp = app->GetPluginLoadPolicy();
     wxArrayString allowedPlugins;
-    if(pp == CodeLiteApp::PP_None)
+    if(pp == CodeLiteApp::PP_None) {
         return;
+    }
 
     else if(pp == CodeLiteApp::PP_FromList)
         allowedPlugins = app->GetAllowedPlugins();
@@ -265,18 +268,22 @@ void PluginManager::Load()
                 }
             }
 
-            // Let the plugin plug its menu in the 'Plugins' menu at the menu bar
-            // the create menu will be placed as a sub menu of the 'Plugin' menu
-            wxMenu* pluginsMenu = NULL;
-            wxMenuItem* menuitem = clMainFrame::Get()->GetMenuBar()->FindItem(XRCID("manage_plugins"), &pluginsMenu);
-            if(menuitem && pluginsMenu) {
-                plugin->CreatePluginMenu(pluginsMenu);
-            }
-
             // Keep the dynamic load library
             m_dl.push_back(dl);
         }
         clMainFrame::Get()->GetDockingManager().Update();
+
+        // Let the plugins plug their menu in the 'Plugins' menu at the menu bar
+        // the create menu will be placed as a sub menu of the 'Plugin' menu
+        wxMenu* pluginsMenu = NULL;
+        wxMenuItem* menuitem = clMainFrame::Get()->GetMenuBar()->FindItem(XRCID("manage_plugins"), &pluginsMenu);
+        if(pluginsMenu && menuitem) {
+            std::map<wxString, IPlugin*>::iterator iter = m_plugins.begin();
+            for(; iter != m_plugins.end(); ++iter) {
+                IPlugin* plugin = iter->second;
+                plugin->CreatePluginMenu(pluginsMenu);
+            }
+        }
 
         // save the plugins data
         conf.WriteItem(&m_pluginsData);
@@ -289,24 +296,9 @@ IConfigTool* PluginManager::GetConfigTool() { return EditorConfigST::Get(); }
 
 void PluginManager::HookPopupMenu(wxMenu* menu, MenuType type)
 {
-    // Hook each menu once!
-    std::set<MenuType>::iterator it = m_menusToBeHooked.find(type);
-    if(it != m_menusToBeHooked.end()) {
-        // Call 'HookPopupMenu'
-        std::map<wxString, IPlugin*>::iterator iter = m_plugins.begin();
-        for(; iter != m_plugins.end(); iter++) {
-            iter->second->HookPopupMenu(menu, type);
-        }
-
-        // remove this menu entry from the set to avoid
-        // further hooking
-        if(type != MenuTypeEditor) {
-
-            // Dont remove the MenuTypeEditor from the set, since there can be multiple
-            // instances of that menu (each editor holds a copy of the menu)
-            // LEditor itself will make sure to call this method only once
-            m_menusToBeHooked.erase(it);
-        }
+    std::map<wxString, IPlugin*>::iterator iter = m_plugins.begin();
+    for(; iter != m_plugins.end(); iter++) {
+        iter->second->HookPopupMenu(menu, type);
     }
 }
 
@@ -351,7 +343,7 @@ bool PluginManager::OpenFile(const wxString& fileName, const wxString& projectNa
     return false;
 }
 
-wxString PluginManager::GetStartupDirectory() const { return ManagerST::Get()->GetStarupDirectory(); }
+wxString PluginManager::GetStartupDirectory() const { return ManagerST::Get()->GetStartupDirectory(); }
 
 void PluginManager::AddProject(const wxString& path) { ManagerST::Get()->AddProject(path); }
 
@@ -425,8 +417,6 @@ bool PluginManager::SaveAll() { return clMainFrame::Get()->GetMainBook()->SaveAl
 
 wxString PluginManager::GetInstallDirectory() const { return ManagerST::Get()->GetInstallDir(); }
 
-IKeyboard* PluginManager::GetKeyboardManager() { return &m_keyboardMgr; }
-
 bool PluginManager::CreateVirtualDirectory(const wxString& parentPath, const wxString& vdName)
 {
     return clMainFrame::Get()->GetWorkspaceTab()->GetFileView()->CreateVirtualDirectory(parentPath, vdName);
@@ -455,15 +445,14 @@ void PluginManager::FindAndSelect(const wxString& pattern, const wxString& name,
 TagEntryPtr PluginManager::GetTagAtCaret(bool scoped, bool impl)
 {
     LEditor* editor = clMainFrame::Get()->GetMainBook()->GetActiveEditor();
-    if(!editor)
-        return NULL;
+    if(!editor) return NULL;
     return editor->GetContext()->GetTagAtCaret(scoped, impl);
 }
 
 bool PluginManager::AllowToolbar()
 {
-    long v;
-    if(EditorConfigST::Get()->GetLongValue(wxT("UseSingleToolbar"), v)) {
+    long v = EditorConfigST::Get()->GetInteger(wxT("UseSingleToolbar"));
+    if(v != wxNOT_FOUND) {
         return v ? false : true;
     } else {
 // entry does not exist
@@ -490,9 +479,11 @@ void PluginManager::EnableToolbars()
     }
 }
 
-void PluginManager::SetStatusMessage(const wxString& msg, int col, int seconds_to_live /*=wxID_ANY*/)
+void PluginManager::SetStatusMessage(const wxString& msg, int col, int seconds_to_live)
 {
-    clMainFrame::Get()->SetStatusMessage(msg, col, seconds_to_live);
+    wxUnusedVar(col);
+    wxUnusedVar(seconds_to_live);
+    GetStatusBar()->SetMessage(msg);
 }
 
 void PluginManager::ProcessCommandQueue() { ManagerST::Get()->ProcessCommandQueue(); }
@@ -514,13 +505,19 @@ BuildManager* PluginManager::GetBuildManager() { return BuildManagerST::Get(); }
 
 BuildSettingsConfig* PluginManager::GetBuildSettingsConfigManager() { return BuildSettingsConfigST::Get(); }
 
-bool PluginManager::ClosePage(const wxString& text) { return clMainFrame::Get()->GetMainBook()->ClosePage(text); }
+bool PluginManager::ClosePage(const wxString& title) { return clMainFrame::Get()->GetMainBook()->ClosePage(title); }
+bool PluginManager::ClosePage(const wxFileName& filename) 
+{
+    MainBook* book = clMainFrame::Get()->GetMainBook();
+    LEditor* editor = book->FindEditor(filename.GetFullPath());
+    return clMainFrame::Get()->GetMainBook()->ClosePage(editor);
+}
 
 wxWindow* PluginManager::FindPage(const wxString& text) { return clMainFrame::Get()->GetMainBook()->FindPage(text); }
 
-bool PluginManager::AddPage(wxWindow* win, const wxString& text, const wxBitmap& bmp, bool selected)
+bool PluginManager::AddPage(wxWindow* win, const wxString& text,const wxString& tooltip, const wxBitmap& bmp, bool selected)
 {
-    return clMainFrame::Get()->GetMainBook()->AddPage(win, text, bmp, selected);
+    return clMainFrame::Get()->GetMainBook()->AddPage(win, text, tooltip, bmp, selected);
 }
 
 bool PluginManager::SelectPage(wxWindow* win) { return clMainFrame::Get()->GetMainBook()->SelectPage(win); }
@@ -530,7 +527,7 @@ bool PluginManager::OpenFile(const BrowseRecord& rec) { return clMainFrame::Get(
 NavMgr* PluginManager::GetNavigationMgr() { return NavMgr::Get(); }
 
 void
-    PluginManager::HookProjectSettingsTab(wxBookCtrlBase* book, const wxString& projectName, const wxString& configName)
+PluginManager::HookProjectSettingsTab(wxBookCtrlBase* book, const wxString& projectName, const wxString& configName)
 {
     std::map<wxString, IPlugin*>::iterator iter = m_plugins.begin();
     for(; iter != m_plugins.end(); iter++) {
@@ -538,9 +535,8 @@ void
     }
 }
 
-void PluginManager::UnHookProjectSettingsTab(wxBookCtrlBase* book,
-                                             const wxString& projectName,
-                                             const wxString& configName)
+void
+PluginManager::UnHookProjectSettingsTab(wxBookCtrlBase* book, const wxString& projectName, const wxString& configName)
 {
     std::map<wxString, IPlugin*>::iterator iter = m_plugins.begin();
     for(; iter != m_plugins.end(); iter++) {
@@ -562,8 +558,7 @@ BitmapLoader* PluginManager::GetStdIcons()
 
 wxArrayString PluginManager::GetProjectCompileFlags(const wxString& projectName, bool isCppFile)
 {
-    if(IsWorkspaceOpen() == false)
-        return wxArrayString();
+    if(IsWorkspaceOpen() == false) return wxArrayString();
 
     wxArrayString args;
 
@@ -635,9 +630,9 @@ wxArrayString PluginManager::GetProjectCompileFlags(const wxString& projectName,
     return args;
 }
 
-void PluginManager::AddEditorPage(wxWindow* page, const wxString& name)
+void PluginManager::AddEditorPage(wxWindow* page, const wxString& name, const wxString& tooltip)
 {
-    clMainFrame::Get()->GetMainBook()->AddPage(page, name, wxNullBitmap, true);
+    clMainFrame::Get()->GetMainBook()->AddPage(page, name, tooltip, wxNullBitmap, true);
 }
 
 wxPanel* PluginManager::GetEditorPaneNotebook() { return clMainFrame::Get()->GetMainBook(); }
@@ -758,5 +753,73 @@ void PluginManager::ClearOutputTab(eOutputPaneTab tab)
     case kOutputTab_Output:
         clMainFrame::Get()->GetOutputPane()->GetOutputWindow()->Clear();
         break;
+    }
+}
+
+void PluginManager::AddWorkspaceToRecentlyUsedList(const wxFileName& filename)
+{
+    if(filename.Exists()) {
+        ManagerST::Get()->AddToRecentlyOpenedWorkspaces(filename.GetFullPath());
+    }
+}
+
+void PluginManager::StoreWorkspaceSession(const wxFileName& workspaceFile)
+{
+    if(workspaceFile.Exists()) {
+        SessionEntry session;
+        clMainFrame::Get()->GetMainBook()->CreateSession(session);
+        session.SetWorkspaceName(workspaceFile.GetFullPath());
+        SessionManager::Get().Save(session.GetWorkspaceName(), session);
+    }
+}
+
+void PluginManager::LoadWorkspaceSession(const wxFileName& workspaceFile) 
+{
+    SessionEntry session;
+    if(SessionManager::Get().GetSession(workspaceFile.GetFullPath(), session)) {
+        clMainFrame::Get()->GetMainBook()->RestoreSession(session);
+        // Set this session as the 'Last' session
+        SessionManager::Get().SetLastWorkspaceName(workspaceFile.GetFullPath());
+    }
+}
+
+void PluginManager::OpenFindInFileForPath(const wxString& path)
+{
+    wxCommandEvent ff(wxEVT_COMMAND_MENU_SELECTED, XRCID("find_in_files"));
+    wxArrayString paths;
+    paths.Add(path);
+    ff.SetClientData(new wxArrayString(paths));
+    clMainFrame::Get()->GetEventHandler()->AddPendingEvent(ff);
+}
+
+void PluginManager::OpenFindInFileForPaths(const wxArrayString& paths)
+{
+    wxCommandEvent ff(wxEVT_COMMAND_MENU_SELECTED, XRCID("find_in_files"));
+    ff.SetClientData(new wxArrayString(paths));
+    clMainFrame::Get()->GetEventHandler()->AddPendingEvent(ff);
+}
+
+void PluginManager::ShowOutputPane(const wxString& selectedWindow)
+{
+    ManagerST::Get()->ShowOutputPane(selectedWindow);
+}
+
+size_t PluginManager::GetAllTabs(clTab::Vec_t& tabs)
+{
+    clMainFrame::Get()->GetMainBook()->GetAllTabs(tabs);
+    return tabs.size();
+}
+
+clStatusBar* PluginManager::GetStatusBar()
+{
+    return static_cast<clStatusBar*>(clMainFrame::Get()->GetStatusBar());
+}
+
+void PluginManager::ToggleOutputPane(const wxString& selectedWindow)
+{
+    if(ManagerST::Get()->IsPaneVisible(wxT("Output View"))) {
+        ManagerST::Get()->HidePane("Output View");
+    } else {
+        ManagerST::Get()->ShowOutputPane(selectedWindow);
     }
 }

@@ -76,11 +76,20 @@ class SubversionView : public SubversionPageBase
     int m_fileExplorerLastBaseImgIdx;
     ThemeHandlerHelper* m_themeHelper;
     wxFileName m_workspaceFile;
-
+    IProcess* m_codeliteEcho;
+    
 public:
     enum { SvnInfo_Tag, SvnInfo_Branch, SvnInfo_Info };
 
+    /**
+     * @brief note that this function accepts arguments by value
+     * on purpose (since the caller object might get deleted before 
+     * it finish processing)
+     */
+    void FinishDiff(wxString output, wxFileName fileBeingDiffed);
+
 protected:
+    virtual void OnSciStcChange(wxStyledTextEvent& event);
     virtual void OnCharAdded(wxStyledTextEvent& event);
     virtual void OnKeyDown(wxKeyEvent& event);
     virtual void OnUpdateUI(wxStyledTextEvent& event);
@@ -176,6 +185,10 @@ public:
     void BuildExplorerTree(const wxString& root);
 
     wxString GetRootDir() const { return DoGetCurRepoPath(); }
+    bool IsValid() const {
+        wxString curpath = DoGetCurRepoPath();
+        return !curpath.IsEmpty() && curpath != _("<No repository path is selected>");
+    }
 };
 
 #endif // __subversion_page__

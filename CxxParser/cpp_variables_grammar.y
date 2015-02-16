@@ -68,7 +68,7 @@ extern void cl_scope_lex_clean();
 %token  LE_CLASS
 %token  LE_PUBLIC          LE_PROTECTED       LE_PRIVATE
 %token  LE_VIRTUAL         LE_FRIEND
-%token  LE_INLINE          LE_OVERLOAD
+%token  LE_INLINE          LE_OVERLOAD LE_OVERRIDE  LE_FINAL
 %token  LE_TEMPLATE           LE_TYPENAME
 %token  LE_THROW              LE_CATCH
 /* ANSI C Grammar suggestions */
@@ -120,14 +120,13 @@ basic_type_name_inter:    LE_INT          { $$ = $1; }
                 |         LE_BOOL         { $$ = $1; }
                 |         LE_TIME_T       { $$ = $1; }
                 |         LE_SIZE_T       { $$ = $1; }
-                |         LE_LONG LE_LONG { $$ = "long long";}
-                |         LE_LONG LE_INT  { $$ = "long int";}
                 ;
 
 basic_type_name:    LE_UNSIGNED basic_type_name_inter   { $$ = $1 + " " + $2; }
                 |   LE_SIGNED basic_type_name_inter     { $$ = $1 + " " + $2; }
                 |   basic_type_name_inter               { $$ = $1; }
                 |   LE_SHORT basic_type_name            { $$ = $1 + " " + $2;}
+                |   LE_LONG basic_type_name { $$ = $1 + " " + $2; }
                 ;
 
 /* ========================================================================*/

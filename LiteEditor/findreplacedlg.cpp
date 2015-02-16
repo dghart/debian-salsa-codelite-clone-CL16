@@ -476,7 +476,7 @@ void FindReplaceData::SetReplaceString(const wxString& str)
 	}
 	m_replaceString.Insert(str, 0);
 
-	long max_value = clConfig::Get().Read("MaxItemsInFindReplaceDialog", 15);
+	long max_value = clConfig::Get().Read(kConfigMaxItemsInFindReplaceDialog, 15);
 	TruncateArray(m_replaceString, (size_t)max_value);
 }
 
@@ -488,7 +488,7 @@ void FindReplaceData::SetFindString(const wxString& str)
 	}
 	m_findString.Insert(str, 0);
 
-	long max_value = clConfig::Get().Read("MaxItemsInFindReplaceDialog", 15);
+	long max_value = clConfig::Get().Read(kConfigMaxItemsInFindReplaceDialog, 15);
 	TruncateArray(m_findString, (size_t)max_value);
 }
 
@@ -528,7 +528,7 @@ void FindReplaceData::FromJSON(const JSONElement& json)
 	m_fileMask      = json.namedObject("m_fileMask").toArrayString();
 	m_selectedMask  = json.namedObject("m_selectedMask").toString(m_selectedMask);
 
-	long max_value = clConfig::Get().Read("MaxItemsInFindReplaceDialog", 15);
+	long max_value = clConfig::Get().Read(kConfigMaxItemsInFindReplaceDialog, 15);
 
 	TruncateArray(m_searchPaths,   (size_t)max_value);
 	TruncateArray(m_replaceString, (size_t)max_value);
@@ -579,8 +579,8 @@ wxArrayString FindReplaceData::GetReplaceStringArr() const
 FindReplaceData::FindReplaceData()
 	: clConfigItem("FindReplaceData")
 	, m_flags(0)
-	, m_searchScope(1)
 	, m_selectedMask("*.c;*.cpp;*.cxx;*.cc;*.h;*.hpp;*.inc;*.mm;*.m;*.xrc") // Default file mask
+	, m_searchScope(1)
 {
 	m_fileMask.Add("*.c;*.cpp;*.cxx;*.cc;*.h;*.hpp;*.inc;*.mm;*.m;*.xrc");
 }

@@ -403,7 +403,7 @@ void CodeLiteLLDBApp::NotifyStopped()
         lldb::SBThread thr = m_target.GetProcess().GetThreadAtIndex(i);
         t.SetStopReason(thr.GetStopReason());
         t.SetId(thr.GetThreadID());
-        t.SetActive(selectedThreadId == thr.GetThreadID());
+        t.SetActive(selectedThreadId == (int)thr.GetThreadID());
         lldb::SBFrame frame = thr.GetSelectedFrame();
         t.SetFunc(frame.GetFunctionName() ? frame.GetFunctionName() : "");
         lldb::SBLineEntry lineEntry = thr.GetSelectedFrame().GetLineEntry();
@@ -728,7 +728,7 @@ void CodeLiteLLDBApp::LocalVariables(const LLDBCommand& command)
     wxUnusedVar(command);
     LLDBVariable::Vect_t locals;
     m_variables.clear();
-    
+
     wxPrintf("codelite-lldb: fetching local variables for selected frame\n");
     lldb::SBFrame frame = m_target.GetProcess().GetSelectedThread().GetSelectedFrame();
     if(!frame.IsValid()) {
@@ -757,7 +757,7 @@ void CodeLiteLLDBApp::LocalVariables(const LLDBCommand& command)
             var->SetIsWatch(true);
             // override the name with the actual expression that we want to watch
             var->SetName(m_watches.Item(i));
-            
+
             // Keep the info about this watch
             VariableWrapper wrapper;
             wrapper.value = value;
@@ -797,7 +797,7 @@ void CodeLiteLLDBApp::ExpandVariable(const LLDBCommand& command)
 
         lldb::TypeClass typeClass = pvalue->GetType().GetTypeClass();
         if(typeClass & lldb::eTypeClassArray) {
-            size > m_settings.GetMaxArrayElements() ? size = m_settings.GetMaxArrayElements() : size = size;
+            size > (int)m_settings.GetMaxArrayElements() ? size = m_settings.GetMaxArrayElements() : size = size;
             wxPrintf("codelite-lldb: value %s is an array. Limiting its size\n", pvalue->GetName());
         } /*else if ( typeClass & lldb::eTypeClassPointer ) {
             // dereference is needed
@@ -1053,11 +1053,32 @@ void CodeLiteLLDBApp::DeleteWatch(const LLDBCommand& command)
         wxPrintf("codelite-lldb: deleting watch '%s'\n", expression);
         m_variables.erase(iter);
     }
-    
+
     // remove it from the watch list
     int where = m_watches.Index(expression);
     if(where != wxNOT_FOUND) {
         m_watches.RemoveAt(where);
+    }
+}
+
+void CodeLiteLLDBApp::ExecuteInterperterCommand(const LLDBCommand& command)
+{
+    
+    lldb::SBCommandReturnObject ret;
+    std::string c_command = command.GetExpression().mb_str(wxConvUTF8).data();
+    wxPrintf("codelite-lldb: ExecuteInterperterCommand: '%s'\n", c_command.c_str());
+    m_debugger.GetCommandInterpreter().HandleCommand(c_command.c_str(), ret);
+    
+    if(ret.GetOutput()) {
+        LLDBReply reply;
+        reply.SetText(ret.GetOutput());
+        reply.SetReplyType(kReplyTypeInterperterReply);
+        SendReply(reply);
+    } else if(ret.GetError()) {
+        LLDBReply reply;
+        reply.SetText(ret.GetError());
+        reply.SetReplyType(kReplyTypeInterperterReply);
+        SendReply(reply);
     }
 }
 

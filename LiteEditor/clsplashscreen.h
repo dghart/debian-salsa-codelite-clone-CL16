@@ -26,23 +26,27 @@
 #ifndef CLSPLASHSCREEN_H
 #define CLSPLASHSCREEN_H
 
-#include <wx/frame.h>
-#include <wx/timer.h>
-#include <wx/bitmap.h>
+#include <wx/splash.h>
+#ifdef __WXMSW__
+#define SPLASH_STYLE wxSIMPLE_BORDER | wxFRAME_NO_TASKBAR | wxSTAY_ON_TOP
+#else
+#define SPLASH_STYLE wxSIMPLE_BORDER | wxFRAME_NO_TASKBAR | wxSTAY_ON_TOP
+#endif
 
-class clSplashScreen : public wxFrame
+class clSplashScreen : public wxSplashScreen
 {
-    wxBitmap m_bmp;
-    wxTimer  m_timer;
-    
+    bool& m_flag;
 public:
-    clSplashScreen(wxWindow* parent, const wxBitmap& bmp);
+    clSplashScreen(bool& flag, const wxBitmap& bitmap,
+                   long splashStyle,
+                   int milliseconds,
+                   wxWindow* parent,
+                   wxWindowID id,
+                   const wxPoint& pos = wxDefaultPosition,
+                   const wxSize& size = wxDefaultSize,
+                   long style = SPLASH_STYLE);
     virtual ~clSplashScreen();
-    
-    DECLARE_EVENT_TABLE()
-    void OnPaint(wxPaintEvent& e);
-    void OnEraseBg(wxEraseEvent& e);
-    void OnTimer(wxTimerEvent &e);
+    void OnCloseWindow(wxCloseEvent& event);
 };
 
 #endif // CLSPLASHSCREEN_H

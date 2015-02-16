@@ -56,6 +56,12 @@ public:
     /// New theme related API
     /// -------------------------------------------------------------
     
+    /**
+     * @brief draw a standard codelite background colour
+     * @param rect
+     * @param dc
+     */
+    static bool DrawStippleBackground(const wxRect& rect, wxDC& dc);
     
     /**
      * @brief convert wxDC into wxGCDC
@@ -89,6 +95,11 @@ public:
      * @brief return the AUI pane bg colour
      */
     static wxColour GetAUIPaneBGColour();
+    
+    /**
+     * @brief get the caption colour
+     */
+    static wxColour GetCaptionColour();
     
     /**
      * @brief stipple brush used for painting on various wxPanels

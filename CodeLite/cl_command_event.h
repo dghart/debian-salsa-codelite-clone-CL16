@@ -45,7 +45,9 @@ protected:
     wxSharedPtr<wxClientData> m_ptr;
     wxArrayString m_strings;
     wxString m_fileName;
+    wxString m_oldName;
     bool m_answer;
+    bool m_allowed;
 
 public:
     clCommandEvent(wxEventType commandType = wxEVT_NULL, int winid = 0);
@@ -53,9 +55,17 @@ public:
     clCommandEvent& operator=(const clCommandEvent& src);
     virtual ~clCommandEvent();
 
+    // Veto management
+    void SetAllowed(bool allowed) { this->m_allowed = allowed; }
+    bool IsAllowed() const { return m_allowed; }
+    void Veto() { this->m_allowed = false; }
+    void Allow() { this->m_allowed = true; }
+
     // Hides wxCommandEvent::Set{Get}ClientObject
     void SetClientObject(wxClientData* clientObject);
 
+    void SetOldName(const wxString& oldName) { this->m_oldName = oldName; }
+    const wxString& GetOldName() const { return m_oldName; }
     wxClientData* GetClientObject() const;
 
     virtual wxEvent* Clone() const;
@@ -83,6 +93,7 @@ class WXDLLIMPEXP_CL clCodeCompletionEvent : public clCommandEvent
     wxString m_tooltip;
     bool m_insideCommentOrString;
     TagEntryPtr m_tagEntry;
+    wxArrayString m_definitions;
 
 public:
     clCodeCompletionEvent(wxEventType commandType = wxEVT_NULL, int winid = 0);
@@ -91,6 +102,8 @@ public:
     virtual ~clCodeCompletionEvent();
     virtual wxEvent* Clone() const;
 
+    void SetDefinitions(const wxArrayString& definitions) { this->m_definitions = definitions; }
+    const wxArrayString& GetDefinitions() const { return m_definitions; }
     void SetTagEntry(TagEntryPtr tag) { this->m_tagEntry = tag; }
 
     /**
@@ -165,6 +178,8 @@ class WXDLLIMPEXP_CL clBuildEvent : public clCommandEvent
     wxString m_configurationName;
     wxString m_command;
     bool m_projectOnly;
+    size_t m_warningCount;
+    size_t m_errorCount;
 
 public:
     clBuildEvent(wxEventType commandType = wxEVT_NULL, int winid = 0);
@@ -181,6 +196,11 @@ public:
     void SetProjectName(const wxString& projectName) { this->m_projectName = projectName; }
     const wxString& GetConfigurationName() const { return m_configurationName; }
     const wxString& GetProjectName() const { return m_projectName; }
+
+    void SetErrorCount(size_t errorCount) { this->m_errorCount = errorCount; }
+    void SetWarningCount(size_t warningCount) { this->m_warningCount = warningCount; }
+    size_t GetErrorCount() const { return m_errorCount; }
+    size_t GetWarningCount() const { return m_warningCount; }
 };
 
 typedef void (wxEvtHandler::*clBuildEventFunction)(clBuildEvent&);
@@ -236,14 +256,18 @@ typedef void (wxEvtHandler::*clDebugEventFunction)(clDebugEvent&);
 class WXDLLIMPEXP_CL clNewProjectEvent : public clCommandEvent
 {
 public:
-    struct Template
-    {
+    struct Template {
         wxString m_category;
         wxString m_categoryPng;
         wxString m_template;
         wxString m_templatePng;
         wxString m_toolchain;
         wxString m_debugger;
+        bool m_allowSeparateFolder;
+        Template()
+            : m_allowSeparateFolder(true)
+        {
+        }
         typedef std::vector<clNewProjectEvent::Template> Vec_t;
     };
 
@@ -327,6 +351,7 @@ class WXDLLIMPEXP_CL clContextMenuEvent : public clCommandEvent
 {
     wxMenu* m_menu;
     wxObject* m_editor;
+    wxString m_path;
 
 public:
     clContextMenuEvent(wxEventType commandType = wxEVT_NULL, int winid = 0);
@@ -338,9 +363,77 @@ public:
     wxMenu* GetMenu() { return m_menu; }
     void SetEditor(wxObject* editor) { this->m_editor = editor; }
     wxObject* GetEditor() { return m_editor; }
+    const wxString& GetPath() const { return m_path; }
+    void SetPath(const wxString& path) { m_path = path; }
 };
 
 typedef void (wxEvtHandler::*clContextMenuEventFunction)(clContextMenuEvent&);
 #define clContextMenuEventHandler(func) wxEVENT_HANDLER_CAST(clContextMenuEventFunction, func)
 
+//---------------------------------------------------------------
+// Execute event
+//---------------------------------------------------------------
+class WXDLLIMPEXP_CL clExecuteEvent : public clCommandEvent
+{
+    wxString m_targetName;
+
+public:
+    clExecuteEvent(wxEventType commandType = wxEVT_NULL, int winid = 0);
+    clExecuteEvent(const clExecuteEvent& event);
+    clExecuteEvent& operator=(const clExecuteEvent& src);
+    virtual ~clExecuteEvent();
+    virtual wxEvent* Clone() const { return new clExecuteEvent(*this); }
+
+    void SetTargetName(const wxString& targetName) { this->m_targetName = targetName; }
+    const wxString& GetTargetName() const { return m_targetName; }
+};
+
+typedef void (wxEvtHandler::*clExecuteEventFunction)(clExecuteEvent&);
+#define clExecuteEventHandler(func) wxEVENT_HANDLER_CAST(clExecuteEventFunction, func)
+
+//---------------------------------------------------------------
+// Execute event
+//---------------------------------------------------------------
+class WXDLLIMPEXP_CL clProjectSettingsEvent : public clCommandEvent
+{
+    wxString m_configName;
+    wxString m_projectName;
+
+public:
+    clProjectSettingsEvent(wxEventType commandType = wxEVT_NULL, int winid = 0);
+    clProjectSettingsEvent(const clProjectSettingsEvent& event);
+    clProjectSettingsEvent& operator=(const clProjectSettingsEvent& src);
+    virtual ~clProjectSettingsEvent();
+    virtual wxEvent* Clone() const { return new clProjectSettingsEvent(*this); }
+    void SetConfigName(const wxString& configName) { this->m_configName = configName; }
+    void SetProjectName(const wxString& projectName) { this->m_projectName = projectName; }
+    const wxString& GetConfigName() const { return m_configName; }
+    const wxString& GetProjectName() const { return m_projectName; }
+};
+
+typedef void (wxEvtHandler::*clProjectSettingsEventFunction)(clProjectSettingsEvent&);
+#define clProjectSettingsEventHandler(func) wxEVENT_HANDLER_CAST(clProjectSettingsEventFunction, func)
+
+// --------------------------------------------------------------
+// Parsing event
+// --------------------------------------------------------------
+class WXDLLIMPEXP_CL clParseEvent : public clCommandEvent
+{
+    size_t m_curfileIndex;
+    size_t m_totalFiles;
+
+public:
+    clParseEvent(wxEventType commandType = wxEVT_NULL, int winid = 0);
+    clParseEvent(const clParseEvent& event);
+    clParseEvent& operator=(const clParseEvent& src);
+    virtual ~clParseEvent();
+    virtual wxEvent* Clone() const { return new clParseEvent(*this); }
+    void SetCurfileIndex(size_t curfileIndex) { this->m_curfileIndex = curfileIndex; }
+    void SetTotalFiles(size_t totalFiles) { this->m_totalFiles = totalFiles; }
+    size_t GetCurfileIndex() const { return m_curfileIndex; }
+    size_t GetTotalFiles() const { return m_totalFiles; }
+};
+
+typedef void (wxEvtHandler::*clParseEventFunction)(clParseEvent&);
+#define clParseEventHandler(func) wxEVENT_HANDLER_CAST(clParseEventFunction, func)
 #endif // CLCOMMANDEVENT_H

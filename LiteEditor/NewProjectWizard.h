@@ -34,28 +34,32 @@
 
 class NewProjectWizard : public NewProjectWizardBase
 {
-    std::list<ProjectPtr>   m_list;
+    std::list<ProjectPtr> m_list;
     std::map<wxString, int> m_mapImages;
-    ProjectData             m_projectData;
+    ProjectData m_projectData;
     clNewProjectEvent::Template::Vec_t m_additionalTemplates;
+    bool m_selectionMade;
     
 public:
     NewProjectWizard(wxWindow* parent, const clNewProjectEvent::Template::Vec_t& additionalTemplates);
     virtual ~NewProjectWizard();
-    
-    const ProjectData& GetProjectData() const {
+
+    const ProjectData& GetProjectData() const
+    {
         return m_projectData;
     }
-    
+
 private:
     void UpdateFullFileName();
     void UpdateProjectPage();
-    
+
     bool CheckProjectName();
     bool CheckProjectPath();
     bool CheckProjectTemplate();
-    
+
 protected:
+    virtual void OnCompilerSelected(wxCommandEvent& event);
+    virtual void OnDebuggerSelected(wxCommandEvent& event);
     virtual void OnFinish(wxWizardEvent& event);
     virtual void OnPageChanging(wxWizardEvent& event);
     virtual void OnBrowseProjectPath(wxCommandEvent& event);

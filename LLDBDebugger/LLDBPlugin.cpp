@@ -41,7 +41,7 @@
 #include "LLDBCallStack.h"
 #include "LLDBProtocol/LLDBSettings.h"
 #include "bookmark_manager.h"
-#include "LLDBBreakpointsPane.h"
+#include "LLDBOutputView.h"
 #include "LLDBLocalsView.h"
 #include "json_node.h"
 #include <wx/msgdlg.h>
@@ -377,8 +377,10 @@ void LLDBPlugin::OnDebugStart(clDebugEvent& event)
 
             bool isWindows = wxPlatformInfo::Get().GetOperatingSystemId() & wxOS_WINDOWS;
             if(!bldConf->IsGUIProgram() && !isWindows) {
-                ::LaunchTerminalForDebugger(execToDebug.GetFullPath(), m_terminalTTY, m_terminalPID);
-
+                wxString realPts;
+                ::LaunchTerminalForDebugger(execToDebug.GetFullPath(), m_terminalTTY, realPts, m_terminalPID);
+                wxUnusedVar(realPts);
+                
                 if(m_terminalPID != wxNOT_FOUND) {
                     CL_DEBUG("Successfully launched terminal");
 
@@ -717,7 +719,7 @@ void LLDBPlugin::InitializeUI()
     }
 
     if(!m_breakpointsView) {
-        m_breakpointsView = new LLDBBreakpointsPane(EventNotifier::Get()->TopFrame(), this);
+        m_breakpointsView = new LLDBOutputView(EventNotifier::Get()->TopFrame(), this);
         m_mgr->GetDockingManager()->AddPane(
             m_breakpointsView,
             wxAuiPaneInfo().MinSize(200, 200).Bottom().Position(1).CloseButton().Caption("Breakpoints").Name(
@@ -1010,8 +1012,9 @@ bool LLDBPlugin::DoInitializeDebugger(clDebugEvent& event, bool redirectOutput, 
 
     // If terminal is required, launch it now
     if(redirectOutput) {
+        wxString realPts;
         ::LaunchTerminalForDebugger(
-            terminalTitle.IsEmpty() ? event.GetExecutableName() : terminalTitle, m_terminalTTY, m_terminalPID);
+            terminalTitle.IsEmpty() ? event.GetExecutableName() : terminalTitle, m_terminalTTY, realPts, m_terminalPID);
 
         if(m_terminalPID != wxNOT_FOUND) {
             CL_DEBUG("Successfully launched terminal");
