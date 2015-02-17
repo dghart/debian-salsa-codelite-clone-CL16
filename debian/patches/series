@@ -9,3 +9,4 @@
 11_no-sonames.patch
 15_fix_about_box_license.patch
 21_remove-deprecated-clang-constants.patch
+22_fixed-exiting-codelite-without-closing-the-workspace-before.patch
