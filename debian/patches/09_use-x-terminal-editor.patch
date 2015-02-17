@@ -6,15 +6,15 @@ Forwarded: not-needed
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- a/CodeLite/procutils.cpp
 +++ b/CodeLite/procutils.cpp
-@@ -434,7 +434,7 @@ bool ProcUtils::Shell(const wxString &pr
-     	terminal = where;
+@@ -430,7 +430,7 @@ bool ProcUtils::Shell(const wxString& pr
+         terminal = where;
      }
      cmd = terminal;*/
--    terminal = wxT ( "xterm" );
-+    terminal = wxT ( "x-terminal-emulator" );
-     if ( !programConsoleCommand.IsEmpty() ) {
-         tokens = wxStringTokenize ( programConsoleCommand, wxT ( " " ), wxTOKEN_STRTOK );
-         if ( !tokens.IsEmpty() ) {
+-    terminal = wxT("xterm");
++    terminal = wxT("x-terminal-emulator");
+     if(!programConsoleCommand.IsEmpty()) {
+         tokens = wxStringTokenize(programConsoleCommand, wxT(" "), wxTOKEN_STRTOK);
+         if(!tokens.IsEmpty()) {
 --- a/codelite_terminal/procutils.cpp
 +++ b/codelite_terminal/procutils.cpp
 @@ -434,7 +434,7 @@ bool ProcUtils::Shell(const wxString &pr
@@ -28,7 +28,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
          if ( !tokens.IsEmpty() ) {
 --- a/LiteEditor/manager.cpp
 +++ b/LiteEditor/manager.cpp
-@@ -2199,7 +2199,7 @@ void Manager::DbgStart(long attachPid)
+@@ -1934,7 +1934,7 @@ void Manager::DbgStart(long attachPid)
      wxString terminal;
      wxArrayString tokens;
      wxArrayString configuredTerminal;
@@ -52,35 +52,27 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  		terminal = wxT("konsole");
 --- a/LiteEditor/app.cpp
 +++ b/LiteEditor/app.cpp
-@@ -188,7 +188,9 @@ static void WaitForDebugger(int signo)
+@@ -219,7 +219,9 @@ static void WaitForDebugger(int signo)
          char command[256];
-         memset (command, 0, sizeof(command));
+         memset(command, 0, sizeof(command));
  
--        if (ExeLocator::Locate(wxT("gnome-terminal"), where)) {
-+        if (ExeLocator::Locate(wxT("x-terminal-emulator"), where)) {
+-        if(ExeLocator::Locate(wxT("gnome-terminal"), where)) {
++        if(ExeLocator::Locate(wxT("x-terminal-emulator"), where)) {
 +            sprintf(command, "x-terminal-emulator -T 'gdb' -e 'gdb -p %d'", getpid());
-+        } else if (ExeLocator::Locate(wxT("gnome-terminal"), where)) {
++        } else if(ExeLocator::Locate(wxT("gnome-terminal"), where)) {
              sprintf(command, "gnome-terminal -t 'gdb' -e 'gdb -p %d'", getpid());
-         } else if (ExeLocator::Locate(wxT("konsole"), where)) {
+         } else if(ExeLocator::Locate(wxT("konsole"), where)) {
              sprintf(command, "konsole -T 'gdb' -e 'gdb -p %d'", getpid());
 --- a/Runtime/codelite_xterm
 +++ b/Runtime/codelite_xterm
-@@ -9,15 +9,15 @@ if [ "$program_title" = "" ]; then
- 	if [ "${LD_LIBRARY_PATH}" = "" ]; then
- 		## LD_LIBRARY_PATH is not defined OR empty
- 		## Run xterm without the bash wrapper
--		xterm -T "codelite's shell" 2> /dev/null
-+		x-terminal-emulator -T "codelite's shell" 2> /dev/null
- 	fi
- else
- 	if [ "${LD_LIBRARY_PATH}" = "" ]; then
- 		## LD_LIBRARY_PATH is not defined OR empty
- 		## Run xterm without the bash wrapper
--		xterm -T "$program_title" -e $2 2> /dev/null
-+		x-terminal-emulator -T "$program_title" -e $2 2> /dev/null
- 	else
--		xterm -T "$program_title" -e /bin/bash -c 'export LD_LIBRARY_PATH=$0;shift;$@' $LD_LIBRARY_PATH "$@" 2> /dev/null
-+		x-terminal-emulator -T "$program_title" -e /bin/bash -c 'export LD_LIBRARY_PATH=$0;shift;$@' $LD_LIBRARY_PATH "$@" 2> /dev/null
- 	fi
- fi
+@@ -4,9 +4,7 @@
+ ## which allows codelite to export LD_LIBRARY_PATH into the exterm
+ ## shell
  
+-# Force xterm to provide at least a scrollbar, and 1000 lines of scrollback,
+-# in case the user hasn't set any preferences of his own in ~/.Xresources
+-terminal="xterm -sb -sl 1000"
++terminal="x-terminal-emulator"
+ program_title=$1
+ 
+ if [ "$program_title" = "" ]; then

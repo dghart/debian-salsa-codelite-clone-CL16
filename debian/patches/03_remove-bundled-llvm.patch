@@ -9,7 +9,7 @@ Forwarded: not-needed
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -366,9 +366,9 @@ elseif (MINGW)
+@@ -374,9 +374,9 @@ elseif (MINGW)
      endif ()
    endif ()
  elseif (UNIX)
@@ -59,18 +59,18 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  set( BUILD_LLDB 0 )
 --- a/CodeFormatter/clClangFormatLocator.cpp
 +++ b/CodeFormatter/clClangFormatLocator.cpp
-@@ -12,7 +12,7 @@ clClangFormatLocator::~clClangFormatLoca
+@@ -8,7 +8,7 @@ clClangFormatLocator::~clClangFormatLoca
  
  bool clClangFormatLocator::Locate(wxString& clangFormat)
  {
--    wxFileName fnClangFormat( clStandardPaths::Get().GetBinaryFullPath("codelite-clang-format") );
-+    wxFileName fnClangFormat( clStandardPaths::Get().GetBinaryFullPath("clang-format" LLVM_VERSION_STR) );
-     if ( fnClangFormat.FileExists() ) {
+-    wxFileName fnClangFormat(clStandardPaths::Get().GetBinaryFullPath("codelite-clang-format"));
++    wxFileName fnClangFormat(clStandardPaths::Get().GetBinaryFullPath("clang-format" LLVM_VERSION_STR));
+     if(fnClangFormat.FileExists()) {
          clangFormat = fnClangFormat.GetFullPath();
          return true;
 --- a/LiteEditor/CMakeLists.txt
 +++ b/LiteEditor/CMakeLists.txt
-@@ -114,16 +114,6 @@ install(FILES ${CL_SRC_ROOT}/Runtime/clg
+@@ -113,16 +113,6 @@ install(FILES ${CL_SRC_ROOT}/Runtime/clg
  install(FILES ${CL_SRC_ROOT}/Runtime/clgcc DESTINATION ${CL_PREFIX}/bin PERMISSIONS ${EXE_PERM})
  endif (UNIX)
  

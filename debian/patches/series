@@ -4,12 +4,8 @@
 04_remove-bundled-unittest++.patch
 05_disable-stripping.patch
 07_remove-extra-rpath.patch
-08_fix-crash-on-close.patch
 09_use-x-terminal-editor.patch
 10_move-helper-binaries.patch
 11_no-sonames.patch
 15_fix_about_box_license.patch
-17_lldb-link-order.patch
-18_hurd.patch
-20_Compilation-fix-for-non-precompiled-header-builds.patch
 21_remove-deprecated-clang-constants.patch

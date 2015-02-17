@@ -5,18 +5,15 @@ Forwarded: no
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- a/LiteEditor/clang_pch_maker_thread.cpp
 +++ b/LiteEditor/clang_pch_maker_thread.cpp
-@@ -434,12 +434,10 @@ CXTranslationUnit ClangWorkerThread::DoC
+@@ -434,9 +434,9 @@ CXTranslationUnit ClangWorkerThread::DoC
      // First time, need to create it
      unsigned flags;
      if(reparse) {
--        flags = CXTranslationUnit_CXXPrecompiledPreamble
--                | CXTranslationUnit_CacheCompletionResults
-+        flags = CXTranslationUnit_CacheCompletionResults
-                 | CXTranslationUnit_PrecompiledPreamble
-                 | CXTranslationUnit_Incomplete
--                | CXTranslationUnit_DetailedPreprocessingRecord
--                | CXTranslationUnit_CXXChainedPCH;
-+                | CXTranslationUnit_DetailedPreprocessingRecord;
+-        flags = CXTranslationUnit_CXXPrecompiledPreamble | CXTranslationUnit_CacheCompletionResults |
++        flags = CXTranslationUnit_CacheCompletionResults |
+                 CXTranslationUnit_PrecompiledPreamble | CXTranslationUnit_Incomplete |
+-                CXTranslationUnit_DetailedPreprocessingRecord | CXTranslationUnit_CXXChainedPCH;
++                CXTranslationUnit_DetailedPreprocessingRecord;
      } else {
-         flags = CXTranslationUnit_Incomplete
-                 | CXTranslationUnit_SkipFunctionBodies
+         flags = CXTranslationUnit_Incomplete | CXTranslationUnit_SkipFunctionBodies |
+                 CXTranslationUnit_DetailedPreprocessingRecord;
