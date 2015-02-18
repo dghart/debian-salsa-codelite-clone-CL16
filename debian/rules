@@ -15,7 +15,6 @@ ARCH_NO_LLDB := arm64 hurd-i386 mips64el ppc64el
 
 ifneq (,$(filter $(DEB_HOST_ARCH),$(ARCH_NO_CLANG)))
 	CONFIG_EXTRA += -DENABLE_CLANG=0
-	INSTALL_EXTRA += -Xcodelite-clang
 endif
 
 ifneq (,$(filter $(DEB_HOST_ARCH),$(ARCH_NO_LLDB)))
