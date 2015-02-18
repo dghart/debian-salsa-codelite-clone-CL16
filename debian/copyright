@@ -43,45 +43,15 @@ Copyright: 2006-2011, Jim Pattee <jimp03@email.com>
            1998-2002, Tal Davidson
 License: LGPL-3+
 
-Files: CxxParser/cpp5_grammar.y.full
-Copyright: 1989-1990, James  A. Roskind <jar@hq.ileaf.com>
-License: other
- This grammar was developed  and  written  by  James  A.  Roskind. 
- Copying  of  this  grammar  description, as a whole, is permitted 
- providing this notice is intact and applicable  in  all  complete 
- copies.   Translations as a whole to other parser generator input 
- languages  (or  grammar  description  languages)   is   permitted 
- provided  that  this  notice is intact and applicable in all such 
- copies,  along  with  a  disclaimer  that  the  contents  are   a 
- translation.   The reproduction of derived text, such as modified 
- versions of this grammar, or the output of parser generators,  is 
- permitted,  provided  the  resulting  work includes the copyright 
- notice "Portions Copyright (c)  1989,  1990  James  A.  Roskind". 
- Derived products, such as compilers, translators, browsers, etc., 
- that  use  this  grammar,  must also provide the notice "Portions 
- Copyright  (c)  1989,  1990  James  A.  Roskind"  in   a   manner 
- appropriate  to  the  utility,  and in keeping with copyright law 
- (e.g.: EITHER displayed when first invoked/executed; OR displayed 
- continuously on display terminal; OR via placement in the  object 
- code  in  form  readable in a printout, with or near the title of 
- the work, or at the end of the file).  No royalties, licenses  or 
- commissions  of  any  kind are required to copy this grammar, its 
- translations, or derivative products, when the copies are made in 
- compliance with this notice. Persons or corporations that do make 
- copies in compliance with this notice may charge  whatever  price 
- is  agreeable  to  a  buyer, for such copies or derivative works. 
- LE_THIS GRAMMAR IS PROVIDED ``AS IS'' AND  WITHOUT  ANY  EXPRESS  OR 
- IMPLIED  WARRANTIES,  INCLUDING,  WITHOUT LIMITATION, THE IMPLIED 
- WARRANTIES  OF  MERCHANTABILITY  AND  FITNESS  LE_FOR  A  PARTICULAR 
- PURPOSE.
-
 Files: CodeLite/cJSON.*
 Copyright: 2009 Dave Gamble
 License: MIT
 
-Files: CodeLite/cpp5.l
+Files:
+ CxxParser/cpp5_grammar.y.full
+ CodeLite/cpp5.l
 Copyright: 1989-1991, James A. Roskind <jar@hq.ileaf.com>
-License: other
+License: other-cpp5-grammar
  This lexer description was written by James A.  Roskind.  Copying
  of  this  file, as a whole, is permitted providing this notice is
  intact  and  applicable   in   all   complete   copies.    Direct
@@ -130,7 +100,7 @@ License: BSD-3-clause
 
 Files: Plugin/md5*
 Copyright: 1991-1992, RSA Data Security, Inc.
-License: other
+License: other-rsa-md5
  License to copy and use this software is granted provided that it
  is identified as the "RSA Data Security, Inc. MD5 Message-Digest
  Algorithm" in all material mentioning or referencing this software
@@ -249,7 +219,7 @@ License: wxWindows
 
 Files: sdk/databaselayer/include/wx/dblayer/include/otlv4.h
 Copyright: 1996,2007 Sergei Kuchin
-License: other
+License: other-otl
  This library is free software. Permission to use, copy,
  modify and redistribute it for any purpose is hereby granted
  without fee, provided that the above copyright notice appear
