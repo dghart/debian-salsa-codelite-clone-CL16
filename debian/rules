@@ -10,8 +10,8 @@ CONFIG_EXTRA := -DWITH_WEBVIEW=1 -DCMAKE_INSTALL_LIBDIR=lib -DLLVM_VERSION=3.5
 INSTALL_EXTRA :=
 
 # Disable clang / lldb on arches where they're not available (yet)
-ARCH_NO_CLANG := hurd-i386
-ARCH_NO_LLDB := arm64 hurd-i386 mips64el ppc64el
+ARCH_NO_CLANG := hurd-i386 sparc
+ARCH_NO_LLDB := arm64 hurd-i386 mips64el ppc64el sparc
 
 ifneq (,$(filter $(DEB_HOST_ARCH),$(ARCH_NO_CLANG)))
 	CONFIG_EXTRA += -DENABLE_CLANG=0
