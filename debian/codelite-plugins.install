@@ -18,8 +18,10 @@ usr/lib/codelite/Subversion.so
 usr/lib/codelite/Tweaks.so
 usr/lib/codelite/UnitTestsPP.so
 usr/lib/codelite/Wizards.so
+usr/lib/codelite/WordCompletion.so
 usr/lib/codelite/ZoomNavigator.so
 usr/lib/codelite/abbreviation.so
+usr/lib/codelite/codelitephp.so
 usr/lib/codelite/cppchecker.so
 usr/lib/codelite/cscope.so
 usr/lib/codelite/git.so
@@ -27,6 +29,7 @@ usr/lib/codelite/libdatabaselayersqlite.so
 usr/lib/codelite/libwxshapeframework.so
 usr/lib/codelite/wxFormBuilder.so
 usr/lib/codelite/resources usr/share/codelite
+usr/share/codelite/PHP.zip
 usr/share/codelite/dics
 usr/share/codelite/templates/codedesigner
 usr/share/codelite/templates/formbuilder
