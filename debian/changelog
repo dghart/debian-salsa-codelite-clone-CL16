@@ -1,8 +1,36 @@
-codelite (7.0+dfsg-1) UNRELEASED; urgency=medium
+codelite (7.0+dfsg-1) experimental; urgency=low
 
   * New upstream release.
 
- -- James Cowgill <james410@cowgill.org.uk>  Mon, 16 Feb 2015 21:28:15 +0000
+  * debian/README.Debian:
+    - Add file with the main differences between the Debian package and
+      upstream's.
+  * debian/control + debian/rules:
+    - Set LLVM_VERSION on all arches to simplify the patches.
+    - Disable Clang on sparc.
+    - Disable LLDB on arm64, mips64el, ppc64el and sparc where it isn't built.
+    - Enable internal web viewer (for the php plugin).
+  * debian/copyright:
+    - Update for new version.
+    - Sort licenses.
+    - Fix dep5-copyright-license-name-not-unique lintian warnings.
+  * debian/install:
+    - Add codelitephp and WordCompletion plugins.
+    - Remove obsolete codelite-clang binary.
+  * debian/lintian-overrides:
+    - Add override for spelling false positive.
+    - Add hardening override for codelitephp (which uses no hardenable
+      functions).
+  * debian/patches:
+    - Refresh patches and update for new plugins.
+    - Drop patches applied upstream:
+      08_fix-crash-on-close.patch
+      17_lldb-link-order.patch
+      18_hurd.patch
+      20_Compilation-fix-for-non-precompiled-header-builds.patch
+    - Add patch to fix saving sessions on exit.
+
+ -- James Cowgill <james410@cowgill.org.uk>  Wed, 18 Feb 2015 22:52:03 +0000
 
 codelite (6.1.1+dfsg-4) unstable; urgency=medium
 
