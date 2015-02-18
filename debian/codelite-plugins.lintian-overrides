@@ -5,3 +5,6 @@ codelite-plugins binary: hardening-no-fortify-functions usr/lib/codelite/CodeFor
 # Although built with the correct flags, the LLDBDebugger plugin contains no
 # fortifiable function calls
 codelite-plugins binary: hardening-no-fortify-functions usr/lib/codelite/LLDBDebugger.so
+
+# False positive
+codelite-plugins binary: spelling-error-in-binary usr/lib/codelite/CodeFormatter.so tEH the
