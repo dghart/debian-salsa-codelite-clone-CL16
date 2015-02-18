@@ -6,5 +6,9 @@ codelite-plugins binary: hardening-no-fortify-functions usr/lib/codelite/CodeFor
 # fortifiable function calls
 codelite-plugins binary: hardening-no-fortify-functions usr/lib/codelite/LLDBDebugger.so
 
+# Although built with the correct flags, the codelitephp plugin contains no
+# fortifiable function calls
+codelite-plugins binary: hardening-no-fortify-functions usr/lib/codelite/codelitephp.so
+
 # False positive
 codelite-plugins binary: spelling-error-in-binary usr/lib/codelite/CodeFormatter.so tEH the
