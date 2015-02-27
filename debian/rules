@@ -10,6 +10,7 @@ CONFIG_EXTRA := -DWITH_WEBVIEW=1 -DCMAKE_INSTALL_LIBDIR=lib -DLLVM_VERSION=3.5
 INSTALL_EXTRA :=
 
 # Disable clang / lldb on arches where they're not available (yet)
+#  Remember to update debian/control when changing these
 ARCH_NO_CLANG := hurd-i386 sparc
 ARCH_NO_LLDB := arm64 hurd-i386 mips64el ppc64el sparc
 
