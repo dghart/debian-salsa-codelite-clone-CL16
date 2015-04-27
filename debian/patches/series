@@ -11,3 +11,4 @@
 21_remove-deprecated-clang-constants.patch
 22_fixed-exiting-codelite-without-closing-the-workspace-before.patch
 23_reproducible.patch
+24_default_no_check_for_updates.patch

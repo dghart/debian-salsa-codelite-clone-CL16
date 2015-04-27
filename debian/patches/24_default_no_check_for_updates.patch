@@ -1,0 +1,31 @@
+Description: Do not check for updates by default
+ On Debian update checking should be done by the package manager, not the
+ application itself at runtime. It's also a privacy breach if the user doesn't
+ know about it. This patch doesn't remove anything, it just changes the
+ default setting.
+Author: James Cowgill <james410@cowgill.org.uk>
+Forwarded: not-needed
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+--- a/LiteEditor/editorsettingsmiscpanel.cpp
++++ b/LiteEditor/editorsettingsmiscpanel.cpp
+@@ -93,7 +93,7 @@ EditorSettingsMiscPanel::EditorSettingsM
+     m_fileEncoding->SetSelection(iCurrSelId);
+ 
+     m_singleAppInstance->SetValue(clConfig::Get().Read(kConfigSingleInstance, false));
+-    m_versionCheckOnStartup->SetValue(clConfig::Get().Read(kConfigCheckForNewVersion, true));
++    m_versionCheckOnStartup->SetValue(clConfig::Get().Read(kConfigCheckForNewVersion, false));
+     m_maxItemsFindReplace->ChangeValue(::wxIntToString(clConfig::Get().Read(kConfigMaxItemsInFindReplaceDialog, 15)));
+     m_spinCtrlMaxOpenTabs->ChangeValue(::wxIntToString(clConfig::Get().Read(kConfigMaxOpenedTabs, 15)));
+     m_choice4->SetStringSelection(
+--- a/LiteEditor/frame.cpp
++++ b/LiteEditor/frame.cpp
+@@ -3282,7 +3282,7 @@ void clMainFrame::OnTimer(wxTimerEvent&
+         wxLogMessage("Running under Cygwin environment");
+     }
+ 
+-    if(clConfig::Get().Read(kConfigCheckForNewVersion, true)) {
++    if(clConfig::Get().Read(kConfigCheckForNewVersion, false)) {
+         JobQueueSingleton::Instance()->PushJob(new WebUpdateJob(this, false));
+     }
+ 
