@@ -1,8 +1,16 @@
-codelite (7.0+dfsg-2) UNRELEASED; urgency=medium
+codelite (7.0+dfsg-2) unstable; urgency=low
 
-  *
+  * Upload 7.0 to unstable.
+  * debian/control:
+    - Really disable clang and lldb on sparc.
+    - Drop versions of dependencies already in squeeze.
+    - Use cgit Vcs-Browser URL
+  * debian/patches:
+    - Add patch to try and make the build reproducible.
+    - Add patch to disable checking for updates on http://codelite.org by
+      default (the option can be reenabled in the options).
 
- -- James Cowgill <james410@cowgill.org.uk>  Fri, 27 Feb 2015 21:00:01 +0000
+ -- James Cowgill <james410@cowgill.org.uk>  Mon, 27 Apr 2015 22:08:51 +0100
 
 codelite (7.0+dfsg-1) experimental; urgency=low
 
