@@ -14,7 +14,7 @@ codelite (7.0+dfsg-2) unstable; urgency=low
   * debian/patches:
     - Add patch to try and make the build reproducible.
     - Add patch to disable checking for updates on http://codelite.org by
-      default (the option can be reenabled in the options).
+      default (the option can be re-enabled in the options).
 
  -- James Cowgill <james410@cowgill.org.uk>  Mon, 27 Apr 2015 22:08:51 +0100
 
