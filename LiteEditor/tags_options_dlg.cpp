@@ -52,7 +52,8 @@ TagsOptionsDlg::TagsOptionsDlg(wxWindow* parent, const TagsOptionsData& data)
     ::wxPGPropertyBooleanUseCheckbox(m_pgMgrColouring->GetGrid());
     Centre();
     GetSizer()->Fit(this);
-    WindowAttrManager::Load(this, wxT("TagsOptionsDlgAttr"), NULL);
+    SetName("TagsOptionsDlg");
+    WindowAttrManager::Load(this);
 
     // Set default values
 
@@ -125,7 +126,7 @@ TagsOptionsDlg::TagsOptionsDlg(wxWindow* parent, const TagsOptionsData& data)
 
 TagsOptionsDlg::~TagsOptionsDlg()
 {
-    WindowAttrManager::Save(this, wxT("TagsOptionsDlgAttr"), NULL);
+    
 }
 
 void TagsOptionsDlg::OnButtonOK(wxCommandEvent& event)
@@ -148,7 +149,7 @@ void TagsOptionsDlg::CopyData()
     SetFlag(CC_DISABLE_AUTO_PARSING, m_checkDisableParseOnSave->IsChecked());
     SetFlag(CC_IS_CASE_SENSITIVE, m_checkBoxEnableCaseSensitiveCompletion->IsChecked());
     SetFlag(CC_KEEP_FUNCTION_SIGNATURE_UNFORMATTED, m_checkBoxKeepFunctionSignature->IsChecked());
-    m_data.SetCcNumberOfDisplayItems(::wxStringToInt(m_spinCtrlNumberOfCCItems->GetValue(), 100, 50));
+    m_data.SetCcNumberOfDisplayItems(::wxStringToInt(m_spinCtrlNumberOfCCItems->GetValue(), 500, 100));
 
     //----------------------------------------------------
     // Colouring

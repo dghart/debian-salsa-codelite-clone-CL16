@@ -101,6 +101,8 @@ public:
     void ShowQuickBarForPlugins() { m_quickFindBar->ShowForPlugins(); }
     void ShowQuickBar(bool s = true) { m_quickFindBar->Show(s); }
     void ShowQuickBar(const wxString& findWhat) { m_quickFindBar->Show(findWhat); }
+    void ShowQuickReplaceBar(bool show) { m_quickFindBar->ShowReplacebar(show); }
+    void ToggleQuickReplaceBar() { m_quickFindBar->ToggleReplacebar(); }
     void ShowMessage(const wxString& message,
                      bool showHideButton = true,
                      const wxBitmap& bmp = wxNullBitmap,
@@ -179,9 +181,8 @@ public:
 
     // These 3 functions are meant to be used with CallAfter
     void ClosePageVoid(wxWindow* win);
-
     void CloseAllButThisVoid(wxWindow* win);
-
+    void CloseTabsToTheRight(wxWindow* win);
     void CloseAllVoid(bool cancellable);
 
     wxString GetPageTitle(wxWindow* win) const;
@@ -197,7 +198,7 @@ public:
     void ShowWhitespace(int ws);
     void UpdateColours();
     void UpdateBreakpoints();
-    void MarkEditorReadOnly(LEditor* editor, bool ro);
+    void MarkEditorReadOnly(LEditor* editor);
 
     void SetUseBuffereLimit(bool useBuffereLimit) { this->m_useBuffereLimit = useBuffereLimit; }
     bool GetUseBuffereLimit() const { return m_useBuffereLimit; }

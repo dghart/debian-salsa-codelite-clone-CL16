@@ -184,6 +184,10 @@ QuickFindBar::QuickFindBar(wxWindow* parent, wxWindowID id)
     m_buttonReplace->Bind(wxEVT_UPDATE_UI, &QuickFindBar::OnButtonReplaceUI, this);
     m_buttonReplace->Bind(wxEVT_KEY_DOWN, &QuickFindBar::OnKeyDown, this);
     
+    bool showreplace = EditorConfigST::Get()->GetOptions()->GetShowReplaceBar();
+    m_replaceWith->Show(showreplace); // Hide the replace-bar if desired
+    m_buttonReplace->Show(showreplace);
+
     // Connect the events
     m_findWhat->Bind(wxEVT_COMMAND_TEXT_ENTER, &QuickFindBar::OnEnter, this);
     m_findWhat->Bind(wxEVT_COMMAND_TEXT_UPDATED, &QuickFindBar::OnText, this);
@@ -228,6 +232,14 @@ bool QuickFindBar::Show(bool show)
         return false;
     }
     return DoShow(show, wxEmptyString);
+}
+
+void QuickFindBar::ToggleReplacebar()
+{
+    if(!m_sci || !IsShown()) {
+        return;
+    }
+    DoToggleReplacebar();
 }
 
 wchar_t* QuickFindBar::DoGetSearchStringPtr()
@@ -614,6 +626,27 @@ bool QuickFindBar::DoShow(bool s, const wxString& findWhat)
         PostCommandEvent(this, m_findWhat);
     }
     return res;
+}
+
+void QuickFindBar::DoToggleReplacebar()
+{
+    OptionsConfigPtr options = EditorConfigST::Get()->GetOptions();
+    bool show = !options->GetShowReplaceBar();
+
+    options->SetShowReplaceBar(show);
+    EditorConfigST::Get()->SetOptions(options);
+    
+    ShowReplacebar(show);
+}
+
+void QuickFindBar::ShowReplacebar(bool show)
+{
+    m_replaceWith->Show(show);
+    m_buttonReplace->Show(show);
+    m_bar->GetSizer()->Layout();
+    if (IsShown()) {
+        clMainFrame::Get()->SendSizeEvent(); // Needed to show/hide the 'replace' bar itself
+    }
 }
 
 void QuickFindBar::OnFindNext(wxCommandEvent& e)
@@ -1043,18 +1076,6 @@ void QuickFindBar::OnFindAll(wxFlatButtonEvent& e)
     DoMarkAll(false);
 }
 
-void QuickFindBar::OnShowReplaceControls(wxFlatButtonEvent& e)
-{
-    if(e.IsChecked()) {
-        m_replaceWith->Show();
-        m_buttonReplace->Show();
-    } else {
-        m_replaceWith->Hide();
-        m_buttonReplace->Hide();
-    }
-    m_bar->GetSizer()->Layout();
-}
-
 void QuickFindBar::OnButtonReplace(wxFlatButtonEvent& e)
 {
     OnReplace(e);
@@ -1062,7 +1083,7 @@ void QuickFindBar::OnButtonReplace(wxFlatButtonEvent& e)
 
 void QuickFindBar::OnButtonReplaceUI(wxUpdateUIEvent& e)
 {
-    e.Enable(!m_replaceWith->GetValue().IsEmpty());
+    e.Enable(!m_findWhat->GetValue().IsEmpty());
 }
 
 void QuickFindBar::OnHideBar(wxFlatButtonEvent& e)

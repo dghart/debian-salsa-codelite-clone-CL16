@@ -335,3 +335,19 @@ bool ContextPhp::IsAtLineComment() const
     int cur_style = GetCtrl().GetStyleAt(curpos);
     return cur_style == wxSTC_HPHP_COMMENTLINE;
 }
+
+bool ContextPhp::IsStringTriggerCodeComplete(const wxString& str) const
+{
+    int style = GetCtrl().GetStyleAt(GetCtrl().GetCurrentPos());
+    if(IS_BETWEEN(style, wxSTC_HJ_START, wxSTC_HJA_REGEX)) {
+        // When in JS section, trigger CC if str is a dot
+        return str == ".";
+        
+    } else if(IS_BETWEEN(style, wxSTC_H_DEFAULT, wxSTC_H_ENTITY)){
+        return str == "</" || str == "<";
+
+    } else {
+        return (m_completionTriggerStrings.count(str) > 0);
+        
+    }
+}

@@ -51,6 +51,7 @@ public:
     void AddRemoteFile(const RemoteFileInfo& remoteFile);
     
 protected:
+    void OnAccountManager(wxCommandEvent &e);
     void OnSettings(wxCommandEvent &e);
     void OnSetupWorkspaceMirroring(wxCommandEvent &e);
     void OnDisableWorkspaceMirroring(wxCommandEvent &e);
@@ -59,6 +60,7 @@ protected:
     void OnWorkspaceClosed(wxCommandEvent &e);
     void OnFileSaved(clCommandEvent &e);
     void OnEditorClosed(wxCommandEvent &e);
+    void MSWInitiateConnection();
     
     bool IsWorkspaceOpened() const {
         return m_workspaceFile.IsOk();

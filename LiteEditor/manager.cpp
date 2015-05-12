@@ -68,6 +68,7 @@
 #include "sessionmanager.h"
 #include "globals.h"
 #include "vcimporter.h"
+#include "WSImporter.h"
 #include "macros.h"
 #include "dirsaver.h"
 #include "workspace_pane.h"
@@ -98,6 +99,7 @@
 #include "CompileCommandsCreateor.h"
 #include "CompilersModifiedDlg.h"
 #include "clKeyboardManager.h"
+#include "wxCodeCompletionBoxManager.h"
 #include "localworkspace.h"
 
 #ifndef __WXMSW__
@@ -192,7 +194,9 @@ Manager::Manager(void)
     , m_repositionEditor(true)
 {
     m_codeliteLauncher = wxFileName(wxT("codelite_launcher"));
-    Connect(wxEVT_CMD_RESTART_CODELITE, wxCommandEventHandler(Manager::OnRestart), NULL, this);
+    Bind(wxEVT_RESTART_CODELITE, &Manager::OnRestart, this);
+    Connect(wxEVT_CMD_RESTART_CODELITE, wxCommandEventHandler(Manager::OnCmdRestart), NULL, this);
+
     Connect(wxEVT_PARSE_THREAD_SCAN_INCLUDES_DONE, wxCommandEventHandler(Manager::OnIncludeFilesScanDone), NULL, this);
     Connect(wxEVT_CMD_DB_CONTENT_CACHE_COMPLETED, wxCommandEventHandler(Manager::OnDbContentCacherLoaded), NULL, this);
     Connect(wxEVT_PARSE_THREAD_SUGGEST_COLOUR_TOKENS,
@@ -213,6 +217,9 @@ Manager::Manager(void)
 
 Manager::~Manager(void)
 {
+    Unbind(wxEVT_RESTART_CODELITE, &Manager::OnRestart, this);
+    Disconnect(wxEVT_CMD_RESTART_CODELITE, wxCommandEventHandler(Manager::OnCmdRestart), NULL, this);
+
     EventNotifier::Get()->Disconnect(
         wxEVT_CMD_PROJ_SETTINGS_SAVED, clProjectSettingsEventHandler(Manager::OnProjectSettingsModified), NULL, this);
     EventNotifier::Get()->Disconnect(wxEVT_BUILD_ENDED, clBuildEventHandler(Manager::OnBuildEnded), NULL, this);
@@ -260,6 +267,7 @@ Manager::~Manager(void)
     wxDELETE(m_breakptsmgr);
     TabGroupsManager::Free();
     clKeyboardManager::Release();
+    wxCodeCompletionBoxManager::Free();
 }
 
 //--------------------------- Workspace Loading -----------------------------
@@ -349,7 +357,7 @@ void Manager::DoSetupWorkspace(const wxString& path)
     {
         SessionEntry session;
         if(SessionManager::Get().GetSession(path, session)) {
-            SessionManager::Get().SetLastWorkspaceName(path);
+            SessionManager::Get().SetLastSession(path);
             clMainFrame::Get()->GetWorkspaceTab()->FreezeThaw(true); // Undo any workspace/editor link while loading
             clMainFrame::Get()->GetMainBook()->RestoreSession(session);
             clMainFrame::Get()->GetWorkspaceTab()->FreezeThaw(false);
@@ -390,7 +398,7 @@ void Manager::CloseWorkspace()
     if(!IsShutdownInProgress()) {
         SendCmdEvent(wxEVT_WORKSPACE_CLOSING);
     }
-    
+
     DbgClearWatches();
 
     // If we got a running debugging session - terminate it
@@ -412,10 +420,9 @@ void Manager::CloseWorkspace()
 
     // since we closed the workspace, we also need to set the 'LastActiveWorkspaceName' to be
     // default
-    SessionManager::Get().SetLastWorkspaceName(wxT("Default"));
+    SessionManager::Get().SetLastSession(wxT("Default"));
 
     WorkspaceST::Get()->CloseWorkspace();
-    
 
 #ifdef __WXMSW__
     // Under Windows, and in order to avoid locking the directory set the working directory back to the start up
@@ -620,10 +627,12 @@ void Manager::ImportMSVSSolution(const wxString& path, const wxString& defaultCo
 
     // Show some messages to the user
     wxBusyCursor busyCursor;
-    wxBusyInfo info(_("Importing MS solution..."), clMainFrame::Get());
+    wxBusyInfo info(_("Importing IDE solution/workspace..."), clMainFrame::Get());
 
     wxString errMsg;
-    VcImporter importer(path, defaultCompiler);
+    //VcImporter importer(path, defaultCompiler);
+    WSImporter importer;
+    importer.Load(path, defaultCompiler);
     if(importer.Import(errMsg)) {
         wxString wspfile;
         wspfile << fn.GetPath() << wxT("/") << fn.GetName() << wxT(".workspace");
@@ -703,9 +712,14 @@ void Manager::SetActiveProject(const wxString& name)
     WorkspaceST::Get()->SetActiveProject(name, true);
     clMainFrame::Get()->SelectBestEnvSet();
 
-    clProjectSettingsEvent evt(wxEVT_ACTIVE_PROJECT_CHANGED);
-    evt.SetProjectName(name);
-    EventNotifier::Get()->AddPendingEvent(evt);
+    // Notify about the change
+    ProjectPtr activeProject = WorkspaceST::Get()->GetActiveProject();
+    if(activeProject) {
+        clProjectSettingsEvent evt(wxEVT_ACTIVE_PROJECT_CHANGED);
+        evt.SetProjectName(name);
+        evt.SetFileName(activeProject->GetFileName().GetFullPath());
+        EventNotifier::Get()->AddPendingEvent(evt);
+    }
 }
 
 BuildMatrixPtr Manager::GetWorkspaceBuildMatrix() const { return WorkspaceST::Get()->GetBuildMatrix(); }
@@ -2146,7 +2160,7 @@ void Manager::DbgStart(long attachPid)
     // read
     wxArrayString dbg_cmds;
     DebugSessionInfo si;
-    
+
     si.debuggerPath = dbgname;
     si.exeName = exepath;
     si.cwd = wd;
@@ -3248,12 +3262,26 @@ void Manager::DoRestartCodeLite()
     clMainFrame::Get()->GetEventHandler()->AddPendingEvent(event);
 
     wxExecute(restartCodeLiteCommand, wxEXEC_ASYNC | wxEXEC_NOHIDE);
+#else // OSX
+
+    // on OSX, we use the open command
+    wxFileName bundlePath(wxStandardPaths::Get().GetExecutablePath());
+    bundlePath.RemoveLastDir();
+    bundlePath.RemoveLastDir();
+    wxString bundlePathStr = bundlePath.GetPath();
+    ::WrapWithQuotes(bundlePathStr);
+    restartCodeLiteCommand << "/usr/bin/open " << bundlePathStr;
+
+    wxCommandEvent event(wxEVT_COMMAND_MENU_SELECTED, wxID_EXIT);
+    clMainFrame::Get()->GetEventHandler()->AddPendingEvent(event);
+
+    wxExecute(restartCodeLiteCommand, wxEXEC_ASYNC | wxEXEC_NOHIDE);
 #endif
 }
 
 void Manager::SetCodeLiteLauncherPath(const wxString& path) { m_codeliteLauncher = path; }
 
-void Manager::OnRestart(wxCommandEvent& event)
+void Manager::OnRestart(clCommandEvent& event)
 {
     wxUnusedVar(event);
     DoRestartCodeLite();
@@ -3719,4 +3747,10 @@ void Manager::OnFindInFilesDismissed(clCommandEvent& event)
         LocalWorkspaceST::Get()->SetSearchInFilesMask(event.GetString());
         LocalWorkspaceST::Get()->Flush();
     }
+}
+
+void Manager::OnCmdRestart(wxCommandEvent& event)
+{
+    wxUnusedVar(event);
+    DoRestartCodeLite();
 }

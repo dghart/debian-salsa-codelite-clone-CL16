@@ -63,6 +63,8 @@ public:
         Opt_WrapQuotes = 0x00800000,
         Opt_WrapBrackets = 0x01000000,
         Opt_WrapCmdWithDoubleQuotes = 0x02000000,
+        Opt_FoldHighlightActiveBlock = 0x04000000,
+        Opt_EnsureCaptionsVisible = 0x08000000,
     };
 
 protected:
@@ -116,6 +118,7 @@ protected:
     bool m_hideOutputPaneNotIfDebug;
     bool m_hideOutputPaneNotIfMemCheck;
     bool m_findBarAtBottom;
+    bool m_showReplaceBar;
     bool m_TrimLine;
     bool m_AppendLF;
     bool m_disableSmartIndent;
@@ -185,6 +188,8 @@ public:
     const bool& GetAppendLF() const { return m_AppendLF; }
     void SetFindBarAtBottom(const bool& findBarAtBottom) { this->m_findBarAtBottom = findBarAtBottom; }
     const bool& GetFindBarAtBottom() const { return m_findBarAtBottom; }
+    void SetShowReplaceBar(bool show) { m_showReplaceBar = show; }
+    bool GetShowReplaceBar() const { return m_showReplaceBar; }
     void SetHideOutpuPaneOnUserClick(const bool& hideOutpuPaneOnUserClick)
     {
         this->m_hideOutpuPaneOnUserClick = hideOutpuPaneOnUserClick;
@@ -353,7 +358,9 @@ public:
 
     bool GetAutoAddMatchedNormalBraces() const { return HasOption(Opt_AutoCompleteNormalBraces); }
     bool GetAutoCompleteDoubleQuotes() const { return HasOption(Opt_AutoCompleteDoubleQuotes); }
-    void SetAutoCompleteDoubleQuotes(bool b) { return EnableOption(Opt_AutoCompleteDoubleQuotes, b); }
+    void SetAutoCompleteDoubleQuotes(bool b) { EnableOption(Opt_AutoCompleteDoubleQuotes, b); }
+    void SetHighlightFoldWhenActive(bool b) { EnableOption(Opt_FoldHighlightActiveBlock, b); }
+    bool IsHighlightFoldWhenActive() const { return HasOption(Opt_FoldHighlightActiveBlock); }
     void SetFoldBgColour(const wxColour& foldBgColour) { this->m_foldBgColour = foldBgColour; }
     const wxColour& GetFoldBgColour() const { return m_foldBgColour; }
     void SetAutoAdjustHScrollBarWidth(const bool& autoAdjustHScrollBarWidth)
@@ -386,7 +393,8 @@ public:
     const wxColour& GetDebuggerMarkerLine() const { return m_debuggerMarkerLine; }
 
     void SetShowDockingWindowCaption(bool show) { EnableOption(Opt_HideDockingWindowCaption, !show); }
-
+    void SetEnsureCaptionsVisible(bool b) { EnableOption(Opt_EnsureCaptionsVisible, b); }
+    bool IsEnsureCaptionsVisible() const { return HasOption(Opt_EnsureCaptionsVisible); }
     bool IsShowDockingWindowCaption() const { return !HasOption(Opt_HideDockingWindowCaption); }
     bool IsWrapSelectionWithQuotes() const { return HasOption(Opt_WrapQuotes); }
     bool IsWrapSelectionBrackets() const { return HasOption(Opt_WrapBrackets); }
@@ -395,7 +403,7 @@ public:
 
     void MSWWrapCmdWithDoubleQuotes(bool b) { EnableOption(Opt_WrapCmdWithDoubleQuotes, b); }
     bool MSWIsWrapCmdWithDoubleQuotes() const { return HasOption(Opt_WrapCmdWithDoubleQuotes); }
-    
+
     /**
      * Return an XML representation of this object
      * \return XML node

@@ -10,14 +10,10 @@
 #include <wx/settings.h>
 #include <wx/xrc/xmlres.h>
 #include <wx/xrc/xh_bmp.h>
-#include <wx/dialog.h>
-#include <wx/iconbndl.h>
+#include <wx/panel.h>
 #include <wx/artprov.h>
 #include <wx/sizer.h>
 #include <wx/splitter.h>
-#include <wx/panel.h>
-#include <wx/textctrl.h>
-#include <wx/button.h>
 #include <wx/choice.h>
 #include <wx/arrstr.h>
 #include <wx/pen.h>
@@ -28,11 +24,14 @@
 #include <wx/imaglist.h>
 #include <wx/bitmap.h>
 #include <wx/icon.h>
+#include <wx/dialog.h>
+#include <wx/iconbndl.h>
 #include <wx/bannerwindow.h>
 #include <wx/commandlinkbutton.h>
 #include <wx/filepicker.h>
 #include <wx/dataview.h>
 #include "addfunctionsmodel.h"
+#include <wx/button.h>
 #include <wx/scrolwin.h>
 #include <wx/statbmp.h>
 #include <wx/dirctrl.h>
@@ -41,34 +40,15 @@
 #include <vector>
 #include "dvtemplatesmodel.h"
 #include <wx/stattext.h>
+#include <wx/textctrl.h>
 #include <wx/checkbox.h>
 #include <wx/stc/stc.h>
-
-class NewProjectDlgBaseClass : public wxDialog
-{
-protected:
-    wxSplitterWindow* m_splitter5;
-    wxPanel* m_splitterPageRight;
-    wxPanel* m_splitterPageLeft;
-    wxTextCtrl* m_txtDescription;
-    wxButton* m_button3;
-    wxButton* m_button4;
-
-protected:
-    virtual void OnOKUI(wxUpdateUIEvent& event) { event.Skip(); }
-    virtual void OnCreate(wxCommandEvent& event) { event.Skip(); }
-
-public:
-    wxPanel* GetSplitterPageRight() { return m_splitterPageRight; }
-    wxTextCtrl* GetTxtDescription() { return m_txtDescription; }
-    wxPanel* GetSplitterPageLeft() { return m_splitterPageLeft; }
-    wxSplitterWindow* GetSplitter5() { return m_splitter5; }
-    wxButton* GetButton3() { return m_button3; }
-    wxButton* GetButton4() { return m_button4; }
-    NewProjectDlgBaseClass(wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("New Project"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize(-1,-1), long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER);
-    virtual ~NewProjectDlgBaseClass();
-};
-
+#if wxVERSION_NUMBER >= 2900
+#include <wx/persist.h>
+#include <wx/persist/toplevel.h>
+#include <wx/persist/bookctrl.h>
+#include <wx/persist/treebook.h>
+#endif
 
 class NavBarControlBaseClass : public wxPanel
 {
@@ -268,14 +248,14 @@ protected:
     wxChoice* m_workspaceConfig;
 
 protected:
-    virtual void OnLinkEditor(wxCommandEvent& event) { event.Skip(); }
-    virtual void OnLinkEditorUI(wxUpdateUIEvent& event) { event.Skip(); }
     virtual void OnCollapseAll(wxCommandEvent& event) { event.Skip(); }
     virtual void OnCollapseAllUI(wxUpdateUIEvent& event) { event.Skip(); }
     virtual void OnGoHome(wxCommandEvent& event) { event.Skip(); }
     virtual void OnGoHomeUI(wxUpdateUIEvent& event) { event.Skip(); }
     virtual void OnProjectSettings(wxCommandEvent& event) { event.Skip(); }
     virtual void OnProjectSettingsUI(wxUpdateUIEvent& event) { event.Skip(); }
+    virtual void OnLinkEditor(wxCommandEvent& event) { event.Skip(); }
+    virtual void OnLinkEditorUI(wxUpdateUIEvent& event) { event.Skip(); }
     virtual void OnChoiceActiveProject(wxCommandEvent& event) { event.Skip(); }
     virtual void OnChoiceActiveProjectUI(wxUpdateUIEvent& event) { event.Skip(); }
     virtual void OnConfigurationManagerChoice(wxCommandEvent& event) { event.Skip(); }
@@ -384,24 +364,29 @@ public:
 protected:
     wxAuiToolBar* m_auibar;
     wxCheckBox* m_checkBoxEnableClang;
+    wxCheckBox* m_checkBoxShowErrors;
     wxChoice* m_choiceCache;
     wxStyledTextCtrl* m_stc;
 
 protected:
     virtual void OnEnableClang(wxCommandEvent& event) { event.Skip(); }
-    virtual void OnClearText(wxCommandEvent& event) { event.Skip(); }
-    virtual void OnClearTextUI(wxUpdateUIEvent& event) { event.Skip(); }
-    virtual void OnClearCache(wxCommandEvent& event) { event.Skip(); }
-    virtual void OnClearCacheUI(wxUpdateUIEvent& event) { event.Skip(); }
+    virtual void OnEnableClangUI(wxUpdateUIEvent& event) { event.Skip(); }
+    virtual void OnShowAnnotations(wxCommandEvent& event) { event.Skip(); }
+    virtual void OnShowAnnotationsUI(wxUpdateUIEvent& event) { event.Skip(); }
     virtual void OnPolicy(wxCommandEvent& event) { event.Skip(); }
     virtual void OnPolicyUI(wxUpdateUIEvent& event) { event.Skip(); }
+    virtual void OnClearCache(wxCommandEvent& event) { event.Skip(); }
+    virtual void OnClearCacheUI(wxUpdateUIEvent& event) { event.Skip(); }
+    virtual void OnClearText(wxCommandEvent& event) { event.Skip(); }
+    virtual void OnClearTextUI(wxUpdateUIEvent& event) { event.Skip(); }
 
 public:
     wxCheckBox* GetCheckBoxEnableClang() { return m_checkBoxEnableClang; }
+    wxCheckBox* GetCheckBoxShowErrors() { return m_checkBoxShowErrors; }
     wxChoice* GetChoiceCache() { return m_choiceCache; }
     wxAuiToolBar* GetAuibar() { return m_auibar; }
     wxStyledTextCtrl* GetStc() { return m_stc; }
-    ClangOutputTabBase(wxWindow* parent, wxWindowID id = wxID_ANY, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize(500,300), long style = wxTAB_TRAVERSAL);
+    ClangOutputTabBase(wxWindow* parent, wxWindowID id = wxID_ANY, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize(-1,-1), long style = wxTAB_TRAVERSAL);
     virtual ~ClangOutputTabBase();
 };
 
@@ -411,11 +396,13 @@ class FileExplorerTabToolBarBase : public wxAuiToolBar
 public:
     enum {
         ID_TOOL_EXPLORER_BOOKMARKS = 8001,
-        ID_TOOL_GOTO_FOLDER = 8002,
+        ID_TOOL_FIND_IN_FILES = 8002,
+        ID_TOOL_GOTO_FOLDER = 8003,
     };
 protected:
 
 protected:
+    virtual void OnFindInFilesUI(wxUpdateUIEvent& event) { event.Skip(); }
 
 public:
     FileExplorerTabToolBarBase(wxWindow *parent, wxWindowID id = wxID_ANY, const wxPoint &position = wxDefaultPosition, const wxSize &size = wxSize(-1,-1), long style = wxAUI_TB_PLAIN_BACKGROUND|wxAUI_TB_DEFAULT_STYLE);

@@ -45,6 +45,8 @@
 #include "macros.h"
 #include <wx/progdlg.h>
 #include "fileutils.h"
+#include "clClangFormatLocator.h"
+#include "clEditorStateLocker.h"
 
 static int ID_TOOL_SOURCE_CODE_FORMATTER = ::wxNewId();
 
@@ -111,6 +113,30 @@ CodeFormatter::CodeFormatter(IManager* manager)
                                 NULL,
                                 this);
     EventNotifier::Get()->Bind(wxEVT_BEFORE_EDITOR_SAVE, clCommandEventHandler(CodeFormatter::OnBeforeFileSave), this);
+    
+    // Migrate settings if needed
+    FormatOptions fmtroptions;
+    m_mgr->GetConfigTool()->ReadObject("FormatterOptions", &fmtroptions);
+    if(fmtroptions.GetEngine() == kFormatEngineClangFormat) {
+        // check to see that the selected clang executable exists
+        wxFileName clangFomatExe(fmtroptions.GetClangFormatExe());
+        if(fmtroptions.GetClangFormatExe().IsEmpty() || !clangFomatExe.Exists()) {
+            // No valid clang executable found, try to locate one
+            clClangFormatLocator locator;
+            wxString clangFormatPath;
+            if(locator.Locate(clangFormatPath)) {
+                fmtroptions.SetClangFormatExe(clangFormatPath);
+            } else {
+                // Change the active engine to AStyle
+                fmtroptions.SetEngine(kFormatEngineAStyle);
+                fmtroptions.SetClangFormatExe(""); // Clear the non existed executable
+            }
+            
+            
+        }
+    }
+    // Save the options
+    EditorConfigST::Get()->WriteObject("FormatterOptions", &fmtroptions);
 }
 
 CodeFormatter::~CodeFormatter()
@@ -244,21 +270,21 @@ void CodeFormatter::DoFormatFile(IEditor* editor)
         phpOptions.indentSize = m_mgr->GetEditorSettings()->GetTabWidth();
         phpOptions.eol = m_mgr->GetEditorSettings()->GetEOLAsString();
         // Create the formatter buffer
-        PHPFormatterBuffer buffer(editor->GetSTC()->GetText(), phpOptions);
+        PHPFormatterBuffer buffer(editor->GetCtrl()->GetText(), phpOptions);
 
         // Format the source
         buffer.format();
 
         // Restore line
         clSTCLineKeeper lk(editor);
-        editor->GetSTC()->BeginUndoAction();
+        editor->GetCtrl()->BeginUndoAction();
         // Replace the text with the new formatted buffer
         editor->SetEditorText(buffer.GetBuffer());
 
         // Restore caret position
         editor->SetCaretAt(curpos);
         
-        editor->GetSTC()->EndUndoAction();
+        editor->GetCtrl()->EndUndoAction();
         
     } else {
         // We allow ClangFormat to work only when the source file is known to be
@@ -282,16 +308,16 @@ void CodeFormatter::DoFormatFile(IEditor* editor)
             // Make sure we format the editor string and _not_ the file (there might be some newly added lines
             // that could be missing ...)
             if(!ClangFormatBuffer(
-                   editor->GetSTC()->GetText(), editor->GetFileName(), formattedOutput, curpos, from, length)) {
+                   editor->GetCtrl()->GetText(), editor->GetFileName(), formattedOutput, curpos, from, length)) {
                 ::wxMessageBox(_("Source code formatting error!"), "CodeLite", wxICON_ERROR | wxOK | wxCENTER);
                 return;
             }
 
-            clSTCLineKeeper lk(editor);
-            editor->GetSTC()->BeginUndoAction();
+            clEditorStateLocker lk(editor->GetCtrl());
+            editor->GetCtrl()->BeginUndoAction();
             editor->SetEditorText(formattedOutput);
             editor->SetCaretAt(curpos);
-            editor->GetSTC()->EndUndoAction();
+            editor->GetCtrl()->EndUndoAction();
 
         } else {
             // AStyle
@@ -324,7 +350,7 @@ void CodeFormatter::DoFormatFile(IEditor* editor)
             }
 
             AstyleFormat(inputString, options, output);
-            if(output.IsEmpty() == false) {
+            if(!output.IsEmpty()) {
 
                 // append new-line
                 wxString eol;
@@ -339,6 +365,7 @@ void CodeFormatter::DoFormatFile(IEditor* editor)
                 if(!formatSelectionOnly) output << eol;
 
                 if(formatSelectionOnly) {
+                    clEditorStateLocker lk(editor->GetCtrl());
                     // format the text (add the indentation)
                     output = editor->FormatTextKeepIndent(output,
                                                           editor->GetSelectionStart(),
@@ -346,9 +373,8 @@ void CodeFormatter::DoFormatFile(IEditor* editor)
                     editor->ReplaceSelection(output);
 
                 } else {
-                    clSTCLineKeeper lk(editor);
+                    clEditorStateLocker lk(editor->GetCtrl());
                     editor->SetEditorText(output);
-                    editor->SetCaretAt(curpos);
                 }
             }
         }
@@ -596,13 +622,16 @@ bool CodeFormatter::DoClangFormat(const wxFileName& filename,
     }
 
     wxString command, file;
-
+    
+    clClangFormatLocator locator;
+    double version = locator.GetVersion(options.GetClangFormatExe());
+    
     command << options.GetClangFormatExe();
     file = filename.GetFullPath();
     ::WrapWithQuotes(command);
     ::WrapWithQuotes(file);
 
-    command << options.ClangFormatOptionsAsString(filename);
+    command << options.ClangFormatOptionsAsString(filename, version);
     if(cursorPosition != wxNOT_FOUND) {
         command << " -cursor=" << cursorPosition;
     }
@@ -706,14 +735,17 @@ bool CodeFormatter::ClangBatchFormat(const std::vector<wxFileName>& files, const
 
     wxProgressDialog dlg(
         _("Source Code Formatter"), _("Formatting files..."), (int)files.size(), m_mgr->GetTheApp()->GetTopWindow());
-
+    
+    clClangFormatLocator locator;
+    double version = locator.GetVersion(options.GetClangFormatExe());
+    
     for(size_t i = 0; i < files.size(); ++i) {
         wxString command, file;
         command << options.GetClangFormatExe();
         ::WrapWithQuotes(command);
 
         command << " -i "; // inline editing
-        command << options.ClangFormatOptionsAsString(files.at(i));
+        command << options.ClangFormatOptionsAsString(files.at(i), version);
         file = files.at(i).GetFullPath();
         ::WrapWithQuotes(file);
         command << " " << file;

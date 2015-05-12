@@ -26,6 +26,8 @@
 #include "cl_defs.h"
 
 #include "notebook_ex.h"
+#include "clAuiMainNotebookTabArt.h"
+#include "globals.h"
 
 #if !CL_USE_NATIVEBOOK
 
@@ -91,16 +93,9 @@ Notebook::Notebook(wxWindow* parent, wxWindowID id, const wxPoint& pos, const wx
     , m_notify(true)
 {
     Initialize();
-#ifdef __WXGTK__
-    SetTabCtrlHeight(TAB_CTRL_HEIGHT);
-#endif
-
+    
     // Set our docking art provider for this notebook
     m_mgr.SetArtProvider(new clAuiDockArt(NULL));
-    m_mgr.SetFlags(wxAUI_MGR_DEFAULT | wxAUI_MGR_LIVE_RESIZE);
-    m_mgr.GetArtProvider()->SetMetric(wxAUI_DOCKART_SASH_SIZE, 0);
-    m_mgr.GetArtProvider()->SetMetric(wxAUI_DOCKART_PANE_BORDER_SIZE, 0);
-
     m_leftDownPos = wxPoint();
 
     // Connect events
@@ -138,14 +133,17 @@ Notebook::Notebook(wxWindow* parent, wxWindowID id, const wxPoint& pos, const wx
 
 #endif //
 #endif
-
+    m_mgr.GetArtProvider()->SetMetric(wxAUI_DOCKART_PANE_BORDER_SIZE, 0);
     // Set the notebook theme
     wxAuiTabArt* artProvider;
     size_t flags = EditorConfigST::Get()->GetOptions()->GetOptions();
     if(flags & OptionsConfig::TabCurved) {
         artProvider = new wxAuiSimpleTabArt;
     } else {
-        artProvider = new clAuiGlossyTabArt;
+#ifdef __WXGTK__
+        SetTabCtrlHeight(TAB_CTRL_HEIGHT);
+#endif
+        artProvider = new clAuiGlossyTabArt();
     }
     SetArtProvider(artProvider);
 }
@@ -586,20 +584,11 @@ void Notebook::OnFocus(wxFocusEvent& e) { e.Skip(); }
 void Notebook::OnInternalPageClosing(wxAuiNotebookEvent& e)
 {
     CHECK_OWNERSHIP(e);
-    e.Skip();
-
-    NotebookEvent event(wxEVT_COMMAND_BOOK_PAGE_CLOSING, GetId());
-    event.SetSelection((int)GetSelection());
-    event.SetEventObject(this);
-    GetEventHandler()->ProcessEvent(event);
-
-    if(!event.IsAllowed()) {
-        e.Veto();
-
-    } else {
-        // This page is likely to be removed, remove it from the history
-        PopPageHistory(GetPage(static_cast<size_t>(GetSelection())));
-    }
+    // This function is called when a user clicks on the X button on top of the active tab
+    // to avoid code duplication, we "veto" this event and instead we call OnTabMiddle on the
+    // active tab (i.e. it will as if the user clicked the mouse middle button on the active tab)
+    e.Veto(); 
+    OnTabMiddle(e);
 }
 
 void Notebook::OnInternalPageClosed(wxAuiNotebookEvent& e)

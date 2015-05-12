@@ -253,7 +253,7 @@ void LLDBPlugin::ClearDebuggerMarker()
     m_mgr->GetAllEditors(editors);
     IEditor::List_t::iterator iter = editors.begin();
     for(; iter != editors.end(); ++iter) {
-        (*iter)->GetSTC()->MarkerDeleteAll(smt_indicator);
+        (*iter)->GetCtrl()->MarkerDeleteAll(smt_indicator);
     }
 }
 
@@ -351,7 +351,7 @@ void LLDBPlugin::OnDebugStart(clDebugEvent& event)
         EnvSetter env(NULL, NULL, pProject ? pProject->GetName() : wxString());
         wxString exepath = bldConf->GetCommand();
         wxString args;
-        wxString wd;
+        wxString workingDirectory;
         // Get the debugging arguments.
         if(bldConf->GetUseSeparateDebugArgs()) {
             args = bldConf->GetDebugArgs();
@@ -359,12 +359,12 @@ void LLDBPlugin::OnDebugStart(clDebugEvent& event)
             args = bldConf->GetCommandArguments();
         }
 
-        wd = ::ExpandVariables(bldConf->GetWorkingDirectory(), pProject, m_mgr->GetActiveEditor());
+        workingDirectory = ::ExpandVariables(bldConf->GetWorkingDirectory(), pProject, m_mgr->GetActiveEditor());
         exepath = ::ExpandVariables(exepath, pProject, m_mgr->GetActiveEditor());
 
         {
             DirSaver ds;
-            ::wxSetWorkingDirectory(wd);
+            ::wxSetWorkingDirectory(workingDirectory);
             wxFileName execToDebug(exepath);
             if(execToDebug.IsRelative()) {
                 execToDebug.MakeAbsolute();
@@ -378,11 +378,13 @@ void LLDBPlugin::OnDebugStart(clDebugEvent& event)
             bool isWindows = wxPlatformInfo::Get().GetOperatingSystemId() & wxOS_WINDOWS;
             if(!bldConf->IsGUIProgram() && !isWindows) {
                 wxString realPts;
+                m_terminalPID = wxNOT_FOUND;
                 ::LaunchTerminalForDebugger(execToDebug.GetFullPath(), m_terminalTTY, realPts, m_terminalPID);
                 wxUnusedVar(realPts);
-                
-                if(m_terminalPID != wxNOT_FOUND) {
-                    CL_DEBUG("Successfully launched terminal");
+
+
+                if(!m_terminalTTY.IsEmpty()) {
+                    CL_DEBUG("Successfully launched terminal %s", m_terminalTTY);
 
                 } else {
                     // Failed to launch it...
@@ -392,9 +394,13 @@ void LLDBPlugin::OnDebugStart(clDebugEvent& event)
                     return;
                 }
             }
-
+            
+            if(!isWindows) {
+                workingDirectory = ::wxGetCwd();
+            }
+            
             CL_DEBUG("LLDB: Using executable : " + execToDebug.GetFullPath());
-            CL_DEBUG("LLDB: Working directory: " + ::wxGetCwd());
+            CL_DEBUG("LLDB: Working directory: " + workingDirectory);
 
             //////////////////////////////////////////////////////////////////////
             // Initiate the connection to codelite-lldb
@@ -425,7 +431,7 @@ void LLDBPlugin::OnDebugStart(clDebugEvent& event)
                 startCommand.SetCommandArguments(args);
                 // Since we called 'wxSetWorkingDirectory' earlier, wxGetCwd() should give use the
                 // correct working directory for the debugger
-                startCommand.SetWorkingDirectory(::wxGetCwd());
+                startCommand.SetWorkingDirectory(workingDirectory);
                 startCommand.SetRedirectTTY(m_terminalTTY);
                 m_connector.Start(startCommand);
 
@@ -528,7 +534,7 @@ void LLDBPlugin::OnLLDBStopped(LLDBEvent& event)
         if(editor) {
             // select it first
             if(editor != m_mgr->GetActiveEditor()) {
-                m_mgr->SelectPage(editor->GetSTC());
+                m_mgr->SelectPage(editor->GetCtrl());
 
             } else {
                 // just make sure that the page has the focus
@@ -537,7 +543,7 @@ void LLDBPlugin::OnLLDBStopped(LLDBEvent& event)
 
             // clear the markers
             ClearDebuggerMarker();
-            SetDebuggerMarker(editor->GetSTC(), event.GetLinenumber() - 1);
+            SetDebuggerMarker(editor->GetCtrl(), event.GetLinenumber() - 1);
 
         } else {
             ClearDebuggerMarker();
@@ -764,7 +770,7 @@ void LLDBPlugin::OnToggleBreakpoint(clDebugEvent& event)
 
     if(editor) {
         // get the marker type set on the line
-        int markerType = editor->GetSTC()->MarkerGet(bp->GetLineNumber() - 1);
+        int markerType = editor->GetCtrl()->MarkerGet(bp->GetLineNumber() - 1);
         for(size_t type = smt_FIRST_BP_TYPE; type <= smt_LAST_BP_TYPE; ++type) {
             int markerMask = (1 << type);
             if(markerType & markerMask) {
@@ -898,12 +904,6 @@ void LLDBPlugin::OnLLDBExpressionEvaluated(LLDBEvent& event)
 
 void LLDBPlugin::OnDebugQuickDebug(clDebugEvent& event)
 {
-#ifdef __WXMSW__
-    ::wxMessageBox(
-        _("Quick Debug with LLDB is not supported under Windows"), "CodeLite", wxOK | wxCENTER | wxICON_WARNING);
-    return;
-#endif
-
     if(!DoInitializeDebugger(event, true)) {
         return;
     }
@@ -927,7 +927,10 @@ void LLDBPlugin::OnDebugQuickDebug(clDebugEvent& event)
         // In 'Quick Debug' we stop on main
         m_connector.AddBreakpoint("main");
         m_connector.AddBreakpoints(gdbBps);
-
+        
+        // Setup pivot folder if needed
+        SetupPivotFolder(retObj);
+        
         LLDBCommand startCommand;
         startCommand.FillEnvFromMemory();
         startCommand.SetExecutable(event.GetExecutableName());
@@ -936,6 +939,7 @@ void LLDBPlugin::OnDebugQuickDebug(clDebugEvent& event)
         startCommand.SetStartupCommands(event.GetStartupCommands());
         startCommand.SetRedirectTTY(m_terminalTTY);
         m_connector.Start(startCommand);
+        
     } else {
         // Failed to connect, notify and perform cleanup
         DoCleanup();
@@ -1011,7 +1015,8 @@ bool LLDBPlugin::DoInitializeDebugger(clDebugEvent& event, bool redirectOutput, 
     TerminateTerminal();
 
     // If terminal is required, launch it now
-    if(redirectOutput) {
+    bool isWindows = wxPlatformInfo::Get().GetOperatingSystemId() & wxOS_WINDOWS;
+    if(redirectOutput && !isWindows) {
         wxString realPts;
         ::LaunchTerminalForDebugger(
             terminalTitle.IsEmpty() ? event.GetExecutableName() : terminalTitle, m_terminalTTY, realPts, m_terminalPID);

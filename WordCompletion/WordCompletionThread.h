@@ -7,15 +7,22 @@
 #include "macros.h"
 #include "WordCompletionRequestReply.h"
 
-class WordCompletionPlugin;
+class WordCompletionDictionary;
 class WordCompletionThread : public WorkerThread
 {
 protected:
-    WordCompletionPlugin* m_plugin;
+    WordCompletionDictionary* m_dict;
+    
 public:
-    WordCompletionThread(WordCompletionPlugin* plugin);
+
+    WordCompletionThread(WordCompletionDictionary* dict);
     ~WordCompletionThread();
     virtual void ProcessRequest(ThreadRequest* request);
+    
+    /**
+     * @brief parse 'buffer' and return set of words to complete
+     */
+    static void ParseBuffer(const wxString& buffer, wxStringSet_t& suggest);
 };
 
 #endif // WORDCOMPLETIONTHREAD_H

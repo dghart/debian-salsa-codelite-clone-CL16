@@ -3264,6 +3264,13 @@ void phpfree (void * ptr , yyscan_t yyscanner)
 // API methods implementation
 //=============-------------------------------
 
+phpLexerUserData* phpLexerGetUserData(void* scanner)
+{
+    struct yyguts_t * yyg = (struct yyguts_t*)scanner;
+    phpLexerUserData* userData = (phpLexerUserData*)yyg->yyextra_r;
+    return userData;
+}
+
 bool phpLexerIsPHPCode(void* scanner)
 {
     struct yyguts_t * yyg = (struct yyguts_t*)scanner;
@@ -3296,7 +3303,7 @@ void* phpLexerNew(const wxString& content, size_t options )
 {
     yyscan_t scanner;
     phplex_init(&scanner);
-    wxCharBuffer cb = content.mb_str(wxConvISO8859_1);
+    wxCharBuffer cb = content.mb_str(wxConvUTF8);
     struct yyguts_t * yyg = (struct yyguts_t*)scanner;
     yyg->yyextra_r = new phpLexerUserData(options);
     php_switch_to_buffer(php_scan_string(cb.data(), scanner), scanner);

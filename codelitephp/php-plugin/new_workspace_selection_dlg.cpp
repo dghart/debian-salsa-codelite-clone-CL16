@@ -8,12 +8,19 @@ NewWorkspaceSelectionDlg::NewWorkspaceSelectionDlg(wxWindow* parent)
     GetSizer()->Fit(this);
     PHPConfigurationData conf;
     m_radioBox->SetSelection(conf.Load().GetWorkspaceType());
-    WindowAttrManager::Load(this, "NewWorkspaceSelectionDlg");
+    SetName("NewWorkspaceSelectionDlg");
+    WindowAttrManager::Load(this);
 }
 
 NewWorkspaceSelectionDlg::~NewWorkspaceSelectionDlg()
 {
     PHPConfigurationData conf;
     conf.Load().SetWorkspaceType(m_radioBox->GetSelection()).Save();
-    WindowAttrManager::Save(this, "NewWorkspaceSelectionDlg");
+    
+}
+void NewWorkspaceSelectionDlg::OnClose(wxCloseEvent& event)
+{
+}
+void NewWorkspaceSelectionDlg::OnKeyDown(wxKeyEvent& event)
+{
 }

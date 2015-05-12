@@ -27,10 +27,13 @@
 
 #include <wx/string.h>
 #include <wx/translation.h>
-#include "cl_ssh.h"
-#include <libssh/libssh.h>
 #include <wx/textdlg.h>
 #include <wx/thread.h>
+#ifdef __WXMSW__
+#include "wx/msw/winundef.h"
+#endif
+#include "cl_ssh.h"
+#include <libssh/libssh.h>
 
 wxDEFINE_EVENT(wxEVT_SSH_COMMAND_OUTPUT, clCommandEvent);
 wxDEFINE_EVENT(wxEVT_SSH_COMMAND_COMPLETED, clCommandEvent);
@@ -160,7 +163,7 @@ bool clSSH::AuthenticateServer(wxString& message) throw(clException)
         return false;
 
     case SSH_SERVER_FOUND_OTHER:
-        message << _("The host key for this server was not found but an other type of key exists.\n")
+        message << _("The host key for this server was not found but another type of key exists.\n")
                 << _("An attacker might change the default server key to confuse your client into thinking the key "
                      "does not exist\n") << _("Accept server authentication?");
         free(hash);

@@ -30,7 +30,6 @@
 #include "macromanager.h"
 #include <wx/log.h>
 #include "event_notifier.h"
-#include "code_completion_box.h"
 #include "event_notifier.h"
 #include "cl_editor_tip_window.h"
 #include "new_quick_watch_dlg.h"
@@ -39,7 +38,6 @@
 #include "stringhighlighterjob.h"
 #include "job.h"
 #include "drawingutils.h"
-#include "cc_box.h"
 #include "stringsearcher.h"
 #include "colourrequest.h"
 #include "colourthread.h"
@@ -72,6 +70,12 @@
 #include "codelite_events.h"
 #include "clSTCLineKeeper.h"
 #include "ColoursAndFontsManager.h"
+#include "wxCodeCompletionBoxManager.h"
+#include <wx/richtooltip.h> // wxRichToolTip
+#include "cc_box_tip_window.h"
+#include "clSTCLineKeeper.h"
+#include "clEditorStateLocker.h"
+//#include "clFileOrFolderDropTarget.h"
 
 // fix bug in wxscintilla.h
 #ifdef EVT_STC_CALLTIP_CLICK
@@ -137,7 +141,6 @@ EVT_COMMAND(wxID_ANY, wxEVT_FRD_BOOKMARKALL, LEditor::OnFindDialog)
 EVT_COMMAND(wxID_ANY, wxEVT_FRD_CLOSE, LEditor::OnFindDialog)
 EVT_COMMAND(wxID_ANY, wxEVT_FRD_CLEARBOOKMARKS, LEditor::OnFindDialog)
 EVT_COMMAND(wxID_ANY, wxCMD_EVENT_REMOVE_MATCH_INDICATOR, LEditor::OnRemoveMatchInidicator)
-EVT_COMMAND(wxID_ANY, wxCMD_EVENT_SET_EDITOR_ACTIVE, LEditor::OnSetActive)
 EVT_IDLE(LEditor::OnIdle)
 END_EVENT_TABLE()
 
@@ -164,6 +167,7 @@ LEditor::LEditor(wxWindow* parent)
     , m_autoAdjustHScrollbarWidth(true)
     , m_reloadingFile(false)
     , m_functionTip(NULL)
+    , m_calltip(NULL)
     , m_lastCharEntered(0)
     , m_lastCharEnteredPos(0)
     , m_isFocused(true)
@@ -171,8 +175,13 @@ LEditor::LEditor(wxWindow* parent)
     , m_positionToEnsureVisible(wxNOT_FOUND)
     , m_findBookmarksActive(false)
     , m_mgr(PluginManager::Get())
+    , m_hasCCAnnotation(false)
 {
+    DoUpdateOptions();
+    EventNotifier::Get()->Bind(wxEVT_EDITOR_CONFIG_CHANGED, &LEditor::OnEditorConfigChanged, this);
     m_commandsProcessor.SetParent(this);
+
+    // SetDropTarget(new clFileOrFolderDropTarget(clMainFrame::Get()->GetMainBook()));
 
     // User timer to check if we need to highlight markers
     m_timerHighlightMarkers = new wxTimer(this);
@@ -226,6 +235,8 @@ LEditor::LEditor(wxWindow* parent)
 
 LEditor::~LEditor()
 {
+    EventNotifier::Get()->Unbind(wxEVT_EDITOR_CONFIG_CHANGED, &LEditor::OnEditorConfigChanged, this);
+
     EventNotifier::Get()->Disconnect(
         wxCMD_EVENT_ENABLE_WORD_HIGHLIGHT, wxCommandEventHandler(LEditor::OnHighlightWordChecked), NULL, this);
     EventNotifier::Get()->Disconnect(
@@ -349,6 +360,7 @@ void LEditor::SetProperties()
 
     CallTipSetBackground(wxSystemSettings::GetColour(wxSYS_COLOUR_INFOBK));
     CallTipSetForeground(wxSystemSettings::GetColour(wxSYS_COLOUR_INFOTEXT));
+    MarkerEnableHighlight(options->IsHighlightFoldWhenActive());
 
     m_hightlightMatchedBraces = options->GetHighlightMatchedBraces();
     m_autoAddMatchedCurlyBrace = options->GetAutoAddMatchedCurlyBraces();
@@ -403,12 +415,9 @@ void LEditor::SetProperties()
     // Mark current line
     SetCaretLineVisible(options->GetHighlightCaretLine());
     SetCaretLineBackground(options->GetCaretLineColour());
-    SetCaretLineBackAlpha(30);
-
-    // MarkerSetAlpha(smt_bookmark, 30);
+    SetCaretLineBackAlpha(options->GetCaretLineAlpha());
 
     SetFoldFlags(options->GetUnderlineFoldLine() ? 16 : 0);
-
     SetEndAtLastLine(!options->GetScrollBeyondLastLine());
 
     //------------------------------------------
@@ -577,25 +586,19 @@ void LEditor::SetProperties()
     // turning off these two greatly improves performance
     // on Mac
     SetTwoPhaseDraw(true);
-    SetBufferedDraw(false);
-
-//    // Using BufferedDraw as 'false'
-//    // improves performance *alot*, however
-//    // the downside is that the word hightlight does
-//    // not work...
-//    // this is why we enable / disable it according to the "highlight word" toggle state
-//    long highlightWord(1);
-//    EditorConfigST::Get()->GetLongValue(wxT("highlight_word"), highlightWord);
-//    SetBufferedDraw(highlightWord == 1 ? true : false);
-//    //wxLogMessage("Buffered draw is set to %d", (int)highlightWord);
+    SetBufferedDraw(true);
+    SetLayoutCache(wxSTC_CACHE_DOCUMENT);
 
 #elif defined(__WXGTK__)
     SetTwoPhaseDraw(true);
     SetBufferedDraw(false);
+    SetLayoutCache(wxSTC_CACHE_PAGE);
 
 #else // MSW
     SetTwoPhaseDraw(true);
     SetBufferedDraw(true);
+    SetLayoutCache(wxSTC_CACHE_PAGE);
+
 #endif
 
     // indentation settings
@@ -612,8 +615,6 @@ void LEditor::SetProperties()
     SetTabWidth(options->GetTabWidth());
     SetIndent(options->GetIndentWidth());
     SetIndentationGuides(options->GetShowIndentationGuidelines() ? 3 : 0);
-
-    SetLayoutCache(wxSTC_CACHE_PAGE);
 
     size_t frame_flags = clMainFrame::Get()->GetFrameGeneralInfo().GetFlags();
     SetViewEOL(frame_flags & CL_SHOW_EOL ? true : false);
@@ -632,9 +633,6 @@ void LEditor::SetProperties()
     }
 
     IndicatorSetForeground(1, options->GetBookmarkBgColour(smt_find_bookmark - smt_FIRST_BMK_TYPE));
-
-    // Word highlight indicator
-    IndicatorSetStyle(MARKER_WORD_HIGHLIGHT, wxSTC_INDIC_ROUNDBOX);
     IndicatorSetUnder(MARKER_WORD_HIGHLIGHT, true);
     IndicatorSetForeground(MARKER_WORD_HIGHLIGHT, col2);
     long alpha = EditorConfigST::Get()->GetInteger(wxT("WordHighlightAlpha"));
@@ -703,8 +701,6 @@ void LEditor::OnSavePoint(wxStyledTextEvent& event)
 
 void LEditor::OnCharAdded(wxStyledTextEvent& event)
 {
-    // Allways cancel the tip
-    CodeCompletionBox::Get().CancelTip();
     OptionsConfigPtr options = GetOptions();
     if(m_prevSelectionInfo.IsOk()) {
         if(event.GetKey() == '"' && options->IsWrapSelectionWithQuotes()) {
@@ -727,22 +723,6 @@ void LEditor::OnCharAdded(wxStyledTextEvent& event)
 
     int pos = GetCurrentPos();
     bool canShowCompletionBox(true);
-
-    // get the word and select it in the completion box
-    if(IsCompletionBoxShown()) {
-        int start = WordStartPosition(pos, true);
-        wxString word = GetTextRange(start, pos);
-
-        if(word.IsEmpty()) {
-            HideCompletionBox();
-        } else {
-            if(CodeCompletionBox::Get().SelectWord(word)) {
-                canShowCompletionBox = false;
-                HideCompletionBox();
-            }
-        }
-    }
-
     // make sure line is visible
     int curLine = LineFromPosition(pos);
     if(!GetFoldExpanded(curLine)) {
@@ -894,8 +874,7 @@ void LEditor::OnCharAdded(wxStyledTextEvent& event)
     strTyped << charTyped;
     strTyped2 << firstChar << charTyped;
 
-    if((GetContext()->GetCompletionTriggerStrings().count(strTyped) ||
-        GetContext()->GetCompletionTriggerStrings().count(strTyped2)) &&
+    if((GetContext()->IsStringTriggerCodeComplete(strTyped) || GetContext()->IsStringTriggerCodeComplete(strTyped2)) &&
        !GetContext()->IsCommentOrString(GetCurrentPos())) {
         // this char should trigger a code completion
         CodeComplete();
@@ -981,9 +960,9 @@ void LEditor::OnScnPainted(wxStyledTextEvent& event)
     if(m_positionToEnsureVisible == wxNOT_FOUND) {
         return;
     }
-    CL_DEBUG1(wxString::Format(wxT("OnScnPainted: position = %i, preserveSelection = %s"),
-                               m_positionToEnsureVisible,
-                               m_preserveSelection ? wxT("true") : wxT("false")));
+    // CL_DEBUG1(wxString::Format(wxT("OnScnPainted: position = %i, preserveSelection = %s"),
+    //                           m_positionToEnsureVisible,
+    //                           m_preserveSelection ? wxT("true") : wxT("false")));
     DoEnsureCaretIsVisible(m_positionToEnsureVisible, m_preserveSelection);
     m_positionToEnsureVisible = wxNOT_FOUND;
 }
@@ -1055,7 +1034,7 @@ void LEditor::OnSciUpdateUI(wxStyledTextEvent& event)
     // update line number
     wxString message;
 
-    message << wxT("Ln ") << curLine + 1 << wxT(", Col ") << GetColumn(pos);
+    message << wxT("Ln ") << curLine + 1 << wxT(", Col ") << GetColumn(pos) << ", Pos " << pos;
 
     // Always update the status bar with event, calling it directly causes performance degredation
     m_mgr->GetStatusBar()->SetLinePosColumn(message);
@@ -1111,8 +1090,6 @@ void LEditor::OnMarginClick(wxStyledTextEvent& event)
                     bm = wxBitmap(wxImage(stop_xpm));
                 }
 
-                // There'll probably be a tooltip from the marker. Kill it
-                DoCancelCalltip();
                 // The breakpoint manager organises the actual drag/drop
                 BreakptMgr* bpm = ManagerST::Get()->GetBreakpointsMgr();
                 bpm->DragBreakpoint(this, nLine, bm);
@@ -1189,7 +1166,7 @@ bool LEditor::SaveFile()
         if(!SaveToFile(m_fileName)) return false;
 
         // if we managed to save the file, remove the 'read only' attribute
-        clMainFrame::Get()->GetMainBook()->MarkEditorReadOnly(this, false);
+        clMainFrame::Get()->GetMainBook()->MarkEditorReadOnly(this);
 
         // Take a snapshot of the current deltas. We'll need this as a 'base' for any future FindInFiles call
         m_deltas->OnFileSaved();
@@ -1241,7 +1218,7 @@ bool LEditor::SaveFileAs()
         // update syntax highlight
         SetSyntaxHighlight();
 
-        clMainFrame::Get()->GetMainBook()->MarkEditorReadOnly(this, IsFileReadOnly(GetFileName()));
+        clMainFrame::Get()->GetMainBook()->MarkEditorReadOnly(this);
         return true;
     }
     return false;
@@ -1549,6 +1526,9 @@ void LEditor::OnDwellStart(wxStyledTextEvent& event)
     wxPoint pt(ScreenToClient(wxGetMousePosition()));
     wxRect clientRect = GetClientRect();
 
+    // Always cancel the previous tooltip...
+    DoCancelCodeCompletionBox();
+
     for(int n = 0; n < FOLD_MARGIN_ID; ++n) {
         margin += GetMarginWidth(n);
     }
@@ -1561,31 +1541,34 @@ void LEditor::OnDwellStart(wxStyledTextEvent& event)
     } else if(event.GetX() > 0 // It seems that we can get spurious events with x == 0
               &&
               event.GetX() < margin) {
+
         // We can't use event.GetPosition() here, as in the margin it returns -1
         int position = PositionFromPoint(wxPoint(event.GetX(), event.GetY()));
         int line = LineFromPosition(position);
-        wxString tooltip;
+        wxString tooltip, title;
         wxString fname = GetFileName().GetFullPath();
 
         if(MarkerGet(line) & mmt_all_breakpoints) {
-            tooltip = ManagerST::Get()->GetBreakpointsMgr()->GetTooltip(fname, line + 1);
+            ManagerST::Get()->GetBreakpointsMgr()->GetTooltip(fname, line + 1, tooltip, title);
         }
 
         else if(MarkerGet(line) & mmt_all_bookmarks) {
-            tooltip = GetBookmarkTooltip(line);
+            GetBookmarkTooltip(line, tooltip, title);
         }
 
         // Compiler marker takes precedence over any other tooltip on that margin
         if((MarkerGet(line) & mmt_compiler) && m_compilerMessagesMap.count(line)) {
             // Get the compiler tooltip
             tooltip = m_compilerMessagesMap.find(line)->second;
+            if(MarkerGet(line) & (1 << smt_warning)) {
+                title = "<color=\"yellow\">WARNING</color>";
+            } else {
+                title = "<color=\"pink\">ERROR</color>";
+            }
         }
 
-        wxString tmpTip = tooltip;
-        tmpTip.Trim().Trim(false);
-
-        if(!tmpTip.IsEmpty()) {
-            DoShowCalltip(-1, tooltip);
+        if(!title.IsEmpty() && !tooltip.IsEmpty()) {
+            DoShowCalltip(-1, title, tooltip);
         }
 
     } else if(ManagerST::Get()->DbgCanInteract() && clientRect.Contains(pt)) {
@@ -1614,6 +1597,7 @@ void LEditor::OnDwellEnd(wxStyledTextEvent& event)
     evtTypeinfo.SetEventObject(this);
     if(EventNotifier::Get()->ProcessEvent(evtTypeinfo)) return;
 
+    DoCancelCalltip();
     m_context->OnDwellEnd(event);
     m_context->OnDbgDwellEnd(event);
 }
@@ -1847,6 +1831,9 @@ void LEditor::BraceMatch(long pos)
     long endPos = wxStyledTextCtrl::BraceMatch(pos);
     if(endPos != wxSTC_INVALID_POSITION) {
         wxStyledTextCtrl::BraceHighlight(pos, endPos);
+#ifdef __WXMSW__
+        Refresh();
+#endif
         if(GetIndentationGuides() != 0 && GetIndent() > 0) {
             // Highlight indent guide if exist
             indentCol =
@@ -2381,27 +2368,15 @@ void LEditor::ToggleTopmostFoldsInSelection()
     }
 }
 
-void LEditor::StoreCollapsedFoldsToArray(std::vector<int>& folds) const
+void LEditor::StoreCollapsedFoldsToArray(clEditorStateLocker::VecInt_t& folds) const
 {
-    for(int line = 0; line < GetLineCount(); ++line) {
-        if((GetFoldLevel(line) & wxSTC_FOLDLEVELHEADERFLAG) && (GetFoldExpanded(line) == false)) {
-            folds.push_back(line);
-        }
-    }
+    clEditorStateLocker::SerializeFolds(const_cast<wxStyledTextCtrl*>(static_cast<const wxStyledTextCtrl*>(this)),
+                                        folds);
 }
 
-void LEditor::LoadCollapsedFoldsFromArray(const std::vector<int>& folds)
+void LEditor::LoadCollapsedFoldsFromArray(const clEditorStateLocker::VecInt_t& folds)
 {
-    for(size_t i = 0; i < folds.size(); ++i) {
-        int line = folds.at(i);
-        // 'line' was collapsed when serialised, so collapse it now. That assumes that the line-numbers haven't changed
-        // in the meanwhile.
-        // If we cared enough, we could have saved a fold-level too, and/or the function name +/- the line's
-        // displacement within the function. But for now...
-        if(GetFoldLevel(line) & wxSTC_FOLDLEVELHEADERFLAG) {
-            ToggleFold(line);
-        }
-    }
+    clEditorStateLocker::ApplyFolds(GetCtrl(), folds);
 }
 
 //----------------------------------------------
@@ -2441,33 +2416,12 @@ bool LEditor::LineIsMarked(enum marker_mask_type mask)
 
 void LEditor::StoreMarkersToArray(wxArrayString& bookmarks)
 {
-    for(int line = 0; (line = MarkerNext(line, mmt_all_bookmarks)) >= 0; ++line) {
-        for(int type = smt_FIRST_BMK_TYPE; type <= smt_LAST_BMK_TYPE; ++type) {
-            int mask = (1 << type);
-            if(MarkerGet(line) & mask) {
-                // We need to serialise both the line and BM type. To keep things simple in sessionmanager, just merge
-                // their strings
-                bookmarks.Add(wxString::Format("%d:%d", line, type));
-            }
-        }
-    }
+    clEditorStateLocker::SerializeBookmarks(GetCtrl(), bookmarks);
 }
 
 void LEditor::LoadMarkersFromArray(const wxArrayString& bookmarks)
 {
-    for(size_t i = 0; i < bookmarks.GetCount(); i++) {
-        // Unless this is an old file, each bookmark will have been stored in the form: "linenumber:type"
-        wxString lineno = bookmarks.Item(i).BeforeFirst(':');
-        long bmt = smt_bookmark1;
-        wxString type = bookmarks.Item(i).AfterFirst(':');
-        if(!type.empty()) {
-            type.ToLong(&bmt);
-        }
-        long line = 0;
-        if(lineno.ToLong(&line)) {
-            MarkerAdd(line, bmt);
-        }
-    }
+    clEditorStateLocker::ApplyBookmarks(GetCtrl(), bookmarks);
 }
 
 void LEditor::DelAllMarkers(int which_type)
@@ -2712,36 +2666,30 @@ void LEditor::OnChangeActiveBookmarkType(wxCommandEvent& event)
     clMainFrame::Get()->SelectBestEnvSet(); // Updates the statusbar display
 }
 
-wxString LEditor::GetBookmarkTooltip(const int lineno)
+void LEditor::GetBookmarkTooltip(int lineno, wxString& tip, wxString& title)
 {
-    wxString active, others;
-
+    title << "<b>Bookmarks</b>";
     // If we've arrived here we know there's a bookmark on the line; however we don't know which type(s)
     // If multiple, list each, with the visible one first
     int linebits = MarkerGet(lineno);
     if(linebits & GetActiveBookmarkMask()) {
         wxString label = GetBookmarkLabel((sci_marker_types)GetActiveBookmarkType());
         wxString suffix = label.Lower().Contains("bookmark") ? "" : " bookmark";
-        active = "<b>" + label + suffix + "</b>";
+        tip << label << suffix;
     }
 
     for(int bmt = smt_FIRST_BMK_TYPE; bmt <= smt_LAST_BMK_TYPE; ++bmt) {
         if(bmt != GetActiveBookmarkType()) {
             if(linebits & (1 << bmt)) {
-                if(!others.empty()) {
-                    others << "\n";
+                if(!tip.empty()) {
+                    tip << "\n";
                 }
                 wxString label = GetBookmarkLabel((sci_marker_types)bmt);
                 wxString suffix = label.Lower().Contains("bookmark") ? "" : " bookmark";
-                others << label << suffix << "";
+                tip << label << suffix;
             }
         }
     }
-
-    if(!active.empty() && !others.empty()) {
-        active << "\n<hr>";
-    }
-    return active + others;
 }
 
 void LEditor::ReloadFile()
@@ -2749,8 +2697,8 @@ void LEditor::ReloadFile()
     wxWindowUpdateLocker locker(this);
     SetReloadingFile(true);
 
-    HideCompletionBox();
     DoCancelCalltip();
+    GetFunctionTip()->Deactivate();
 
     if(m_fileName.GetFullPath().IsEmpty() == true || !m_fileName.FileExists()) {
         SetEOLMode(GetEOLByOS());
@@ -2758,13 +2706,8 @@ void LEditor::ReloadFile()
         return;
     }
 
-    clSTCLineKeeper lk(static_cast<wxStyledTextCtrl*>(this));
-    // Store a 'template' of the current file, so that it can be reapplied after
-    wxArrayString bookmarks;
-    StoreMarkersToArray(bookmarks);
-
-    std::vector<int> folds;
-    StoreCollapsedFoldsToArray(folds);
+    // State locker (on dtor it restores: bookmarks, current line, breakpoints and folds)
+    clEditorStateLocker stateLocker(GetCtrl());
 
     int lineNumber = GetCurrentLine();
     m_mgr->GetStatusBar()->SetMessage(_("Loading file..."));
@@ -2784,9 +2727,6 @@ void LEditor::ReloadFile()
     EmptyUndoBuffer();
     GetCommandsProcessor().Reset();
 
-    // remove breakpoints belongs to this file
-    DelAllBreakpointMarkers();
-
     UpdateColours();
     SetEOL();
 
@@ -2797,7 +2737,7 @@ void LEditor::ReloadFile()
     SetEnsureCaretIsVisible(PositionFromLine(lineNumber));
 
     // mark read only files
-    clMainFrame::Get()->GetMainBook()->MarkEditorReadOnly(this, IsFileReadOnly(GetFileName()));
+    clMainFrame::Get()->GetMainBook()->MarkEditorReadOnly(this);
     SetReloadingFile(false);
 
     // Notify that a file has been loaded into the editor
@@ -2807,18 +2747,12 @@ void LEditor::ReloadFile()
 
     SetProperty(wxT("lexer.cpp.track.preprocessor"), wxT("0"));
     SetProperty(wxT("lexer.cpp.update.preprocessor"), wxT("0"));
-
-    // Now restore as far as possible the look'n'feel of the file
-    ManagerST::Get()->GetBreakpointsMgr()->RefreshBreakpointsForEditor(this);
-    LoadMarkersFromArray(bookmarks);
-    LoadCollapsedFoldsFromArray(folds);
     m_mgr->GetStatusBar()->SetMessage(_("Ready"));
 }
 
 void LEditor::SetEditorText(const wxString& text)
 {
     wxWindowUpdateLocker locker(this);
-    HideCompletionBox();
     SetText(text);
 
     // remove breakpoints belongs to this file
@@ -2892,37 +2826,39 @@ void LEditor::OnContextMenu(wxContextMenuEvent& event)
 {
     wxString selectText = GetSelectedText();
     wxPoint pt = event.GetPosition();
-    wxPoint clientPt = ScreenToClient(pt);
+    if(pt != wxDefaultPosition) { // Analyze position only for mouse-originated events
+        wxPoint clientPt = ScreenToClient(pt);
 
-    // If the right-click is in the margin, provide a different context menu: bookmarks/breakpts
-    int margin = 0;
-    for(int n = 0; n < FOLD_MARGIN_ID; ++n) { // Assume a click anywhere to the left of the fold margin is for markers
-        margin += GetMarginWidth(n);
-    }
-    if(clientPt.x < margin) {
-        GotoPos(PositionFromPoint(clientPt));
-        DoBreakptContextMenu(clientPt);
-        return;
-    }
+        // If the right-click is in the margin, provide a different context menu: bookmarks/breakpts
+        int margin = 0;
+        for(int n = 0; n < FOLD_MARGIN_ID;
+            ++n) { // Assume a click anywhere to the left of the fold margin is for markers
+            margin += GetMarginWidth(n);
+        }
+        if(clientPt.x < margin) {
+            GotoPos(PositionFromPoint(clientPt));
+            DoBreakptContextMenu(clientPt);
+            return;
+        }
 
-    int closePos = PositionFromPointClose(clientPt.x, clientPt.y);
-    if(closePos != wxNOT_FOUND) {
-        if(!selectText.IsEmpty()) {
-            // If the selection text is placed under the cursor,
-            // keep it selected, else, unselect the text
-            // and place the caret to be under cursor
-            int selStart = GetSelectionStart();
-            int selEnd = GetSelectionEnd();
-            if(closePos < selStart || closePos > selEnd) {
-                // cursor is not over the selected text, unselect and re-position caret
+        int closePos = PositionFromPointClose(clientPt.x, clientPt.y);
+        if(closePos != wxNOT_FOUND) {
+            if(!selectText.IsEmpty()) {
+                // If the selection text is placed under the cursor,
+                // keep it selected, else, unselect the text
+                // and place the caret to be under cursor
+                int selStart = GetSelectionStart();
+                int selEnd = GetSelectionEnd();
+                if(closePos < selStart || closePos > selEnd) {
+                    // cursor is not over the selected text, unselect and re-position caret
+                    SetCaretAt(closePos);
+                }
+            } else {
+                // no selection, just place the caret
                 SetCaretAt(closePos);
             }
-        } else {
-            // no selection, just place the caret
-            SetCaretAt(closePos);
         }
     }
-
     // Let the plugins handle this event first
     wxCommandEvent contextMenuEvent(wxEVT_CMD_EDITOR_CONTEXT_MENU, GetId());
     contextMenuEvent.SetEventObject(this);
@@ -2964,7 +2900,8 @@ void LEditor::OnContextMenu(wxContextMenuEvent& event)
 void LEditor::OnKeyDown(wxKeyEvent& event)
 {
     // always cancel the tip
-    CodeCompletionBox::Get().CancelTip();
+    DoCancelCodeCompletionBox();
+
     m_prevSelectionInfo.Clear();
     if(HasSelection()) {
         for(int i = 0; i < GetSelections(); ++i) {
@@ -3022,59 +2959,6 @@ void LEditor::OnKeyDown(wxKeyEvent& event)
         escapeUsed = true;
     }
 
-    if(IsCompletionBoxShown()) {
-        switch(event.GetKeyCode()) {
-        case WXK_NUMPAD_ENTER:
-        case WXK_RETURN:
-        case WXK_TAB:
-            CodeCompletionBox::Get().InsertSelection();
-            HideCompletionBox();
-            return;
-
-        case WXK_ESCAPE:
-        case WXK_LEFT:
-        case WXK_RIGHT:
-        case WXK_HOME:
-        case WXK_END:
-        case WXK_DELETE:
-        case WXK_NUMPAD_DELETE:
-            HideCompletionBox();
-            return;
-        case WXK_UP:
-            CodeCompletionBox::Get().Previous();
-            return;
-        case WXK_DOWN:
-            CodeCompletionBox::Get().Next();
-            return;
-        case WXK_PAGEUP:
-            CodeCompletionBox::Get().PreviousPage();
-            return;
-        case WXK_PAGEDOWN:
-            CodeCompletionBox::Get().NextPage();
-            return;
-        case WXK_BACK: {
-
-            if(event.ControlDown()) {
-                HideCompletionBox();
-            } else {
-
-                wxString word = GetWordAtCaret();
-                if(word.IsEmpty()) {
-                    HideCompletionBox();
-                } else {
-                    word.RemoveLast();
-                    if(CodeCompletionBox::Get().SelectWord(word)) {
-                        HideCompletionBox();
-                    }
-                }
-            }
-            break;
-        }
-        default:
-            break;
-        }
-    }
-
     // If we've not already used ESC, there's a reasonable chance that the user wants to close the QuickFind bar
     if(event.GetKeyCode() == WXK_ESCAPE && !escapeUsed) {
         clMainFrame::Get()->GetMainBook()->ShowQuickBar(
@@ -3109,6 +2993,10 @@ void LEditor::OnFocusLost(wxFocusEvent& event)
 {
     m_isFocused = false;
     event.Skip();
+    if(HasCapture()) {
+        CL_DEBUG("Releasing the mouse...");
+        ReleaseMouse();
+    }
 }
 
 void LEditor::OnRightDown(wxMouseEvent& event)
@@ -3154,8 +3042,7 @@ void LEditor::OnLeftDown(wxMouseEvent& event)
     HighlightWord(false);
 
     // hide completion box
-    HideCompletionBox();
-    CodeCompletionBox::Get().CancelTip();
+    DoCancelCalltip();
     GetFunctionTip()->Deactivate();
 
     if(ManagerST::Get()->GetDebuggerTip()->IsShown()) {
@@ -3627,28 +3514,16 @@ void LEditor::OnDragEnd(wxStyledTextEvent& e)
     e.Skip();
 }
 
-void LEditor::ShowCompletionBox(const std::vector<TagEntryPtr>& tags,
-                                const wxString& word,
-                                bool autoRefreshList,
-                                wxEvtHandler* owner)
-{
-    if(tags.empty()) {
-        return;
-    }
-    CodeCompletionBox::Get().Display(this, tags, word, autoRefreshList, owner);
-}
-
 void LEditor::ShowCompletionBox(const std::vector<TagEntryPtr>& tags, const wxString& word)
 {
     if(tags.empty()) {
         return;
     }
 
-    bool autoRefresh = !(tags.at(0)->GetKind() == wxT("cpp_keyword"));
-    CodeCompletionBox::Get().Display(this, tags, word, autoRefresh, NULL);
+    // When using this method, use an automated refresh completion box
+    wxCodeCompletionBoxManager::Get().ShowCompletionBox(
+        this, tags, wxCodeCompletionBox::kRefreshOnKeyType, wxNOT_FOUND);
 }
-
-void LEditor::HideCompletionBox() { CodeCompletionBox::Get().Hide(); }
 
 int LEditor::GetCurrLineHeight()
 {
@@ -3681,7 +3556,9 @@ int LEditor::GetCurrLineHeight()
 void LEditor::DoHighlightWord()
 {
     wxString word = GetSelectedText();
-    if(word.IsEmpty()) {
+    wxString selectedTextTrimmed = word;
+    selectedTextTrimmed.Trim().Trim(false);
+    if(selectedTextTrimmed.IsEmpty()) {
         return;
     }
 
@@ -3767,7 +3644,7 @@ void LEditor::OnLeftDClick(wxStyledTextEvent& event)
     event.Skip();
 }
 
-bool LEditor::IsCompletionBoxShown() { return CodeCompletionBox::Get().IsShown(); }
+bool LEditor::IsCompletionBoxShown() { return wxCodeCompletionBoxManager::Get().IsShown(); }
 
 int LEditor::GetCurrentLine()
 {
@@ -3911,11 +3788,6 @@ void LEditor::SetUserIndicatorStyleAndColour(int style, const wxColour& colour)
 int LEditor::GetLexerId() { return GetLexer(); }
 
 int LEditor::GetStyleAtPos(int pos) { return GetStyleAt(pos); }
-
-void LEditor::RegisterImageForKind(const wxString& kind, const wxBitmap& bmp)
-{
-    CodeCompletionBox::Get().RegisterImage(kind, bmp);
-}
 
 int LEditor::WordStartPos(int pos, bool onlyWordCharacters)
 {
@@ -4075,23 +3947,33 @@ void LEditor::OnDbgJumpToCursor(wxCommandEvent& event)
     }
 }
 
-void LEditor::DoShowCalltip(int pos, const wxString& tip)
+void LEditor::DoShowCalltip(int pos, const wxString& title, const wxString& tip)
 {
-    CodeCompletionBox::Get().CancelTip();
-    if(pos == wxNOT_FOUND) {
-        CodeCompletionBox::Get().ShowTip(tip, wxGetMousePosition(), this);
-
-    } else {
-        CodeCompletionBox::Get().ShowTip(tip, this);
+    DoCancelCalltip();
+    wxPoint pt;
+    wxString tooltip;
+    tooltip << title;
+    tooltip.Trim().Trim(false);
+    if(!tooltip.IsEmpty()) {
+        tooltip << "\n<hr>";
     }
+    tooltip << tip;
+    m_calltip = new CCBoxTipWindow(this, tooltip);
+    if(pos == wxNOT_FOUND) {
+        pt = ::wxGetMousePosition();
+    } else {
+        pt = PointFromPosition(pos);
+    }
+
+    // Place the tip on top of the mouse position, not under it
+    pt.y -= m_calltip->GetSize().GetHeight();
+    m_calltip->PositionAt(pt, this);
 }
 
 void LEditor::DoCancelCalltip()
 {
-    CodeCompletionBox::Get().CancelTip();
     CallTipCancel();
-    GetFunctionTip()->Deactivate();
-    m_context->OnCalltipCancel();
+    DoCancelCodeCompletionBox();
 }
 
 int LEditor::DoGetOpenBracePos()
@@ -4164,6 +4046,12 @@ void LEditor::OnChange(wxStyledTextEvent& event)
     bool isDelete = event.GetModificationType() & wxSTC_MOD_DELETETEXT;
     bool isUndo = event.GetModificationType() & wxSTC_PERFORMED_UNDO;
     bool isRedo = event.GetModificationType() & wxSTC_PERFORMED_REDO;
+
+    // Remove any code completion annotations if we have some...
+    if(m_hasCCAnnotation) {
+        CallAfter(&LEditor::AnnotationClearAll);
+        m_hasCCAnnotation = false;
+    }
 
     // Notify about this editor being changed
     clCommandEvent eventMod(wxEVT_EDITOR_MODIFIED);
@@ -4446,17 +4334,15 @@ wxMenu* LEditor::DoCreateDebuggerWatchMenu(const wxString& word)
     return menu;
 }
 
-OptionsConfigPtr LEditor::GetOptions()
+void LEditor::DoUpdateOptions()
 {
     // Start by getting the global settings
-    OptionsConfigPtr options = EditorConfigST::Get()->GetOptions();
+    m_options = EditorConfigST::Get()->GetOptions();
 
     // Now let any local preferences overwrite the global equivalent
     if(ManagerST::Get()->IsWorkspaceOpen()) {
-        LocalWorkspaceST::Get()->GetOptions(options, GetProject());
+        LocalWorkspaceST::Get()->GetOptions(m_options, GetProject());
     }
-
-    return options;
 }
 
 bool LEditor::ReplaceAllExactMatch(const wxString& what, const wxString& replaceWith)
@@ -4552,12 +4438,6 @@ wxString LEditor::GetTextRange(int startPos, int endPos) { return wxStyledTextCt
 
 void LEditor::DelayedSetActive() { CallAfter(&LEditor::SetActive); }
 
-void LEditor::OnSetActive(wxCommandEvent& e)
-{
-    wxUnusedVar(e);
-    SetActive();
-}
-
 void LEditor::OnFocus(wxFocusEvent& event)
 {
     m_isFocused = true;
@@ -4651,10 +4531,8 @@ size_t LEditor::GetCodeNavModifier()
 {
     size_t mod = wxMOD_NONE;
     if(GetOptions()->GetOptions() & OptionsConfig::Opt_NavKey_Alt) mod |= wxMOD_ALT;
-
     if(GetOptions()->GetOptions() & OptionsConfig::Opt_NavKey_Control) mod |= wxMOD_CONTROL;
-
-    if(GetOptions()->GetOptions() & OptionsConfig::Opt_NavKey_Shift) mod |= wxMOD_SHIFT;
+    if(GetOptions()->GetOptions() & OptionsConfig::Opt_NavKey_Shift) mod |= wxMOD_ALT;
     return mod;
 }
 
@@ -4768,7 +4646,7 @@ wxString LEditor::GetWordAtMousePointer()
     }
 }
 
-void LEditor::ShowRichTooltip(const wxString& tip, int pos) { DoShowCalltip(pos, tip); }
+void LEditor::ShowRichTooltip(const wxString& tip, const wxString& title, int pos) { DoShowCalltip(pos, title, tip); }
 
 wxString LEditor::GetFirstSelection()
 {
@@ -4853,15 +4731,11 @@ void LEditor::OnTimer(wxTimerEvent& event)
     m_timerHighlightMarkers->Start(100, true);
     if(!HasFocus()) return;
 
-    CL_DEBUG1("Inside LEditor::OnTimer. File: %s", GetFileName().GetFullPath());
-
     if(!HasSelection()) {
-        CL_DEBUG1("No selection - nothing to do here");
         HighlightWord(false);
 
     } else {
         if(EditorConfigST::Get()->GetInteger("highlight_word") == 1) {
-
             int pos = GetCurrentPos();
             int wordStartPos = WordStartPos(pos, true);
             int wordEndPos = WordEndPos(pos, true);
@@ -4912,9 +4786,14 @@ void LEditor::SplitSelection()
         }
 
         ClearSelections();
-        for(int i = selLineStart; i < selLineEnd; ++i) {
-            int caretPos = PositionBefore(LineEnd(i)); // We use PositionBefore here, because LineEnd
-                                                       // includes the EOL as well
+        for(int i = selLineStart; i <= selLineEnd; ++i) {
+            int caretPos;
+            if(i != GetLineCount() - 1) {
+                // Normally use PositionBefore as LineEnd includes the EOL as well
+                caretPos = PositionBefore(LineEnd(i));
+            } else {
+                caretPos = LineEnd(i); // but it seems not for the last line of the doc
+            }
             if(i == selLineStart) {
                 // first selection
                 SetSelection(caretPos, caretPos);
@@ -4942,6 +4821,141 @@ void LEditor::CenterLine(int line, int col)
         pos += col;
     }
     SetCaretAt(pos);
+}
+
+void LEditor::OnEditorConfigChanged(wxCommandEvent& event)
+{
+    event.Skip();
+    DoUpdateOptions();
+    SetProperties();
+}
+
+void LEditor::ConvertIndentToSpaces()
+{
+    clSTCLineKeeper lk(GetCtrl());
+    bool useTabs = GetUseTabs();
+    SetUseTabs(false);
+    int lineCount = GetLineCount();
+    for(int i = 0; i < lineCount; ++i) {
+        int indentStart = PositionFromLine(i);
+        int indentEnd = GetLineIndentPosition(i);
+        int lineIndentSize = GetLineIndentation(i);
+
+        if(indentEnd > indentStart) {
+            // this line have indentation
+            // delete it
+            DeleteRange(indentStart, indentEnd - indentStart);
+            SetLineIndentation(i, lineIndentSize);
+        }
+    }
+    SetUseTabs(useTabs);
+}
+
+void LEditor::ConvertIndentToTabs()
+{
+    clSTCLineKeeper lk(GetCtrl());
+    bool useTabs = GetUseTabs();
+    SetUseTabs(true);
+    int lineCount = GetLineCount();
+    for(int i = 0; i < lineCount; ++i) {
+        int indentStart = PositionFromLine(i);
+        int indentEnd = GetLineIndentPosition(i);
+        int lineIndentSize = GetLineIndentation(i);
+
+        if(indentEnd > indentStart) {
+            // this line have indentation
+            // delete it
+            DeleteRange(indentStart, indentEnd - indentStart);
+            SetLineIndentation(i, lineIndentSize);
+        }
+    }
+    SetUseTabs(useTabs);
+}
+
+void LEditor::DoCancelCodeCompletionBox()
+{
+    if(m_calltip) {
+        m_calltip->Hide();
+        m_calltip->Destroy();
+        m_calltip = NULL;
+    }
+}
+
+void LEditor::SetCodeCompletionAnnotation(const wxString& text, int lineno)
+{
+    AnnotationClearAll();
+    m_hasCCAnnotation = true;
+    AnnotationSetText(lineno, text);
+    AnnotationSetStyle(lineno, ANNOTATION_STYLE_CC_ERROR);
+}
+
+int LEditor::GetFirstSingleLineCommentPos(int from, int commentStyle)
+{
+    int lineNu = LineFromPos(from);
+    int lastPos = from + LineLength(lineNu);
+    for(int i = from; from < lastPos; ++i) {
+        if(GetStyleAt(i) == commentStyle) {
+            return i;
+        }
+    }
+    return wxNOT_FOUND;
+}
+
+void LEditor::ToggleLineComment(const wxString& commentSymbol, int commentStyle)
+{
+    int start = GetSelectionStart();
+    int end = GetSelectionEnd();
+    if(LineFromPosition(PositionBefore(end)) != LineFromPosition(end)) {
+        end = std::max(start, PositionBefore(end));
+    }
+
+    bool doingComment = GetStyleAt(start) != commentStyle;
+
+    int line_start = LineFromPosition(start);
+    int line_end = LineFromPosition(end);
+
+    BeginUndoAction();
+    for(; line_start <= line_end; line_start++) {
+        start = PositionFromLine(line_start);
+        if(doingComment) {
+            InsertText(start, commentSymbol);
+
+        } else {
+            int firstCommentPos = GetFirstSingleLineCommentPos(start, commentStyle);
+            if(firstCommentPos != wxNOT_FOUND) {
+                if(GetStyleAt(firstCommentPos) == commentStyle) {
+                    SetAnchor(firstCommentPos);
+                    SetCurrentPos(PositionAfter(PositionAfter(firstCommentPos)));
+                    DeleteBackNotLine();
+                }
+            }
+        }
+    }
+    EndUndoAction();
+
+    SetCaretAt(PositionFromLine(line_end + 1));
+    ChooseCaretX();
+}
+
+void LEditor::CommentBlockSelection(const wxString& commentBlockStart, const wxString& commentBlockEnd)
+{
+    int start = GetSelectionStart();
+    int end = GetSelectionEnd();
+    if(LineFromPosition(PositionBefore(end)) != LineFromPosition(end)) {
+        end = PositionBefore(end);
+    }
+    if(start == end) return;
+
+    SetCurrentPos(end);
+
+    BeginUndoAction();
+    InsertText(end, commentBlockEnd);
+    InsertText(start, commentBlockStart);
+    EndUndoAction();
+
+    CharRight();
+    CharRight();
+    ChooseCaretX();
 }
 
 // ----------------------------------

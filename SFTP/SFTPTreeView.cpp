@@ -42,6 +42,9 @@
 #include <wx/progdlg.h>
 #include "SSHTerminal.h"
 #include <wx/busyinfo.h>
+#include "globals.h"
+#include "fileutils.h"
+#include "cl_config.h"
 
 static const int ID_NEW = ::wxNewId();
 static const int ID_RENAME = ::wxNewId();
@@ -50,11 +53,12 @@ static const int ID_OPEN = ::wxNewId();
 static const int ID_NEW_FILE = ::wxNewId();
 static const int ID_REFRESH_FOLDER = ::wxNewId();
 static const int ID_EXECUTE_COMMAND = ::wxNewId();
+static const int ID_SHOW_SIZE_COL = ::wxNewId();
+static const int ID_SHOW_TYPE_COL = ::wxNewId();
 
 SFTPTreeView::SFTPTreeView(wxWindow* parent, SFTP* plugin)
     : SFTPTreeViewBase(parent)
     , m_plugin(plugin)
-    , m_terminal(NULL)
 {
     wxImageList* il = m_bmpLoader.MakeStandardMimeImageList();
     m_treeListCtrl->AssignImageList(il);
@@ -65,11 +69,11 @@ SFTPTreeView::SFTPTreeView(wxWindow* parent, SFTP* plugin)
     const SSHAccountInfo::Vect_t& accounts = settings.GetAccounts();
     SSHAccountInfo::Vect_t::const_iterator iter = accounts.begin();
     for(; iter != accounts.end(); ++iter) {
-	m_choiceAccount->Append(iter->GetAccountName());
+        m_choiceAccount->Append(iter->GetAccountName());
     }
 
     if(!m_choiceAccount->IsEmpty()) {
-	m_choiceAccount->SetSelection(0);
+        m_choiceAccount->SetSelection(0);
     }
 
 #ifdef __WXMSW__
@@ -91,22 +95,42 @@ SFTPTreeView::SFTPTreeView(wxWindow* parent, SFTP* plugin)
                             wxCommandEventHandler(SFTPTreeView::OnMenuRefreshFolder),
                             NULL,
                             this);
+    m_treeListCtrl->Bind(wxEVT_MENU, &SFTPTreeView::OnShowTypeCol, this, ID_SHOW_TYPE_COL);
+    m_treeListCtrl->Bind(wxEVT_MENU, &SFTPTreeView::OnShowSizeCol, this, ID_SHOW_SIZE_COL);
+
     wxTheApp->GetTopWindow()->Bind(wxEVT_COMMAND_MENU_SELECTED, &SFTPTreeView::OnCopy, this, wxID_COPY);
     wxTheApp->GetTopWindow()->Bind(wxEVT_COMMAND_MENU_SELECTED, &SFTPTreeView::OnCut, this, wxID_CUT);
     wxTheApp->GetTopWindow()->Bind(wxEVT_COMMAND_MENU_SELECTED, &SFTPTreeView::OnPaste, this, wxID_PASTE);
     wxTheApp->GetTopWindow()->Bind(wxEVT_COMMAND_MENU_SELECTED, &SFTPTreeView::OnSelectAll, this, wxID_SELECTALL);
     wxTheApp->GetTopWindow()->Bind(wxEVT_COMMAND_MENU_SELECTED, &SFTPTreeView::OnUndo, this, wxID_UNDO);
     wxTheApp->GetTopWindow()->Bind(wxEVT_COMMAND_MENU_SELECTED, &SFTPTreeView::OnRedo, this, wxID_REDO);
+
+    bool sizeColVisible = clConfig::Get().Read("SFTP/TreeView/ShowSizeCol", true);
+    bool typeColVisible = clConfig::Get().Read("SFTP/TreeView/ShowTypeCol", true);
+    
+    if(!sizeColVisible) {
+        m_treeListCtrl->DeleteColumn(GetSizeColumnIndex());
+    }
+    
+    if(!typeColVisible) {
+        m_treeListCtrl->DeleteColumn(GetTypeColumnIndex());
+    }
 }
 
 SFTPTreeView::~SFTPTreeView()
 {
+    // Store the columns size
+    clConfig::Get().Write("SFTP/TreeView/ShowSizeCol", IsSizeColumnShown());
+    clConfig::Get().Write("SFTP/TreeView/ShowTypeCol", IsTypeColumnShown());
+
     wxTheApp->GetTopWindow()->Unbind(wxEVT_COMMAND_MENU_SELECTED, &SFTPTreeView::OnCopy, this, wxID_COPY);
     wxTheApp->GetTopWindow()->Unbind(wxEVT_COMMAND_MENU_SELECTED, &SFTPTreeView::OnCut, this, wxID_CUT);
     wxTheApp->GetTopWindow()->Unbind(wxEVT_COMMAND_MENU_SELECTED, &SFTPTreeView::OnPaste, this, wxID_PASTE);
     wxTheApp->GetTopWindow()->Unbind(wxEVT_COMMAND_MENU_SELECTED, &SFTPTreeView::OnSelectAll, this, wxID_SELECTALL);
     wxTheApp->GetTopWindow()->Unbind(wxEVT_COMMAND_MENU_SELECTED, &SFTPTreeView::OnUndo, this, wxID_UNDO);
     wxTheApp->GetTopWindow()->Unbind(wxEVT_COMMAND_MENU_SELECTED, &SFTPTreeView::OnRedo, this, wxID_REDO);
+    m_treeListCtrl->Unbind(wxEVT_MENU, &SFTPTreeView::OnShowTypeCol, this, ID_SHOW_TYPE_COL);
+    m_treeListCtrl->Unbind(wxEVT_MENU, &SFTPTreeView::OnShowSizeCol, this, ID_SHOW_SIZE_COL);
     m_treeListCtrl->Disconnect(
         ID_OPEN, wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(SFTPTreeView::OnMenuOpen), NULL, this);
     m_treeListCtrl->Disconnect(
@@ -124,14 +148,8 @@ SFTPTreeView::~SFTPTreeView()
                                this);
 }
 
-void SFTPTreeView::OnDisconnect(wxCommandEvent& event)
-{
-    DoCloseSession();
-}
-void SFTPTreeView::OnConnect(wxCommandEvent& event)
-{
-    DoOpenSession();
-}
+void SFTPTreeView::OnDisconnect(wxCommandEvent& event) { DoCloseSession(); }
+void SFTPTreeView::OnConnect(wxCommandEvent& event) { DoOpenSession(); }
 
 void SFTPTreeView::DoBuildTree(const wxString& initialFolder)
 {
@@ -157,25 +175,25 @@ void SFTPTreeView::OnItemActivated(wxTreeListEvent& event)
     CHECK_PTR_RET(cd);
 
     if(cd->IsFolder()) {
-	m_treeListCtrl->Expand(event.GetItem());
+        m_treeListCtrl->Expand(event.GetItem());
 
     } else {
 
-	RemoteFileInfo remoteFile;
-	remoteFile.SetAccount(m_account);
-	remoteFile.SetRemoteFile(cd->GetFullPath());
+        RemoteFileInfo remoteFile;
+        remoteFile.SetAccount(m_account);
+        remoteFile.SetRemoteFile(cd->GetFullPath());
 
-	SFTPThreadRequet* req = new SFTPThreadRequet(remoteFile);
-	SFTPWorkerThread::Instance()->Add(req);
+        SFTPThreadRequet* req = new SFTPThreadRequet(remoteFile);
+        SFTPWorkerThread::Instance()->Add(req);
 
-	m_plugin->AddRemoteFile(remoteFile);
+        m_plugin->AddRemoteFile(remoteFile);
     }
 }
 
 void SFTPTreeView::OnItemExpanding(wxTreeListEvent& event)
 {
     if(!DoExpandItem(event.GetItem())) {
-	event.Veto();
+        event.Veto();
     }
 }
 
@@ -184,47 +202,40 @@ void SFTPTreeView::OnOpenAccountManager(wxCommandEvent& event)
     SSHAccountManagerDlg dlg(this);
     if(dlg.ShowModal() == wxID_OK) {
 
-	SFTPSettings settings;
-	settings.Load();
-	settings.SetAccounts(dlg.GetAccounts());
-	settings.Save();
+        SFTPSettings settings;
+        settings.Load();
+        settings.SetAccounts(dlg.GetAccounts());
+        settings.Save();
 
-	// Update the selections at the top
-	wxString curselection = m_choiceAccount->GetStringSelection();
+        // Update the selections at the top
+        wxString curselection = m_choiceAccount->GetStringSelection();
 
-	m_choiceAccount->Clear();
-	const SSHAccountInfo::Vect_t& accounts = settings.GetAccounts();
-	if(accounts.empty()) {
-	    DoCloseSession();
-	    return;
+        m_choiceAccount->Clear();
+        const SSHAccountInfo::Vect_t& accounts = settings.GetAccounts();
+        if(accounts.empty()) {
+            DoCloseSession();
+            return;
 
-	} else {
-	    SSHAccountInfo::Vect_t::const_iterator iter = accounts.begin();
-	    for(; iter != accounts.end(); ++iter) {
-		m_choiceAccount->Append(iter->GetAccountName());
-	    }
+        } else {
+            SSHAccountInfo::Vect_t::const_iterator iter = accounts.begin();
+            for(; iter != accounts.end(); ++iter) {
+                m_choiceAccount->Append(iter->GetAccountName());
+            }
 
-	    int where = m_choiceAccount->FindString(curselection);
-	    if(where == wxNOT_FOUND) {
-		// Our previous session is no longer available, close the session
-		DoCloseSession();
-		where = 0;
-	    }
+            int where = m_choiceAccount->FindString(curselection);
+            if(where == wxNOT_FOUND) {
+                // Our previous session is no longer available, close the session
+                DoCloseSession();
+                where = 0;
+            }
 
-	    m_choiceAccount->SetSelection(where);
-	}
+            m_choiceAccount->SetSelection(where);
+        }
     }
 }
 
 void SFTPTreeView::DoCloseSession()
 {
-    if(m_terminal) {
-	m_plugin->GetManager()->GetDockingManager()->DetachPane(m_terminal);
-	m_plugin->GetManager()->GetDockingManager()->Update();
-	m_terminal->Destroy();
-	m_terminal = NULL;
-    }
-
     m_sftp.reset(NULL);
     m_treeListCtrl->DeleteAllItems();
 }
@@ -241,17 +252,17 @@ bool SFTPTreeView::DoExpandItem(const wxTreeListItem& item)
 
     // already initialized this folder before?
     if(cd->IsInitialized()) {
-	return true;
+        return true;
     }
 
     // get list of files and populate the tree
     SFTPAttribute::List_t attributes;
     try {
-	attributes = m_sftp->List(cd->GetFullPath(), clSFTP::SFTP_BROWSE_FILES | clSFTP::SFTP_BROWSE_FOLDERS);
+        attributes = m_sftp->List(cd->GetFullPath(), clSFTP::SFTP_BROWSE_FILES | clSFTP::SFTP_BROWSE_FOLDERS);
 
     } catch(clException& e) {
-	::wxMessageBox(e.What(), "SFTP", wxOK | wxICON_ERROR | wxCENTER, EventNotifier::Get()->TopFrame());
-	return false;
+        ::wxMessageBox(e.What(), "SFTP", wxOK | wxICON_ERROR | wxCENTER, EventNotifier::Get()->TopFrame());
+        return false;
     }
 
     // Remove the dummy item and replace it with real items
@@ -262,40 +273,44 @@ bool SFTPTreeView::DoExpandItem(const wxTreeListItem& item)
     int nNumOfRealChildren = 0;
     SFTPAttribute::List_t::iterator iter = attributes.begin();
     for(; iter != attributes.end(); ++iter) {
-	SFTPAttribute::Ptr_t attr = (*iter);
-	if(attr->GetName() == "." || attr->GetName() == "..")
-	    continue;
+        SFTPAttribute::Ptr_t attr = (*iter);
+        if(attr->GetName() == "." || attr->GetName() == "..") continue;
 
-	++nNumOfRealChildren;
-	// determine the icon index
-	int imgIdx = wxNOT_FOUND;
-	if(attr->IsFolder()) {
-	    imgIdx = m_bmpLoader.GetMimeImageId(FileExtManager::TypeFolder);
+        ++nNumOfRealChildren;
+        // determine the icon index
+        int imgIdx = wxNOT_FOUND;
+        if(attr->IsFolder()) {
+            imgIdx = m_bmpLoader.GetMimeImageId(FileExtManager::TypeFolder);
 
-	} else {
-	    imgIdx = m_bmpLoader.GetMimeImageId(attr->GetName());
-	}
+        } else {
+            imgIdx = m_bmpLoader.GetMimeImageId(attr->GetName());
+        }
 
-	if(imgIdx == wxNOT_FOUND) {
-	    imgIdx = m_bmpLoader.GetMimeImageId(FileExtManager::TypeText);
-	}
+        if(imgIdx == wxNOT_FOUND) {
+            imgIdx = m_bmpLoader.GetMimeImageId(FileExtManager::TypeText);
+        }
 
-	wxString path;
-	path << cd->GetFullPath() << "/" << attr->GetName();
-	while(path.Replace("//", "/")) {
-	}
+        wxString path;
+        path << cd->GetFullPath() << "/" << attr->GetName();
+        while(path.Replace("//", "/")) {
+        }
 
-	MyClientData* childClientData = new MyClientData(path);
-	childClientData->SetIsFolder(attr->IsFolder());
+        MyClientData* childClientData = new MyClientData(path);
+        childClientData->SetIsFolder(attr->IsFolder());
 
-	wxTreeListItem child = m_treeListCtrl->AppendItem(item, attr->GetName(), imgIdx, imgIdx, childClientData);
-	m_treeListCtrl->SetItemText(child, 1, attr->GetTypeAsString());
-	m_treeListCtrl->SetItemText(child, 2, wxString() << attr->GetSize());
+        wxTreeListItem child = m_treeListCtrl->AppendItem(item, attr->GetName(), imgIdx, imgIdx, childClientData);
+        if(IsTypeColumnShown()) {
+            m_treeListCtrl->SetItemText(child, GetTypeColumnIndex(), attr->GetTypeAsString());
+        }
 
-	// if its type folder, add a fake child item
-	if(attr->IsFolder()) {
-	    m_treeListCtrl->AppendItem(child, "<dummy>");
-	}
+        if(IsSizeColumnShown()) {
+            m_treeListCtrl->SetItemText(child, GetSizeColumnIndex(), wxString() << attr->GetSize());
+        }
+
+        // if its type folder, add a fake child item
+        if(attr->IsFolder()) {
+            m_treeListCtrl->AppendItem(child, "<dummy>");
+        }
     }
 
     return nNumOfRealChildren > 0;
@@ -315,49 +330,64 @@ MyClientDataVect_t SFTPTreeView::GetSelectionsItemData()
     m_treeListCtrl->GetSelections(items);
 
     for(size_t i = 0; i < items.size(); ++i) {
-	MyClientData* cd = GetItemData(items.at(i));
-	if(cd) {
-	    res.push_back(cd);
-	}
+        MyClientData* cd = GetItemData(items.at(i));
+        if(cd) {
+            res.push_back(cd);
+        }
     }
     return res;
 }
 
-void SFTPTreeView::OnDisconnectUI(wxUpdateUIEvent& event)
-{
-    event.Enable(m_sftp);
-}
+void SFTPTreeView::OnDisconnectUI(wxUpdateUIEvent& event) { event.Enable(m_sftp); }
 
 void SFTPTreeView::OnContextMenu(wxTreeListEvent& event)
 {
     CHECK_ITEM_RET(event.GetItem());
 
     MyClientData* cd = GetItemData(event.GetItem());
-    CHECK_PTR_RET(cd);
-
-    // Just incase, make sure the item is selected
-    m_treeListCtrl->Select(event.GetItem());
-
     wxMenu menu;
+    if(cd) {
 
-    if(!cd->IsFolder()) {
-	menu.Append(ID_OPEN, _("Open"));
-	menu.AppendSeparator();
+        // Just incase, make sure the item is selected
+        m_treeListCtrl->Select(event.GetItem());
+        if(!cd->IsFolder()) {
+            menu.Append(ID_OPEN, _("Open"));
+            menu.AppendSeparator();
 
-    } else {
-	menu.Append(ID_NEW, _("Create new directory..."));
-	menu.Append(ID_NEW_FILE, _("Create new file..."));
-	menu.AppendSeparator();
-	menu.Append(ID_REFRESH_FOLDER, _("Refresh"));
-	menu.AppendSeparator();
-    }
-    menu.Append(ID_DELETE, _("Delete"));
+        } else {
+            menu.Append(ID_NEW, _("Create new directory..."));
+            menu.Append(ID_NEW_FILE, _("Create new file..."));
+            menu.AppendSeparator();
+            menu.Append(ID_REFRESH_FOLDER, _("Refresh"));
+            menu.AppendSeparator();
+        }
+        menu.Append(ID_DELETE, _("Delete"));
 
 #ifdef __WXMAC__
-    menu.Enable(ID_DELETE, false);
+        menu.Enable(ID_DELETE, false);
 #endif
 
-    menu.Append(ID_RENAME, _("Rename"));
+        menu.Append(ID_RENAME, _("Rename"));
+    }
+
+#if defined(__WXMSW__) || defined(__WXOSX__)
+    if(cd) {
+        menu.AppendSeparator();
+    }
+    
+    // Append headers column menu items
+    menu.Append(ID_SHOW_TYPE_COL, _("Show 'Type' column"), "", wxITEM_CHECK);
+    menu.Append(ID_SHOW_SIZE_COL, _("Show 'Size' column"), "", wxITEM_CHECK);
+    
+    menu.Check(ID_SHOW_TYPE_COL, IsTypeColumnShown());
+    menu.Check(ID_SHOW_SIZE_COL, IsSizeColumnShown());
+    
+    // Due to bug in wxWidgets, don't allow the user to remove columns once the 
+    // tree is populated
+    menu.Enable(ID_SHOW_TYPE_COL, !IsConnected());
+    menu.Enable(ID_SHOW_SIZE_COL, !IsConnected());
+#endif
+
     m_treeListCtrl->PopupMenu(&menu);
 }
 
@@ -365,31 +395,30 @@ void SFTPTreeView::OnMenuDelete(wxCommandEvent& event)
 {
     wxTreeListItems items;
     m_treeListCtrl->GetSelections(items);
-    if(items.empty())
-	return;
+    if(items.empty()) return;
 
     wxString message;
     message << _("Are you sure you want to delete the selected items?");
     if(::wxMessageBox(message, "Confirm", wxYES_NO | wxCANCEL | wxICON_QUESTION) != wxYES) {
-	return;
+        return;
     }
 
     try {
 
-	for(size_t i = 0; i < items.size(); ++i) {
-	    MyClientData* cd = GetItemData(items.at(i));
-	    if(cd->IsFolder()) {
-		m_sftp->RemoveDir(cd->GetFullPath());
+        for(size_t i = 0; i < items.size(); ++i) {
+            MyClientData* cd = GetItemData(items.at(i));
+            if(cd->IsFolder()) {
+                m_sftp->RemoveDir(cd->GetFullPath());
 
-	    } else {
-		m_sftp->UnlinkFile(cd->GetFullPath());
-	    }
-	    // Remove the selection
-	    m_treeListCtrl->DeleteItem(items.at(i));
-	}
+            } else {
+                m_sftp->UnlinkFile(cd->GetFullPath());
+            }
+            // Remove the selection
+            m_treeListCtrl->DeleteItem(items.at(i));
+        }
 
     } catch(clException& e) {
-	::wxMessageBox(e.What(), "SFTP", wxICON_ERROR | wxOK | wxCENTER);
+        ::wxMessageBox(e.What(), "SFTP", wxICON_ERROR | wxOK | wxCENTER);
     }
 }
 
@@ -397,36 +426,34 @@ void SFTPTreeView::OnMenuNew(wxCommandEvent& event)
 {
     wxTreeListItems items;
     m_treeListCtrl->GetSelections(items);
-    if(items.size() != 1)
-	return;
+    if(items.size() != 1) return;
 
     MyClientData* cd = GetItemData(items.at(0));
     CHECK_PTR_RET(cd);
 
     if(!cd->IsFolder()) {
-	return;
+        return;
     }
 
     wxString new_name = ::wxGetTextFromUser(_("Enter the new directory name:"), _("New Directory"));
     if(!new_name.IsEmpty()) {
 
-	wxString fullpath = cd->GetFullPath();
-	fullpath << "/" << new_name;
-	DoAddFolder(items.at(0), fullpath);
+        wxString fullpath = cd->GetFullPath();
+        fullpath << "/" << new_name;
+        DoAddFolder(items.at(0), fullpath);
     }
 }
 void SFTPTreeView::OnMenuNewFile(wxCommandEvent& event)
 {
     wxTreeListItems items;
     m_treeListCtrl->GetSelections(items);
-    if(items.size() != 1)
-	return;
+    if(items.size() != 1) return;
 
     MyClientData* cd = GetItemData(items.at(0));
     CHECK_PTR_RET(cd);
 
     if(!cd->IsFolder()) {
-	return;
+        return;
     }
 
     wxString defaultValue;
@@ -435,12 +462,12 @@ void SFTPTreeView::OnMenuNewFile(wxCommandEvent& event)
 
     wxString new_name = ::wxGetTextFromUser(_("Enter the new file name:"), _("New File"), defaultValue);
     if(!new_name.IsEmpty()) {
-	wxString fullpath = cd->GetFullPath();
-	fullpath << "/" << new_name;
-	wxTreeListItem fileItem = DoAddFile(items.at(0), fullpath);
-	if(fileItem.IsOk()) {
-	    DoOpenFile(fileItem);
-	}
+        wxString fullpath = cd->GetFullPath();
+        fullpath << "/" << new_name;
+        wxTreeListItem fileItem = DoAddFile(items.at(0), fullpath);
+        if(fileItem.IsOk()) {
+            DoOpenFile(fileItem);
+        }
     }
 }
 
@@ -448,29 +475,27 @@ void SFTPTreeView::OnMenuRename(wxCommandEvent& event)
 {
     wxTreeListItems items;
     m_treeListCtrl->GetSelections(items);
-    if(items.empty())
-	return;
+    if(items.empty()) return;
 
     try {
-	for(size_t i = 0; i < items.size(); ++i) {
+        for(size_t i = 0; i < items.size(); ++i) {
 
-	    MyClientData* cd = GetItemData(items.at(i));
-	    if(!cd)
-		continue; // ??
+            MyClientData* cd = GetItemData(items.at(i));
+            if(!cd) continue; // ??
 
-	    wxString new_name = ::wxGetTextFromUser(_("Enter new name:"), _("Rename"), cd->GetFullName());
-	    if(!new_name.IsEmpty()) {
-		wxString old_path = cd->GetFullPath();
-		cd->SetFullName(new_name);
-		m_sftp->Rename(old_path, cd->GetFullPath());
+            wxString new_name = ::wxGetTextFromUser(_("Enter new name:"), _("Rename"), cd->GetFullName());
+            if(!new_name.IsEmpty()) {
+                wxString old_path = cd->GetFullPath();
+                cd->SetFullName(new_name);
+                m_sftp->Rename(old_path, cd->GetFullPath());
 
-		// Remove the selection
-		m_treeListCtrl->SetItemText(items.at(i), 0, new_name);
-	    }
-	}
+                // Remove the selection
+                m_treeListCtrl->SetItemText(items.at(i), 0, new_name);
+            }
+        }
 
     } catch(clException& e) {
-	::wxMessageBox(e.What(), "SFTP", wxICON_ERROR | wxOK | wxCENTER);
+        ::wxMessageBox(e.What(), "SFTP", wxICON_ERROR | wxOK | wxCENTER);
     }
 }
 
@@ -478,50 +503,54 @@ void SFTPTreeView::OnMenuOpen(wxCommandEvent& event)
 {
     wxTreeListItems items;
     m_treeListCtrl->GetSelections(items);
-    if(items.empty())
-	return;
+    if(items.empty()) return;
 
     for(size_t i = 0; i < items.size(); ++i) {
-	MyClientData* cd = GetItemData(items.at(i));
-	if(!cd || cd->IsFolder()) {
-	    continue;
-	}
+        MyClientData* cd = GetItemData(items.at(i));
+        if(!cd || cd->IsFolder()) {
+            continue;
+        }
 
-	RemoteFileInfo remoteFile;
-	remoteFile.SetAccount(m_account);
-	remoteFile.SetRemoteFile(cd->GetFullPath());
+        RemoteFileInfo remoteFile;
+        remoteFile.SetAccount(m_account);
+        remoteFile.SetRemoteFile(cd->GetFullPath());
 
-	SFTPThreadRequet* req = new SFTPThreadRequet(remoteFile);
-	SFTPWorkerThread::Instance()->Add(req);
+        SFTPThreadRequet* req = new SFTPThreadRequet(remoteFile);
+        SFTPWorkerThread::Instance()->Add(req);
 
-	m_plugin->AddRemoteFile(remoteFile);
+        m_plugin->AddRemoteFile(remoteFile);
     }
 }
 
 wxTreeListItem SFTPTreeView::DoAddFile(const wxTreeListItem& parent, const wxString& path)
 {
     try {
-	m_sftp->Write("", path);
-	SFTPAttribute::Ptr_t attr = m_sftp->Stat(path);
-	// Update the UI
-	MyClientData* newFile = new MyClientData(path);
-	newFile->SetIsFolder(false);
-	newFile->SetInitialized(false);
+        wxMemoryBuffer memBuffer;
+        m_sftp->Write(memBuffer, path);
+        SFTPAttribute::Ptr_t attr = m_sftp->Stat(path);
+        // Update the UI
+        MyClientData* newFile = new MyClientData(path);
+        newFile->SetIsFolder(false);
+        newFile->SetInitialized(false);
 
-	wxTreeListItem child = m_treeListCtrl->AppendItem(
-	    parent,
-	    newFile->GetFullName(),
-	    m_bmpLoader.GetMimeImageId(FileExtManager::GetType(path, FileExtManager::TypeText)),
-	    wxNOT_FOUND,
-	    newFile);
+        wxTreeListItem child = m_treeListCtrl->AppendItem(
+            parent,
+            newFile->GetFullName(),
+            m_bmpLoader.GetMimeImageId(FileExtManager::GetType(path, FileExtManager::TypeText)),
+            wxNOT_FOUND,
+            newFile);
 
-	m_treeListCtrl->SetItemText(child, 1, attr->GetTypeAsString());
-	m_treeListCtrl->SetItemText(child, 2, wxString() << attr->GetSize());
-	m_treeListCtrl->SetSortColumn(0);
-	return child;
+        if(IsTypeColumnShown()) {
+            m_treeListCtrl->SetItemText(child, GetTypeColumnIndex(), attr->GetTypeAsString());
+        }
+        if(IsSizeColumnShown()) {
+            m_treeListCtrl->SetItemText(child, GetSizeColumnIndex(), wxString() << attr->GetSize());
+        }
+        m_treeListCtrl->SetSortColumn(0);
+        return child;
 
     } catch(clException& e) {
-	::wxMessageBox(e.What(), "SFTP", wxICON_ERROR | wxOK | wxCENTER);
+        ::wxMessageBox(e.What(), "SFTP", wxICON_ERROR | wxOK | wxCENTER);
     }
     return wxTreeListItem();
 }
@@ -529,23 +558,28 @@ wxTreeListItem SFTPTreeView::DoAddFile(const wxTreeListItem& parent, const wxStr
 wxTreeListItem SFTPTreeView::DoAddFolder(const wxTreeListItem& parent, const wxString& path)
 {
     try {
-	m_sftp->CreateDir(path);
-	SFTPAttribute::Ptr_t attr = m_sftp->Stat(path);
-	// Update the UI
-	MyClientData* newCd = new MyClientData(path);
-	newCd->SetIsFolder(true);
-	newCd->SetInitialized(false);
+        m_sftp->CreateDir(path);
+        SFTPAttribute::Ptr_t attr = m_sftp->Stat(path);
+        // Update the UI
+        MyClientData* newCd = new MyClientData(path);
+        newCd->SetIsFolder(true);
+        newCd->SetInitialized(false);
 
-	wxTreeListItem child = m_treeListCtrl->AppendItem(
-	    parent, newCd->GetFullName(), m_bmpLoader.GetMimeImageId(FileExtManager::TypeFolder), wxNOT_FOUND, newCd);
-	m_treeListCtrl->SetItemText(child, 1, attr->GetTypeAsString());
-	m_treeListCtrl->SetItemText(child, 2, wxString() << attr->GetSize());
-	m_treeListCtrl->AppendItem(child, "<dummy>");
-	m_treeListCtrl->SetSortColumn(0);
-	return child;
+        wxTreeListItem child = m_treeListCtrl->AppendItem(
+            parent, newCd->GetFullName(), m_bmpLoader.GetMimeImageId(FileExtManager::TypeFolder), wxNOT_FOUND, newCd);
+
+        if(IsTypeColumnShown()) {
+            m_treeListCtrl->SetItemText(child, GetTypeColumnIndex(), attr->GetTypeAsString());
+        }
+        if(IsSizeColumnShown()) {
+            m_treeListCtrl->SetItemText(child, GetSizeColumnIndex(), wxString() << attr->GetSize());
+        }
+        m_treeListCtrl->AppendItem(child, "<dummy>");
+        m_treeListCtrl->SetSortColumn(0);
+        return child;
 
     } catch(clException& e) {
-	::wxMessageBox(e.What(), "SFTP", wxICON_ERROR | wxOK | wxCENTER);
+        ::wxMessageBox(e.What(), "SFTP", wxICON_ERROR | wxOK | wxCENTER);
     }
     return wxTreeListItem();
 }
@@ -554,116 +588,97 @@ void SFTPTreeView::OnAddBookmark(wxAuiToolBarEvent& event)
 {
     if(event.IsDropDownClicked()) {
 
-	// Show the menu
-	const wxArrayString& bookmarks = m_account.GetBookmarks();
-	wxMenu menu;
-	for(size_t i = 0; i < bookmarks.GetCount(); ++i) {
-	    menu.Append(ID_SFTP_BOOKMARK_FIRST + i, bookmarks.Item(i));
-	}
-	menu.AppendSeparator();
-	menu.Append(ID_SFTP_BOOKMARK_SETTINGS, _("Manage bookmarks..."));
+        // Show the menu
+        const wxArrayString& bookmarks = m_account.GetBookmarks();
+        wxMenu menu;
+        for(size_t i = 0; i < bookmarks.GetCount(); ++i) {
+            menu.Append(ID_SFTP_BOOKMARK_FIRST + i, bookmarks.Item(i));
+        }
+        menu.AppendSeparator();
+        menu.Append(ID_SFTP_BOOKMARK_SETTINGS, _("Manage bookmarks..."));
 
-	wxPoint pt = event.GetItemRect().GetBottomLeft();
-	pt.y++;
+        wxPoint pt = event.GetItemRect().GetBottomLeft();
+        pt.y++;
 
-	int sel = m_auibar->GetPopupMenuSelectionFromUser(menu, pt);
-	if(sel >= ID_SFTP_BOOKMARK_FIRST && sel <= ID_SFTP_BOOKMARK_LAST) {
-	    // A bookmark was selected
-	    CallAfter(&SFTPTreeView::DoBuildTree, bookmarks.Item(sel - ID_SFTP_BOOKMARK_FIRST));
+        int sel = m_auibar->GetPopupMenuSelectionFromUser(menu, pt);
+        if(sel >= ID_SFTP_BOOKMARK_FIRST && sel <= ID_SFTP_BOOKMARK_LAST) {
+            // A bookmark was selected
+            CallAfter(&SFTPTreeView::DoBuildTree, bookmarks.Item(sel - ID_SFTP_BOOKMARK_FIRST));
 
-	} else if(sel == ID_SFTP_BOOKMARK_SETTINGS) {
-	    // Bookmark settings
-	    CallAfter(&SFTPTreeView::ManageBookmarks);
-	}
+        } else if(sel == ID_SFTP_BOOKMARK_SETTINGS) {
+            // Bookmark settings
+            CallAfter(&SFTPTreeView::ManageBookmarks);
+        }
 
     } else {
-	try {
-	    // sanity
-	    if(!IsConnected())
-		return;
+        try {
+            // sanity
+            if(!IsConnected()) return;
 
-	    // Get the current selection
-	    MyClientDataVect_t selections = GetSelectionsItemData();
-	    if(selections.size() != 1)
-		return;
+            // Get the current selection
+            MyClientDataVect_t selections = GetSelectionsItemData();
+            if(selections.size() != 1) return;
 
-	    MyClientData* cd = selections.at(0);
-	    CHECK_PTR_RET(cd);
+            MyClientData* cd = selections.at(0);
+            CHECK_PTR_RET(cd);
 
-	    if(!cd->IsFolder())
-		return;
+            if(!cd->IsFolder()) return;
 
-	    m_account.AddBookmark(cd->GetFullPath());
-	    SFTPSettings settings;
-	    settings.Load();
-	    settings.UpdateAccount(m_account);
-	    settings.Save();
+            m_account.AddBookmark(cd->GetFullPath());
+            SFTPSettings settings;
+            settings.Load();
+            settings.UpdateAccount(m_account);
+            settings.Save();
 
-	} catch(clException& e) {
-	    ::wxMessageBox(e.What(), "SFTP", wxICON_ERROR | wxOK | wxCENTER);
-	}
+        } catch(clException& e) {
+            ::wxMessageBox(e.What(), "SFTP", wxICON_ERROR | wxOK | wxCENTER);
+        }
     }
 }
 
-void SFTPTreeView::OnAddBookmarkUI(wxUpdateUIEvent& event)
-{
-    event.Enable(IsConnected());
-}
-void SFTPTreeView::OnGotoLocation(wxCommandEvent& event)
-{
-    DoBuildTree(m_textCtrlQuickJump->GetValue());
-}
-void SFTPTreeView::OnGotoLocationUI(wxUpdateUIEvent& event)
-{
-    event.Enable(IsConnected());
-}
+void SFTPTreeView::OnAddBookmarkUI(wxUpdateUIEvent& event) { event.Enable(IsConnected()); }
+void SFTPTreeView::OnGotoLocation(wxCommandEvent& event) { DoBuildTree(m_textCtrlQuickJump->GetValue()); }
+void SFTPTreeView::OnGotoLocationUI(wxUpdateUIEvent& event) { event.Enable(IsConnected()); }
 
 void SFTPTreeView::ManageBookmarks()
 {
     SFTPManageBookmarkDlg dlg(NULL, m_account.GetBookmarks());
     if(dlg.ShowModal() == wxID_OK) {
-	m_account.SetBookmarks(dlg.GetBookmarks());
-	SFTPSettings settings;
-	settings.Load();
-	settings.UpdateAccount(m_account);
-	settings.Save();
+        m_account.SetBookmarks(dlg.GetBookmarks());
+        SFTPSettings settings;
+        settings.Load();
+        settings.UpdateAccount(m_account);
+        settings.Save();
     }
 }
 
-void SFTPTreeView::OnChoiceAccount(wxCommandEvent& event)
-{
-    event.Skip();
-}
+void SFTPTreeView::OnChoiceAccount(wxCommandEvent& event) { event.Skip(); }
 
-void SFTPTreeView::OnChoiceAccountUI(wxUpdateUIEvent& event)
-{
-    event.Enable(!IsConnected());
-}
+void SFTPTreeView::OnChoiceAccountUI(wxUpdateUIEvent& event) { event.Enable(!IsConnected()); }
 void SFTPTreeView::OnSelectionChanged(wxTreeListEvent& event)
 {
     MyClientDataVect_t items = GetSelectionsItemData();
-    if(items.size() != 1)
-	return;
+    if(items.size() != 1) return;
 
     MyClientData* cd = items.at(0);
     if(cd->IsFolder()) {
-	m_textCtrlQuickJump->ChangeValue(cd->GetFullPath());
+        m_textCtrlQuickJump->ChangeValue(cd->GetFullPath());
     }
 }
 void SFTPTreeView::OnConnection(wxCommandEvent& event)
 {
     SFTPImages images;
     if(IsConnected()) {
-	// Disconnect
-	DoCloseSession();
-	// Update toobar image
-	m_auibar->FindTool(ID_SFTP_CONNECT)->SetBitmap(images.Bitmap("sftp_disconnected"));
-	m_auibar->FindTool(ID_SFTP_CONNECT)->SetShortHelp(_("Disconnected. Click to connect"));
+        // Disconnect
+        DoCloseSession();
+        // Update toobar image
+        m_auibar->FindTool(ID_SFTP_CONNECT)->SetBitmap(images.Bitmap("sftp_disconnected"));
+        m_auibar->FindTool(ID_SFTP_CONNECT)->SetShortHelp(_("Disconnected. Click to connect"));
     } else {
-	DoOpenSession();
-	// Update toobar image
-	m_auibar->FindTool(ID_SFTP_CONNECT)->SetBitmap(images.Bitmap("sftp_connected"));
-	m_auibar->FindTool(ID_SFTP_CONNECT)->SetShortHelp(_("Connected. Click to disconnect"));
+        DoOpenSession();
+        // Update toobar image
+        m_auibar->FindTool(ID_SFTP_CONNECT)->SetBitmap(images.Bitmap("sftp_connected"));
+        m_auibar->FindTool(ID_SFTP_CONNECT)->SetShortHelp(_("Connected. Click to disconnect"));
     }
 }
 
@@ -672,7 +687,7 @@ void SFTPTreeView::DoOpenSession()
     DoCloseSession();
     wxString accountName = m_choiceAccount->GetStringSelection();
     if(accountName.IsEmpty()) {
-	return;
+        return;
     }
 
     SFTPSettings settings;
@@ -680,8 +695,8 @@ void SFTPTreeView::DoOpenSession()
 
     m_account = SSHAccountInfo();
     if(!settings.GetAccount(accountName, m_account)) {
-	::wxMessageBox(wxString() << _("Could not find account: ") << accountName, "codelite", wxICON_ERROR | wxOK);
-	return;
+        ::wxMessageBox(wxString() << _("Could not find account: ") << accountName, "codelite", wxICON_ERROR | wxOK);
+        return;
     }
 
     wxString message;
@@ -690,60 +705,61 @@ void SFTPTreeView::DoOpenSession()
     dlg.Show();
     dlg.Update(1, wxString() << _("Connecting to: ") << accountName << "..." << _("\n(this may take a few seconds)"));
 #else
-    wxBusyInfo busyInfo(_("Connecting...\nNote that when connecting for the first time, this operation may take up to 30 seconds"));
+    wxBusyCursor bc;
+    clGetManager()->SetStatusMessage(wxString() << _("Connecting to: ") << accountName);
 #endif
 
     // We know that there is a bug that libssh succeeded on connecting only on the second attempt..
     // to workaround it, we issue first connect with 1 second timeout, and then re-open the connection
 
     try {
-	clSSH::Ptr_t ssh(
-	    new clSSH(m_account.GetHost(), m_account.GetUsername(), m_account.GetPassword(), m_account.GetPort()));
-	ssh->Connect(wxNOT_FOUND);
+        clSSH::Ptr_t ssh(
+            new clSSH(m_account.GetHost(), m_account.GetUsername(), m_account.GetPassword(), m_account.GetPort()));
+        ssh->Connect(wxNOT_FOUND);
     } catch(...) {
     }
 
     try {
-	clSSH::Ptr_t ssh(
-	    new clSSH(m_account.GetHost(), m_account.GetUsername(), m_account.GetPassword(), m_account.GetPort()));
-	ssh->Connect(5);
+        clSSH::Ptr_t ssh(
+            new clSSH(m_account.GetHost(), m_account.GetUsername(), m_account.GetPassword(), m_account.GetPort()));
+        ssh->Connect(5);
 #ifndef _WIN64
-	dlg.Update(5, _("Connected!"));
-	dlg.Update(6, _("Authenticating server..."));
+        dlg.Update(5, _("Connected!"));
+        dlg.Update(6, _("Authenticating server..."));
 #endif
 
-	if(!ssh->AuthenticateServer(message)) {
-	    if(::wxMessageBox(message, "SSH", wxYES_NO | wxCENTER | wxICON_QUESTION) == wxYES) {
+        if(!ssh->AuthenticateServer(message)) {
+            if(::wxMessageBox(message, "SSH", wxYES_NO | wxCENTER | wxICON_QUESTION) == wxYES) {
 #ifndef _WIN64
-		dlg.Update(7, _("Accepting server authentication server..."));
+                dlg.Update(7, _("Accepting server authentication server..."));
 #endif
-		ssh->AcceptServerAuthentication();
-	    }
-	} else {
+                ssh->AcceptServerAuthentication();
+            }
+        } else {
 #ifndef _WIN64
-	    dlg.Update(7, _("Server authenticated"));
+            dlg.Update(7, _("Server authenticated"));
 #endif
-	}
+        }
 
 #ifndef _WIN64
-	dlg.Update(8, _("Logging..."));
+        dlg.Update(8, _("Logging..."));
 #endif
-	ssh->Login();
-	m_sftp.reset(new clSFTP(ssh));
-	m_sftp->Initialize();
-	m_sftp->SetAccount(m_account.GetAccountName());
-	m_plugin->GetManager()->SetStatusMessage(wxString() << _("Done!"));
+        ssh->Login();
+        m_sftp.reset(new clSFTP(ssh));
+        m_sftp->Initialize();
+        m_sftp->SetAccount(m_account.GetAccountName());
+        m_plugin->GetManager()->SetStatusMessage(wxString() << _("Done!"));
 
 #ifndef _WIN64
-	dlg.Update(9, _("Fetching directory list..."));
+        dlg.Update(9, _("Fetching directory list..."));
 #endif
-	DoBuildTree(m_account.GetDefaultFolder().IsEmpty() ? "/" : m_account.GetDefaultFolder());
+        DoBuildTree(m_account.GetDefaultFolder().IsEmpty() ? "/" : m_account.GetDefaultFolder());
 #ifndef _WIN64
-	dlg.Update(10, _("Done"));
+        dlg.Update(10, _("Done"));
 #endif
     } catch(clException& e) {
-	::wxMessageBox(e.What(), "codelite", wxICON_ERROR | wxOK);
-	DoCloseSession();
+        ::wxMessageBox(e.What(), "codelite", wxICON_ERROR | wxOK);
+        DoCloseSession();
     }
 }
 
@@ -751,13 +767,12 @@ void SFTPTreeView::OnMenuRefreshFolder(wxCommandEvent& event)
 {
     wxTreeListItems items;
     m_treeListCtrl->GetSelections(items);
-    if(items.size() != 1)
-	return;
+    if(items.size() != 1) return;
 
     wxTreeListItem item = items.at(0);
     MyClientData* cd = GetItemData(item);
     if(!cd || !cd->IsFolder()) {
-	return;
+        return;
     }
 
     // Uninitialize the folder
@@ -766,9 +781,9 @@ void SFTPTreeView::OnMenuRefreshFolder(wxCommandEvent& event)
     // Delete all the children
     wxTreeListItem child = m_treeListCtrl->GetFirstChild(item);
     while(child.IsOk()) {
-	wxTreeListItem nextChild = m_treeListCtrl->GetNextSibling(child);
-	m_treeListCtrl->DeleteItem(child);
-	child = nextChild;
+        wxTreeListItem nextChild = m_treeListCtrl->GetNextSibling(child);
+        m_treeListCtrl->DeleteItem(child);
+        child = nextChild;
     }
 
     // Re-append the dummy item
@@ -780,7 +795,7 @@ void SFTPTreeView::OnCopy(wxCommandEvent& event)
 {
     event.Skip();
     if(m_textCtrlQuickJump->HasFocus()) {
-	event.Skip(false);
+        event.Skip(false);
     }
 }
 
@@ -788,8 +803,8 @@ void SFTPTreeView::OnPaste(wxCommandEvent& event)
 {
     event.Skip();
     if(m_textCtrlQuickJump->HasFocus()) {
-	event.Skip(false);
-	m_textCtrlQuickJump->Paste();
+        event.Skip(false);
+        m_textCtrlQuickJump->Paste();
     }
 }
 
@@ -797,8 +812,8 @@ void SFTPTreeView::OnRedo(wxCommandEvent& event)
 {
     event.Skip();
     if(m_textCtrlQuickJump->HasFocus()) {
-	event.Skip(false);
-	m_textCtrlQuickJump->Redo();
+        event.Skip(false);
+        m_textCtrlQuickJump->Redo();
     }
 }
 
@@ -806,8 +821,8 @@ void SFTPTreeView::OnSelectAll(wxCommandEvent& event)
 {
     event.Skip();
     if(m_textCtrlQuickJump->HasFocus()) {
-	event.Skip(false);
-	m_textCtrlQuickJump->SelectAll();
+        event.Skip(false);
+        m_textCtrlQuickJump->SelectAll();
     }
 }
 
@@ -815,8 +830,8 @@ void SFTPTreeView::OnUndo(wxCommandEvent& event)
 {
     event.Skip();
     if(m_textCtrlQuickJump->HasFocus()) {
-	event.Skip(false);
-	m_textCtrlQuickJump->Undo();
+        event.Skip(false);
+        m_textCtrlQuickJump->Undo();
     }
 }
 
@@ -824,42 +839,42 @@ void SFTPTreeView::OnCut(wxCommandEvent& event)
 {
     event.Skip();
     if(m_textCtrlQuickJump->HasFocus()) {
-	event.Skip(false);
-	m_textCtrlQuickJump->Cut();
+        event.Skip(false);
+        m_textCtrlQuickJump->Cut();
     }
 }
 
 void SFTPTreeView::OnOpenTerminal(wxCommandEvent& event)
 {
-    if(!m_terminal) {
-	m_terminal = new SSHTerminal(NULL, m_sftp->GetSsh());
-	m_terminal->SetTitle(m_sftp->GetAccount());
-	m_terminal->Show();
-	m_terminal->Bind(wxEVT_SSH_TERMINAL_CLOSING, &SFTPTreeView::OnTerminalClosed, this);
+    // Open terminal to the selected account
+    SFTPSettings settings;
+    settings.Load();
 
-    } else if(m_terminal) {
-	m_terminal->Destroy();
-	m_terminal = NULL;
+    wxString accountName = m_choiceAccount->GetStringSelection();
+    if(accountName.IsEmpty()) {
+        return;
     }
+
+    SSHAccountInfo account;
+    if(!settings.GetAccount(accountName, account)) {
+        ::wxMessageBox(wxString() << _("Could not find account: ") << accountName, "codelite", wxICON_ERROR | wxOK);
+        return;
+    }
+
+    wxString connectString;
+    connectString << account.GetUsername() << "@" << account.GetHost();
+
+    const wxString& sshClient = settings.GetSshClient();
+    FileUtils::OpenSSHTerminal(sshClient, connectString, account.GetPassword(), account.GetPort());
 }
 
-void SFTPTreeView::OnOpenTerminalUI(wxUpdateUIEvent& event)
-{
-    event.Enable(m_sftp);
-    event.Check(m_sftp && m_terminal != NULL);
-}
-
-void SFTPTreeView::OnTerminalClosed(clCommandEvent& event)
-{
-    // terminal was closed by the user
-    m_terminal = NULL;
-}
+void SFTPTreeView::OnOpenTerminalUI(wxUpdateUIEvent& event) { event.Enable(true); }
 
 bool SFTPTreeView::DoOpenFile(const wxTreeListItem& item)
 {
     MyClientData* cd = GetItemData(item);
     if(!cd || cd->IsFolder()) {
-	return false;
+        return false;
     }
 
     RemoteFileInfo remoteFile;
@@ -871,4 +886,61 @@ bool SFTPTreeView::DoOpenFile(const wxTreeListItem& item)
 
     m_plugin->AddRemoteFile(remoteFile);
     return true;
+}
+
+void SFTPTreeView::OnShowSizeCol(wxCommandEvent& event)
+{
+    if(event.IsChecked()) {
+        // Append the column
+        m_treeListCtrl->AppendColumn(_("Size"), 75);
+    } else {
+        if(IsSizeColumnShown()) {
+            CallAfter(&SFTPTreeView::DoDeleteColumn, GetSizeColumnIndex());
+        }
+    }
+}
+
+void SFTPTreeView::OnShowTypeCol(wxCommandEvent& event)
+{
+    if(event.IsChecked()) {
+        // Append the column
+        m_treeListCtrl->AppendColumn(_("Type"), 75);
+    } else {
+        if(IsTypeColumnShown()) {
+            CallAfter(&SFTPTreeView::DoDeleteColumn, GetTypeColumnIndex());
+        }
+    }
+}
+
+int SFTPTreeView::GetSizeColumnIndex() const
+{
+    wxDataViewCtrl* ctrl = m_treeListCtrl->GetDataView();
+    for(size_t i = 0; i < ctrl->GetColumnCount(); ++i) {
+        wxDataViewColumn* col = ctrl->GetColumn(i);
+        if(col->GetTitle() == _("Size")) {
+            return (int)i;
+        }
+    }
+    return wxNOT_FOUND;
+}
+
+int SFTPTreeView::GetTypeColumnIndex() const
+{
+    wxDataViewCtrl* ctrl = m_treeListCtrl->GetDataView();
+    for(size_t i = 0; i < ctrl->GetColumnCount(); ++i) {
+        wxDataViewColumn* col = ctrl->GetColumn(i);
+        if(col->GetTitle() == _("Type")) {
+            return (int)i;
+        }
+    }
+    return wxNOT_FOUND;
+}
+
+int SFTPTreeView::IsSizeColumnShown() const { return (GetSizeColumnIndex() != wxNOT_FOUND);}
+
+int SFTPTreeView::IsTypeColumnShown() const { return (GetTypeColumnIndex() != wxNOT_FOUND);}
+
+void SFTPTreeView::DoDeleteColumn(int colIdx)
+{
+    m_treeListCtrl->DeleteColumn(colIdx);
 }

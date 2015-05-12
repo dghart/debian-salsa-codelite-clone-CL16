@@ -39,6 +39,15 @@ if (UNIX)
 set (LINKER_OPTIONS -Wl,-rpath,"${PLUGINS_DIR}")
 endif (UNIX)
 
+if (UNIX AND NOT APPLE)
+    set ( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC" )
+    set ( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC" )
+endif()
+
+if ( APPLE )
+    add_definitions(-fPIC)
+endif()
+
 # Add all CPP files
 file(GLOB SRCS "*.cpp")
 
@@ -48,17 +57,12 @@ add_library(${PLUGIN_NAME} SHARED ${SRCS})
 # Codelite plugins doesn't use the "lib" prefix.
 set_target_properties(${PLUGIN_NAME} PROPERTIES PREFIX "")
 target_link_libraries(${PLUGIN_NAME}
-    ${LINKER_OPTIONS}
-    ${wxWidgets_LIBRARIES}
-    -L"${CL_LIBPATH}"
-    -llibcodelite
-    -lplugin
-    -lwxsqlite3 
-    -lsqlite3lib
-)
-
-# The plugin library is required
-add_dependencies(${PLUGIN_NAME} plugin)
-
+                      ${LINKER_OPTIONS}
+                      ${wxWidgets_LIBRARIES}
+                      libcodelite
+                      plugin
+                      wxsqlite3 
+                      sqlite3lib
+                      )
 # Installation destination
-install(TARGETS ${PLUGIN_NAME} DESTINATION ${PLUGINS_DIR})
+CL_INSTALL_PLUGIN(${PLUGIN_NAME})
