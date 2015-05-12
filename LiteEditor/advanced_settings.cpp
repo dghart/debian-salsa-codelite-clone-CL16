@@ -70,7 +70,7 @@ AdvancedDlg::AdvancedDlg(wxWindow* parent,
     wxBoxSizer* bSizer4;
     bSizer4 = new wxBoxSizer(wxHORIZONTAL);
 
-    bSizer5->Add(bSizer4, 0, wxALIGN_RIGHT | wxEXPAND, 5);
+    bSizer5->Add(bSizer4, 0, wxEXPAND, 5);
 
     m_compilersPage = new CompilerMainPage(m_compilersMainPanel);
     bSizer5->Add(m_compilersPage, 1, wxALL | wxEXPAND, 5);
@@ -90,10 +90,11 @@ AdvancedDlg::AdvancedDlg(wxWindow* parent,
     LoadCompilers();
 
     // center the dialog
-    Centre();
+    CentreOnParent();
     this->Layout();
-
-    WindowAttrManager::Load(this, wxT("BuildSettingsDlg"), NULL);
+    
+    SetName("AdvancedDlg");
+    WindowAttrManager::Load(this);
 }
 
 void AdvancedDlg::LoadCompilers() { m_compilersPage->LoadCompilers(); }
@@ -101,7 +102,7 @@ void AdvancedDlg::LoadCompilers() { m_compilersPage->LoadCompilers(); }
 AdvancedDlg::~AdvancedDlg()
 {
     wxDELETE(m_rightclickMenu);
-    WindowAttrManager::Save(this, wxT("BuildSettingsDlg"), NULL);
+    
 }
 
 void AdvancedDlg::OnButtonNewClicked()
@@ -174,22 +175,6 @@ void AdvancedDlg::OnContextMenu(wxContextMenuEvent& e)
     //    }
 }
 
-void AdvancedDlg::OnRestoreDefaults(wxCommandEvent&)
-{
-    if(wxMessageBox(_("Are you sure you want to revert to the default settings?"),
-                    wxT("CodeLite"),
-                    wxYES_NO | wxCANCEL | wxCENTRE | wxICON_WARNING,
-                    this) == wxYES) {
-        // restore the default settings of the build configuration
-        BuildSettingsConfigST::Get()->RestoreDefaults();
-
-        // Dismiss this dialog and reload it
-        wxCommandEvent event(wxEVT_COMMAND_MENU_SELECTED, XRCID("advance_settings"));
-        clMainFrame::Get()->GetEventHandler()->AddPendingEvent(event);
-        EndModal(wxID_OK);
-    }
-}
-
 #define ID_MENU_AUTO_DETECT_COMPILERS 1001
 #define ID_MENU_ADD_COMPILER_BY_PATH 1002
 #define ID_MENU_CLONE_COMPILER 1003
@@ -257,7 +242,7 @@ void AdvancedDlg::OnApply(wxCommandEvent& event)
     }
 }
 
-void AdvancedDlg::OnApplyUI(wxUpdateUIEvent& event) { event.Enable(m_compilersPage->IsDirty()); }
+void AdvancedDlg::OnApplyUI(wxUpdateUIEvent& event) { event.Enable(m_compilersPage->IsDirty() || m_buildSettings->IsModified()); }
 
 void AdvancedDlg::OnAddExistingCompiler()
 {

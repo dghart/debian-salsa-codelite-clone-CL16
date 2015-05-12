@@ -1,13 +1,17 @@
 #include "wxCustomStatusBar.h"
 #include <wx/dcbuffer.h>
 #include <wx/msgdlg.h>
+#include <wx/dcmemory.h>
+#include <wx/settings.h>
+#include <wx/dcclient.h>
 
 //========================------------------------------------
 //========================------------------------------------
 
 wxDEFINE_EVENT(wxEVT_STATUSBAR_CLICKED, clCommandEvent);
 
-wxCustomStatusBarArt::wxCustomStatusBarArt()
+wxCustomStatusBarArt::wxCustomStatusBarArt(const wxString& name)
+    : m_name(name)
 {
     m_penColour = wxColour(125, 125, 125);
     m_bgColour = wxColour(86, 86, 86);
@@ -32,7 +36,7 @@ void wxCustomStatusBarArt::DrawFieldSeparator(wxDC& dc, const wxRect& fieldRect)
     wxPoint bottomPt, topPt;
 
     topPt = fieldRect.GetTopLeft();
-    topPt.y += 1;
+    topPt.y += 2;
 
     bottomPt = fieldRect.GetBottomLeft();
     bottomPt.y += 1;
@@ -49,13 +53,66 @@ void wxCustomStatusBarFieldText::Render(wxDC& dc, const wxRect& rect, wxCustomSt
 
     // Center text
     wxCoord textY = (rect.GetHeight() - textSize.GetHeight()) / 2 + rect.y;
-    wxCoord textX = (rect.GetWidth() - textSize.GetWidth()) / 2 + rect.x;
+    wxCoord textX;
+    if(m_textAlign == wxALIGN_CENTER) {
+        textX = (rect.GetWidth() - textSize.GetWidth()) / 2 + rect.x;
+    } else {
+        // left
+        textX = rect.x + 5;
+    }
 
     // draw border line
     art->DrawFieldSeparator(dc, rect);
 
     // Draw the text
     art->DrawText(dc, textX, textY + 1, m_text);
+}
+
+void wxCustomStatusBarFieldText::SetText(const wxString& text)
+{
+    m_text = text;
+    // Render the new text
+    if(m_rect != wxRect() && m_parent) {
+        // valid rect
+        wxCustomStatusBarArt::Ptr_t art = m_parent->GetArt();
+        if(art->GetName() == m_parent->GetLastArtNameUsedForPaint()) {
+            // Make sure we draw only when the "art" objects are in sync with the field
+            // and with the bar itself
+            wxBitmap bmp(m_rect.GetSize());
+            wxMemoryDC memDc;
+            memDc.SelectObject(bmp);
+            memDc.SetFont(wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT));
+            wxRect rect(m_rect.GetSize()); // Create the same rect size, but on 0,0
+
+            // Draw the field background
+            memDc.SetBrush(art->GetBgColour());
+            memDc.SetPen(art->GetBgColour());
+            memDc.DrawRectangle(rect);
+
+            // Draw top separator line
+            wxPoint topLeft = rect.GetTopLeft();
+            wxPoint topRight = rect.GetTopRight();
+            topRight.x += 1;
+            memDc.SetPen(art->GetSeparatorColour());
+            memDc.DrawLine(topLeft, topRight);
+
+            // Draw the bottom separator using the pen colour
+            // this will give a "sink" look to the status bar
+            topLeft.y += 1;
+            topRight.y += 1;
+            memDc.SetPen(art->GetPenColour());
+            memDc.DrawLine(topLeft, topRight);
+
+            // Render will override m_rect, we so keep a copy
+            wxRect origRect = m_rect;
+            Render(memDc, rect, art);
+            m_rect = origRect;
+            memDc.SelectObject(wxNullBitmap);
+            // bmp contains the field content, draw it
+            wxClientDC dc(m_parent);
+            dc.DrawBitmap(bmp, m_rect.GetTopLeft());
+        }
+    }
 }
 
 //========================------------------------------------
@@ -65,18 +122,17 @@ wxCustomStatusBarAnimationField::wxCustomStatusBarAnimationField(wxCustomStatusB
                                                                  const wxBitmap& sprite,
                                                                  wxOrientation spriteOrientation,
                                                                  const wxSize& animSize)
+    : wxCustomStatusBarField(parent)
 {
     m_animation = new wxPNGAnimation(parent, sprite, spriteOrientation, animSize);
-    
+
     m_width = animSize.GetWidth() + (2 * 5); // 2*5 here for spaces from the left and right
     // We need to tie the animation mouse events to the status bar, otherwise, whenever we hover or
     // move over the animation control - it will not be seen by the status bar
     m_animation->Bind(wxEVT_LEFT_DOWN, &wxCustomStatusBarAnimationField::OnAnimationClicked, this);
 }
 
-wxCustomStatusBarAnimationField::~wxCustomStatusBarAnimationField()
-{
-}
+wxCustomStatusBarAnimationField::~wxCustomStatusBarAnimationField() {}
 
 void wxCustomStatusBarAnimationField::Render(wxDC& dc, const wxRect& rect, wxCustomStatusBarArt::Ptr_t art)
 {
@@ -131,8 +187,11 @@ void wxCustomStatusBarBitmapField::Render(wxDC& dc, const wxRect& rect, wxCustom
 
 wxCustomStatusBar::wxCustomStatusBar(wxWindow* parent, wxWindowID id, long style)
     : wxStatusBar(parent, id, style)
-    , m_art(new wxCustomStatusBarArt)
+    , m_art(new wxCustomStatusBarArt("Dark"))
+    , m_mainText(new wxCustomStatusBarFieldText(this, 0))
 {
+    m_mainText->Cast<wxCustomStatusBarFieldText>()->SetTextAlignment(wxALIGN_LEFT);
+    
     Bind(wxEVT_PAINT, &wxCustomStatusBar::OnPaint, this);
     Bind(wxEVT_ERASE_BACKGROUND, &wxCustomStatusBar::OnEraseBackround, this);
     Bind(wxEVT_LEFT_DOWN, &wxCustomStatusBar::OnLeftDown, this);
@@ -152,9 +211,13 @@ void wxCustomStatusBar::OnPaint(wxPaintEvent& event)
     wxBufferedPaintDC dc(this);
     wxRect rect = GetClientRect();
 
+    // Remember which art name used for painting
+    SetLastArtNameUsedForPaint(m_art->GetName());
+
     // Fill the background
     dc.SetBrush(m_art->GetBgColour());
     dc.SetPen(m_art->GetBgColour());
+
     dc.DrawRectangle(rect);
 
     // Draw top separator line
@@ -185,17 +248,19 @@ void wxCustomStatusBar::OnPaint(wxPaintEvent& event)
     //===----------------------
     // Draw the main field
     //===----------------------
+    // update the rect
+    
     wxRect mainRect(0, rect.y, offsetX, rect.height);
     dc.SetClippingRegion(mainRect);
-    wxSize textSize = dc.GetTextExtent(m_text);
-    wxCoord textY = (rect.GetHeight() - textSize.GetHeight()) / 2 + rect.y;
-    wxCoord textX = 3;
-    m_art->DrawText(dc, textX, textY, m_text);
+    m_mainText->SetRect(mainRect);
+    m_mainText->Cast<wxCustomStatusBarFieldText>()->Render(dc, mainRect, m_art);
+    m_mainText->Cast<wxCustomStatusBarFieldText>()->SetTooltip(m_text);
     dc.DestroyClippingRegion();
 
     //===----------------------
     // Draw the fields
     //===----------------------
+    
     for(size_t i = 0; i < m_fields.size(); ++i) {
         // Prepare the rect
         wxRect fieldRect(offsetX, rect.y, m_fields.at(i)->GetWidth(), rect.height);
@@ -256,7 +321,18 @@ void wxCustomStatusBar::SetText(const wxString& message)
 {
     m_text = message;
     SetToolTip(message);
-    Refresh();
+    
+    // Make sure we draw only when the "art" objects are in sync with the field
+    // and with the bar itself
+    wxRect mainRect = DoGetMainFieldRect();
+    wxBitmap bmp(mainRect.GetSize());
+    wxMemoryDC memDc;
+    memDc.SelectObject(bmp);
+    
+    // update the rect
+    m_mainText->SetRect(mainRect);
+    m_mainText->Cast<wxCustomStatusBarFieldText>()->SetText(m_text);
+    m_mainText->Cast<wxCustomStatusBarFieldText>()->SetTooltip(m_text);
 }
 
 void wxCustomStatusBar::OnMouseMotion(wxMouseEvent& event)
@@ -285,6 +361,29 @@ void wxCustomStatusBar::AnimationClicked(wxCustomStatusBarField* field)
             break;
         }
     }
+}
+
+void wxCustomStatusBar::SetArt(wxCustomStatusBarArt::Ptr_t art)
+{
+    this->m_art = art;
+    Refresh();
+}
+
+wxRect wxCustomStatusBar::DoGetMainFieldRect()
+{
+    // Calculate the fields length
+    wxRect rect = GetClientRect();
+    size_t totalLength = rect.GetWidth();
+    size_t fieldsLength = DoGetFieldsWidth();
+
+    size_t offsetX = 0;
+    if(totalLength <= fieldsLength) {
+        offsetX = 0;
+    } else {
+        offsetX = totalLength - fieldsLength;
+    }
+    wxRect mainRect(0, rect.y, offsetX, rect.height);
+    return mainRect;
 }
 
 bool wxCustomStatusBarField::HitTest(const wxPoint& point) const { return m_rect.Contains(point); }

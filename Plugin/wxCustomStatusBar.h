@@ -18,12 +18,13 @@ protected:
     wxColour m_textColour;
     wxColour m_textShadowColour;
     wxColour m_separatorColour;
+    wxString m_name;
 
 public:
     typedef wxSharedPtr<wxCustomStatusBarArt> Ptr_t;
 
 public:
-    wxCustomStatusBarArt();
+    wxCustomStatusBarArt(const wxString& name);
     virtual ~wxCustomStatusBarArt() {}
 
     void DrawText(wxDC& dc, wxCoord x, wxCoord y, const wxString& text);
@@ -39,6 +40,8 @@ public:
     const wxColour& GetTextShadowColour() const { return m_textShadowColour; }
     void SetSeparatorColour(const wxColour& separatorColour) { this->m_separatorColour = separatorColour; }
     const wxColour& GetSeparatorColour() const { return m_separatorColour; }
+    void SetName(const wxString& name) { this->m_name = name; }
+    const wxString& GetName() const { return m_name; }
 };
 
 //================---------------
@@ -49,12 +52,16 @@ class WXDLLIMPEXP_SDK wxCustomStatusBarField : public wxEvtHandler
 protected:
     wxRect m_rect;
     wxString m_tooltip;
+    wxCustomStatusBar* m_parent;
 
 public:
     typedef wxSharedPtr<wxCustomStatusBarField> Ptr_t;
     typedef std::vector<wxCustomStatusBarField::Ptr_t> Vect_t;
 
-    wxCustomStatusBarField() {}
+    wxCustomStatusBarField(wxCustomStatusBar* parent)
+        : m_parent(parent)
+    {
+    }
     virtual ~wxCustomStatusBarField() {}
 
     /**
@@ -83,6 +90,8 @@ public:
 
     virtual void SetTooltip(const wxString& tooltip) { this->m_tooltip = tooltip; }
     const wxString& GetTooltip() const { return m_tooltip; }
+    const wxRect& GetRect() const { return m_rect; }
+    void SetRect(const wxRect& rect) { this->m_rect = rect; }
     template <typename T> T* Cast() const { return dynamic_cast<T*>(const_cast<wxCustomStatusBarField*>(this)); }
 };
 
@@ -93,18 +102,22 @@ class WXDLLIMPEXP_SDK wxCustomStatusBarFieldText : public wxCustomStatusBarField
 {
     wxString m_text;
     size_t m_width;
-
+    wxAlignment m_textAlign;
+    
 public:
-    wxCustomStatusBarFieldText(size_t width)
-        : m_width(width)
+    wxCustomStatusBarFieldText(wxCustomStatusBar* parent, size_t width)
+        : wxCustomStatusBarField(parent)
+        , m_width(width)
+        , m_textAlign(wxALIGN_CENTER)
     {
     }
     virtual ~wxCustomStatusBarFieldText() {}
     virtual void Render(wxDC& dc, const wxRect& rect, wxCustomStatusBarArt::Ptr_t art);
-    void SetText(const wxString& text) { this->m_text = text; }
+    void SetText(const wxString& text);
     const wxString& GetText() const { return m_text; }
     void SetWidth(size_t width) { this->m_width = width; }
     size_t GetWidth() const { return m_width; }
+    void SetTextAlignment(wxAlignment align) { m_textAlign = align; }
 };
 
 //================---------------
@@ -116,8 +129,9 @@ class WXDLLIMPEXP_SDK wxCustomStatusBarBitmapField : public wxCustomStatusBarFie
     wxBitmap m_bitmap;
 
 public:
-    wxCustomStatusBarBitmapField(size_t width)
-        : m_width(width)
+    wxCustomStatusBarBitmapField(wxCustomStatusBar* parent, size_t width)
+        : wxCustomStatusBarField(parent)
+        , m_width(width)
     {
     }
     virtual ~wxCustomStatusBarBitmapField() {}
@@ -135,9 +149,10 @@ class WXDLLIMPEXP_SDK wxCustomStatusBarAnimationField : public wxCustomStatusBar
 {
     size_t m_width;
     wxPNGAnimation* m_animation;
+
 protected:
     void OnAnimationClicked(wxMouseEvent& event);
-    
+
 public:
     /**
      * @brief construct animation field.
@@ -160,7 +175,7 @@ public:
      * @brief is the animation running?
      */
     bool IsRunning() const { return m_animation->IsRunning(); }
-    
+
     /**
      * @brief set the tooltip to the animation as well
      */
@@ -181,7 +196,9 @@ class WXDLLIMPEXP_SDK wxCustomStatusBar : public wxStatusBar
     wxCustomStatusBarArt::Ptr_t m_art;
     wxCustomStatusBarField::Vect_t m_fields;
     wxString m_text;
-
+    wxString m_lastArtNameUsedForPaint;
+    wxCustomStatusBarField::Ptr_t m_mainText;
+    
 protected:
     size_t DoGetFieldsWidth();
 
@@ -190,18 +207,26 @@ protected:
     void OnEraseBackround(wxEraseEvent& event);
     void OnLeftDown(wxMouseEvent& event);
     void OnMouseMotion(wxMouseEvent& event);
-
+    wxRect DoGetMainFieldRect();
+    
 public:
     /**
      * @brief animation control owned by 'field' was clicked
      */
     void AnimationClicked(wxCustomStatusBarField* field);
-    
+
+    void SetLastArtNameUsedForPaint(const wxString& lastArtNameUsedForPaint)
+    {
+        this->m_lastArtNameUsedForPaint = lastArtNameUsedForPaint;
+    }
+    const wxString& GetLastArtNameUsedForPaint() const { return m_lastArtNameUsedForPaint; }
+
 public:
     wxCustomStatusBar(wxWindow* parent, wxWindowID id = wxID_ANY, long style = 0);
     virtual ~wxCustomStatusBar();
 
-    void SetArt(wxCustomStatusBarArt::Ptr_t art) { this->m_art = art; }
+    void SetArt(wxCustomStatusBarArt::Ptr_t art);
+
     wxCustomStatusBarArt::Ptr_t GetArt() { return m_art; }
 
     void AddField(wxCustomStatusBarField::Ptr_t field) { m_fields.push_back(field); }

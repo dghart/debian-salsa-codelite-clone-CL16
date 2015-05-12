@@ -50,13 +50,13 @@ static const wxDouble X_DIAMETER = 2 * X_RADIUS;
 #define BMP_Y_SPACER 0
 #elif defined(__WXMSW__)
 #define TAB_HEIGHT_SPACER 10
-#define TAB_Y_OFFSET 3
-#define TEXT_Y_SPACER 0
+#define TAB_Y_OFFSET 0
+#define TEXT_Y_SPACER -2
 #define BMP_Y_SPACER 0
 #else // GTK/FreeBSD
-#define TAB_Y_OFFSET 4
-#define TEXT_Y_SPACER 2
-#define BMP_Y_SPACER 2
+#define TAB_Y_OFFSET 0
+#define TEXT_Y_SPACER 0
+#define BMP_Y_SPACER 0
 #endif
 
 static int x_button_height = 16;
@@ -65,13 +65,12 @@ clAuiMainNotebookTabArt::clAuiMainNotebookTabArt(IManager* manager)
     , m_tabRadius(0.0)
 {
 #ifdef __WXMSW__
-    m_tabRadius = 0.0;
+    m_tabRadius = 1.0;
 #elif defined(__WXGTK__)
     m_tabRadius = 0.0;
 #else
     m_tabRadius = 0.0;
 #endif
-
     // Default buttons
     m_bmpClose = wxXmlResource::Get()->LoadBitmap("tab_x_close");
     m_bmpCloseHover = wxXmlResource::Get()->LoadBitmap("tab_x_close_hover");
@@ -101,6 +100,12 @@ void clAuiMainNotebookTabArt::DrawBackground(wxDC& dc, wxWindow* wnd, const wxRe
 
     wxPoint ptBottomLeft = rect.GetBottomLeft();
     wxPoint ptBottomRight = rect.GetBottomRight();
+    gdc.SetPen(m_activeTabBgColour);
+    gdc.DrawLine(ptBottomLeft, ptBottomRight);
+
+    ptBottomLeft.y -= 1;
+    ptBottomRight.y -= 1;
+    gdc.SetPen(m_activeTabPenColour);
     gdc.DrawLine(ptBottomLeft, ptBottomRight);
 }
 
@@ -126,9 +131,9 @@ void clAuiMainNotebookTabArt::DrawTab(wxDC& dc,
 
     wxRect rr(in_rect.GetTopLeft(), sz);
     rr.y += TAB_Y_OFFSET;
-    rr.width -= 1;
+    rr.width += 1;
 
-#ifndef __WXMAC__
+#if 0
     if(page.active) {
         rr.y -= 2;
         rr.height += 2;
@@ -149,13 +154,13 @@ void clAuiMainNotebookTabArt::DrawTab(wxDC& dc,
     gdc.SetClippingRegion(rr.x, rr.y, clip_width, rr.height);
     gdc.SetBrush(m_bgColour);
     gdc.SetPen(penColour);
-    
+
     if(page.active) {
         gdc.SetBrush(m_activeTabBgColour);
         path.AddRoundedRectangle(rr.x, rr.y, rr.width - 1, rr.height, m_tabRadius);
         gdc.GetGraphicsContext()->FillPath(path);
         gdc.GetGraphicsContext()->StrokePath(path);
-
+        
     } else {
         wxGraphicsPath outerPath = gdc.GetGraphicsContext()->CreatePath();
         gdc.SetPen(penColour);
@@ -163,7 +168,7 @@ void clAuiMainNotebookTabArt::DrawTab(wxDC& dc,
         gdc.GetGraphicsContext()->StrokePath(outerPath);
 
         gdc.SetPen(m_innerPenColour);
-        path.AddRoundedRectangle(rr.x + 1, rr.y + 1, rr.width - 3, rr.height - 1, m_tabRadius);
+        path.AddRoundedRectangle(rr.x + 1, rr.y + 1, rr.width - 3, rr.height - 2, m_tabRadius);
         gdc.GetGraphicsContext()->StrokePath(path);
 
         gdc.SetBrush(m_tabBgColour);
@@ -173,9 +178,36 @@ void clAuiMainNotebookTabArt::DrawTab(wxDC& dc,
     }
 
     if(!page.active) {
-        // Draw a line at the bottom rect
+        // Draw 2 lines at the bottom rect
+        // one with the background colour of the active tab and the second
+        // with the active tab pen colour
+        wxPoint p1, p2;
+        p1 = in_rect.GetBottomLeft();
+        p1.x -= 1;
+        p2 = in_rect.GetBottomRight();
+        gdc.SetPen(m_activeTabBgColour);
+        gdc.DrawLine(p1, p2);
+
+        p1.y -= 1;
+        p2.y -= 1;
         gdc.SetPen(m_activeTabPenColour);
-        gdc.DrawLine(in_rect.GetBottomLeft(), in_rect.GetBottomRight());
+        gdc.DrawLine(p1, p2);
+
+    } else {
+        wxPoint p1, p2;
+        p1 = in_rect.GetBottomLeft();
+        p2 = in_rect.GetBottomRight();
+        gdc.SetPen(m_activeTabBgColour);
+        gdc.DrawLine(p1, p2);
+        
+        gdc.DrawPoint(p1);
+        gdc.DrawPoint(p1);
+        p1.x += 1;
+        gdc.DrawPoint(p1);
+        gdc.DrawPoint(p1);
+        p1.x -= 1;
+        gdc.DrawPoint(p1);
+        gdc.DrawPoint(p1);
     }
 
     wxString caption = page.caption;
@@ -304,56 +336,16 @@ void clAuiMainNotebookTabArt::DoSetColours()
 
     // If we have an active editor, update the colours, if not - keep the old ones
     IEditor* editor = m_manager->GetActiveEditor();
-
-    // Default buttons
-    m_bmpClose = wxXmlResource::Get()->LoadBitmap("tab_x_close");
-    m_bmpCloseHover = wxXmlResource::Get()->LoadBitmap("tab_x_close_hover");
-    m_bmpClosePressed = wxXmlResource::Get()->LoadBitmap("tab_x_close_pressed");
+    SetLightColours();
 
     // We use the colour theme based on the active editor
     if(editor) {
         // Change lightness ranges between 0-200
         // 0 would be completely black, 200 completely white an ialpha of 100 returns the same colour.
-        m_activeTabBgColour = editor->GetSTC()->StyleGetBackground(0);
+        m_activeTabBgColour = editor->GetCtrl()->StyleGetBackground(0);
         if(DrawingUtils::IsDark(m_activeTabBgColour)) {
-
-            // Adjust the button colours
-            m_bmpClose = wxXmlResource::Get()->LoadBitmap("tab_x_close_dark");
-            m_bmpCloseHover = wxXmlResource::Get()->LoadBitmap("tab_x_close_dark_hover");
-            m_bmpClosePressed = wxXmlResource::Get()->LoadBitmap("tab_x_close_dark_pressed");
-
-            // adjust some colours
-            m_activeTabTextColour = *wxWHITE;
-            m_tabTextColour = m_activeTabTextColour.ChangeLightness(70);
-            m_activeTabPenColour = m_activeTabBgColour.ChangeLightness(80);
-            m_tabBgColour = m_activeTabBgColour.ChangeLightness(110);
-#ifdef __WXMAC__
-            m_bgColour = m_activeTabBgColour.ChangeLightness(150);
-#else
-            m_bgColour = m_activeTabBgColour.ChangeLightness(130);
-#endif
-            m_penColour = m_activeTabPenColour.ChangeLightness(110);
-            m_innerPenColour = m_penColour.ChangeLightness(115);
-
-        } else {
-            wxColour tmp = m_activeTabBgColour;
-            DoInitializeColoursFromTheme();
-            m_activeTabBgColour = tmp;
-            m_activeTabTextColour = *wxBLACK;
-            m_tabTextColour = m_activeTabTextColour.ChangeLightness(130);
-#ifdef __WXOSX__
-            // use a bit darker colour on OSX
-            m_tabBgColour = m_tabBgColour.ChangeLightness(90);
-            m_innerPenColour = m_tabBgColour.ChangeLightness(110);
-            m_penColour = m_innerPenColour.ChangeLightness(90);
-#else
-            m_tabBgColour = m_tabBgColour.ChangeLightness(120);
-            m_penColour = m_innerPenColour.ChangeLightness(90);
-#endif
+            SetDarkColours();
         }
-    } else {
-        m_activeTabBgColour = DrawingUtils::GetPanelBgColour();
-        m_activeTabTextColour = wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT);
     }
 }
 
@@ -368,4 +360,58 @@ void clAuiMainNotebookTabArt::DoInitializeColoursFromTheme()
     m_activeTabTextColour = theme.GetActiveTabTextColour();
     m_tabTextColour = theme.GetTabTextColour();
     m_activeTabBgColour = wxSystemSettings::GetColour(wxSYS_COLOUR_3DFACE);
+}
+
+void clAuiMainNotebookTabArt::SetDarkColours()
+{
+    // Change lightness ranges between 0-200
+    // 0 would be completely black, 200 completely white an ialpha of 100 returns the same colour.
+    clColourPalette colours = DrawingUtils::GetColourPalette();
+    
+    // Adjust the button colours
+    m_bmpClose = wxXmlResource::Get()->LoadBitmap("tab_x_close_dark");
+    m_bmpCloseHover = wxXmlResource::Get()->LoadBitmap("tab_x_close_dark_hover");
+    m_bmpClosePressed = wxXmlResource::Get()->LoadBitmap("tab_x_close_dark_pressed");
+
+    // adjust some colours
+    m_activeTabTextColour = *wxWHITE;
+    m_tabTextColour = m_activeTabTextColour.ChangeLightness(70);
+    m_activeTabBgColour = wxColour("rgb(85, 85, 85)").ChangeLightness(110);
+    
+#if 0
+    m_activeTabPenColour = m_activeTabBgColour;
+#else
+    m_activeTabPenColour = m_activeTabBgColour.ChangeLightness(30);
+#endif
+
+    m_tabBgColour = wxColour("rgb(60, 60, 60)");
+    m_bgColour = colours.bgColour.ChangeLightness(70);
+    m_penColour = m_bgColour.ChangeLightness(80);
+    m_innerPenColour = m_penColour.ChangeLightness(120);
+}
+
+void clAuiMainNotebookTabArt::SetLightColours()
+{
+    // Change lightness ranges between 0-200
+    // 0 would be completely black, 200 completely white an ialpha of 100 returns the same colour.
+    
+    // Adjust the button colours
+    m_bmpClose = wxXmlResource::Get()->LoadBitmap("tab_x_close");
+    m_bmpCloseHover = wxXmlResource::Get()->LoadBitmap("tab_x_close_hover");
+    m_bmpClosePressed = wxXmlResource::Get()->LoadBitmap("tab_x_close_pressed");
+
+    // adjust some colours
+    m_activeTabTextColour = *wxBLACK;
+    m_tabTextColour = m_activeTabTextColour.ChangeLightness(130);
+    m_activeTabBgColour = wxColour("rgb(246, 246, 246)");
+    // The active pen colour is a bit more lighter than the active tab bg colour
+    m_activeTabPenColour = wxColour("rgb(170, 170, 170)");
+    m_tabBgColour = wxColour("rgb(230, 230, 230)");
+#if defined(__WXMSW__) || defined(__WXGTK__)
+    m_bgColour = wxSystemSettings::GetColour(wxSYS_COLOUR_3DFACE);
+#else
+    m_bgColour = wxColour("rgb(240, 240, 240)");
+#endif
+    m_penColour = wxColour("rgb(190, 190, 190)");
+    m_innerPenColour = *wxWHITE;
 }

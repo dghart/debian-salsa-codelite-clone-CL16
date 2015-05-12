@@ -37,6 +37,9 @@
 #include "editor_config.h"
 #include <wx/stc/stc.h>
 #include "file_logger.h"
+#include "globals.h"
+#include <wx/stc/stc.h>
+#include "drawingutils.h"
 
 const wxEventType wxEVT_TIP_BTN_CLICKED_UP = wxNewEventType();
 const wxEventType wxEVT_TIP_BTN_CLICKED_DOWN = wxNewEventType();
@@ -70,6 +73,7 @@ static void CCBoxTipWindow_ShrinkTip(wxString& str)
 CCBoxTipWindow::CCBoxTipWindow(wxWindow* parent, const wxString& tip)
     : wxPopupWindow(parent)
     , m_tip(tip)
+    , m_useLightColours(false)
 {
     CCBoxTipWindow_ShrinkTip(m_tip);
     DoInitialize(m_tip, 1, true);
@@ -78,6 +82,7 @@ CCBoxTipWindow::CCBoxTipWindow(wxWindow* parent, const wxString& tip)
 CCBoxTipWindow::CCBoxTipWindow(wxWindow* parent, const wxString& tip, size_t numOfTips, bool simpleTip)
     : wxPopupWindow(parent)
     , m_tip(tip)
+    , m_useLightColours(false)
 {
     CCBoxTipWindow_ShrinkTip(m_tip);
     DoInitialize(m_tip, numOfTips, simpleTip);
@@ -87,6 +92,14 @@ CCBoxTipWindow::~CCBoxTipWindow() {}
 
 void CCBoxTipWindow::DoInitialize(const wxString& tip, size_t numOfTips, bool simpleTip)
 {
+    IEditor* editor = ::clGetManager()->GetActiveEditor();
+    if(editor) {
+        wxColour bgColour = editor->GetCtrl()->StyleGetBackground(0);
+        if(!DrawingUtils::IsDark(bgColour)) {
+            m_useLightColours = true;
+        }
+    }
+    
     m_tip = tip;
     m_numOfTips = numOfTips;
 
@@ -102,16 +115,8 @@ void CCBoxTipWindow::DoInitialize(const wxString& tip, size_t numOfTips, bool si
     wxMemoryDC dc(bmp);
 
     wxSize size;
-
-    LexerConf::Ptr_t cppLex = EditorConfigST::Get()->GetLexer("C++");
-    if(cppLex) {
-        // use the lexer default font
-        m_codeFont = cppLex->GetFontForSyle(0);
-
-    } else {
-        m_codeFont = wxFont(10, wxFONTFAMILY_MODERN, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL);
-    }
-
+    
+    m_codeFont = DrawingUtils::GetDefaultFixedFont();
     m_commentFont = wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT);
 
     wxString codePart, commentPart;
@@ -214,7 +219,7 @@ void CCBoxTipWindow::PositionRelativeTo(wxWindow* win, wxPoint caretPos, IEditor
     if(focusEdior) {
         // Check that the tip Y coord is inside the editor
         // this is to prevent some zombie tips appearing floating in no-man-land
-        wxRect editorRect = focusEdior->GetSTC()->GetScreenRect();
+        wxRect editorRect = focusEdior->GetCtrl()->GetScreenRect();
         if(editorRect.GetTopLeft().y > pt.y) {
             return;
         }
@@ -234,12 +239,21 @@ void CCBoxTipWindow::OnPaint(wxPaintEvent& e)
 {
     m_links.clear();
     wxBufferedPaintDC dc(this);
-
-    wxColour penColour = DrawingUtils::GetThemeBorderColour();
-    wxColour brushColour = DrawingUtils::GetThemeTipBgColour();
-
+    
+    clColourPalette colors = DrawingUtils::GetColourPalette();
+    
+    wxColour penColour = colors.penColour;
+    wxColour brushColour = colors.bgColour;
+    wxColour textColour = colors.textColour;
+    wxColour linkColour("rgb(204, 153, 255)");
+    
+    if(m_useLightColours) {
+        // Use different colours to match the editor theme
+        linkColour = wxColour("rgb(51, 153, 255)");
+    }
+    
     dc.SetBrush(brushColour);
-    dc.SetPen(penColour);
+    dc.SetPen(wxPen(penColour, 1));
 
     wxRect rr = GetClientRect();
     dc.DrawRectangle(rr);
@@ -249,7 +263,7 @@ void CCBoxTipWindow::OnPaint(wxPaintEvent& e)
     m_rightTipRect = wxRect();
 
     dc.SetFont(m_commentFont);
-    dc.SetTextForeground(DrawingUtils::GetThemeTextColour());
+    dc.SetTextForeground(textColour);
 
     wxString curtext;
     MarkupParser parser(m_tip);
@@ -269,7 +283,7 @@ void CCBoxTipWindow::OnPaint(wxPaintEvent& e)
             f.SetWeight(wxFONTWEIGHT_NORMAL);
             f.SetUnderlined(true);
             dc.SetFont(f);
-            dc.SetTextForeground(DrawingUtils::GetThemeLinkColour());
+            dc.SetTextForeground(linkColour);
             wxRect url_rect = DoPrintText(dc, curtext, pt);
 
             // keep info about this URL
@@ -281,7 +295,7 @@ void CCBoxTipWindow::OnPaint(wxPaintEvent& e)
             // Restore font and colour
             f.SetUnderlined(false);
             dc.SetFont(f);
-            dc.SetTextForeground(DrawingUtils::GetThemeTextColour());
+            dc.SetTextForeground(textColour);
 
             break;
         }
@@ -291,6 +305,7 @@ void CCBoxTipWindow::OnPaint(wxPaintEvent& e)
             wxFont f = dc.GetFont();
             f.SetWeight(wxFONTWEIGHT_BOLD);
             dc.SetFont(f);
+            dc.SetTextBackground(*wxWHITE);
             break;
         }
         case BOLD_END: {
@@ -300,6 +315,7 @@ void CCBoxTipWindow::OnPaint(wxPaintEvent& e)
             wxFont f = dc.GetFont();
             f.SetWeight(wxFONTWEIGHT_NORMAL);
             dc.SetFont(f);
+            dc.SetTextBackground(textColour);
             break;
         }
         case ITALIC_START: {
@@ -361,7 +377,7 @@ void CCBoxTipWindow::OnPaint(wxPaintEvent& e)
         case COLOR_END: {
             DoPrintText(dc, curtext, pt);
             // restore default colour
-            dc.SetTextForeground(DrawingUtils::GetThemeTextColour());
+            dc.SetTextForeground(textColour);
             break;
         }
         case MARKUP_VOID:

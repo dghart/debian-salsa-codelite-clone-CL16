@@ -43,6 +43,7 @@ static const wxString PHPSample = "<?php\n"
                                   "  public function __construct() {}\n"
                                   "  public function foo() {}\n"
                                   "  public function bar() {\n"
+                                  "    $array = array(\"foo\" => \"bar\",\"bar\" => \"foo\",);\n"
                                   "    $a=1;\n"
                                   "    if($a == 1) {\n"
                                   "      // do something\n"
@@ -96,8 +97,9 @@ CodeFormatterDlg::CodeFormatterDlg(wxWindow* parent,
     } else {
         m_treebook->SetSelection(0);
     }
-
-    WindowAttrManager::Load(this, wxT("CodeFormatterDlgAttr"), m_cf->GetManager()->GetConfigTool());
+    
+    SetName("CodeFormatterDlg");
+    WindowAttrManager::Load(this);
 }
 
 void CodeFormatterDlg::InitDialog()
@@ -246,7 +248,7 @@ void CodeFormatterDlg::UpdatePreview()
 
 CodeFormatterDlg::~CodeFormatterDlg()
 {
-    WindowAttrManager::Save(this, wxT("CodeFormatterDlgAttr"), m_cf->GetManager()->GetConfigTool());
+    
 }
 
 void CodeFormatterDlg::OnApplyUI(wxUpdateUIEvent& event) { event.Enable(m_isDirty); }

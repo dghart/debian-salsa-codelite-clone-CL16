@@ -32,10 +32,12 @@ class CompilerLocatorCLANG : public ICompilerLocator
 {
 protected:
     void MSWLocate();
-    void AddTools(CompilerPtr compiler, const wxString &installFolder);
-    void AddTool(CompilerPtr compiler, const wxString& toolname, const wxString& toolpath, const wxString& extraArgs = "");
-    wxString GetClangVersion(const wxString &clangBinary);
-    wxString GetCompilerFullName(const wxString &clangBinary);
+    void AddTools(CompilerPtr compiler, const wxString& installFolder, const wxString& suffix = "");
+    void
+    AddTool(CompilerPtr compiler, const wxString& toolname, const wxString& toolpath, const wxString& extraArgs = "");
+    wxString GetClangVersion(const wxString& clangBinary);
+    wxString GetCompilerFullName(const wxString& clangBinary);
+    bool ReadMSWInstallLocation(const wxString& regkey, wxString& installPath, wxString& llvmVersion);
 
 public:
     CompilerLocatorCLANG();

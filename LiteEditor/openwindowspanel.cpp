@@ -56,7 +56,7 @@ struct TabSorter {
         } else {
             file2 = t2.text;
         }
-        return file1.CmpNoCase(file2);
+        return file1.CmpNoCase(file2) < 0;
     }
 };
 
@@ -99,7 +99,7 @@ OpenWindowsPanel::~OpenWindowsPanel()
     EventNotifier::Get()->Disconnect(
         wxEVT_ACTIVE_EDITOR_CHANGED, wxCommandEventHandler(OpenWindowsPanel::OnActiveEditorChanged), NULL, this);
     EventNotifier::Get()->Disconnect(
-        wxEVT_CMD_PAGE_CHANGED, wxCommandEventHandler(OpenWindowsPanel::OnActiveEditorChanged), NULL, this);
+        wxEVT_CMD_PAGE_CHANGED, wxCommandEventHandler(OpenWindowsPanel::OnActivePageChanged), NULL, this);
     EventNotifier::Get()->Disconnect(
         wxEVT_ALL_EDITORS_CLOSED, wxCommandEventHandler(OpenWindowsPanel::OnAllEditorsClosed), NULL, this);
     EventNotifier::Get()->Unbind(wxEVT_EDITOR_MODIFIED, &OpenWindowsPanel::OnEditorModified, this);
@@ -109,18 +109,26 @@ OpenWindowsPanel::~OpenWindowsPanel()
     Unbind(wxEVT_IDLE, &OpenWindowsPanel::OnIdle, this);
 }
 
-#define CHECK_WORKSPACE_CLOSING() if(m_workspaceClosing) return
+#define CHECK_WORKSPACE_CLOSING() \
+    if(m_workspaceClosing) return
+
+void OpenWindowsPanel::OnActivePageChanged(wxCommandEvent& e)
+{
+    e.Skip();
+    CHECK_WORKSPACE_CLOSING();
+
+    PopulateView();
+    DoSelectItem((wxWindow*)e.GetClientData());
+}
 
 void OpenWindowsPanel::OnActiveEditorChanged(wxCommandEvent& e)
 {
     e.Skip();
     CHECK_WORKSPACE_CLOSING();
-    
+
     PopulateView();
     if(m_mgr->GetActiveEditor()) {
         DoSelectItem(m_mgr->GetActiveEditor());
-    } else {
-        DoSelectItem((wxWindow*)e.GetClientData());
     }
 }
 
@@ -128,7 +136,7 @@ void OpenWindowsPanel::OnAllEditorsClosed(wxCommandEvent& e)
 {
     e.Skip();
     CHECK_WORKSPACE_CLOSING();
-    
+
     Clear();
 }
 
@@ -274,7 +282,7 @@ void OpenWindowsPanel::OnTabActivated(wxDataViewEvent& event)
 {
     event.Skip();
     CHECK_WORKSPACE_CLOSING();
-    
+
     wxDataViewItem item = event.GetItem();
     CHECK_ITEM_RET(item);
 
@@ -290,7 +298,7 @@ void OpenWindowsPanel::OnTabSelected(wxDataViewEvent& event)
 {
     event.Skip();
     CHECK_WORKSPACE_CLOSING();
-    
+
     if(::wxGetKeyState(WXK_CONTROL)) {
         // multiple selection in progress
         return;
@@ -313,10 +321,10 @@ void OpenWindowsPanel::AppendEditor(const clTab& tab)
 {
     TabClientData* data = new TabClientData(tab);
     wxVariant value = PrepareValue(tab);
-    
+
     // the row index is the same as the row count (before we add the new entry)
     int itemIndex = m_dvListCtrl->GetItemCount();
-    
+
     wxVector<wxVariant> cols;
     cols.push_back(value);
     m_dvListCtrl->AppendItem(cols, (wxUIntPtr)data);
@@ -439,7 +447,7 @@ void OpenWindowsPanel::DoMarkModify(const wxString& filename, bool b)
     std::map<wxString, wxDataViewItem>::iterator iter = m_editors.find(filename);
     if(iter == m_editors.end()) return;
     wxDataViewItem item = iter->second;
-    
+
     wxBitmap bmp;
     TabClientData* cd = reinterpret_cast<TabClientData*>(m_dvListCtrl->GetItemData(item));
     const clTab& tab = cd->tab;
@@ -461,7 +469,7 @@ wxVariant OpenWindowsPanel::PrepareValue(const clTab& tab)
 
     FileExtManager::FileType ft = FileExtManager::GetType(title, FileExtManager::TypeText);
     wxBitmap bmp;
-    
+
     // If the tab had an icon, use it, otherwise, use a bitmap by the file type
     if(tab.bitmap.IsOk()) {
         bmp = tab.bitmap;
@@ -470,11 +478,11 @@ wxVariant OpenWindowsPanel::PrepareValue(const clTab& tab)
     } else {
         bmp = m_bitmaps.find(FileExtManager::TypeText)->second;
     }
-    
+
     if(editor && editor->GetModify()) {
         title.Prepend("*");
     }
-    
+
     wxVariant value = ::MakeIconText(title, bmp);
     return value;
 }
@@ -491,3 +499,4 @@ void OpenWindowsPanel::OnWorkspaceClosing(wxCommandEvent& event)
     Clear();
     m_workspaceClosing = true;
 }
+

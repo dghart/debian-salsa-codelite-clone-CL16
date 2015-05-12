@@ -95,6 +95,7 @@ clAuiDockArt::DrawCaption(wxDC& dc, wxWindow* window, const wxString& text, cons
 
     // Prepare the colours
     wxColour bgColour, penColour, textColour;
+#if 0
 #ifdef __WXMAC__
     bgColour = wxColour("rgb(162, 162, 162)");
     penColour = wxColour("rgb(102, 102, 102)");
@@ -109,12 +110,18 @@ clAuiDockArt::DrawCaption(wxDC& dc, wxWindow* window, const wxString& text, cons
         textColour = *wxBLACK;
     }
 #endif
+#else
+    clColourPalette colours = DrawingUtils::GetColourPalette();
+    textColour = colours.textColour;
+    bgColour = colours.bgColour;
+    penColour = colours.penColour;
+#endif
 
-    memDc.SetPen(bgColour);
+    memDc.SetPen(penColour);
     memDc.SetBrush(bgColour);
     memDc.DrawRectangle(tmpRect);
 
-    memDc.SetPen(bgColour);
+    memDc.SetPen(penColour);
     memDc.SetBrush(*wxTRANSPARENT_BRUSH);
     memDc.DrawRectangle(tmpRect);
 
@@ -161,11 +168,14 @@ void clAuiDockArt::DrawBorder(wxDC& dc, wxWindow* window, const wxRect& rect, wx
     penColour = wxColour("rgb(102, 102, 102)");
     
 #else
-    wxColour baseColour = DrawingUtils::GetCaptionColour();
+    wxColour baseColour = DrawingUtils::GetPanelBgColour();
+#if 0
     if(DrawingUtils::IsDark(baseColour)) {
         baseColour = wxSystemSettings::GetColour(wxSYS_COLOUR_3DSHADOW);
     }
     penColour = baseColour.ChangeLightness(110);
+#endif
+	penColour = baseColour;
 #endif
 
     dc.SetPen(penColour);

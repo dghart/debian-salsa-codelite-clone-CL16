@@ -42,6 +42,8 @@
 #include <wx/regex.h>
 #include "clAuiMainNotebookTabArt.h"
 #include "pluginmanager.h"
+#include <algorithm>
+#include "clFileOrFolderDropTarget.h"
 
 #if CL_USE_NATIVEBOOK
 #ifdef __WXGTK20__
@@ -95,7 +97,6 @@ void MainBook::CreateGuiControls()
 
     m_quickFindBar = new QuickFindBar(this);
     DoPositionFindBar(2);
-
     sz->Layout();
 }
 
@@ -296,6 +297,9 @@ void MainBook::SaveSession(SessionEntry& session, wxArrayInt* excludeArr) { Crea
 
 void MainBook::RestoreSession(SessionEntry& session)
 {
+    if(session.GetTabInfoArr().empty()) return; // nothing to restore
+
+    CloseAll(false);
     size_t sel = session.GetSelectedTab();
     const std::vector<TabInfo>& vTabInfoArr = session.GetTabInfoArr();
     for(size_t i = 0; i < vTabInfoArr.size(); i++) {
@@ -310,7 +314,7 @@ void MainBook::RestoreSession(SessionEntry& session)
             continue;
         }
 
-        editor->ScrollToLine(ti.GetFirstVisibleLine());
+        editor->SetFirstVisibleLine(ti.GetFirstVisibleLine());
         editor->SetEnsureCaretIsVisible(editor->PositionFromLine(ti.GetCurrentLine()));
         editor->LoadMarkersFromArray(ti.GetBookmarks());
         editor->LoadCollapsedFoldsFromArray(ti.GetCollapsedFolds());
@@ -576,8 +580,8 @@ LEditor* MainBook::OpenFile(const wxString& file_name,
         }
         editor->SetSyntaxHighlight();
 
-        // mark the editor as read only if needed
-        MarkEditorReadOnly(editor, IsFileReadOnly(editor->GetFileName()));
+        // mark the editor as read only if neede
+        MarkEditorReadOnly(editor);
 
         // SHow the notebook
         if(hidden) GetSizer()->Show(m_book);
@@ -761,6 +765,14 @@ bool MainBook::SaveAll(bool askUser, bool includeUntitled)
 void MainBook::ReloadExternallyModified(bool prompt)
 {
     if(m_isWorkspaceReloading) return;
+    static int depth = wxNOT_FOUND;
+    ++depth;
+
+    // Protect against recursion
+    if(depth == 2) {
+        depth = wxNOT_FOUND;
+        return;
+    }
 
     LEditor::Vec_t editors;
     GetAllEditors(editors, MainBook::kGetAll_IncludeDetached);
@@ -825,6 +837,28 @@ void MainBook::ReloadExternallyModified(bool prompt)
         // the "Reload WOrkspace" dialog, cancel this it's not needed anymore
         return;
     }
+
+    // See issue: https://github.com/eranif/codelite/issues/663
+    LEditor::Vec_t editorsAgain;
+    GetAllEditors(editorsAgain, MainBook::kGetAll_IncludeDetached);
+
+    // Make sure that the tabs that we have opened
+    // are still available in the main book
+    LEditor::Vec_t realEditorsList;
+    std::sort(editors.begin(), editors.end());
+    std::sort(editorsAgain.begin(), editorsAgain.end());
+    std::set_intersection(
+        editorsAgain.begin(), editorsAgain.end(), editors.begin(), editors.end(), std::back_inserter(realEditorsList));
+
+    // Update the "files" list
+    if(editors.size() != realEditorsList.size()) {
+        // something went wrong here...
+        CallAfter(&MainBook::ReloadExternallyModified, prompt);
+        return;
+    }
+
+    // reset the recursive protector
+    depth = wxNOT_FOUND;
 
     std::vector<wxFileName> filesToRetag;
     for(size_t i = 0; i < files.size(); i++) {
@@ -1039,15 +1073,26 @@ void MainBook::UpdateBreakpoints()
     ManagerST::Get()->GetBreakpointsMgr()->RefreshBreakpointMarkers();
 }
 
-void MainBook::MarkEditorReadOnly(LEditor* editor, bool ro)
+void MainBook::MarkEditorReadOnly(LEditor* editor)
 {
     if(!editor) {
+        return;
+    }
+
+    bool readOnly = (!editor->IsEditable()) || ::IsFileReadOnly(editor->GetFileName());
+    if(readOnly && editor->GetModify()) {
+        // an attempt to mark a modified file as read-only
+        // ask the user to save his changes before
+        ::wxMessageBox(_("Please save your changes before marking the file as read only"),
+                       "CodeLite",
+                       wxOK | wxCENTER | wxICON_WARNING,
+                       this);
         return;
     }
 #if !CL_USE_NATIVEBOOK
     for(size_t i = 0; i < m_book->GetPageCount(); i++) {
         if(editor == m_book->GetPage(i)) {
-            m_book->SetPageBitmap(i, ro ? wxXmlResource::Get()->LoadBitmap(wxT("read_only")) : wxNullBitmap);
+            m_book->SetPageBitmap(i, readOnly ? wxXmlResource::Get()->LoadBitmap(wxT("read_only")) : wxNullBitmap);
             break;
         }
     }
@@ -1083,7 +1128,8 @@ bool MainBook::DoSelectPage(wxWindow* win)
         //                                                  wxT("C++"));
         //     }
         // }
-        SendCmdEvent(wxEVT_ACTIVE_EDITOR_CHANGED, (IEditor*)editor);
+        wxCommandEvent event(wxEVT_ACTIVE_EDITOR_CHANGED);
+        EventNotifier::Get()->AddPendingEvent(event);
     }
 
     return true;
@@ -1103,18 +1149,22 @@ void MainBook::ShowMessage(const wxString& message,
 
 void MainBook::OnPageChanged(NotebookEvent& e)
 {
+    e.Skip();
     int newSel = e.GetSelection();
     if(newSel != wxNOT_FOUND && m_reloadingDoRaise) {
         wxWindow* win = m_book->GetPage((size_t)newSel);
         if(win) {
             SelectPage(win);
-            // LEditor *editor = dynamic_cast<LEditor*>(win);
-            // if(editor) {
-            //	ManagerST::Get()->UpdatePreprocessorFile(editor);
-            //}
         }
     }
-    e.Skip();
+
+    // Cancel any tooltip
+    LEditor::Vec_t editors;
+    GetAllEditors(editors, MainBook::kGetAll_IncludeDetached);
+    for(size_t i = 0; i < editors.size(); ++i) {
+        // Cancel any calltip when switching from the editor
+        editors.at(i)->DoCancelCalltip();
+    }
 }
 
 wxWindow* MainBook::GetCurrentPage() { return m_book->GetCurrentPage(); }
@@ -1183,7 +1233,6 @@ void MainBook::OnPageChanging(NotebookEvent& e)
 {
     LEditor* editor = GetActiveEditor();
     if(editor) {
-        editor->HideCompletionBox();
         editor->CallTipCancel();
     }
 #if HAS_LIBCLANG
@@ -1309,4 +1358,45 @@ void MainBook::ShowTabBar(bool b)
 {
     m_book->SetTabCtrlHeight(b ? 30 : 0);
     m_book->Refresh();
+}
+
+void MainBook::CloseTabsToTheRight(wxWindow* win)
+{
+    wxString text;
+
+    //clWindowUpdateLocker locker(this);
+
+    // Get list of tabs to close
+    std::vector<wxWindow*> windows;
+    bool currentWinFound(false);
+    for(size_t i=0; i<m_book->GetPageCount(); ++i) {
+        if(currentWinFound) {
+            windows.push_back(m_book->GetPage(i));
+        } else {
+            if(m_book->GetPage(i) == win) {
+                currentWinFound = true;
+            }
+        }
+    }
+    
+    // start from right to left
+    if(windows.empty()) return;
+
+    std::vector<wxWindow*> tabsToClose;
+    for(int i = (int)(windows.size() - 1); i >= 0; --i) {
+        if(windows.at(i) == win) {
+            break;
+        }
+        tabsToClose.push_back(windows.at(i));
+    }
+
+    if(tabsToClose.empty()) return;
+
+    for(size_t i = 0; i < tabsToClose.size(); ++i) {
+        ClosePage(tabsToClose.at(i));
+    }
+
+#ifdef __WXMAC__
+    m_book->GetSizer()->Layout();
+#endif
 }

@@ -24,6 +24,16 @@ if ( USE_PCH )
     add_definitions(-Winvalid-pch)
 endif ( USE_PCH )
 
+
+if (UNIX AND NOT APPLE)
+    set ( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC" )
+    set ( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC" )
+endif()
+
+if ( APPLE )
+    add_definitions(-fPIC)
+endif()
+
 ## On UNIX we require GTK
 if (UNIX AND NOT APPLE)
 
@@ -91,7 +101,12 @@ else()
 endif()
 
 if (NOT MINGW)
-install(TARGETS plugin DESTINATION ${PLUGINS_DIR})
+    if(APPLE)
+        install(TARGETS plugin DESTINATION ${CMAKE_BINARY_DIR}/codelite.app/Contents/MacOS/)
+        CL_INSTALL_NAME_TOOL_STD(${CMAKE_BINARY_DIR}/codelite.app/Contents/MacOS/libplugin.dylib)
+    else()
+        install(TARGETS plugin DESTINATION ${PLUGINS_DIR})
+    endif()
 else ()
-install(TARGETS plugin RUNTIME DESTINATION ${CL_PREFIX}/bin LIBRARY DESTINATION ${CL_PREFIX}/lib ARCHIVE DESTINATION ${CL_PREFIX}/lib)
+    install(TARGETS plugin RUNTIME DESTINATION ${CL_PREFIX}/bin LIBRARY DESTINATION ${CL_PREFIX}/lib ARCHIVE DESTINATION ${CL_PREFIX}/lib)
 endif()

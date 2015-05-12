@@ -113,7 +113,7 @@ wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_FILE_RETAGGED, wxCommandEvent);
 //                               Item(1) = newName
 wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_FILE_RENAMED, wxCommandEvent);
 
-// clientData is active editor (IEditor*)
+// The active editor was changed
 wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_ACTIVE_EDITOR_CHANGED, wxCommandEvent);
 
 // clientData is closing editor (IEditor*)
@@ -264,15 +264,10 @@ wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_DEBUG_EDITOR_GOT_CONTROL, wxComma
 // event.
 wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_CC_CODE_COMPLETE, clCodeCompletionEvent);
 
-// clientData is the selected word (wxString*)
+// User selected an entry from the code completion box. call event.Skip(false)
+// if you wish to perform something unique instead of the default "insert selection into editor"
+// The selected string can be retrieved by calling: event.GetWord()
 wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_CCBOX_SELECTION_MADE, clCodeCompletionEvent);
-
-// A tooltip is requested for the selected entry in the completion box
-// clientData is set to the client data set by the user
-// the plugin returns the tooltip to the IDE using the:
-// evt.SetTooltip(..) method
-// Use evt.GetTagEntry() to retrieve the tag
-wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_CC_CODE_COMPLETE_TAG_COMMENT, clCodeCompletionEvent);
 
 // A function calltip is requesed
 // clientData is set to the client data set by the user
@@ -679,11 +674,6 @@ wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_CLANG_CODE_COMPLETE_MESSAGE, clCo
 // CodeLite is going down. This event can not be vetoed
 wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_GOING_DOWN, clCommandEvent);
 
-// Event: clColourEvent
-// Sent when all the colours and fonts were successfully loaded from the configuration 
-// files into the ColoursAndFonts manager
-wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_COLOURS_AND_FONTS_LOADED, clColourEvent);
-
 // Event: clCommandEvent
 // Use GetString() to get the new project name
 // Use GetOldName() to get the old project name
@@ -698,5 +688,28 @@ wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_EDITOR_INITIALIZING, clCommandEve
 // Sent when the file system was modified externally (typically, this event is sent
 // after git pull, svn update etc)
 wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_FILE_SYSTEM_UPDATED, clFileSystemEvent);
+
+// Event: clCommandEvent
+// Sent when CodeLite requires to store the current workspace session
+// Call event.Skip(false) to instruct codelite to skip the default session-save
+// action (this is useful if the session is managed by an external plugin)
+// A good example for this is the PHP plugin which manages its own session
+wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_SAVE_SESSION_NEEDED, clCommandEvent);
+
+// Event: clCommandEvent
+// User modified its environment variables
+wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_ENVIRONMENT_VARIABLES_MODIFIED, clCommandEvent);
+
+// Event: clCommandEvent
+// user dropped a folder on the window
+wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_DND_FOLDER_DROPPED, clCommandEvent);
+
+// Event: clCommandEvent
+// user dropped a file on the window
+wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_DND_FILE_DROPPED, clCommandEvent);
+
+// Event: clCommandEvent 
+// a codelite restart is required
+wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_RESTART_CODELITE, clCommandEvent);
 
 #endif // CODELITE_EVENTS_H

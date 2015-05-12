@@ -28,7 +28,6 @@
 #include "file_logger.h"
 #include "fileextmanager.h"
 #include "evnvarlist.h"
-#include "code_completion_box.h"
 #include "environmentconfig.h"
 #include "conffilelocator.h"
 #include "app.h"
@@ -54,8 +53,12 @@
 #include "clKeyboardManager.h"
 #include "clInitializeDialog.h"
 #include "event_notifier.h"
+#include "clsplashscreen.h"
+#include <wx/persist.h>
+#include "singleinstancethreadjob.h"
+#include "SocketAPI/clSocketClient.h"
 
-#define __PERFORMANCE
+//#define __PERFORMANCE
 #include "performance.h"
 
 //////////////////////////////////////////////
@@ -261,6 +264,7 @@ CodeLiteApp::CodeLiteApp(void)
     : m_pMainFrame(NULL)
     , m_singleInstance(NULL)
     , m_pluginLoadPolicy(PP_All)
+    , m_persistencManager(NULL)
 #ifdef __WXMSW__
     , m_handler(NULL)
 #endif
@@ -279,11 +283,17 @@ CodeLiteApp::~CodeLiteApp(void)
     if(m_singleInstance) {
         delete m_singleInstance;
     }
-    //    wxAppBase::ExitMainLoop();
+    wxDELETE(m_persistencManager);
 }
 
 bool CodeLiteApp::OnInit()
 {
+#if defined(__WXMSW__) && !defined(NDEBUG)
+    SetAppName(wxT("codelite-dbg"));
+#else
+    SetAppName(wxT("codelite"));
+#endif
+
 #if defined(__WXGTK__) || defined(__WXMAC__)
 
     // block signal pipe
@@ -304,10 +314,10 @@ bool CodeLiteApp::OnInit()
 #endif
     wxSocketBase::Initialize();
 
-// #if wxUSE_ON_FATAL_EXCEPTION
-//     //trun on fatal exceptions handler
-//     wxHandleFatalExceptions(true);
-// #endif
+#if wxUSE_ON_FATAL_EXCEPTION
+    // trun on fatal exceptions handler
+    wxHandleFatalExceptions(true);
+#endif
 
 #ifdef __WXMSW__
     // as described in http://jrfonseca.dyndns.org/projects/gnu-win32/software/drmingw/
@@ -344,14 +354,19 @@ bool CodeLiteApp::OnInit()
         return false;
     }
 
+    // check for single instance
+    if(!IsSingleInstance(parser)) {
+        return false;
+    }
+
     if(parser.Found(wxT("h"))) {
         // print usage
         parser.Usage();
         return false;
     }
-    
+
     if(parser.Found(wxT("v"))) {
-        // print version
+// print version
 #ifdef __WXMSW__
         ::wxMessageBox(wxString() << "CodeLite IDE v" << clGitRevision, "CodeLite");
 #else
@@ -392,7 +407,8 @@ bool CodeLiteApp::OnInit()
         clStandardPaths::Get().SetUserDataDir(newDataDir);
     }
 
-    // Set the log file verbosity. NB Doing this earlier seems to break wxGTK debug output when debugging CodeLite itself :/
+    // Set the log file verbosity. NB Doing this earlier seems to break wxGTK debug output when debugging CodeLite
+    // itself :/
     FileLogger::OpenLog("codelite.log", clConfig::Get().Read(kConfigLogVerbosity, FileLogger::Error));
     CL_DEBUG(wxT("Starting codelite..."));
 
@@ -411,7 +427,6 @@ bool CodeLiteApp::OnInit()
 
 #if defined(__WXGTK__)
     if(homeDir.IsEmpty()) {
-        SetAppName(wxT("codelite"));
         homeDir = clStandardPaths::Get()
                       .GetUserDataDir(); // By default, ~/Library/Application Support/codelite or ~/.codelite
         if(!wxFileName::Exists(homeDir)) {
@@ -442,7 +457,6 @@ bool CodeLiteApp::OnInit()
     }
 
 #elif defined(__WXMAC__)
-    SetAppName(wxT("codelite"));
     homeDir = clStandardPaths::Get().GetUserDataDir();
     if(!wxFileName::Exists(homeDir)) {
         wxLogNull noLog;
@@ -470,11 +484,11 @@ bool CodeLiteApp::OnInit()
 
 #else //__WXMSW__
     if(homeDir.IsEmpty()) { // did we got a basedir from user?
-#  ifdef USE_POSIX_LAYOUT
+#ifdef USE_POSIX_LAYOUT
         homeDir = wxStandardPaths::Get().GetDataDir() + wxT(INSTALL_DIR);
-#  else
+#else
         homeDir = ::wxGetCwd();
-#  endif
+#endif
     }
     wxFileName fnHomdDir(homeDir + wxT("/"));
 
@@ -494,13 +508,14 @@ bool CodeLiteApp::OnInit()
     ManagerST::Get()->SetInstallDir(homeDir);
 #endif
 
-    // Update codelite revision and Version
-    EditorConfigST::Get()->Init(clGitRevision, wxT("2.0.2"));
-    
+    // Use our persistence manager (which uses wxFileConfig instead of the registry...)
+    m_persistencManager = new clPersistenceManager();
+    wxPersistenceManager::Set(*m_persistencManager);
+
     // Make sure we have an instance if the keyboard manager allocated before we create the main frame class
     // (the keyboard manager needs to connect to the main frame events)
     clKeyboardManager::Get();
-    
+
     ManagerST::Get()->SetOriginalCwd(wxGetCwd());
     ::wxSetWorkingDirectory(homeDir);
     // Load all of the XRC files that will be used. You can put everything
@@ -517,8 +532,6 @@ bool CodeLiteApp::OnInit()
 
     // Initialize the configuration file locater
     ConfFileLocator::Instance()->Initialize(ManagerST::Get()->GetInstallDir(), ManagerST::Get()->GetStartupDirectory());
-
-    Manager* mgr = ManagerST::Get();
 
     // set the CTAGS_REPLACEMENT environment variable
     wxSetEnv(wxT("CTAGS_REPLACEMENTS"), ManagerST::Get()->GetStartupDirectory() + wxT("/ctags.replacements"));
@@ -541,12 +554,35 @@ bool CodeLiteApp::OnInit()
     }
 #endif
 
-    EditorConfigST::Get()->SetInstallDir(mgr->GetInstallDir());
+    Manager* mgr = ManagerST::Get();
     EditorConfig* cfg = EditorConfigST::Get();
+    cfg->SetInstallDir(mgr->GetInstallDir());
+
+    // Update codelite revision and Version
+    cfg->Init(clGitRevision, wxT("2.0.2"));
     if(!cfg->Load()) {
         CL_ERROR(wxT("Failed to load configuration file: %s/config/codelite.xml"), wxGetCwd().c_str());
         return false;
     }
+
+#if !defined(__WXMAC__) && defined(NDEBUG)
+    // Now all image handlers have been added, show splash screen; but only when using Release builds of codelite
+    GeneralInfo inf;
+    cfg->ReadObject(wxT("GeneralInfo"), &inf);
+    if(inf.GetFlags() & CL_SHOW_SPLASH) {
+        wxBitmap bitmap;
+        wxString splashName(clStandardPaths::Get().GetDataDir() + wxT("/images/splashscreen.png"));
+        if(bitmap.LoadFile(splashName, wxBITMAP_TYPE_PNG)) {
+            wxString mainTitle = CODELITE_VERSION_STR;
+            clSplashScreen::g_splashScreen = new clSplashScreen(clSplashScreen::CreateSplashScreenBitmap(bitmap),
+                                                                wxSPLASH_CENTRE_ON_SCREEN | wxSPLASH_NO_TIMEOUT,
+                                                                -1,
+                                                                NULL,
+                                                                wxID_ANY);
+            wxYield();
+        }
+    }
+#endif
 
 #ifdef __WXGTK__
     bool redirect = clConfig::Get().Read(kConfigRedirectLogOutput, true);
@@ -559,10 +595,6 @@ bool CodeLiteApp::OnInit()
         wxUnusedVar(new_stdout);
     }
 #endif
-    // check for single instance
-    if(!IsSingleInstance(parser, ManagerST::Get()->GetOriginalCwd())) {
-        return false;
-    }
 
     //---------------------------------------------------------
     // Set environment variable for CodeLiteDir (make it first
@@ -583,9 +615,6 @@ bool CodeLiteApp::OnInit()
     MSWReadRegistry();
 
 #endif
-
-    GeneralInfo inf;
-    cfg->ReadObject(wxT("GeneralInfo"), &inf);
 
     // Set up the locale if appropriate
     if(EditorConfigST::Get()->GetOptions()->GetUseLocale()) {
@@ -610,11 +639,11 @@ bool CodeLiteApp::OnInit()
         wxLocale::AddCatalogLookupPathPrefix(wxT("/usr/local/share/locale"));
 
 #elif defined(__WXMSW__)
-#   ifdef USE_POSIX_LAYOUT
+#ifdef USE_POSIX_LAYOUT
         wxLocale::AddCatalogLookupPathPrefix(wxStandardPaths::Get().GetDataDir() + wxT("/share/locale"));
-#   else
+#else
         wxLocale::AddCatalogLookupPathPrefix(ManagerST::Get()->GetInstallDir() + wxT("\\locale"));
-#   endif
+#endif
 #endif
 
         // This has to be done before the catalogues are added, as otherwise the wrong one (or none) will be found
@@ -630,6 +659,10 @@ bool CodeLiteApp::OnInit()
             // as otherwise, in a RTL locale, menus, dialogs etc will be displayed RTL, in English...
             // However I couldn't find a way to do this
         }
+    } else {
+        // For proper encoding handling by system libraries it's needed to inialize locale even if UI translation is
+        // turned off
+        m_locale.Init(wxLANGUAGE_ENGLISH, wxLOCALE_DONT_LOAD_DEFAULT);
     }
 
 // Append the binary's dir to $PATH. This makes codelite-cc available even for a --prefix= installation
@@ -650,33 +683,16 @@ bool CodeLiteApp::OnInit()
 
     // If running under Cygwin terminal, adjust the environment variables
     AdjustPathForMSYSIfNeeded();
-    
-    // determine if the 'upgrade' frame needs to be started instead of the 
-    // standard main frame
-    bool needsLexerLoadedEvent(false);
-    if(ColoursAndFontsManager::Get().IsUpgradeNeeded()) {
-        clInitializeDialog initDialog(NULL);
-        SetTopWindow(&initDialog);
-        initDialog.ShowModal();
-        needsLexerLoadedEvent = true;
-    } else {
-        // Make sure that the colours and fonts manager is instantiated
-        ColoursAndFontsManager::Get().Load();
-    }
-    
+
+    // Make sure that the colours and fonts manager is instantiated
+    ColoursAndFontsManager::Get().Load();
+
     // Create the main application window
     clMainFrame::Initialize(parser.GetParamCount() == 0);
     m_pMainFrame = clMainFrame::Get();
     m_pMainFrame->Show(TRUE);
     SetTopWindow(m_pMainFrame);
-    
-    if (needsLexerLoadedEvent) {
-        // Though a wxEVT_COLOURS_AND_FONTS_LOADED will already have been sent, it won't have done anything because
-        // the frame wasn't instantiated/Connect()ed at that time. So a session won't be loaded unless...
-        clColourEvent event(wxEVT_COLOURS_AND_FONTS_LOADED);
-        EventNotifier::Get()->AddPendingEvent(event);
-    }
-    
+
     long lineNumber(0);
     parser.Found(wxT("l"), &lineNumber);
     if(lineNumber > 0) {
@@ -756,7 +772,7 @@ void CodeLiteApp::OnFatalException()
 #endif
 }
 
-bool CodeLiteApp::IsSingleInstance(const wxCmdLineParser& parser, const wxString& curdir)
+bool CodeLiteApp::IsSingleInstance(const wxCmdLineParser& parser)
 {
     // check for single instance
     if(clConfig::Get().Read(kConfigSingleInstance, false)) {
@@ -765,30 +781,30 @@ bool CodeLiteApp::IsSingleInstance(const wxCmdLineParser& parser, const wxString
         m_singleInstance = new wxSingleInstanceChecker(name);
         if(m_singleInstance->IsAnotherRunning()) {
             // prepare commands file for the running instance
-            wxString files;
+            wxArrayString files;
             for(size_t i = 0; i < parser.GetParamCount(); i++) {
                 wxString argument = parser.GetParam(i);
 
                 // convert to full path and open it
                 wxFileName fn(argument);
-                fn.MakeAbsolute(curdir);
-                files << fn.GetFullPath() << wxT("\n");
+                fn.MakeAbsolute();
+                files.Add(fn.GetFullPath());
             }
 
-            if(files.IsEmpty() == false) {
-                Mkdir(ManagerST::Get()->GetStartupDirectory() + wxT("/ipc"));
+            try {
+                // Send the request
+                clSocketClient client;
+                bool dummy;
+                client.ConnectRemote("127.0.0.1", SINGLE_INSTANCE_PORT, dummy);
 
-                wxString file_name, tmp_file;
-                tmp_file << ManagerST::Get()->GetStartupDirectory() << wxT("/ipc/command.msg.tmp");
+                JSONRoot json(cJSON_Object);
+                json.toElement().addProperty("args", files);
+                client.WriteMessage(json.toElement().format());
+                return false;
 
-                file_name << ManagerST::Get()->GetStartupDirectory() << wxT("/ipc/command.msg");
-
-                // write the content to a temporary file, once completed,
-                // rename the file to the actual file name
-                WriteFileUTF8(tmp_file, files);
-                wxRenameFile(tmp_file, file_name);
+            } catch(clSocketException& e) {
+                CL_ERROR("Failed to send single instance request: %s", e.what());
             }
-            return false;
         }
     }
     return true;
@@ -911,12 +927,12 @@ void CodeLiteApp::DoCopyGdbPrinters()
 #ifdef __WXGTK__
     printersInstallDir = wxFileName(wxString(INSTALL_DIR, wxConvUTF8), "gdb_printers");
 #else
-#   ifdef USE_POSIX_LAYOUT
-    wxString commdir(wxStandardPaths::Get().GetDataDir() + wxT( INSTALL_DIR ));
+#ifdef USE_POSIX_LAYOUT
+    wxString commdir(wxStandardPaths::Get().GetDataDir() + wxT(INSTALL_DIR));
     printersInstallDir = wxFileName(commdir, "gdb_printers");
-#   else
+#else
     printersInstallDir = wxFileName(wxStandardPaths::Get().GetDataDir(), "gdb_printers");
-#   endif
+#endif
 #endif
 
     // copy the files to ~/.codelite/gdb_printers
@@ -934,9 +950,9 @@ void CodeLiteApp::AdjustPathForCygwinIfNeeded()
         CL_DEBUG("Not running under Cygwin - nothing be done");
         return;
     }
-    
+
     CL_SYSTEM("Cygwin environment detected");
-    
+
     wxString cygwinRootDir;
     CompilerLocatorCygwin cygwin;
     if(cygwin.Locate()) {
@@ -995,9 +1011,9 @@ void CodeLiteApp::AdjustPathForMSYSIfNeeded()
         CL_DEBUG("Not running under MSYS - nothing be done");
         return;
     }
-    
+
     CL_SYSTEM("MSYS environment detected");
-    
+
     // Running under Cygwin
     // Adjust the PATH environment variable
     wxString pathEnv;

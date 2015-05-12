@@ -39,9 +39,6 @@ void EditHandler::ProcessCommandEvent(wxWindow *owner, wxCommandEvent &event)
     LEditor *editor = (LEditor*)owner;
     
     OptionsConfigPtr options = editor->GetOptions();
-    // hide completion box
-    editor->HideCompletionBox();
-    
     if (event.GetId() == wxID_COPY) {
         editor->CopyAllowLine();
 
@@ -129,9 +126,6 @@ void EditHandler::ProcessCommandEvent(wxWindow *owner, wxCommandEvent &event)
             editor->MoveSelectedLinesUp();  // There is a selection, so we can move it direct
         }
 
-    } else if (event.GetId() == XRCID("center_line")) {
-        //editor->VerticalCentreCaret();
-
     } else if (event.GetId() == XRCID("center_line_roll")) {
         int here    = editor->GetCurrentLine();
         int top     = editor->GetFirstVisibleLine();
@@ -145,6 +139,10 @@ void EditHandler::ProcessCommandEvent(wxWindow *owner, wxCommandEvent &event)
                 editor->LineScrollDown(); //roll down until we get to center
         }
 
+    } else if(event.GetId() == XRCID("convert_indent_to_spaces")) {
+        editor->ConvertIndentToSpaces();
+    } else if(event.GetId() == XRCID("convert_indent_to_tabs")) {
+        editor->ConvertIndentToTabs();
     }
 }
 
@@ -337,39 +335,6 @@ void GotoDefinitionHandler::ProcessUpdateUIEvent(wxWindow *owner, wxUpdateUIEven
     } else {
         event.Enable(editor != NULL);
     }
-}
-
-//-------------------------------------------------
-// View As
-//-------------------------------------------------
-
-void ViewAsHandler::ProcessCommandEvent(wxWindow *owner, wxCommandEvent &event)
-{
-    LEditor *editor = dynamic_cast<LEditor*>(owner);
-    if ( !editor ) {
-        return;
-    }
-
-    wxString lexName = clMainFrame::Get()->GetViewAsLanguageById(event.GetInt());
-    if (lexName.IsEmpty() == false) {
-        editor->SetSyntaxHighlight(lexName);
-    }
-}
-
-void ViewAsHandler::ProcessUpdateUIEvent(wxWindow *owner, wxUpdateUIEvent &event)
-{
-    LEditor *editor = dynamic_cast<LEditor*>(owner);
-    if ( !editor ) {
-        return;
-    }
-
-    event.Enable(true);
-    wxString lexName = clMainFrame::Get()->GetViewAsLanguageById(event.GetInt());
-    
-    wxString contextName = editor->GetContext()->GetName();
-    contextName.MakeLower();
-    
-    event.Check(contextName == lexName);
 }
 
 //----------------------------------------------------

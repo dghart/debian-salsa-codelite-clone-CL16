@@ -38,6 +38,7 @@
     <File Name="sftp_item_comparator.cpp"/>
     <File Name="SFTPBookmark.h"/>
     <File Name="SFTPBookmark.cpp"/>
+    <File Name="CMakeLists.txt"/>
   </VirtualDirectory>
   <VirtualDirectory Name="include">
     <File Name="sftp.h"/>
@@ -50,6 +51,8 @@
     <File Name="SFTPTreeView.cpp"/>
     <File Name="SFTPManageBookmarkDlg.h"/>
     <File Name="SFTPManageBookmarkDlg.cpp"/>
+    <File Name="SFTPSettingsDialog.h"/>
+    <File Name="SFTPSettingsDialog.cpp"/>
   </VirtualDirectory>
   <VirtualDirectory Name="wxcrafter">
     <File Name="UI.wxcp"/>
@@ -61,10 +64,6 @@
       <File Name="UI.cpp"/>
     </VirtualDirectory>
   </VirtualDirectory>
-  <Dependencies Name="DebugUnicode"/>
-  <Dependencies Name="ReleaseUnicode"/>
-  <Dependencies Name="Win_x64_Debug"/>
-  <Dependencies Name="Win_x86_Release"/>
   <Settings Type="Dynamic Library">
     <GlobalSettings>
       <Compiler Options="" C_Options="" Assembler="">
@@ -353,4 +352,9 @@
       </Completion>
     </Configuration>
   </Settings>
+  <Dependencies Name="DebugUnicode"/>
+  <Dependencies Name="ReleaseUnicode"/>
+  <Dependencies Name="Win_x64_Debug"/>
+  <Dependencies Name="Win_x64_Release"/>
+  <Dependencies Name="Win_x86_Release"/>
 </CodeLite_Project>

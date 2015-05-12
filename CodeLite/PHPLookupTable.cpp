@@ -116,11 +116,14 @@ const static wxString CREATE_FILES_TABLE_SQL_IDX1 =
     "CREATE UNIQUE INDEX IF NOT EXISTS FILES_TABLE_IDX_1 ON FILES_TABLE(FILE_NAME)";
 
 PHPLookupTable::PHPLookupTable()
-    : m_sizeLimit(250)
+    : m_sizeLimit(50)
 {
 }
 
-PHPLookupTable::~PHPLookupTable() {}
+PHPLookupTable::~PHPLookupTable() 
+{
+    Close();
+}
 
 PHPEntityBase::Ptr_t PHPLookupTable::FindMemberOf(wxLongLong parentDbId, const wxString& exactName, size_t flags)
 {
@@ -164,6 +167,24 @@ void PHPLookupTable::Open(const wxFileName& dbfile)
         m_db.SetBusyTimeout(10); // Don't lock when we cant access to the database
         m_filename = dbfile;
         CreateSchema();
+
+#if 0
+        if(!CheckDiskImage()) {
+            // database is corrupted.
+            Close();
+            
+            // Remove the file
+            {
+                wxLogNull noLog;
+                ::wxRemoveFile(m_filename.GetFullPath());
+            }
+            
+            // Reopen the database
+            m_db.Open(dbfile.GetFullPath());
+            m_db.SetBusyTimeout(10); // Don't lock when we cant access to the database
+            CreateSchema();
+        }
+#endif
 
     } catch(wxSQLite3Exception& e) {
         CL_WARNING("PHPLookupTable::Open: %s", e.GetMessage());
@@ -588,17 +609,10 @@ void PHPLookupTable::RecreateSymbolsDatabase(const wxArrayString& files, eUpdate
             EventNotifier::Get()->AddPendingEvent(event);
         }
 
-        m_db.Begin();
-        
-        // If the parsing mode is 'Full' - clear the database first
-        if(updateMode == kUpdateMode_Full) {
-            CL_DEBUG("PHP: Clearing symbols database before parsing...");
-            ClearAll(false);
-            CL_DEBUG("PHP: Clearing symbols database before parsing...done");
-        }
-        
         wxStopWatch sw;
         sw.Start();
+        
+        m_db.Begin();
         for(size_t i = 0; i < files.GetCount(); ++i) {
             {
                 clParseEvent event(wxPHP_PARSE_PROGRESS);
@@ -1121,4 +1135,27 @@ void PHPLookupTable::ResetDatabase()
         }
     }
     Open(curfile);
+}
+
+bool PHPLookupTable::CheckDiskImage()
+{
+    wxArrayString tables;
+    tables.Add("METADATA_TABLE");
+    tables.Add("SCOPE_TABLE");
+    tables.Add("FUNCTION_TABLE");
+    tables.Add("VARIABLES_TABLE");
+    tables.Add("FILES_TABLE");
+    
+    try {
+        for(size_t i=0; i<tables.GetCount(); ++i) {
+            wxString sql;
+            sql << "select count(*) from " << tables.Item(i) << " LIMIT 1";
+            m_db.ExecuteQuery(sql);
+        }
+    } catch(wxSQLite3Exception &exec) {
+        // this can only happen if we have a corrupt disk image
+        CL_WARNING("PHP: database image is corrupted %s", m_filename.GetFullPath());
+        return false;
+    }
+    return true;
 }

@@ -45,6 +45,7 @@
 #include "cl_defs.h"
 #include "bookmark_manager.h"
 #include "cl_unredo.h"
+#include "clEditorStateLocker.h"
 
 #define DEBUGGER_INDICATOR 11
 #define MATCH_INDICATOR 10
@@ -52,6 +53,7 @@
 #define USER_INDICATOR 3
 #define HYPERLINK_INDICATOR 4
 
+class CCBoxTipWindow;
 class IManager;
 class wxFindReplaceDialog;
 class CCBox;
@@ -169,7 +171,7 @@ private:
         {
             return ctrl->PositionFromLine(ctrl->GetFirstVisibleLine()) == m_firstOffset && m_hasMarkers;
         }
-        
+
         // setters/getters
         void SetFirstOffset(int firstOffset) { this->m_firstOffset = firstOffset; }
         void SetHasMarkers(bool hasMarkers) { this->m_hasMarkers = hasMarkers; }
@@ -208,6 +210,7 @@ protected:
     bool m_disableSmartIndent;
     bool m_disableSemicolonShift;
     clEditorTipWindow* m_functionTip;
+    CCBoxTipWindow* m_calltip;
     wxChar m_lastCharEntered;
     int m_lastCharEnteredPos;
     bool m_isFocused;
@@ -222,16 +225,19 @@ protected:
     wxString m_preProcessorsWords;
     SelectionInfo m_prevSelectionInfo;
     MarkWordInfo m_highlightedWordInfo;
-    wxTimer *m_timerHighlightMarkers;
+    wxTimer* m_timerHighlightMarkers;
     IManager* m_mgr;
+    OptionsConfigPtr m_options;
+    bool m_hasCCAnnotation;
+
 public:
     static bool m_ccShowPrivateMembers;
     static bool m_ccShowItemsComments;
     static bool m_ccInitialized;
     typedef std::vector<LEditor*> Vec_t;
-    
+
     IManager* GetManager() { return m_mgr; }
-    
+
 public:
     static FindReplaceData& GetFindReplaceData() { return m_findReplaceData; }
 
@@ -260,13 +266,13 @@ public:
     // Save content of the editor to a given file (Save As...)
     // this function prompts the user for selecting file name
     bool SaveFileAs();
-    
+
     /**
      * @brief split the current selection into multiple carets.
      * i.e. place a caret at the end of each line in the selection
      */
     void SplitSelection();
-    
+
     void SetDisableSmartIndent(bool disableSmartIndent) { this->m_disableSmartIndent = disableSmartIndent; }
 
     bool GetDisableSmartIndent() const { return m_disableSmartIndent; }
@@ -295,7 +301,7 @@ public:
     const wxString& GetProject() const { return m_project; }
     // Set the project name
     void SetProject(const wxString& proj) { m_project = proj; }
-    
+
     /**
      * @brief attempt to code complete the expression up until the caret position
      * @param refreshingList when set to true, it means that the 'CodeComplete' was invoked
@@ -304,7 +310,19 @@ public:
      * i.e. the event wxEVT_CC_CODE_COMPLETE is fired only when refreshingList == false
      */
     void CodeComplete(bool refreshingList = false);
-
+    
+    /**
+     * @brief toggle line comment
+     * @param commentSymbol the comment symbol to insert (e.g. "//")
+     * @param commentStyle the wxSTC line comment style
+     */
+    virtual void ToggleLineComment(const wxString& commentSymbol, int commentStyle);
+    
+    /**
+     * @brief block comment the selection
+     */
+    virtual void CommentBlockSelection(const wxString& commentBlockStart, const wxString& commentBlockEnd);
+    
     // User clicked Ctrl+.
     void GotoDefinition();
 
@@ -385,12 +403,22 @@ public:
      * marker (warning or error)
      */
     bool HasCompilerMarkers();
-    
+
     /**
      * @brief center the line in the editor
      */
     void CenterLine(int line, int col = wxNOT_FOUND);
-    
+
+    /**
+     * @brief convert the editor indentation to spaces
+     */
+    void ConvertIndentToSpaces();
+
+    /**
+     * @brief convert the editor indentation to tabs
+     */
+    void ConvertIndentToTabs();
+
     // Is there currently a marker at the current line?
     bool LineIsMarked(enum marker_mask_type mask);
     // Toggle marker at the current line
@@ -440,7 +468,7 @@ public:
     /**
      * Returns a tooltip for the most significant bookmark on the passed line
      */
-    wxString GetBookmarkTooltip(const int lineno);
+    void GetBookmarkTooltip(int lineno, wxString& tip, wxString& title);
 
     // Replace all
     bool ReplaceAll();
@@ -466,11 +494,11 @@ public:
     /**
      * Load collapsed folds from a vector
      */
-    void LoadCollapsedFoldsFromArray(const std::vector<int>& folds);
+    void LoadCollapsedFoldsFromArray(const clEditorStateLocker::VecInt_t& folds);
     /**
      * Store any collapsed folds to a vector, so they can be serialised
      */
-    void StoreCollapsedFoldsToArray(std::vector<int>& folds) const;
+    void StoreCollapsedFoldsToArray(clEditorStateLocker::VecInt_t& folds) const;
 
     static FindReplaceDialog* GetFindReplaceDialog() { return m_findReplaceDlg; }
 
@@ -614,9 +642,10 @@ public:
     virtual void SetWarningMarker(int lineno, const wxString& annotationText);
     virtual void SetErrorMarker(int lineno, const wxString& annotationText);
     virtual void DelAllCompilerMarkers();
-    
-    void DoShowCalltip(int pos, const wxString& tip);
+
+    void DoShowCalltip(int pos, const wxString& title, const wxString& tip);
     void DoCancelCalltip();
+    void DoCancelCodeCompletionBox();
     int DoGetOpenBracePos();
 
     //----------------------------------
@@ -648,33 +677,9 @@ public:
     void ShowCompletionBox(const std::vector<TagEntryPtr>& tags, const wxString& word);
 
     /**
-     * @brief displays teh code completion box. Unlike the previous metho, this method accepts owner and sends an event
-     * once selection is made
-     * @param tags list if tags to display
-     * @param word part of the word
-     * @param owner event handler to be notified once a selection is made
-     */
-    virtual void ShowCompletionBox(const std::vector<TagEntryPtr>& tags,
-                                   const wxString& word,
-                                   bool autoRefreshList,
-                                   wxEvtHandler* owner);
-
-    /**
-     * @brief register new user image fot TagEntry kind
-     * @param kind the kind string that will be associated with the bitmap (TagEntry::GetKind())
-     * @param bmp 16x16 bitmap
-     */
-    virtual void RegisterImageForKind(const wxString& kind, const wxBitmap& bmp);
-
-    /**
      * @brief return true if the completion box is visible
      */
     virtual bool IsCompletionBoxShown();
-
-    /**
-     * @brief hide the completion box if it is active.
-     */
-    virtual void HideCompletionBox();
 
     /**
      * @brief highlight the word where the cursor is at
@@ -694,7 +699,15 @@ public:
      * Implemetation for IEditor interace
      *--------------------------------------------------
      */
-    virtual wxStyledTextCtrl* GetSTC() { return static_cast<wxStyledTextCtrl*>(this); }
+    virtual wxStyledTextCtrl* GetCtrl() { return static_cast<wxStyledTextCtrl*>(this); }
+
+    /**
+     * @brief set a code completion annotation at the given line. code completion
+     * annotations are automatically cleared on the next char added
+     * @param text
+     * @param lineno
+     */
+    virtual void SetCodeCompletionAnnotation(const wxString& text, int lineno);
 
     virtual wxString GetEditorText() { return GetText(); }
     virtual void SetEditorText(const wxString& text);
@@ -806,11 +819,11 @@ public:
     bool IsDetached() const;
 
     /**
-     * @brief display a rich tooltip (a tip that supports basic markup, such as <a></a>, <strong></strong> etc)
+     * @brief display a rich tooltip (title + tip)
      * @param tip tip text
-     * @param pos position for the tip. If wxNOT_FOUND the tip is positioned at the mouse
+     * @param pos position for the tip. If wxNOT_FOUND the tip is positioned at mouse cursor position
      */
-    void ShowRichTooltip(const wxString& tip, int pos = wxNOT_FOUND);
+    void ShowRichTooltip(const wxString& tip, const wxString& title, int pos = wxNOT_FOUND);
 
     /**
      * @brief return the first selection (in case there are multiple selections enabled)
@@ -823,7 +836,7 @@ public:
     /**
      * Get editor options. Takes any workspace/project overrides into account
      */
-    OptionsConfigPtr GetOptions();
+    OptionsConfigPtr GetOptions() { return m_options; }
 
     void SetIsVisible(const bool& isVisible) { this->m_isVisible = isVisible; }
     const bool& GetIsVisible() const { return m_isVisible; }
@@ -849,7 +862,9 @@ public:
 private:
     void DoUpdateTLWTitle(bool raise);
     void DoWrapPrevSelectionWithChars(wxChar first, wxChar last);
-
+    void DoUpdateOptions();
+    int GetFirstSingleLineCommentPos(int from, int commentStyle);
+    
     void FillBPtoMarkerArray();
     BPtoMarker GetMarkerForBreakpt(enum BreakpointType bp_type);
     void SetProperties();
@@ -907,10 +922,10 @@ private:
     void OnDragStart(wxStyledTextEvent& e);
     void OnDragEnd(wxStyledTextEvent& e);
     void DoSetCaretAt(long pos);
-    void OnSetActive(wxCommandEvent& e);
     void OnFileFormatDone(wxCommandEvent& e);
     void OnFileFormatStarting(wxCommandEvent& e);
     void OnTimer(wxTimerEvent& event);
+    void OnEditorConfigChanged(wxCommandEvent& event);
 };
 
 #endif // LITEEDITOR_EDITOR_H

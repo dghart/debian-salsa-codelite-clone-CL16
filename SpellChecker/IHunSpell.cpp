@@ -145,11 +145,10 @@ void IHunSpell::CheckCppSpelling(const wxString& check)
 
     if(!pEditor) return;
 
-    int offset = 0;
     int retVal = kNoSpellingError;
     wxString text = check + wxT(" ");
     m_parseValues.clear();
-    wxStyledTextCtrl* pTextCtrl = pEditor->GetSTC();
+    wxStyledTextCtrl* pTextCtrl = pEditor->GetCtrl();
 
     // check if engine is initialized, if not do so
     if(!InitEngine()) return;
@@ -519,7 +518,7 @@ int IHunSpell::CheckCppType(IEditor* pEditor)
             if(token.Len() <= MIN_TOKEN_LEN) continue;
 
             if(m_parseValues[i].second == kString) { // ignore filenames in #include
-                wxString line = pEditor->GetSTC()->GetLine(pEditor->LineFromPos(pl.first));
+                wxString line = pEditor->GetCtrl()->GetLine(pEditor->LineFromPos(pl.first));
 
                 if(line.Find(s_include) != wxNOT_FOUND) continue;
             }
@@ -601,7 +600,7 @@ int IHunSpell::MarkErrors(IEditor* pEditor)
             if(token.Len() <= MIN_TOKEN_LEN) continue;
 
             if(m_parseValues[i].second == kString) {
-                wxString line = pEditor->GetSTC()->GetLine(pEditor->LineFromPos(pl.first));
+                wxString line = pEditor->GetCtrl()->GetLine(pEditor->LineFromPos(pl.first));
 
                 if(line.Find(s_include) != wxNOT_FOUND) // ignore filenames
                     continue;

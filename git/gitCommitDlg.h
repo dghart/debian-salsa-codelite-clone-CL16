@@ -39,6 +39,8 @@
 class GitCommitDlg : public GitCommitDlgBase
 {
     std::map<wxString, wxString> m_diffMap;
+    bool m_toggleChecks;
+    
 public:
     GitCommitDlg(wxWindow* parent);
     ~GitCommitDlg();
@@ -53,6 +55,10 @@ private:
     void OnChangeFile(wxCommandEvent& e);
 
 protected:
+    virtual void OnClearGitCommitHistory(wxCommandEvent& event);
+    virtual void OnClearGitCommitHistoryUI(wxUpdateUIEvent& event);
+    virtual void OnRecentCommitSelected(wxCommandEvent& event);
+    virtual void OnToggleCheckAll(wxCommandEvent& event);
     virtual void OnCommitOK(wxCommandEvent& event);
 };
 

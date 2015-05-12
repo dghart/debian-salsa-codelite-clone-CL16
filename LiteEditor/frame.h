@@ -52,6 +52,7 @@
 #include "clStatusBar.h"
 
 // forward decls
+class clSingleInstanceThread;
 class wxCustomStatusBar;
 class TagEntry;
 class WorkspacePane;
@@ -113,6 +114,8 @@ class clMainFrame : public wxFrame
     // Maintain a set of core toolbars (i.e. toolbars not owned by any plugin)
     wxStringSet_t m_coreToolbars;
     clStatusBar* m_statusBar;
+    clSingleInstanceThread* m_singleInstanceThread;
+    
 protected:
     bool IsEditorEvent(wxEvent& event);
     void DoCreateBuildDropDownMenu(wxMenu* menu);
@@ -186,13 +189,6 @@ public:
     bool GetHighlightWord() { return m_highlightWord; }
 
     /**
-     * @brief Return language name by menu item id
-     * @param id
-     * @return
-     */
-    wxString GetViewAsLanguageById(int id) const;
-
-    /**
      * @brief
      * @param editor
      */
@@ -250,8 +246,8 @@ public:
 
     const GeneralInfo& GetFrameGeneralInfo() const { return m_frameGeneralInfo; }
 
-    void OnSingleInstanceOpenFiles(wxCommandEvent& e);
-    void OnSingleInstanceRaise(wxCommandEvent& e);
+    void OnSingleInstanceOpenFiles(clCommandEvent& e);
+    void OnSingleInstanceRaise(clCommandEvent& e);
 
     /**
      * @brief rebuild the give project
@@ -280,7 +276,7 @@ public:
     void CreateRecentlyOpenedWorkspacesMenu();
     void DoSuggestRestart();
 
-    void LocateCompilersIfNeeded();
+    void Bootstrap();
 
 private:
     // make our frame's constructor private
@@ -326,14 +322,18 @@ private:
     void ToggleToolBars(bool all);
 
     void ViewPaneUI(const wxString& paneName, wxUpdateUIEvent& event);
-    void CreateViewAsSubMenu();
     void CreateRecentlyOpenedFilesMenu();
     void CreateWelcomePage();
     bool ReloadExternallyModifiedProjectFiles();
     void DoEnableWorkspaceViewFlag(bool enable, int flag);
     void DoUpdatePerspectiveMenu();
     bool IsWorkspaceViewFlagEnabled(int flag);
-
+    /**
+     * @brief show the startup wizard
+     * @return true if a restart is needed
+     */
+    bool StartSetupWizard();
+    
 public:
     void ViewPane(const wxString& paneName, bool checked);
     void ShowOrHideCaptions();
@@ -360,6 +360,7 @@ protected:
     void OnFunctionCalltip(wxCommandEvent& event);
     void OnAbout(wxCommandEvent& event);
     void OnCheckForUpdate(wxCommandEvent& e);
+    void OnRunSetupWizard(wxCommandEvent& e);
     void OnFileNew(wxCommandEvent& event);
     void OnFileOpen(wxCommandEvent& event);
     void OnFileClose(wxCommandEvent& event);
@@ -371,6 +372,7 @@ protected:
     void OnCompleteWordUpdateUI(wxUpdateUIEvent& event);
     void OnFunctionCalltipUI(wxUpdateUIEvent& event);
     void OnIncrementalSearch(wxCommandEvent& event);
+    void OnIncrementalReplace(wxCommandEvent& event);
     void OnIncrementalSearchUI(wxUpdateUIEvent& event);
     void OnViewToolbar(wxCommandEvent& event);
     void OnViewToolbarUI(wxUpdateUIEvent& event);
@@ -439,6 +441,8 @@ protected:
     void OnOpenShellFromFilePath(wxCommandEvent& e);
     void OnOpenFileExplorerFromFilePath(wxCommandEvent& e);
     void OnDetachEditor(wxCommandEvent& e);
+    void OnMarkEditorReadonly(wxCommandEvent& e);
+    void OnMarkEditorReadonlyUI(wxUpdateUIEvent& e);
     void OnDetachEditorUI(wxUpdateUIEvent& e);
     void OnQuickDebug(wxCommandEvent& e);
     void OnQuickDebugUI(wxUpdateUIEvent& e);
@@ -489,6 +493,7 @@ protected:
     void OnCompileFile(wxCommandEvent& e);
     void OnCompileFileUI(wxUpdateUIEvent& e);
     void OnCloseAllButThis(wxCommandEvent& e);
+    void OnCloseTabsToTheRight(wxCommandEvent& e);
     void OnWorkspaceMenuUI(wxUpdateUIEvent& e);
     void OnUpdateBuildRefactorIndexBar(wxCommandEvent& e);
     void OnUpdateNumberOfBuildProcesses(wxCommandEvent& e);
@@ -511,7 +516,7 @@ protected:
     void OnViewWordWrap(wxCommandEvent& e);
     void OnViewWordWrapUI(wxUpdateUIEvent& e);
     void OnViewDisplayEOL_UI(wxUpdateUIEvent& e);
-
+    
     // Docking windows events
     void OnAuiManagerRender(wxAuiManagerEvent& e);
     void OnDockablePaneClosed(wxAuiManagerEvent& e);
@@ -558,7 +563,6 @@ protected:
     void OnSettingsChanged(wxCommandEvent& e);
     void OnEditMenuOpened(wxMenuEvent& e);
     void OnProjectRenamed(clCommandEvent &event);
-    void OnColoursAndFontsLoaded(clColourEvent &event);
     DECLARE_EVENT_TABLE()
 };
 

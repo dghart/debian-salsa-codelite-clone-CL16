@@ -29,6 +29,7 @@ cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
 #################################################################################################################################################################
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
+include(FindLibClang)
 
 #############################################
 ## Defaults
@@ -124,6 +125,12 @@ if ( PREFIX )
 else()
     # If the caller hasn't set his own destination, install to a multi-arch lib dir if applicable
     if (CMAKE_VERSION VERSION_GREATER 2.8.7 AND ( UNIX AND NOT APPLE ))
+        if (CMAKE_VERSION VERSION_GREATER 3.0.0)
+            # Prior to this, afaict the GNUInstallDirs module worked whatever the prefix
+            # Since, it looks at CMAKE_INSTALL_PREFIX which is /usr/local by default, and refuses to run the multiarch-setting code unless it's /usr/
+            # So, partly to comply with the default documented above, & partly for packaging, explicitly set it to /usr
+            set (CMAKE_INSTALL_PREFIX "/usr")
+        endif()
         include (GNUInstallDirs) # defines CMAKE_INSTALL_LIBDIR to lib or lib64 or whatever. Available since cmake 2.8.8
         set( CL_INSTALL_LIBDIR ${CMAKE_INSTALL_LIBDIR} )
     endif()
@@ -209,14 +216,21 @@ if (COPY_WX_LIBS MATCHES 1)
 endif()
 unset(COPY_WX_LIBS CACHE)
 
-set( PLUGINS_DIR "${CL_PREFIX}/${CL_INSTALL_LIBDIR}/codelite")
+## Will set PLUGINS_DIR to the proper location on Linux / OSX
+include(OSXInstall)
+
+## Under OSX, create the skeleton bundle directory
+OSX_MAKE_BUNDLE_DIRECTORY()
+
 add_definitions(-DYY_NEVER_INTERACTIVE=1)
+set ( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11" )
+
 if (NOT MINGW)
-add_definitions(-DINSTALL_DIR=\"${CL_PREFIX}/share/codelite\")
-add_definitions(-DPLUGINS_DIR=\"${PLUGINS_DIR}\")
+    add_definitions(-DINSTALL_DIR=\"${CL_PREFIX}/share/codelite\")
+    add_definitions(-DPLUGINS_DIR=\"${PLUGINS_DIR}\")
 else()
-add_definitions(-DNDEBUG)
-add_definitions(-DUSE_POSIX_LAYOUT)
+    add_definitions(-DNDEBUG)
+    add_definitions(-DUSE_POSIX_LAYOUT)
 endif()
 
 message("-- PLUGINS_DIR is set to ${PLUGINS_DIR}")
@@ -342,13 +356,14 @@ if ( MAKE_DEB )
     endif ()
 
     set(CPACK_GENERATOR                   "DEB")
-    set(CPACK_PACKAGE_NAME                "codelite")
-    set(CPACK_PACKAGE_VERSION             "7.0")
+    set(CPACK_PACKAGE_NAME                "CodeLite")
+    set(CPACK_PACKAGE_VERSION             "8.0")
     set(CPACK_DEBIAN_PACKAGE_MAINTAINER   "Eran Ifrah <eran.ifrah@gmail.com>") #required
-    set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "codelite IDE for C/C++")
+    set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "codelite IDE for C/C++/PHP")
     set(CPACK_DEBIAN_PACKAGE_SECTION      "devel")
     set(CPACK_DEBIAN_PACKAGE_PRIORITY     "optional")
-    set(CPACK_DEBIAN_PACKAGE_RECOMMENDS   "build-essential")
+    set(CPACK_DEBIAN_PACKAGE_RECOMMENDS   "build-essential, git, subversion, gdb, xterm")
+    set(CPACK_DEBIAN_PACKAGE_DEPENDS      "libgtk2.0-dev, libssh-dev, libedit-dev, libhunspell-dev, libclang-3.5-dev, clang-format-3.5, liblldb-3.5-dev")
     INCLUDE(CPack)
 endif( MAKE_DEB )
 
@@ -374,22 +389,32 @@ elseif (MINGW)
     endif ()
   endif ()
 elseif (UNIX)
-  set( CLANG_INCLUDE "${CL_SRC_ROOT}/sdk/clang/Linux/${ARCH_NAME}/include" )
-  set( CLANG_LIBRARY "-L${CL_SRC_ROOT}/sdk/clang/Linux/${ARCH_NAME}/lib -lclang" )
-  set( CLANG_BINARY "${CL_SRC_ROOT}/sdk/clang/Linux/${ARCH_NAME}/lib/libclang.so")
+    FIND_LIBCLANG_OFFICIAL()
+    if ( LIBCLANG STREQUAL "LIBCLANG-NOTFOUND" )
+        set(USE_CLANG 0)
+    else()
+        set(CLANG_LIBRARY ${LIBCLANG})
+        set(CLANG_INCLUDE ${LIBCLANG_INCLUDE})
+        set( CLANG_BINARY ${CLANG_LIBRARY})
+    endif()
 endif()
 
-message( "-- clang link line ${CLANG_LIBRARY} ")
-message( "-- clang include path ${CLANG_INCLUDE} ")
-message( "-- clang binary ${CLANG_BINARY}" )
-message( "-- CL_SRC_ROOT is set to => " ${CL_SRC_ROOT} )
-message( "-- PREFIX      is set to => " ${CL_PREFIX} )
-message( "-- PREFIX/LIB_DIR is set to => " ${CL_PREFIX}/${CL_INSTALL_LIBDIR} )
-message( "-- PLUGINS_DIR is set to => " ${PLUGINS_DIR} )
-message( "-- wx-config   is set to => " ${WX_TOOL} )
+if (USE_CLANG)
+    message( "-- clang link line ${CLANG_LIBRARY} ")
+    message( "-- clang include path ${CLANG_INCLUDE} ")
+    message( "-- clang binary ${CLANG_BINARY}" )
+    message( "-- CL_SRC_ROOT is set to => " ${CL_SRC_ROOT} )
+    message( "-- PREFIX      is set to => " ${CL_PREFIX} )
+    message( "-- PREFIX/LIB_DIR is set to => " ${CL_PREFIX}/${CL_INSTALL_LIBDIR} )
+    message( "-- PLUGINS_DIR is set to => " ${PLUGINS_DIR} )
+    message( "-- wx-config   is set to => " ${WX_TOOL} )
+else()
+    message( "-- *** NOTICE ***: clang code completion support is disabled" )
+    message( "-- *** NOTICE ***: On Ubuntu / Debian you might want to install libclang-3.4-dev package")
+endif()
 
 else()
-message( "-- *** NOTICE ***: clang support is disabled" )
+    message( "-- *** NOTICE ***: clang code completion support is disabled" )
 endif(USE_CLANG)
 
 ############################################
@@ -407,11 +432,6 @@ else(WITH_SFTP)
     message( "-- *** NOTICE ***: SFTP support is disabled " )
 
 endif(WITH_SFTP)
-
-if ( APPLE )
-    execute_process(COMMAND mkdir -p pack)
-    execute_process(COMMAND cp ${CMAKE_SOURCE_DIR}/Runtime/make_mac_bundle.sh pack)
-endif( APPLE )
 
 ###########################################
 ## RPATH settings
@@ -464,9 +484,9 @@ if ( UNIX AND NOT APPLE )
     add_subdirectory(MemCheck)
 endif ( UNIX AND NOT APPLE )
 
-    if ( BUILD_WXC )
+    if(IS_DIRECTORY "${CL_SRC_ROOT}/wxcrafter")
         add_subdirectory(wxcrafter)
-    endif( BUILD_WXC )
+    endif()
 
     if ( APPLE )
         message("-- Adding MacBundler...")
@@ -496,7 +516,7 @@ if (WITH_LLDB)
 endif()
 add_subdirectory(codelitephp)
 add_subdirectory(WordCompletion)
-
+add_subdirectory(HelpPlugin)
 ## Executables
 add_subdirectory(LiteEditor)
 add_subdirectory(codelitegcc)
@@ -505,6 +525,7 @@ add_subdirectory(codelite_terminal)
 add_subdirectory(sdk/codelite_indexer)
 add_subdirectory(sdk/codelite_cppcheck)
 add_subdirectory(codelite_echo)
+add_subdirectory(WebTools)
 
 ##
 ## Setup the proper dependencies

@@ -27,6 +27,7 @@
 #include <wx/filename.h>
 #include "fileutils.h"
 #include <wx/regex.h>
+#include <wx/xml/xml.h>
 
 std::map<wxString, FileExtManager::FileType> FileExtManager::m_map;
 std::vector<FileExtManager::Matcher::Ptr_t> FileExtManager::m_matchers;
@@ -58,6 +59,7 @@ void FileExtManager::Init()
         m_map[wxT("l")] = TypeLex;
         m_map[wxT("ui")] = TypeQtForm;
         m_map[wxT("qrc")] = TypeQtResource;
+        m_map[wxT("qml")] = TypeJS;
 
         m_map[wxT("project")] = TypeProject;
         m_map[wxT("workspace")] = TypeWorkspace;
@@ -118,7 +120,10 @@ void FileExtManager::Init()
         m_map[wxT("sql")] = TypeSQL;
         m_map[wxT("phpwsp")] = TypeWorkspacePHP;
         m_map[wxT("phptags")] = TypeWorkspacePHPTags;
-
+        
+        m_map["pro"] = TypeQMake;
+        m_map["pri"] = TypeQMake;
+        m_map["cmake"] = TypeCMake;
         m_map["s"] = TypeAsm;
         
         // Initialize regexes:
@@ -162,6 +167,20 @@ FileExtManager::FileType FileExtManager::GetType(const wxString& filename, FileE
             return TypeMakefile;
         }
         return defaultType;
+    } else if((iter->second == TypeText) && (fn.GetFullName().CmpNoCase("CMakeLists.txt") == 0)) {
+        return TypeCMake;
+    }
+    
+    FileExtManager::FileType type = iter->second;
+    if(fn.Exists() && type == TypeWorkspace) {
+        // try to decide if this is a PHP workspace or a standard workspace
+        wxXmlDocument doc;
+        if(doc.Load(fn.GetFullPath())) {
+            // an XML type, assume standard workspace
+            return TypeWorkspace;
+        } else {
+            return TypeWorkspacePHP;
+        }
     }
     return iter->second;
 }

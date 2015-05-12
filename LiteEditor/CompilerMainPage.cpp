@@ -260,7 +260,7 @@ void CompilerMainPage::OnEditIncludePaths(wxCommandEvent& event)
 {
     wxString curIncludePath = m_textCtrlGlobalIncludePath->GetValue();
     curIncludePath = wxJoin(::wxStringTokenize(curIncludePath, ";", wxTOKEN_STRTOK), '\n', '\0');
-    wxString newIncludePath = ::clGetTextFromUser(curIncludePath, EventNotifier::Get()->TopFrame());
+    wxString newIncludePath = ::clGetStringFromUser(curIncludePath, EventNotifier::Get()->TopFrame());
     newIncludePath.Trim().Trim(false);
     if(!newIncludePath.IsEmpty()) {
         m_isDirty = true;
@@ -273,7 +273,7 @@ void CompilerMainPage::OnEditLibraryPaths(wxCommandEvent& event)
 {
     wxString curLibPath = m_textCtrlGlobalLibPath->GetValue();
     curLibPath = wxJoin(::wxStringTokenize(curLibPath, ";", wxTOKEN_STRTOK), '\n', '\0');
-    wxString newLibPath = ::clGetTextFromUser(curLibPath, EventNotifier::Get()->TopFrame());
+    wxString newLibPath = ::clGetStringFromUser(curLibPath, EventNotifier::Get()->TopFrame());
     newLibPath.Trim().Trim(false);
     if(!newLibPath.IsEmpty()) {
         m_isDirty = true;
@@ -836,10 +836,11 @@ void CompilerMainPage::OnCompilerSelected(wxCommandEvent& event) { LoadCompiler(
 CompilerPatternDlg::CompilerPatternDlg(wxWindow* parent, const wxString& title)
     : CompilerPatternDlgBase(parent, wxID_ANY, title)
 {
-    WindowAttrManager::Load(this, wxT("CompilerPatternDlg"), NULL);
+    SetName("CompilerPatternDlg");
+    WindowAttrManager::Load(this);
 }
 
-CompilerPatternDlg::~CompilerPatternDlg() { WindowAttrManager::Save(this, wxT("CompilerPatternDlg"), NULL); }
+CompilerPatternDlg::~CompilerPatternDlg() {  }
 
 void CompilerPatternDlg::SetPattern(const wxString& pattern,
                                     const wxString& lineIdx,

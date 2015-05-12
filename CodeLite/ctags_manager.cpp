@@ -82,12 +82,14 @@ const wxEventType wxEVT_TAGS_DB_UPGRADE_INTER = XRCID("tags_db_upgraded_now");
 //---------------------------------------------------------------------------
 // Misc
 
+#if 0
 static bool isDarkColor(const wxColour& color)
 {
     int evg = (color.Red() + color.Green() + color.Blue()) / 3;
     if(evg < 127) return true;
     return false;
 }
+#endif
 
 // Descending sorting function
 struct SDescendingSort {
@@ -590,7 +592,7 @@ bool TagsManager::WordCompletionCandidates(const wxFileName& fileName,
             // No need to call it twice...
             GetGlobalTags(word, globals);
         }
-        
+
         if(showLanguageKeywords) {
             // Collect language keywords
             GetKeywordsTagsForLanguage(word, kCxx, keywords);
@@ -758,7 +760,11 @@ bool TagsManager::AutoCompleteCandidates(const wxFileName& fileName,
     }
 
     PERF_END();
-
+    
+    std::vector<TagEntryPtr> noDupsVec;
+    DoFilterDuplicatesBySignature(candidates, noDupsVec);
+    noDupsVec.swap(candidates);
+    
     DoSortByVisibility(candidates);
     return candidates.empty() == false;
 }
@@ -999,8 +1005,7 @@ void TagsManager::FindImplDecl(const wxFileName& fileName,
         if(scopeName != wxT("<global>")) {
             visibleScopes.push_back(scopeName);
             wxArrayString outerScopes = BreakToOuterScopes(scopeName);
-            for(size_t i = 0; i < outerScopes.GetCount(); i++)
-                visibleScopes.push_back(outerScopes.Item(i));
+            for(size_t i = 0; i < outerScopes.GetCount(); i++) visibleScopes.push_back(outerScopes.Item(i));
         }
 
         // collect tags from all the visible scopes
@@ -1566,12 +1571,7 @@ bool TagsManager::GetDerivationList(const wxString& path,
 
 void TagsManager::TipsFromTags(const std::vector<TagEntryPtr>& tags, const wxString& word, std::vector<wxString>& tips)
 {
-    bool isDarkBG = isDarkColor(wxSystemSettings::GetColour(wxSYS_COLOUR_INFOBK));
-    wxString retValueColour = "\"BLUE\"";
-    if(isDarkBG) {
-        retValueColour = "\"YELLOW\"";
-    }
-
+    wxString retValueColour = "\"white\"";
     for(size_t i = 0; i < tags.size(); i++) {
         if(tags.at(i)->GetName() != word) continue;
 
@@ -1608,21 +1608,21 @@ void TagsManager::TipsFromTags(const std::vector<TagEntryPtr>& tags, const wxStr
 
             wxString ret_value = GetFunctionReturnValueFromPattern(t);
             if(ret_value.IsEmpty() == false) {
-                tip << "<b><color=" << retValueColour << ">" << ret_value << wxT("</color></b> ");
+                tip << "<b>" << ret_value << wxT("</b> ");
             } else {
                 wxString retValue = t->GetReturnValue();
                 if(retValue.IsEmpty() == false) {
-                    tip << "<b><color=" << retValueColour << ">" << retValue << wxT("</color></b> ");
+                    tip << "<b>" << retValue << wxT("</b> ");
                 }
             }
 
             // add the scope
-            if(!t->IsScopeGlobal()) {
+            if(!t->IsScopeGlobal() && !t->IsConstructor() && !t->IsDestructor()) {
                 tip << t->GetScope() << wxT("::");
             }
 
             // name
-            tip << "<b>" << t->GetName() << "</b>";
+            tip << "<b><color=\"white\">" << t->GetName() << "</color></b>";
 
             // method signature
             tip << NormalizeFunctionSig(t->GetSignature(), Normalize_Func_Name | Normalize_Func_Default_value);
@@ -1636,7 +1636,7 @@ void TagsManager::TipsFromTags(const std::vector<TagEntryPtr>& tags, const wxStr
         tip = WrapLines(tip);
 
         if(!tips.empty()) {
-            tip.Prepend("\n<hr>\n");
+            tip.Prepend("\n");
         }
 
         // prepend any comment if exists
@@ -3275,22 +3275,101 @@ void TagsManager::GetKeywordsTagsForLanguage(const wxString& filter, eLanguage l
 {
     wxString keywords;
     if(lang == kCxx) {
-        keywords = wxT("and and_eq asm auto bitand bitor bool break case catch char class compl const const_cast "
-                       "continue default delete "
-                       "do double dynamic_cast else enum explicit export extern false float for friend goto if "
-                       "inline int long mutable namespace "
-                       "new not not_eq operator or or_eq private protected public register reinterpret_cast return "
-                       "short signed sizeof size_t static "
-                       "static_cast struct switch template this throw true try typedef typeid typename union "
-                       "unsigned using virtual void volatile "
-                       "wchar_t while xor xor_eq ifdef undef define defined include endif elif ifndef");
+        keywords =
+            wxT(" alignas"
+                " alignof"
+                " and"
+                " and_eq"
+                " asm"
+                " auto"
+                " bitand"
+                " bitor"
+                " bool"
+                " break"
+                " case"
+                " catch"
+                " char"
+                " char16_t"
+                " char32_t"
+                " class"
+                " compl"
+                " concept"
+                " const"
+                " constexpr"
+                " const_cast"
+                " continue"
+                " decltype"
+                " default"
+                " delete"
+                " do"
+                " double"
+                " dynamic_cast"
+                " else"
+                " enum"
+                " explicit"
+                " export"
+                " extern"
+                " false"
+                " float"
+                " for"
+                " friend"
+                " goto"
+                " if"
+                " inline"
+                " int"
+                " long"
+                " mutable"
+                " namespace"
+                " new"
+                " noexcept"
+                " not"
+                " not_eq"
+                " nullptr"
+                " operator"
+                " or"
+                " or_eq"
+                " private"
+                " protected"
+                " public"
+                " register"
+                " reinterpret_cast"
+                " requires"
+                " return"
+                " short"
+                " signed"
+                " sizeof"
+                " static"
+                " static_assert"
+                " static_cast"
+                " struct"
+                " switch"
+                " template"
+                " this"
+                " thread_local"
+                " throw"
+                " true"
+                " try"
+                " typedef"
+                " typeid"
+                " typename"
+                " union"
+                " unsigned"
+                " using"
+                " virtual"
+                " void"
+                " volatile"
+                " wchar_t"
+                " while"
+                " xor"
+                " xor_eq");
     } else if(lang == kJavaScript) {
-        keywords = "abstract boolean break byte case catch char class "
-                   "const continue debugger default delete do double else enum export extends "
-                   "final finally float for function goto if implements import in instanceof "
-                   "int interface long native new package private protected public "
-                   "return short static super switch synchronized this throw throws "
-                   "transient try typeof var void volatile while with";
+        keywords =
+            "abstract boolean break byte case catch char class "
+            "const continue debugger default delete do double else enum export extends "
+            "final finally float for function goto if implements import in instanceof "
+            "int interface long native new package private protected public "
+            "return short static super switch synchronized this throw throws "
+            "transient try typeof var void volatile while with";
     }
 
     std::set<wxString> uniqueWords;

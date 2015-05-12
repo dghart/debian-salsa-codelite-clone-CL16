@@ -1,1 +1,5 @@
-
+* Change icons (debugger breakpoints, bookmarks and debugger green cursor)
+* Git: add an option to open the commit in GitHub
+* Editor: when zooming an editor using the mouse, offer the user to keep the font
+* PHP formatting: handle switch / case
+* Provide minimal settings for the Help plugin

@@ -15,6 +15,7 @@
 #include <wx/msgdlg.h>
 #include "php_parser_thread.h"
 #include <wx/progdlg.h>
+#include "cl_command_event.h"
 
 #ifndef __WXMSW__
 #include <errno.h>
@@ -45,12 +46,12 @@ void PHPWorkspace::Release()
     ms_instance = 0;
 }
 
-bool PHPWorkspace::Close(bool saveBeforeClose)
+bool PHPWorkspace::Close(bool saveBeforeClose, bool saveSession)
 {
     SendCmdEvent(wxEVT_WORKSPACE_CLOSING);
-    
+
     if(IsOpen()) {
-        if(m_manager) {
+        if(m_manager && saveSession) {
             m_manager->StoreWorkspaceSession(m_workspaceFile);
         }
         if(saveBeforeClose) {
@@ -77,20 +78,20 @@ bool PHPWorkspace::Open(const wxString& filename, bool createIfMissing)
 {
     // Close the currently opened workspace
     if(IsOpen()) {
-        Close();
+        Close(true, true);
     }
 
     m_workspaceFile = filename;
     wxFileName fnNewWspFile = m_workspaceFile;
     fnNewWspFile.SetExt("workspace");
-    
+
     if(!fnNewWspFile.Exists()) {
         wxLogNull nolog;
         if(::wxCopyFile(m_workspaceFile.GetFullPath(), fnNewWspFile.GetFullPath())) {
             m_workspaceFile = fnNewWspFile;
         }
     }
-    
+
     // Ensure that the workspace file is renamed to .workspace
     {
         // Create the private folder if needed
@@ -139,20 +140,20 @@ bool PHPWorkspace::Open(const wxString& filename, bool createIfMissing)
         event.SetString(GetFilename().GetFullPath());
         EventNotifier::Get()->AddPendingEvent(event);
     }
-    
+
     wxBusyInfo busy(_("Scanning for workspace files..."), EventNotifier::Get()->TopFrame());
     wxYieldIfNeeded();
-    
+
     wxArrayString dummy;
     GetWorkspaceFiles(dummy);
-    
+
     // progress->Destroy();
-    
+
     // Perform a quick re-parse of the workspace
     ParseWorkspace(false);
 
     CallAfter(&PHPWorkspace::RestoreWorkspaceSession);
-    
+
     // Change the workspace extension
     return true;
 }
@@ -167,10 +168,10 @@ void PHPWorkspace::CreateProject(const PHPProject::CreateData& createData)
     fnProjectFileName.SetFullName(projectName);
 
     if(HasProject(projectName)) return;
-    
+
     // Ensure that the path to the file exists
     fnProjectFileName.Mkdir(wxS_DIR_DEFAULT, wxPATH_MKDIR_FULL);
-    
+
     // Create an empty project and initialize it with the global settings
     PHPProject::Ptr_t proj(new PHPProject());
     // Setup the file path + name
@@ -187,7 +188,7 @@ void PHPWorkspace::CreateProject(const PHPProject::CreateData& createData)
     }
     Save();
     proj->Save();
-    
+
     // Retag the workspace (there could be new files that were added to the workspace)
     ParseWorkspace(false);
 }
@@ -213,8 +214,25 @@ void PHPWorkspace::DeleteProject(const wxString& project)
 void PHPWorkspace::SetProjectActive(const wxString& project)
 {
     PHPProject::Map_t::iterator iter = m_projects.begin();
+    PHPProject::Ptr_t activeProject;
     for(; iter != m_projects.end(); ++iter) {
-        iter->second->SetIsActive(iter->first == project);
+        if(iter->first == project) {
+            activeProject = iter->second;
+        }
+        bool newState = (iter->first == project);
+        if(iter->second->IsActive() != newState) {
+            iter->second->SetIsActive(newState);
+            // Save the change to the file system
+            iter->second->Save();
+        }
+    }
+
+    // notify about this change
+    if(activeProject) {
+        clProjectSettingsEvent evt(wxEVT_ACTIVE_PROJECT_CHANGED);
+        evt.SetProjectName(project);
+        evt.SetFileName(activeProject->GetFilename().GetFullPath());
+        EventNotifier::Get()->AddPendingEvent(evt);
     }
 }
 
@@ -304,6 +322,7 @@ void PHPWorkspace::FromJSON(const JSONElement& e)
 {
     m_projects.clear();
     if(e.hasNamedObject("projects")) {
+        PHPProject::Ptr_t firstProject;
         JSONElement projects = e.namedObject("projects");
         int count = projects.arraySize();
         for(int i = 0; i < count; ++i) {
@@ -313,6 +332,24 @@ void PHPWorkspace::FromJSON(const JSONElement& e)
             fnProject.MakeAbsolute(m_workspaceFile.GetPath());
             p->Load(fnProject);
             m_projects.insert(std::make_pair(p->GetName(), p));
+            if(!firstProject) {
+                firstProject = p;
+            }
+        }
+
+        PHPProject::Ptr_t activeProject = GetActiveProject();
+        if(!activeProject && firstProject) {
+            // No active project found, mark the first project as active
+            activeProject = firstProject;
+            SetProjectActive(firstProject->GetName());
+        }
+        
+        if(activeProject) {
+            // Notify about active project been set
+            clProjectSettingsEvent evt(wxEVT_ACTIVE_PROJECT_CHANGED);
+            evt.SetProjectName(activeProject->GetName());
+            evt.SetFileName(activeProject->GetFilename().GetFullPath());
+            EventNotifier::Get()->AddPendingEvent(evt);
         }
     }
 }
@@ -324,11 +361,11 @@ JSONElement PHPWorkspace::ToJSON(JSONElement& e) const
 {
     JSONElement metadata = JSONElement::createObject("metadata");
     e.append(metadata);
-    
+
     metadata.addProperty("version", PHP_WORKSPACE_VERSION);
     metadata.addProperty("ide", PHP_WORKSPACE_IDE);
     metadata.addProperty("type", wxString("php"));
-    
+
     // Store the list of files
     JSONElement projectsArr = JSONElement::createArray("projects");
     e.append(projectsArr);
@@ -339,8 +376,7 @@ JSONElement PHPWorkspace::ToJSON(JSONElement& e) const
         projectFile.MakeRelativeTo(m_workspaceFile.GetPath());
         projectsArr.arrayAppend(projectFile.GetFullPath(wxPATH_UNIX));
     }
-    
-    
+
     return e;
 }
 
@@ -451,8 +487,29 @@ void PHPWorkspace::GetWorkspaceFiles(wxArrayString& workspaceFiles, wxProgressDi
 void PHPWorkspace::ParseWorkspace(bool full)
 {
     // Request for parsing
-    PHPParserThreadRequest* req = new PHPParserThreadRequest(full ? PHPParserThreadRequest::kParseWorkspaceFilesFull :
-                                                                    PHPParserThreadRequest::kParseWorkspaceFilesQuick);
+    if(full) {
+        // a full parsing is needed, stop the paser thread
+        // close the database, delete it and recreate it
+        // then, restart the parser thread
+        PHPParserThread::Release(); // Stop and wait the thread terminates
+        
+        // Close the CC manager
+        PHPCodeCompletion::Instance()->Close();
+        
+        // Delete the file
+        wxFileName fnDatabaseFile(m_workspaceFile.GetPath(), "phpsymbols.db");
+        fnDatabaseFile.AppendDir(".codelite");
+        
+        wxLogNull noLog;
+        bool bRemoved = ::wxRemoveFile(fnDatabaseFile.GetFullPath());
+        wxUnusedVar(bRemoved);
+        
+        // Start the managers again
+        PHPParserThread::Instance()->Start();
+        PHPCodeCompletion::Instance()->Open(m_workspaceFile);
+    }
+    
+    PHPParserThreadRequest* req = new PHPParserThreadRequest(PHPParserThreadRequest::kParseWorkspaceFilesQuick);
     req->workspaceFile = GetFilename().GetFullPath();
     GetWorkspaceFiles(req->files);
 
@@ -495,7 +552,7 @@ bool PHPWorkspace::AddProject(const wxFileName& projectFile, wxString& errmsg)
 {
     PHPProject::Ptr_t proj(new PHPProject());
     proj->Load(projectFile);
-    
+
     if(proj->IsOk()) {
         if(HasProject(proj->GetName())) {
             errmsg = _("A project with similar name already exists in the workspace");
@@ -503,10 +560,10 @@ bool PHPWorkspace::AddProject(const wxFileName& projectFile, wxString& errmsg)
         }
         // Keep the active project name _before_ we add the new project
         wxString activeProjectName = GetActiveProjectName();
-        
+
         proj->GetSettings().MergeWithGlobalSettings();
         m_projects.insert(std::make_pair(proj->GetName(), proj));
-        
+
         if(m_projects.size() == 1) {
             // if we have a single project in the workspace, make it the active
             SetProjectActive(proj->GetName());
@@ -515,13 +572,43 @@ bool PHPWorkspace::AddProject(const wxFileName& projectFile, wxString& errmsg)
             // from the newly added project
             SetProjectActive(activeProjectName);
         }
-        
+
         Save();
         proj->Save();
-        
+
         // Retag the workspace (there could be new files that were added to the workspace)
         ParseWorkspace(false);
         return true;
     }
     return false;
+}
+
+bool PHPWorkspace::CanCreateProjectAtPath(const wxFileName& projectFileName, bool prompt) const
+{
+    wxString newpath = projectFileName.GetPath(wxPATH_GET_SEPARATOR | wxPATH_GET_VOLUME);
+    const PHPProject::Map_t& projects = GetProjects();
+    PHPProject::Map_t::const_iterator iter = projects.begin();
+    for(; iter != projects.end(); ++iter) {
+        if(newpath.StartsWith(iter->second->GetFilename().GetPath(wxPATH_GET_SEPARATOR | wxPATH_GET_VOLUME))) {
+            // The new path is a sub folder of a project
+            if(prompt) {
+                wxString message;
+                message << _("Unable to create a project at the selected path\n") << _("Path '") << newpath
+                        << _("' is already part of project '") << iter->second->GetName() << "'";
+                ::wxMessageBox(message, "CodeLite", wxOK | wxICON_ERROR | wxCENTER);
+            }
+            return false;
+
+        } else if(iter->second->GetFilename().GetPath(wxPATH_GET_SEPARATOR | wxPATH_GET_VOLUME).StartsWith(newpath)) {
+            // The new project is a parent of an existing project
+            if(prompt) {
+                wxString message;
+                message << _("Unable to create a project at the selected path\n") << _("Project '")
+                        << iter->second->GetName() << _("' is located under this path");
+                ::wxMessageBox(message, "CodeLite", wxOK | wxICON_ERROR | wxCENTER);
+            }
+            return false;
+        }
+    }
+    return true;
 }

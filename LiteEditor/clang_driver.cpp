@@ -30,7 +30,6 @@
 #include "compilation_database.h"
 #include "pluginmanager.h"
 #include <wx/regex.h>
-#include "code_completion_box.h"
 #include "clangpch_cache.h"
 #include "asyncprocess.h"
 #include "frame.h"
@@ -62,6 +61,7 @@
 #include "browse_record.h"
 #include "mainbook.h"
 #include "macromanager.h"
+#include "wxCodeCompletionBoxManager.h"
 
 static bool wxIsWhitespace(wxChar ch)
 {
@@ -220,12 +220,6 @@ ClangThreadRequest* ClangDriver::DoMakeClangThreadRequest(IEditor* editor, Worki
 void ClangDriver::CodeCompletion(IEditor* editor)
 {
     if(m_isBusy) {
-        if(editor) {
-            CodeCompletionBox::Get().CancelTip();
-            CodeCompletionBox::Get().ShowTip(
-                wxT("<b>clang: </b>Code Completion Message:<hr>A lengthy operation is in progress..."),
-                dynamic_cast<LEditor*>(m_activeEditor));
-        }
         return;
     }
 
@@ -364,11 +358,15 @@ FileTypeCmpArgs_t ClangDriver::DoPrepareCompilationArgs(const wxString& projectN
         cCompileArgs.Add(wxString::Format(wxT("-D%s"), workspaceMacros.Item(i).Trim().Trim(false).c_str()));
     }
 
-    // C++ 11
+    // C++ 11 / 14
     size_t workspaceFlags = LocalWorkspaceST::Get()->GetParserFlags();
     if(workspaceFlags & LocalWorkspace::EnableCpp11) {
         cppCompileArgs.Add(wxT("-std=c++11"));
         cCompileArgs.Add(wxT("-std=c++11"));
+    }
+    if(workspaceFlags & LocalWorkspace::EnableCpp14) {
+        cppCompileArgs.Add(wxT("-std=c++14"));
+        cCompileArgs.Add(wxT("-std=c++14"));
     }
 
     ///////////////////////////////////////////////////////////////////////
@@ -400,6 +398,10 @@ FileTypeCmpArgs_t ClangDriver::DoPrepareCompilationArgs(const wxString& projectN
         if(buildConf->IsClangC11()) {
             cppCompileArgs.Add(wxT("-std=c++11"));
             cCompileArgs.Add(wxT("-std=c++11"));
+        }
+        if(buildConf->IsClangC14()) {
+            cppCompileArgs.Add(wxT("-std=c++14"));
+            cCompileArgs.Add(wxT("-std=c++14"));
         }
     }
 
@@ -577,6 +579,7 @@ void ClangDriver::OnPrepareTUEnded(wxCommandEvent& e)
         // Notify about this error
         clCommandEvent event(wxEVT_CLANG_CODE_COMPLETE_MESSAGE);
         event.SetString(reply->errorMessage);
+        event.SetInt(1); // indicates that this is an error message
         EventNotifier::Get()->AddPendingEvent(event);
         return;
     }
@@ -641,7 +644,7 @@ void ClangDriver::OnPrepareTUEnded(wxCommandEvent& e)
         tag->SetSignature(entrySignature);
 
 // Add support for clang comment parsing
-#ifndef __FreeBSD__
+#if HAS_LIBCLANG_BRIEFCOMMENTS
         CXString BriefComment = clang_getCompletionBriefComment(str);
         const char* comment = clang_getCString(BriefComment);
         if(comment && comment[0] != '\0') {
@@ -708,7 +711,8 @@ void ClangDriver::OnPrepareTUEnded(wxCommandEvent& e)
         m_activeEditor->ShowCalltip(new clCallTip(tips));
 
     } else {
-        m_activeEditor->ShowCompletionBox(tags, filterWord, true, NULL);
+        wxCodeCompletionBoxManager::Get().ShowCompletionBox(
+            m_activeEditor->GetCtrl(), tags, wxCodeCompletionBox::kNone, wxNOT_FOUND);
     }
 }
 
@@ -814,9 +818,6 @@ ClangThreadRequest::List_t ClangDriver::DoCreateListOfModifiedBuffers(IEditor* e
     return modifiedBuffers;
 }
 
-void ClangDriver::DoDeleteTempFile(const wxString& fileName)
-{
-    wxUnusedVar(fileName);
-}
+void ClangDriver::DoDeleteTempFile(const wxString& fileName) { wxUnusedVar(fileName); }
 
 #endif // HAS_LIBCLANG
