@@ -1,3 +1,0 @@
-# Although built with the correct flags, codelite-cc contains no
-# fortifiable function calls
-codelite binary: hardening-no-fortify-functions usr/lib/codelite/codelite-cc
