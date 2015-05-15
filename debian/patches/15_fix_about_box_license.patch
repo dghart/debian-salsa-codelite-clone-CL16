@@ -85,7 +85,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
      CentreOnScreen();
  }
  
-@@ -78,4 +112,4 @@
+@@ -78,4 +112,4 @@ wxString AboutDlg::GetInfo() const
  void AboutDlg::OnOK(wxCommandEvent& event)
  {
      EndModal(wxID_OK);

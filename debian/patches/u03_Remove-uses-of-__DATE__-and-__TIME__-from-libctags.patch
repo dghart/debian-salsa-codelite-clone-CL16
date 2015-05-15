@@ -1,0 +1,35 @@
+From 7e26dc1d647ff17fedd41fc01863ad9b65999994 Mon Sep 17 00:00:00 2001
+From: James Cowgill <james410@cowgill.org.uk>
+Date: Tue, 12 May 2015 13:55:48 +0100
+Subject: [PATCH 3/5] Remove uses of __DATE__ and __TIME__ from libctags
+
+There is an effort in Debian (and other distros) to be able to create
+reproducible binaries. Including a timestamp embedded in the executable will
+clearly make it slightly different each time it's built. After removing these
+two instances from libctags, codelite can be built reproducibly (with an
+experimental toolchain).
+
+More info:
+https://wiki.debian.org/ReproducibleBuilds/About
+
+The 7.0+dfsg-2 upload to Debian had this patch applied and this is the log:
+https://reproducible.debian.net/rb-pkg/unstable/amd64/codelite.html
+---
+ sdk/codelite_indexer/libctags/options.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/sdk/codelite_indexer/libctags/options.c b/sdk/codelite_indexer/libctags/options.c
+index f5642de..986c7d7 100644
+--- a/sdk/codelite_indexer/libctags/options.c
++++ b/sdk/codelite_indexer/libctags/options.c
+@@ -928,7 +928,6 @@ static void printProgramIdentification (void)
+ {
+ 	printf ("%s %s, Copyright (C) 1996-2004 %s\n",
+ 			PROGRAM_NAME, PROGRAM_VERSION, AUTHOR_NAME);
+-	printf ("  Compiled: %s, %s\n", __DATE__, __TIME__);
+ 	printf ("  Addresses: <%s>, %s\n", AUTHOR_EMAIL, PROGRAM_URL);
+ 	printFeatureList ();
+ }
+-- 
+2.1.4
+

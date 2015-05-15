@@ -5,15 +5,14 @@ Forwarded: not-needed
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- a/LiteEditor/CMakeLists.txt
 +++ b/LiteEditor/CMakeLists.txt
-@@ -142,7 +142,7 @@ install(
- ) 
- 
- install(
--  DIRECTORY ${CL_SRC_ROOT}/Runtime/images ${CL_SRC_ROOT}/Runtime/gdb_printers ${CL_SRC_ROOT}/Runtime/src/ ${CL_SRC_ROOT}/Runtime/lexers ${CL_SRC_ROOT}/Runtime/templates ${CL_SRC_ROOT}/Runtime/rc
-+  DIRECTORY ${CL_SRC_ROOT}/Runtime/images ${CL_SRC_ROOT}/Runtime/gdb_printers ${CL_SRC_ROOT}/Runtime/lexers ${CL_SRC_ROOT}/Runtime/templates ${CL_SRC_ROOT}/Runtime/rc
-   DESTINATION ${CL_PREFIX}/share/codelite
-   USE_SOURCE_PERMISSIONS
-   PATTERN ".svn" EXCLUDE
+@@ -157,7 +157,6 @@ if(NOT APPLE)
+     install(
+         DIRECTORY ${CL_SRC_ROOT}/Runtime/images 
+                   ${CL_SRC_ROOT}/Runtime/gdb_printers 
+-                  ${CL_SRC_ROOT}/Runtime/src/ 
+                   ${CL_SRC_ROOT}/Runtime/lexers 
+                   ${CL_SRC_ROOT}/Runtime/templates 
+                   ${CL_SRC_ROOT}/Runtime/rc
 --- a/Runtime/templates/projects/UnitTest++/UnitTest++.project
 +++ b/Runtime/templates/projects/UnitTest++/UnitTest++.project
 @@ -5,11 +5,10 @@
