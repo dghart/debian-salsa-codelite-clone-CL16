@@ -11,3 +11,4 @@ u04_Fix-LLDBDebugger-undefined-symbol-error-when-using-L.patch
 10_move-helper-binaries.patch
 15_fix_about_box_license.patch
 24_default_no_check_for_updates.patch
+25_shlibs-adjustments.patch

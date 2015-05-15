@@ -1,0 +1,2 @@
+liblibcodelite 0 codelite (= ${binary:Version})
+libplugin 0 codelite (= ${binary:Version})
