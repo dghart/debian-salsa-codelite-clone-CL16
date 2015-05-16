@@ -1,8 +1,24 @@
-codelite (8.0.1+dfsg-1) UNRELEASED; urgency=medium
+codelite (8.0.1+dfsg-1) unstable; urgency=medium
 
-  *
+  * New upstream release (this is upstream's 8.0-1).
+  * Fix spelling error in 7.0+dfsg-2 changelog entry.
+  * Use alternate method of handling private liblibcodelite.so and libplugin.so
+    dependencies.
 
- -- James Cowgill <james410@cowgill.org.uk>  Tue, 12 May 2015 20:53:46 +0100
+  * debian/control:
+    - Add recommeds on nodejs to codelite-plugins - used in WebTools.
+  * debian/copyright:
+    - Update Eran's email address.
+    - Other updates for 8.0.1.
+  * debian/patches:
+    - Many patch updates for 8.0.1. Upstreamed patches are marked with
+      a 'u' prefix.
+    - LLVM patch replaced with specifying the paths directly in debian/rules.
+    - Added upstream patch to fix abbreviation plugin.
+  * debian/watch:
+    - Convert dashes to dots in version numbers.
+
+ -- James Cowgill <james410@cowgill.org.uk>  Sat, 16 May 2015 16:19:53 +0100
 
 codelite (7.0+dfsg-2) unstable; urgency=low
 
