@@ -7,6 +7,7 @@ usr/lib/codelite/ContinuousBuild.so
 usr/lib/codelite/Copyright.so
 usr/lib/codelite/DatabaseExplorer.so
 usr/lib/codelite/ExternalTools.so
+usr/lib/codelite/HelpPlugin.so
 usr/lib/codelite/LLDBDebugger.so
 usr/lib/codelite/MemCheck.so
 usr/lib/codelite/Outline.so
@@ -17,6 +18,7 @@ usr/lib/codelite/SnipWiz.so
 usr/lib/codelite/Subversion.so
 usr/lib/codelite/Tweaks.so
 usr/lib/codelite/UnitTestsPP.so
+usr/lib/codelite/WebTools.so
 usr/lib/codelite/Wizards.so
 usr/lib/codelite/WordCompletion.so
 usr/lib/codelite/ZoomNavigator.so
@@ -29,6 +31,7 @@ usr/lib/codelite/wxFormBuilder.so
 usr/lib/codelite/resources usr/share/codelite
 usr/share/codelite/PHP.zip
 usr/share/codelite/dics
+usr/share/codelite/javascript.zip
 usr/share/codelite/templates/codedesigner
 usr/share/codelite/templates/formbuilder
 usr/share/codelite/templates/databaselayer
