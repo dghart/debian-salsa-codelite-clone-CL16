@@ -1,0 +1,28 @@
+From 150569a3b308c143b9b324365e280949c70ada88 Mon Sep 17 00:00:00 2001
+From: eran <eran.ifrah@gmail.com>
+Date: Tue, 12 May 2015 16:44:51 +0300
+Subject: [PATCH] Fixed: https://github.com/eranif/codelite/issues/763 : 
+ codelite 8.0 abbreviation plugin does not work in Ubuntu 14.04
+
+[jcowgill: remove changes to LiteEditor.workspace]
+---
+ LiteEditor.workspace          | 4 ++--
+ abbreviation/abbreviation.cpp | 2 +-
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/abbreviation/abbreviation.cpp b/abbreviation/abbreviation.cpp
+index feae401..364af44 100644
+--- a/abbreviation/abbreviation.cpp
++++ b/abbreviation/abbreviation.cpp
+@@ -229,7 +229,7 @@ bool AbbreviationPlugin::InsertExpansion(const wxString& abbreviation)
+ {
+     // get the active editor
+     IEditor* editor = m_mgr->GetActiveEditor();
+-    if(!editor || !abbreviation.IsEmpty()) return false;
++    if(!editor || abbreviation.IsEmpty()) return false;
+ 
+     // search for abbreviation that matches str
+     // prepate list of abbreviations
+-- 
+2.1.4
+
