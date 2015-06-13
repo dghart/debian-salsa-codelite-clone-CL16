@@ -1,8 +1,9 @@
-codelite (8.0.1+dfsg2-1) UNRELEASED; urgency=medium
+codelite (8.0.1+dfsg2-1) unstable; urgency=medium
 
-  *
+  * Remove codelitephp/PHPParserUnitTests/Tests/Mage.php which is licensed
+    under the non-free OSL-3.0 license (Closes: #788637).
 
- -- James Cowgill <james410@cowgill.org.uk>  Sun, 14 Jun 2015 00:42:21 +0100
+ -- James Cowgill <james410@cowgill.org.uk>  Sun, 14 Jun 2015 00:43:46 +0100
 
 codelite (8.0.1+dfsg-1) unstable; urgency=medium
 
