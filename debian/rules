@@ -10,7 +10,6 @@ export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed
 LLVM_VERSION := 3.5
 
 CONFIG_EXTRA := \
-    -DWITH_WEBVIEW=1 \
     -DCMAKE_INSTALL_LIBDIR=lib \
     -DLIBCLANG_T=/usr/lib/$(DEB_HOST_MULTIARCH)/libclang-$(LLVM_VERSION).so \
     -DLIBCLANG_INCLUDE_T=/usr/lib/llvm-$(LLVM_VERSION)/include/ \

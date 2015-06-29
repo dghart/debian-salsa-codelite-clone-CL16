@@ -12,7 +12,6 @@ Build-Depends:
  liblldb-3.5-dev [!arm64 !hurd-i386 !mips64el !ppc64el !sparc],
  libssh-gcrypt-dev,
  libwxgtk3.0-dev,
- libwxgtk-webview3.0-dev,
  libwxsqlite3-3.0-dev,
  llvm-3.5 [!hurd-i386 !sparc],
  pkg-config
