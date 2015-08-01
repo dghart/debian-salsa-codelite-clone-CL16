@@ -74,7 +74,7 @@ extern "C" EXPORT PluginInfo GetPluginInfo()
     PluginInfo info;
     info.SetAuthor(wxT("Frank Lichtner"));
     info.SetName(wxT("SpellCheck"));
-    info.SetDescription(wxT("CodeLite spell checker"));
+    info.SetDescription(_("CodeLite spell checker"));
     info.SetVersion(wxT("v1.6"));
     return info;
 }
@@ -112,7 +112,7 @@ void SpellCheck::Init()
 {
     m_topWin = NULL;
     m_pEngine = NULL;
-    m_longName = wxT("CodeLite spell-checker");
+    m_longName = _("CodeLite spell-checker");
     m_shortName = s_plugName;
     m_sepItem = NULL;
     m_pToolbar = NULL;
@@ -123,7 +123,7 @@ void SpellCheck::Init()
 
     if(m_pEngine) {
         LoadSettings();
-        wxString userDictPath = wxStandardPaths::Get().GetUserDataDir();
+        wxString userDictPath = clStandardPaths::Get().GetUserDataDir();
         userDictPath << wxFILE_SEP_PATH << wxT("spellcheck") << wxFILE_SEP_PATH;
 
         if(!wxFileName::DirExists(userDictPath)) wxFileName::Mkdir(userDictPath);

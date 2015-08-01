@@ -56,7 +56,8 @@ protected:
     void DoOpenWorkspace(const wxString& filename, bool createIfMissing = false);
     void DoPlaceMenuBar(wxMenuBar* menuBar);
     void DoEnsureXDebugPanesVisible(const wxString& selectWindow = "");
-
+    void DoSyncFileWithRemote(const wxFileName& localFile);
+    
 public:
     //--------------------------------------------
     // Abstract methods
@@ -81,7 +82,7 @@ public:
     //////////////////////////////////////////////
     // Other common codelite events
     //////////////////////////////////////////////
-    void OnNewWorkspace(wxCommandEvent& e);
+    void OnNewWorkspace(clCommandEvent& e);
     void OnIsWorkspaceOpen(clCommandEvent& e);
     void OnCloseWorkspace(clCommandEvent& e);
     void OnOpenWorkspace(clCommandEvent& e);
@@ -92,7 +93,6 @@ public:
     void OnGetActiveProjectFiles(wxCommandEvent& e);
     void OnNewProject(clNewProjectEvent& e);
     void OnNewProjectFinish(clNewProjectEvent& e);
-    void OnGetFiFMask(clCommandEvent& e);
     void OnFindInFilesDismissed(clCommandEvent& e);
     void OnRunXDebugDiagnostics(wxCommandEvent& e);
     void OnMenuCommand(wxCommandEvent& e);
@@ -107,6 +107,8 @@ public:
     void OnDebugEnded(XDebugEvent& e);
     void OnFileSysetmUpdated(clFileSystemEvent& event);
     void OnSaveSession(clCommandEvent& event);
+    void OnReplaceInFiles(clFileSystemEvent &e);
+    
 };
 
 #endif // PHP

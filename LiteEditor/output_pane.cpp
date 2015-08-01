@@ -38,9 +38,10 @@
 #include "shelltab.h"
 #include "taskpanel.h"
 #include "wxcl_log_text_ctrl.h"
+#include <algorithm>
 
 #if HAS_LIBCLANG
-#   include "ClangOutputTab.h"
+#include "ClangOutputTab.h"
 #endif
 
 const wxString OutputPane::FIND_IN_FILES_WIN = _("Search");
@@ -63,6 +64,7 @@ OutputPane::OutputPane(wxWindow* parent, const wxString& caption)
     EventNotifier::Get()->Connect(wxEVT_EDITOR_CLICKED, wxCommandEventHandler(OutputPane::OnEditorFocus), NULL, this);
     EventNotifier::Get()->Connect(wxEVT_BUILD_STARTED, clBuildEventHandler(OutputPane::OnBuildStarted), NULL, this);
     EventNotifier::Get()->Connect(wxEVT_BUILD_ENDED, clBuildEventHandler(OutputPane::OnBuildEnded), NULL, this);
+    EventNotifier::Get()->Bind(wxEVT_EDITOR_CONFIG_CHANGED, &OutputPane::OnSettingsChanged, this);
     SetSize(-1, 250);
 }
 
@@ -73,6 +75,7 @@ OutputPane::~OutputPane()
         wxEVT_EDITOR_CLICKED, wxCommandEventHandler(OutputPane::OnEditorFocus), NULL, this);
     EventNotifier::Get()->Disconnect(wxEVT_BUILD_STARTED, clBuildEventHandler(OutputPane::OnBuildStarted), NULL, this);
     EventNotifier::Get()->Disconnect(wxEVT_BUILD_ENDED, clBuildEventHandler(OutputPane::OnBuildEnded), NULL, this);
+    EventNotifier::Get()->Unbind(wxEVT_EDITOR_CONFIG_CHANGED, &OutputPane::OnSettingsChanged, this);
 }
 
 void OutputPane::CreateGUIControls()
@@ -80,7 +83,11 @@ void OutputPane::CreateGUIControls()
     wxBoxSizer* mainSizer = new wxBoxSizer(wxVERTICAL);
     SetSizer(mainSizer);
 
-    m_book = new Notebook(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxNO_BORDER | wxAUI_NB_WINDOWLIST_BUTTON);
+    long style = (kNotebook_Default | kNotebook_AllowDnD);
+    if(!EditorConfigST::Get()->GetOptions()->IsNonEditorTabsAtTop()) {
+        style |= kNotebook_BottomTabs;
+    }
+    m_book = new Notebook(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, style);
 
     BitmapLoader* bmpLoader = PluginManager::Get()->GetStdIcons();
 
@@ -99,12 +106,7 @@ void OutputPane::CreateGUIControls()
     m_book->AddPage(
         m_buildWin, wxGetTranslation(BUILD_WIN), true, bmpLoader->LoadBitmap(wxT("toolbars/16/build/build")));
 
-#ifdef __WXMAC__
-    m_findResultsTab = new FindResultsTab(m_book, wxID_ANY, wxGetTranslation(FIND_IN_FILES_WIN), false);
-#else
-    m_findResultsTab = new FindResultsTab(m_book, wxID_ANY, wxGetTranslation(FIND_IN_FILES_WIN), true);
-#endif
-
+    m_findResultsTab = new FindResultsTab(m_book, wxID_ANY, wxGetTranslation(FIND_IN_FILES_WIN));
     m_book->AddPage(m_findResultsTab,
                     wxGetTranslation(FIND_IN_FILES_WIN),
                     false,
@@ -127,8 +129,7 @@ void OutputPane::CreateGUIControls()
 #if HAS_LIBCLANG
     NewProjImgList images;
     m_clangOutputTab = new ClangOutputTab(m_book);
-    m_book->AddPage(
-        m_clangOutputTab, wxGetTranslation(CLANG_TAB), false, images.Bitmap("clang16"));
+    m_book->AddPage(m_clangOutputTab, wxGetTranslation(CLANG_TAB), false, images.Bitmap("clang16"));
 #endif
     wxTextCtrl* text = new wxTextCtrl(m_book,
                                       wxID_ANY,
@@ -159,13 +160,12 @@ void OutputPane::OnEditorFocus(wxCommandEvent& e)
     if(EditorConfigST::Get()->GetOptions()->GetHideOutpuPaneOnUserClick()) {
 
         // Optionally don't hide the various panes (sometimes it's irritating, you click to do something and...)
-        size_t cursel(m_book->GetSelection());
-        if(cursel != Notebook::npos && EditorConfigST::Get()->GetPaneStickiness(m_book->GetPageText(cursel))) {
+        int cursel(m_book->GetSelection());
+        if(cursel != wxNOT_FOUND && EditorConfigST::Get()->GetPaneStickiness(m_book->GetPageText(cursel))) {
             return;
         }
 
-        if(m_buildInProgress)
-            return;
+        if(m_buildInProgress) return;
 
         wxAuiPaneInfo& info = PluginManager::Get()->GetDockingManager()->GetPane(wxT("Output View"));
         DockablePaneMenuManager::HackHidePane(true, info, PluginManager::Get()->GetDockingManager());
@@ -182,4 +182,73 @@ void OutputPane::OnBuildEnded(clBuildEvent& e)
 {
     e.Skip();
     m_buildInProgress = false;
+}
+
+void OutputPane::SaveTabOrder()
+{
+    wxArrayString panes;
+    clTabInfo::Vec_t tabs;
+    m_book->GetAllTabs(tabs);
+    std::for_each(tabs.begin(), tabs.end(), [&](clTabInfo::Ptr_t t) { panes.Add(t->GetLabel()); });
+    clConfig::Get().SetOutputTabOrder(panes, m_book->GetSelection());
+}
+
+typedef struct {
+    wxString text;
+    wxWindow* win;
+    wxBitmap bmp;
+} tagTabInfo;
+
+void OutputPane::ApplySavedTabOrder() const
+{
+
+    wxArrayString tabs;
+    int index = -1;
+    if(!clConfig::Get().GetOutputTabOrder(tabs, index)) return;
+
+    std::vector<tagTabInfo> vTempstore;
+    for(size_t t = 0; t < tabs.GetCount(); ++t) {
+        wxString title = tabs.Item(t);
+        if(title.empty()) {
+            continue;
+        }
+        for(size_t n = 0; n < m_book->GetPageCount(); ++n) {
+            if(title == m_book->GetPageText(n)) {
+                tagTabInfo Tab;
+                Tab.text = title;
+                Tab.win = m_book->GetPage(n);
+                Tab.bmp = m_book->GetPageBitmap(n);
+
+                vTempstore.push_back(Tab);
+                m_book->RemovePage(n);
+                break;
+            }
+        }
+        // If we reach here without finding title, presumably that tab is no longer available and will just be ignored
+    }
+
+    // All the matched tabs are now stored in the vector. Any left in m_book are presumably new additions
+    // Now prepend the ordered tabs, so that any additions will effectively be appended
+    for(size_t n = 0; n < vTempstore.size(); ++n) {
+        m_book->InsertPage(n, vTempstore.at(n).win, vTempstore.at(n).text, false, vTempstore.at(n).bmp);
+    }
+
+    // wxPrintf("After load");for (size_t n=0; n < m_book->GetPageCount(); ++n)  CL_DEBUG1(wxString::Format("Tab %i:
+    // %zs",(int)n,m_book->GetPageText(n)));
+
+    // Restore any saved last selection
+    // NB: this doesn't actually work atm: the selection is set correctly, but presumably something else changes is
+    // later
+    // I've left the code in case anyone ever has time/inclination to fix it
+    if((index >= 0) && (index < (int)m_book->GetPageCount())) {
+        m_book->SetSelection(index);
+    } else if(m_book->GetPageCount()) {
+        m_book->SetSelection(0);
+    }
+}
+
+void OutputPane::OnSettingsChanged(wxCommandEvent& event)
+{
+    event.Skip();
+    m_book->EnableStyle(kNotebook_BottomTabs, !EditorConfigST::Get()->GetOptions()->IsNonEditorTabsAtTop());
 }

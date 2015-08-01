@@ -58,10 +58,6 @@ AdvancedDlg::AdvancedDlg(wxWindow* parent,
     : AdvancedDlgBase(parent)
     , m_rightclickMenu(NULL)
 {
-#ifndef __WXGTK__
-    m_notebook->SetArtProvider(new clAuiGlossyTabArt);
-#endif
-
     m_compilersMainPanel = new wxPanel(m_notebook, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL);
 
     wxBoxSizer* bSizer5;
@@ -233,7 +229,7 @@ void AdvancedDlg::OnApply(wxCommandEvent& event)
 
     // mark all the projects as dirty
     wxArrayString projects;
-    WorkspaceST::Get()->GetProjectList(projects);
+    clCxxWorkspaceST::Get()->GetProjectList(projects);
     for(size_t i = 0; i < projects.size(); i++) {
         ProjectPtr proj = ManagerST::Get()->GetProject(projects.Item(i));
         if(proj) {

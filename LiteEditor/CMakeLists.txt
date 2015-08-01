@@ -5,13 +5,6 @@ cmake_minimum_required(VERSION 2.6.2)
 # visual studio, and in our makefiles. 
 project(codelite)
 
-if ( UNIX AND NOT APPLE )
-    execute_process(COMMAND sed s@%%PREFIX%%@${CL_PREFIX}@g Runtime/codelite.desktop.template 
-                    WORKING_DIRECTORY "${CL_SRC_ROOT}" 
-                    OUTPUT_FILE Runtime/codelite.desktop)
-    message("-- Generating desktop file...")
-endif (  UNIX AND NOT APPLE )
-
 # It was noticed that when using MinGW gcc it is essential that 'core' is mentioned before 'base'.
 find_package(wxWidgets COMPONENTS ${WX_COMPONENTS} REQUIRED)
 
@@ -62,11 +55,6 @@ if ( USE_CLANG )
   include_directories(${CLANG_INCLUDE})
 endif( USE_CLANG )
 
-# Add RPATH
-if (UNIX)
-set (LINKER_OPTIONS -Wl,-rpath,"${PLUGINS_DIR}")
-endif (UNIX)
-
 FILE(GLOB SRCS "*.cpp")
 
 set (RES_FILE "")
@@ -91,11 +79,11 @@ else (UNIX)
 endif (UNIX)
 
 if(GTK2_FOUND)
-    target_link_libraries(codelite ${LINKER_OPTIONS} ${GTK2_LIBRARIES} ${wxWidgets_LIBRARIES} ${CLANG_LIBRARY} -L"${CL_LIBPATH}" -lwxsqlite3 -lsqlite3lib -llibcodelite -lplugin ${ADDITIONAL_LIBRARIES})
+    target_link_libraries(codelite ${LINKER_OPTIONS} ${GTK2_LIBRARIES} ${wxWidgets_LIBRARIES} ${CLANG_LIBRARY} -L"${CL_LIBPATH}" libcodelite plugin ${ADDITIONAL_LIBRARIES})
 elseif (GTK3_FOUND)
-    target_link_libraries(codelite ${LINKER_OPTIONS} ${GTK3_LIBRARIES} ${wxWidgets_LIBRARIES} ${CLANG_LIBRARY} -L"${CL_LIBPATH}" -lwxsqlite3 -lsqlite3lib -llibcodelite -lplugin ${ADDITIONAL_LIBRARIES})
+    target_link_libraries(codelite ${LINKER_OPTIONS} ${GTK3_LIBRARIES} ${wxWidgets_LIBRARIES} ${CLANG_LIBRARY} -L"${CL_LIBPATH}" libcodelite plugin ${ADDITIONAL_LIBRARIES})
 else()
-    target_link_libraries(codelite ${LINKER_OPTIONS} ${wxWidgets_LIBRARIES} ${CLANG_LIBRARY} -L"${CL_LIBPATH}" -lwxsqlite3 -lsqlite3lib -llibcodelite -lplugin ${ADDITIONAL_LIBRARIES})
+    target_link_libraries(codelite ${LINKER_OPTIONS} ${wxWidgets_LIBRARIES} ${CLANG_LIBRARY} -L"${CL_LIBPATH}" libcodelite plugin ${ADDITIONAL_LIBRARIES})
 endif()
 
 ##################################################################
@@ -148,7 +136,7 @@ if(NOT APPLE)
                 DESTINATION ${CL_PREFIX}/share/icons/hicolor/32x32/apps
                 RENAME codelite.png)
         # Clear the icon cache if exists
-        install(CODE "execute_process(COMMAND rm -f ${CL_PREFIX}/share/icons/hicolor/icon-theme.cache)")
+        install(CODE "execute_process(COMMAND rm -f \$ENV{DESTDIR}/${CL_PREFIX}/share/icons/hicolor/icon-theme.cache)")
     endif (  UNIX AND NOT APPLE )
 
     install(

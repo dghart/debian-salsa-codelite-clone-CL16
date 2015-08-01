@@ -9,6 +9,8 @@
 #include "ieditor.h"
 #include "XMLCodeCompletion.h"
 
+class NodeJSDebuggerPane;
+class NodeJSWorkspaceView;
 class JavaScriptSyntaxColourThread;
 class WebTools : public IPlugin
 {
@@ -17,12 +19,19 @@ class WebTools : public IPlugin
     JavaScriptSyntaxColourThread* m_jsColourThread;
     JSCodeCompletion::Ptr_t m_jsCodeComplete;
     XMLCodeCompletion::Ptr_t m_xmlCodeComplete;
-    
+
     time_t m_lastColourUpdate;
     wxTimer* m_timer;
 
+    /// Node.js
+    bool m_clangOldFlag;
+    NodeJSDebuggerPane* m_nodejsDebuggerPane;
+    wxString m_savePerspective;
+    bool m_hideToolBarOnDebugStop;
+    
 protected:
     void OnWorkspaceClosed(wxCommandEvent& event);
+    void OnWorkspaceLoaded(wxCommandEvent& event);
     void OnEditorChanged(wxCommandEvent& event);
     void OnRefreshColours(clCommandEvent& event);
     void OnThemeChanged(wxCommandEvent& event);
@@ -31,8 +40,11 @@ protected:
     void ColourJavaScript(const JavaScriptSyntaxColourThread::Reply& reply);
     void OnSettings(wxCommandEvent& event);
     void OnTimer(wxTimerEvent& event);
-    void OnCommentLine(wxCommandEvent &e);
-    void OnCommentSelection(wxCommandEvent &e);
+    void OnCommentLine(wxCommandEvent& e);
+    void OnCommentSelection(wxCommandEvent& e);
+    void OnNodeJSDebuggerStarted(clDebugEvent& event);
+    void OnNodeJSDebuggerStopped(clDebugEvent& event);
+
 private:
     bool IsJavaScriptFile(const wxString& filename);
     bool IsJavaScriptFile(const wxFileName& filename);
@@ -40,7 +52,7 @@ private:
     bool IsHTMLFile(IEditor* editor);
     bool InsideJSComment(IEditor* editor);
     bool InsideJSString(IEditor* editor);
-
+    void EnsureAuiPaneIsVisible(const wxString& paneName, bool update);
 public:
     WebTools(IManager* manager);
     ~WebTools();

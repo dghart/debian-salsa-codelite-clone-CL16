@@ -91,6 +91,8 @@ WorkspaceSettingsBase::WorkspaceSettingsBase(wxWindow* parent, wxWindowID id, co
     #if wxVERSION_NUMBER >= 2900
     if(!wxPersistenceManager::Get().Find(m_notebook1)){
         wxPersistenceManager::Get().RegisterAndRestore(m_notebook1);
+    } else {
+        wxPersistenceManager::Get().Restore(m_notebook1);
     }
     #endif
     
@@ -103,6 +105,8 @@ WorkspaceSettingsBase::WorkspaceSettingsBase(wxWindow* parent, wxWindowID id, co
 #if wxVERSION_NUMBER >= 2900
     if(!wxPersistenceManager::Get().Find(this)) {
         wxPersistenceManager::Get().RegisterAndRestore(this);
+    } else {
+        wxPersistenceManager::Get().Restore(this);
     }
 #endif
     // Connect events
@@ -179,6 +183,12 @@ CodeCompletionBasePage::CodeCompletionBasePage(wxWindow* parent, wxWindowID id, 
     m_checkBoxCpp14->SetValue(false);
     
     boxSizer3->Add(m_checkBoxCpp14, 0, wxALL, 5);
+    
+    m_checkBoxSWTLW = new wxCheckBox(m_panel6, wxID_ANY, _("Sync to Workspace File"), wxDefaultPosition, wxSize(-1,-1), 0);
+    m_checkBoxSWTLW->SetValue(false);
+    m_checkBoxSWTLW->SetToolTip(_("When enabled search paths folders for Code Completion will be synced between the Workspace file and the local search paths database."));
+    
+    boxSizer3->Add(m_checkBoxSWTLW, 0, wxALL, 5);
     
     SetName(wxT("CodeCompletionBasePage"));
     SetSizeHints(500,300);

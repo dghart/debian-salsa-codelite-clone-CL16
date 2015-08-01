@@ -231,7 +231,12 @@ LexerConf::Ptr_t ColoursAndFontsManager::DoAddLexer(wxXmlNode* node)
     if(lexer->GetName() == "javascript" && !lexer->GetFileSpec().Contains(".wxcp")) {
         lexer->SetFileSpec(lexer->GetFileSpec() + ";*.wxcp");
     }
-
+    
+    // Add *.scss file extension to the css lexer
+    if(lexer->GetName() == "css" && !lexer->GetFileSpec().Contains(".scss")) {
+        lexer->SetFileSpec(lexer->GetFileSpec() + ";*.scss");
+    }
+    
     // Upgrade the lexer colours
     UpdateLexerColours(lexer, false);
 
@@ -533,7 +538,10 @@ void ColoursAndFontsManager::OnLexerFilesLoaded(const std::vector<wxXmlDocument*
 #endif
     defaultLexersFileName.AppendDir("lexers");
     defaultLexersFileName.SetFullName("lexers.json");
-
+    
+    wxString str_defaultLexersFileName = defaultLexersFileName.GetFullPath();
+    wxUnusedVar(str_defaultLexersFileName);
+    
     m_allLexers.clear();
     m_lexersMap.clear();
 

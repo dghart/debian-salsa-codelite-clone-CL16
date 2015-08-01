@@ -200,7 +200,7 @@ FileViewTree::~FileViewTree()
 void FileViewTree::Create(wxWindow* parent, const wxWindowID id, const wxPoint& pos, const wxSize& size, long style)
 {
     bool multi(true);
-    style |= (wxTR_HAS_BUTTONS | wxTR_FULL_ROW_HIGHLIGHT | wxTR_NO_LINES);
+    style |= (wxTR_HAS_BUTTONS | wxTR_FULL_ROW_HIGHLIGHT | wxTR_NO_LINES | wxBORDER_NONE);
     if(multi) style |= wxTR_MULTIPLE;
 
     wxTreeCtrl::Create(parent, id, pos, size, style);
@@ -228,7 +228,7 @@ void FileViewTree::BuildTree()
     if(ManagerST::Get()->IsWorkspaceOpen()) {
         // Add an invisible tree root
         ProjectItem data;
-        data.m_displayName = WorkspaceST::Get()->GetName();
+        data.m_displayName = clCxxWorkspaceST::Get()->GetName();
         data.m_kind = ProjectItem::TypeWorkspace;
 
         wxTreeItemId root = AddRoot(data.m_displayName, WORKSPACE_IMG_IDX, -1, new FilewViewTreeItemData(data));
@@ -308,7 +308,7 @@ int FileViewTree::GetIconIndex(const ProjectItem& item)
 void FileViewTree::BuildProjectNode(const wxString& projectName)
 {
     wxString err_msg;
-    ProjectPtr prj = WorkspaceST::Get()->FindProjectByName(projectName, err_msg);
+    ProjectPtr prj = clCxxWorkspaceST::Get()->FindProjectByName(projectName, err_msg);
     ProjectTreePtr tree = prj->AsTree();
     TreeWalker<wxString, ProjectItem> walker(tree->GetRoot());
 
@@ -432,7 +432,7 @@ void FileViewTree::ShowProjectContextMenu(const wxString& projectName)
     menu->FindItem(XRCID("clean_project"))->SetBitmap(bmpClean);
     menu->FindItem(XRCID("project_properties"))->SetBitmap(bmpSettings);
 
-    BuildConfigPtr bldConf = WorkspaceST::Get()->GetProjBuildConf(projectName, wxEmptyString);
+    BuildConfigPtr bldConf = clCxxWorkspaceST::Get()->GetProjBuildConf(projectName, wxEmptyString);
     if(bldConf && bldConf->IsCustomBuild()) {
         wxMenuItem* item = NULL;
 #if 0
@@ -1194,12 +1194,10 @@ void FileViewTree::OnLocalPrefs(wxCommandEvent& event)
 
 void FileViewTree::OnProjectProperties(wxCommandEvent& WXUNUSED(event))
 {
-    wxTreeItemId item = GetSingleSelection();
-    if(!item.IsOk()) {
-        return;
+    ProjectPtr p = GetSelectedProject();
+    if(p) {
+        clMainFrame::Get()->GetWorkspaceTab()->OpenProjectSettings(p->GetName());
     }
-    wxString projectName(GetItemText(item));
-    clMainFrame::Get()->GetWorkspaceTab()->OpenProjectSettings(projectName);
 }
 
 void FileViewTree::DoRemoveProject(const wxString& name)
@@ -1252,14 +1250,17 @@ void FileViewTree::OnSaveAsTemplate(wxCommandEvent& WXUNUSED(event))
                 newName = newName.Trim().Trim(false);
                 desc = desc.Trim().Trim(false);
 
-                if(newName.IsEmpty() == false) {
-                    wxString tmplateDir =
-                        ManagerST::Get()->GetStartupDirectory() + wxT("/templates/projects/") + newName + wxT("/");
-                    Mkdir(tmplateDir);
+                if(!newName.IsEmpty()) {
+
+                    // Copy the user template to the user folder
+                    wxFileName userTemplates(clStandardPaths::Get().GetUserDataDir(), "");
+                    userTemplates.AppendDir("templates");
+                    userTemplates.AppendDir("projects");
+                    userTemplates.Mkdir(wxS_DIR_DEFAULT, wxPATH_MKDIR_FULL);
 
                     Project newProj(*proj);
                     newProj.SetProjectInternalType(type);
-                    newProj.CopyTo(tmplateDir, newName, desc);
+                    newProj.CopyTo(userTemplates.GetPath(), newName, desc);
                 }
             }
         }
@@ -1285,7 +1286,7 @@ void FileViewTree::OnClean(wxCommandEvent& event)
         wxString conf;
 
         // get the selected configuration to be built
-        BuildConfigPtr bldConf = WorkspaceST::Get()->GetProjBuildConf(projectName, wxEmptyString);
+        BuildConfigPtr bldConf = clCxxWorkspaceST::Get()->GetProjBuildConf(projectName, wxEmptyString);
         if(bldConf) {
             conf = bldConf->GetName();
         }
@@ -1309,7 +1310,7 @@ void FileViewTree::OnBuild(wxCommandEvent& event)
 
         wxString conf;
         // get the selected configuration to be built
-        BuildConfigPtr bldConf = WorkspaceST::Get()->GetProjBuildConf(projectName, wxEmptyString);
+        BuildConfigPtr bldConf = clCxxWorkspaceST::Get()->GetProjBuildConf(projectName, wxEmptyString);
         if(bldConf) {
             conf = bldConf->GetName();
         }
@@ -1978,7 +1979,7 @@ void FileViewTree::OnReBuild(wxCommandEvent& event)
 
         wxString conf;
         // get the selected configuration to be built
-        BuildConfigPtr bldConf = WorkspaceST::Get()->GetProjBuildConf(projectName, wxEmptyString);
+        BuildConfigPtr bldConf = clCxxWorkspaceST::Get()->GetProjBuildConf(projectName, wxEmptyString);
         if(bldConf) {
             conf = bldConf->GetName();
         }
@@ -2117,7 +2118,7 @@ void FileViewTree::OnRebuildProjectOnly(wxCommandEvent& event)
 
         wxString conf;
         // get the selected configuration to be built
-        BuildConfigPtr bldConf = WorkspaceST::Get()->GetProjBuildConf(projectName, wxEmptyString);
+        BuildConfigPtr bldConf = clCxxWorkspaceST::Get()->GetProjBuildConf(projectName, wxEmptyString);
         if(bldConf) {
             conf = bldConf->GetName();
         }
@@ -2200,7 +2201,7 @@ ProjectPtr FileViewTree::GetSelectedProject() const
     for(size_t i = 0; i < count; i++) {
         FilewViewTreeItemData* itemData = dynamic_cast<FilewViewTreeItemData*>(GetItemData(selections.Item(i)));
         if(itemData && itemData->GetData().GetKind() == ProjectItem::TypeProject) {
-            return WorkspaceST::Get()->FindProjectByName(GetItemText(selections.Item(i)), errMsg);
+            return clCxxWorkspaceST::Get()->FindProjectByName(GetItemText(selections.Item(i)), errMsg);
         }
     }
 
@@ -2212,7 +2213,7 @@ ProjectPtr FileViewTree::GetSelectedProject() const
         if(!itemData) {
             return NULL;
         } else if(itemData->GetData().GetKind() == ProjectItem::TypeProject) {
-            return WorkspaceST::Get()->FindProjectByName(GetItemText(item), errMsg);
+            return clCxxWorkspaceST::Get()->FindProjectByName(GetItemText(item), errMsg);
         }
         item = GetItemParent(item);
     }
@@ -2235,7 +2236,7 @@ void FileViewTree::OnBuildProjectOnlyInternal(wxCommandEvent& e)
 
     wxString conf;
     // get the selected configuration to be built
-    BuildConfigPtr bldConf = WorkspaceST::Get()->GetProjBuildConf(projectName, wxEmptyString);
+    BuildConfigPtr bldConf = clCxxWorkspaceST::Get()->GetProjBuildConf(projectName, wxEmptyString);
     if(bldConf) {
         conf = bldConf->GetName();
     }
@@ -2259,7 +2260,7 @@ void FileViewTree::OnCleanProjectOnlyInternal(wxCommandEvent& e)
 
     wxString conf;
     // get the selected configuration to be built
-    BuildConfigPtr bldConf = WorkspaceST::Get()->GetProjBuildConf(projectName, wxEmptyString);
+    BuildConfigPtr bldConf = clCxxWorkspaceST::Get()->GetProjBuildConf(projectName, wxEmptyString);
     if(bldConf) {
         conf = bldConf->GetName();
     }
@@ -2295,7 +2296,7 @@ void FileViewTree::OnExcludeFromBuild(wxCommandEvent& e)
                         wxString vdPath = path.AfterFirst(':');
                         wxString filename = data->GetData().GetFile();
 
-                        BuildConfigPtr buildConf = WorkspaceST::Get()->GetProjBuildConf(proj, "");
+                        BuildConfigPtr buildConf = clCxxWorkspaceST::Get()->GetProjBuildConf(proj, "");
                         if(!buildConf) {
                             return;
                         }
@@ -2343,7 +2344,7 @@ bool FileViewTree::IsFileExcludedFromBuild(const wxTreeItemId& item) const
                 ProjectPtr p = mgr->GetProject(proj);
                 if(p) {
 
-                    BuildConfigPtr buildConf = WorkspaceST::Get()->GetProjBuildConf(proj, "");
+                    BuildConfigPtr buildConf = clCxxWorkspaceST::Get()->GetProjBuildConf(proj, "");
                     if(!buildConf) {
                         return false;
                     }
@@ -2391,7 +2392,7 @@ void FileViewTree::DoGetProjectIconIndex(const wxString& projectName, int& iconI
 
 void FileViewTree::OnRenameProject(wxCommandEvent& event)
 {
-    CHECK_COND_RET(WorkspaceST::Get()->IsOpen());
+    CHECK_COND_RET(clCxxWorkspaceST::Get()->IsOpen());
     wxTreeItemId item = GetSingleSelection();
     CHECK_ITEM_RET(item);
 
@@ -2403,7 +2404,7 @@ void FileViewTree::OnRenameProject(wxCommandEvent& event)
         if(data->GetData().GetDisplayName() == newname) return;
 
         // Calling 'RenameProject' will trigger a wxEVT_PROJ_RENAMED event
-        WorkspaceST::Get()->RenameProject(data->GetData().GetDisplayName(), newname);
+        clCxxWorkspaceST::Get()->RenameProject(data->GetData().GetDisplayName(), newname);
 
         // Update the display name
         SetItemText(item, newname);
@@ -2426,15 +2427,31 @@ void FileViewTree::OnFolderDropped(clCommandEvent& event)
     const wxString& folder = folders.Item(0);
     wxFileName workspaceFileName(folder, "");
     wxString errMsg;
-    if(!WorkspaceST::Get()->IsOpen()) {
+    if(!clCxxWorkspaceST::Get()->IsOpen()) {
 
         wxFileName fnWorkspace(folder, "");
+
+        // If a workspace is already exist at the selected path - load it
+        wxArrayString workspaceFiles;
+        wxString workspaceFile;
+        wxDir::GetAllFiles(folder, &workspaceFiles, "*.workspace", wxDIR_FILES);
+        // Check the workspace type
+        for(size_t i = 0; i < workspaceFiles.size(); ++i) {
+            if(FileExtManager::GetType(workspaceFiles.Item(i)) == FileExtManager::TypeWorkspace) {
+                // Found a workspace in the folder, just open it
+                wxCommandEvent evtOpenworkspace(wxEVT_MENU, XRCID("switch_to_workspace"));
+                evtOpenworkspace.SetString(workspaceFiles.Item(i));
+                evtOpenworkspace.SetEventObject(clMainFrame::Get());
+                clMainFrame::Get()->GetEventHandler()->AddPendingEvent(evtOpenworkspace);
+                return;
+            }
+        }
 
         workspaceFileName.SetName(workspaceFileName.GetDirs().Last());
         workspaceFileName.SetExt("workspace");
 
         // Create an empty workspace
-        if(!WorkspaceST::Get()->CreateWorkspace(fnWorkspace.GetDirs().Last(), folder, errMsg)) {
+        if(!clCxxWorkspaceST::Get()->CreateWorkspace(fnWorkspace.GetDirs().Last(), folder, errMsg)) {
             ::wxMessageBox(_("Failed to create workspace:\n") + errMsg, "CodeLite", wxICON_ERROR | wxOK | wxCENTER);
             return;
         }
@@ -2466,16 +2483,16 @@ void FileViewTree::OnFolderDropped(clCommandEvent& event)
 
     // to which project should we import the folder?
     wxArrayString projects;
-    WorkspaceST::Get()->GetProjectList(projects);
+    clCxxWorkspaceST::Get()->GetProjectList(projects);
     if(projects.IsEmpty()) {
         ::wxMessageBox(
             _("Can't import files to workspace without projects"), "CodeLite", wxICON_ERROR | wxOK | wxCENTER);
         return;
     }
-    
+
     wxString projectName;
     if(projects.GetCount() > 1) {
-        int selection = projects.Index(WorkspaceST::Get()->GetActiveProjectName());
+        int selection = projects.Index(clCxxWorkspaceST::Get()->GetActiveProjectName());
         projectName = ::wxGetSingleChoice(_("Select project:"), _("Import files to project"), projects, selection);
     } else {
         // single project, just add it
@@ -2484,10 +2501,9 @@ void FileViewTree::OnFolderDropped(clCommandEvent& event)
 
     // user cancelled?
     if(projectName.IsEmpty()) return;
-    ProjectPtr pProj = WorkspaceST::Get()->GetProject(projectName);
+    ProjectPtr pProj = clCxxWorkspaceST::Get()->GetProject(projectName);
     CHECK_PTR_RET(pProj);
 
-    wxBusyCursor bc;
     wxArrayString all_files;
     wxDir::GetAllFiles(folder, &all_files, wxEmptyString, wxDIR_DIRS | wxDIR_FILES);
 
@@ -2505,4 +2521,11 @@ void FileViewTree::OnFolderDropped(clCommandEvent& event)
     // And trigger a full reparse of the workspace
     wxCommandEvent evtOpenworkspace(wxEVT_MENU, XRCID("full_retag_workspace"));
     clMainFrame::Get()->GetEventHandler()->AddPendingEvent(evtOpenworkspace);
+}
+
+void FileViewTree::FolderDropped(const wxArrayString& folders)
+{
+    clCommandEvent dummy;
+    dummy.SetStrings(folders);
+    OnFolderDropped(dummy);
 }

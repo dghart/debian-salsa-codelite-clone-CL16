@@ -8,11 +8,6 @@ else ( APPLE )
     find_package(wxWidgets COMPONENTS std aui propgrid stc richtext ribbon REQUIRED)
 endif ( APPLE )
 
-# Add RPATH
-if (UNIX)
-set (LINKER_OPTIONS -Wl,-rpath,"${PLUGINS_DIR}")
-endif (UNIX)
-
 FILE(GLOB SRC "*.cpp")
 include_directories(${CL_SRC_ROOT}/LLDBDebugger)
 
@@ -26,8 +21,6 @@ target_link_libraries(  codelite-lldb
                         LLDBProtocol
                         libcodelite
                         plugin
-                        wxsqlite3 
-                        sqlite3lib
                     )
 
 CL_INSTALL_EXECUTABLE(codelite-lldb)

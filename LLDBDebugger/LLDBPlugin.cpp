@@ -79,7 +79,7 @@ extern "C" EXPORT PluginInfo GetPluginInfo()
     PluginInfo info;
     info.SetAuthor(wxT("eran"));
     info.SetName(wxT("LLDBDebuggerPlugin"));
-    info.SetDescription(wxT("LLDB Debugger for CodeLite"));
+    info.SetDescription(_("LLDB Debugger for CodeLite"));
     info.SetVersion(wxT("v1.0"));
     return info;
 }
@@ -97,7 +97,7 @@ LLDBPlugin::LLDBPlugin(IManager* manager)
     , m_raisOnBpHit(false)
     , m_tooltip(NULL)
 {
-    m_longName = wxT("LLDB Debugger for CodeLite");
+    m_longName = _("LLDB Debugger for CodeLite");
     m_shortName = wxT("LLDBDebuggerPlugin");
 
     m_connector.Bind(wxEVT_LLDB_STARTED, &LLDBPlugin::OnLLDBStarted, this);
@@ -305,7 +305,7 @@ void LLDBPlugin::OnDebugStart(clDebugEvent& event)
     {
         // Get the executable to debug
         wxString errMsg;
-        ProjectPtr pProject = WorkspaceST::Get()->FindProjectByName(event.GetProjectName(), errMsg);
+        ProjectPtr pProject = clCxxWorkspaceST::Get()->FindProjectByName(event.GetProjectName(), errMsg);
         if(!pProject) {
             ::wxMessageBox(wxString() << _("Could not locate project: ") << event.GetProjectName(),
                            "LLDB Debugger",
@@ -320,7 +320,7 @@ void LLDBPlugin::OnDebugStart(clDebugEvent& event)
         LLDBSettings settings;
         settings.Load();
 
-        BuildConfigPtr bldConf = WorkspaceST::Get()->GetProjBuildConf(pProject->GetName(), wxEmptyString);
+        BuildConfigPtr bldConf = clCxxWorkspaceST::Get()->GetProjBuildConf(pProject->GetName(), wxEmptyString);
         if(!bldConf) {
             ::wxMessageBox(wxString() << _("Could not locate the requested buid configuration"),
                            "LLDB Debugger",
@@ -382,7 +382,6 @@ void LLDBPlugin::OnDebugStart(clDebugEvent& event)
                 ::LaunchTerminalForDebugger(execToDebug.GetFullPath(), m_terminalTTY, realPts, m_terminalPID);
                 wxUnusedVar(realPts);
 
-
                 if(!m_terminalTTY.IsEmpty()) {
                     CL_DEBUG("Successfully launched terminal %s", m_terminalTTY);
 
@@ -394,11 +393,11 @@ void LLDBPlugin::OnDebugStart(clDebugEvent& event)
                     return;
                 }
             }
-            
+
             if(!isWindows) {
                 workingDirectory = ::wxGetCwd();
             }
-            
+
             CL_DEBUG("LLDB: Using executable : " + execToDebug.GetFullPath());
             CL_DEBUG("LLDB: Working directory: " + workingDirectory);
 
@@ -472,7 +471,7 @@ void LLDBPlugin::OnLLDBExited(LLDBEvent& event)
     CL_DEBUG("CODELITE>> LLDB exited");
 
     // Also notify codelite's event
-    wxCommandEvent e2(wxEVT_DEBUG_ENDED);
+    clDebugEvent e2(wxEVT_DEBUG_ENDED);
     EventNotifier::Get()->AddPendingEvent(e2);
 }
 
@@ -506,8 +505,12 @@ void LLDBPlugin::OnLLDBStarted(LLDBEvent& event)
     }
     }
 
-    wxCommandEvent e2(wxEVT_DEBUG_STARTED);
-    EventNotifier::Get()->AddPendingEvent(e2);
+    // notify plugins that the debugger just started
+    {
+        clDebugEvent eventStarted(wxEVT_DEBUG_STARTED);
+        eventStarted.SetClientData(NULL);
+        EventNotifier::Get()->ProcessEvent(eventStarted);
+    }
 }
 
 void LLDBPlugin::OnLLDBStopped(LLDBEvent& event)
@@ -883,8 +886,7 @@ void LLDBPlugin::OnDebugTooltip(clDebugEvent& event)
 
     // FIXME: use the function ::GetCppExpressionFromPos() to get a better expression
     wxString expression = event.GetString();
-    if(expression.IsEmpty())
-        return;
+    if(expression.IsEmpty()) return;
 
     m_connector.EvaluateExpression(expression);
 }
@@ -927,10 +929,10 @@ void LLDBPlugin::OnDebugQuickDebug(clDebugEvent& event)
         // In 'Quick Debug' we stop on main
         m_connector.AddBreakpoint("main");
         m_connector.AddBreakpoints(gdbBps);
-        
+
         // Setup pivot folder if needed
         SetupPivotFolder(retObj);
-        
+
         LLDBCommand startCommand;
         startCommand.FillEnvFromMemory();
         startCommand.SetExecutable(event.GetExecutableName());
@@ -939,7 +941,7 @@ void LLDBPlugin::OnDebugQuickDebug(clDebugEvent& event)
         startCommand.SetStartupCommands(event.GetStartupCommands());
         startCommand.SetRedirectTTY(m_terminalTTY);
         m_connector.Start(startCommand);
-        
+
     } else {
         // Failed to connect, notify and perform cleanup
         DoCleanup();
@@ -1058,8 +1060,7 @@ void LLDBPlugin::OnDebugAttachToProcess(clDebugEvent& event)
 
     wxString terminalTitle;
     terminalTitle << "Console PID " << event.GetInt();
-    if(!DoInitializeDebugger(event, true, terminalTitle))
-        return;
+    if(!DoInitializeDebugger(event, true, terminalTitle)) return;
 
     LLDBConnectReturnObject retObj;
     LLDBSettings settings;

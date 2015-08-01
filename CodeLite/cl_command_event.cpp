@@ -49,7 +49,8 @@ clCommandEvent& clCommandEvent::operator=(const clCommandEvent& src)
     m_answer = src.m_answer;
     m_allowed = src.m_allowed;
     m_oldName = src.m_oldName;
-    
+    m_lineNumber = src.m_lineNumber;
+
     // Copy wxCommandEvent members here
     m_eventType = src.m_eventType;
     m_id = src.m_id;
@@ -86,6 +87,7 @@ clCodeCompletionEvent::clCodeCompletionEvent(const clCodeCompletionEvent& event)
     , m_insideCommentOrString(false)
 {
     *this = event;
+    m_position = wxNOT_FOUND;
     m_entry.reset(NULL);
 }
 
@@ -94,6 +96,7 @@ clCodeCompletionEvent::clCodeCompletionEvent(wxEventType commandType, int winid)
     , m_editor(NULL)
     , m_insideCommentOrString(false)
 {
+    m_position = wxNOT_FOUND;
     m_entry.reset(NULL);
 }
 
@@ -340,5 +343,27 @@ clParseEvent& clParseEvent::operator=(const clParseEvent& src)
     clCommandEvent::operator=(src);
     m_curfileIndex = src.m_curfileIndex;
     m_totalFiles = src.m_totalFiles;
+    return *this;
+}
+
+//-------------------------------------------------------------------
+// clProcessEvent
+//-------------------------------------------------------------------
+
+clProcessEvent::clProcessEvent(const clProcessEvent& event) { *this = event; }
+
+clProcessEvent::clProcessEvent(wxEventType commandType, int winid)
+    : clCommandEvent(commandType, winid)
+    , m_process(NULL)
+{
+}
+
+clProcessEvent::~clProcessEvent() {}
+
+clProcessEvent& clProcessEvent::operator=(const clProcessEvent& src)
+{
+    clCommandEvent::operator=(src);
+    m_process = src.m_process;
+    m_output = src.m_output;
     return *this;
 }

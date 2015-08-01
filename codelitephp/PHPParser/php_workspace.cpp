@@ -16,6 +16,9 @@
 #include "php_parser_thread.h"
 #include <wx/progdlg.h>
 #include "cl_command_event.h"
+#include "php_strings.h"
+#include "php_configuration_data.h"
+#include "clWorkspaceManager.h"
 
 #ifndef __WXMSW__
 #include <errno.h>
@@ -26,6 +29,7 @@ PHPWorkspace* PHPWorkspace::ms_instance = 0;
 PHPWorkspace::PHPWorkspace()
     : m_manager(NULL)
 {
+    SetWorkspaceType(PHPStrings::PHP_WORKSPACE_VIEW_LABEL);
 }
 
 PHPWorkspace::~PHPWorkspace() { m_workspaceFile.Clear(); }
@@ -151,9 +155,14 @@ bool PHPWorkspace::Open(const wxString& filename, bool createIfMissing)
 
     // Perform a quick re-parse of the workspace
     ParseWorkspace(false);
+    
+    // set this workspace as the active one
+    clWorkspaceManager::Get().SetWorkspace(this);
+    
+    // and finally, request codelite to keep this workspace in the recently opened workspace list
+    clGetManager()->AddWorkspaceToRecentlyUsedList(GetFilename());
 
     CallAfter(&PHPWorkspace::RestoreWorkspaceSession);
-
     // Change the workspace extension
     return true;
 }
@@ -343,7 +352,7 @@ void PHPWorkspace::FromJSON(const JSONElement& e)
             activeProject = firstProject;
             SetProjectActive(firstProject->GetName());
         }
-        
+
         if(activeProject) {
             // Notify about active project been set
             clProjectSettingsEvent evt(wxEVT_ACTIVE_PROJECT_CHANGED);
@@ -395,7 +404,7 @@ void PHPWorkspace::Save()
     if(!IsOpen()) {
         return;
     }
-    // seriaize the workspace and store it to disk
+    // serialize the workspace and store it to disk
     JSONRoot root(cJSON_Object);
     JSONElement ele = root.toElement();
     ToJSON(ele);
@@ -492,23 +501,23 @@ void PHPWorkspace::ParseWorkspace(bool full)
         // close the database, delete it and recreate it
         // then, restart the parser thread
         PHPParserThread::Release(); // Stop and wait the thread terminates
-        
+
         // Close the CC manager
         PHPCodeCompletion::Instance()->Close();
-        
+
         // Delete the file
         wxFileName fnDatabaseFile(m_workspaceFile.GetPath(), "phpsymbols.db");
         fnDatabaseFile.AppendDir(".codelite");
-        
+
         wxLogNull noLog;
         bool bRemoved = ::wxRemoveFile(fnDatabaseFile.GetFullPath());
         wxUnusedVar(bRemoved);
-        
+
         // Start the managers again
         PHPParserThread::Instance()->Start();
         PHPCodeCompletion::Instance()->Open(m_workspaceFile);
     }
-    
+
     PHPParserThreadRequest* req = new PHPParserThreadRequest(PHPParserThreadRequest::kParseWorkspaceFilesQuick);
     req->workspaceFile = GetFilename().GetFullPath();
     GetWorkspaceFiles(req->files);
@@ -611,4 +620,14 @@ bool PHPWorkspace::CanCreateProjectAtPath(const wxFileName& projectFileName, boo
         }
     }
     return true;
+}
+
+bool PHPWorkspace::IsBuildSupported() const { return false; }
+bool PHPWorkspace::IsProjectSupported() const { return true; }
+
+wxString PHPWorkspace::GetFilesMask() const
+{
+    // set the default find in files mask
+    PHPConfigurationData conf;
+    return conf.Load().GetFindInFilesMask();
 }

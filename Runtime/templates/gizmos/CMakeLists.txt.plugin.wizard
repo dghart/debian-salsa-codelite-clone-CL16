@@ -40,11 +40,6 @@ if ( APPLE )
     add_definitions(-fPIC)
 endif()
 
-# Add RPATH
-if (UNIX)
-    set (LINKER_OPTIONS -Wl,-rpath,"${PLUGINS_DIR}")
-endif (UNIX)
-
 FILE(GLOB SRCS "*.cpp")
 
 # Define the output
@@ -57,8 +52,6 @@ target_link_libraries(${PLUGIN_NAME}
                       ${wxWidgets_LIBRARIES}
                       libcodelite
                       plugin
-                      wxsqlite3 
-                      sqlite3lib
                       )
 
 # Use CodeLite's macro: CL_INSTALL_PLUGIN which handles both OSX and Linux installation

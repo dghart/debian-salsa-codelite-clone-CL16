@@ -48,7 +48,7 @@
 
 static Cscope* thePlugin = NULL;
 
-static const wxString CSCOPE_NAME = wxT("CScope");
+static const wxString CSCOPE_NAME = _("CScope");
 
 // Define the plugin entry point
 extern "C" EXPORT IPlugin* CreatePlugin(IManager* manager)
@@ -453,7 +453,7 @@ wxString Cscope::DoCreateListFile(bool force)
     m_mgr->GetConfigTool()->ReadObject(wxT("CscopeSettings"), &settings);
 
     // create temporary file and save the file there
-    wxString privateFolder = WorkspaceST::Get()->GetPrivateFolder();
+    wxString privateFolder = clCxxWorkspaceST::Get()->GetPrivateFolder();
     wxFileName list_file(privateFolder, "cscope_file.list");
     if(force || settings.GetRebuildOption() || !list_file.FileExists()) {
         wxArrayString projects;
@@ -555,7 +555,7 @@ void Cscope::DoCscopeCommand(const wxString& command, const wxString& findWhat, 
     req->SetCmd(command);
     req->SetEndMsg(endMsg);
     req->SetFindWhat(findWhat);
-    req->SetWorkingDir(WorkspaceST::Get()->GetPrivateFolder());
+    req->SetWorkingDir(clCxxWorkspaceST::Get()->GetPrivateFolder());
 
     CScopeThreadST::Get()->Add(req);
 }

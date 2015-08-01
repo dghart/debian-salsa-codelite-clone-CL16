@@ -41,7 +41,7 @@
 #include "tags_options_dlg.h"
 #include <wx/html/htmlwin.h>
 #include "debuggerpane.h"
-#include "notebook_ex.h"
+#include "Notebook.h"
 #include "mainbook.h"
 #include <set>
 #include "theme_handler.h"
@@ -115,6 +115,7 @@ class clMainFrame : public wxFrame
     wxStringSet_t m_coreToolbars;
     clStatusBar* m_statusBar;
     clSingleInstanceThread* m_singleInstanceThread;
+    bool m_toggleToolBar;
     
 protected:
     bool IsEditorEvent(wxEvent& event);
@@ -342,6 +343,9 @@ protected:
     //----------------------------------------------------
     // event handlers
     //----------------------------------------------------
+    void OnDebugStarted(clDebugEvent& event);
+    void OnDebugEnded(clDebugEvent& event);
+    
     void OnRestoreDefaultLayout(wxCommandEvent& e);
     void OnIdle(wxIdleEvent& e);
     void OnBuildEnded(clCommandEvent& event);
@@ -363,6 +367,7 @@ protected:
     void OnRunSetupWizard(wxCommandEvent& e);
     void OnFileNew(wxCommandEvent& event);
     void OnFileOpen(wxCommandEvent& event);
+    void OnFileOpenFolder(wxCommandEvent& event);
     void OnFileClose(wxCommandEvent& event);
     void OnFileCloseUI(wxUpdateUIEvent& event);
     void OnFileSaveAll(wxCommandEvent& event);
@@ -403,10 +408,12 @@ protected:
     void OnReloadWorkspaceUI(wxUpdateUIEvent& event);
     void OnSwitchWorkspace(wxCommandEvent& event);
     void OnSwitchWorkspaceUI(wxUpdateUIEvent& event);
+    void OnNewWorkspaceUI(wxUpdateUIEvent& event);
     void OnCloseWorkspace(wxCommandEvent& event);
     void OnProjectAddProject(wxCommandEvent& event);
     void OnReconcileProject(wxCommandEvent& event);
     void OnWorkspaceOpen(wxUpdateUIEvent& event);
+    void OnNewProjectUI(wxUpdateUIEvent& event);
     void OnRetagWorkspaceUI(wxUpdateUIEvent& event);
     void OnAddEnvironmentVariable(wxCommandEvent& event);
     void OnAdvanceSettings(wxCommandEvent& event);
@@ -556,6 +563,7 @@ protected:
     void OnActivateEditor(wxCommandEvent& e);
     void OnActiveEditorChanged(wxCommandEvent& e);
     void OnUpdateCustomTargetsDropDownMenu(wxCommandEvent& e);
+    void OnWorkspaceLoaded(wxCommandEvent& e);
     void OnRefactoringCacheStatus(wxCommandEvent& e);
     void OnWorkspaceClosed(wxCommandEvent& e);
     void OnChangeActiveBookmarkType(wxCommandEvent& e);

@@ -30,7 +30,7 @@
 #include "sessionmanager.h"
 #include "navbar.h"
 #include "quickfindbar.h"
-#include "notebook_ex.h"
+#include "Notebook.h"
 #include "filehistory.h"
 #include "message_pane.h"
 #include "cl_command_event.h"
@@ -45,7 +45,7 @@ class MainBook : public wxPanel
 private:
     FileHistory m_recentFiles;
     NavBar* m_navBar;
-    Notebook2* m_book;
+    Notebook* m_book;
     QuickFindBar* m_quickFindBar;
     MessagePane* m_messagePane;
     bool m_useBuffereLimit;
@@ -66,21 +66,25 @@ private:
     FilesModifiedDlg* GetFilesModifiedDlg();
     void CreateGuiControls();
     void ConnectEvents();
-
-    void OnMouseDClick(NotebookEvent& e);
-    void OnPageClosing(NotebookEvent& e);
-    void OnPageClosed(NotebookEvent& e);
-    void OnPageChanged(NotebookEvent& e);
-    void OnClosePage(NotebookEvent& e);
-    void OnPageChanging(NotebookEvent& e);
+    void DoUpdateNotebookTheme();
+    void DoOpenImageViewer(const wxFileName& filename);
+    
+    void OnMouseDClick(wxBookCtrlEvent& e);
+    void OnTabDClicked(wxBookCtrlEvent& e);
+    void OnPageClosing(wxBookCtrlEvent& e);
+    void OnPageClosed(wxBookCtrlEvent& e);
+    void OnPageChanged(wxBookCtrlEvent& e);
+    void OnClosePage(wxBookCtrlEvent& e);
+    void OnNavigating(wxBookCtrlEvent& e);
+    void OnPageChanging(wxBookCtrlEvent& e);
     void OnProjectFileAdded(clCommandEvent& e);
     void OnProjectFileRemoved(clCommandEvent& e);
     void OnWorkspaceLoaded(wxCommandEvent& e);
     void OnWorkspaceClosed(wxCommandEvent& e);
-    void OnDebugEnded(wxCommandEvent& e);
+    void OnDebugEnded(clDebugEvent& e);
     void OnInitDone(wxCommandEvent& e);
     void OnDetachedEditorClosed(clCommandEvent& e);
-
+    void OnThemeChanged(wxCommandEvent& e);
     bool AskUserToSave(LEditor* editor);
     bool DoSelectPage(wxWindow* win);
     void DoPositionFindBar(int where);
@@ -88,6 +92,7 @@ private:
     void DoEraseDetachedEditor(IEditor* editor);
     void OnWorkspaceReloadStarted(clCommandEvent& e);
     void OnWorkspaceReloadEnded(clCommandEvent& e);
+    void OnEditorSettingsChanged(wxCommandEvent& e);
 
 public:
     MainBook(wxWindow* parent);
@@ -110,7 +115,7 @@ public:
                      const ButtonDetails& btn2 = ButtonDetails(),
                      const ButtonDetails& btn3 = ButtonDetails(),
                      const CheckboxDetails& cb = CheckboxDetails());
-    
+
     void ShowTabBar(bool b);
     void ShowNavBar(bool s = true);
     void UpdateNavBar(LEditor* editor);
@@ -161,7 +166,7 @@ public:
                  const wxString& tooltip = wxEmptyString,
                  const wxBitmap& bmp = wxNullBitmap,
                  bool selected = false,
-                 size_t insert_at_index = wxNOT_FOUND);
+                 int insert_at_index = wxNOT_FOUND);
     bool SelectPage(wxWindow* win);
 
     bool UserSelectFiles(std::vector<std::pair<wxFileName, bool> >& files,

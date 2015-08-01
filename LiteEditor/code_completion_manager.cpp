@@ -533,7 +533,7 @@ bool CodeCompletionManager::GetDefinitionsAndSearchPaths(LEditor* editor,
 
     if(editor->GetProjectName().IsEmpty())
         return false;
-    if(!WorkspaceST::Get()->IsOpen())
+    if(!clCxxWorkspaceST::Get()->IsOpen())
         return false;
 
     // Support only C/C++ files
@@ -542,7 +542,7 @@ bool CodeCompletionManager::GetDefinitionsAndSearchPaths(LEditor* editor,
 
     // Get the file's project and get the build configuration settings
     // for it
-    ProjectPtr proj = WorkspaceST::Get()->GetProject(editor->GetProjectName());
+    ProjectPtr proj = clCxxWorkspaceST::Get()->GetProject(editor->GetProjectName());
     CHECK_PTR_RET_FALSE(proj);
 
     BuildConfigPtr buildConf = proj->GetBuildConfiguration();
@@ -551,7 +551,11 @@ bool CodeCompletionManager::GetDefinitionsAndSearchPaths(LEditor* editor,
     CompilerPtr compiler = buildConf->GetCompiler();
     CHECK_PTR_RET_FALSE(compiler);
 
+#if 0
     if(buildConf->IsCustomBuild()) {
+        definitions = proj->GetPreProcessors();
+        CL_DEBUG("CxxPreProcessor will use the following macros:");
+        CL_DEBUG_ARR(definitions);
         // Custom builds are handled differently
         CompilationDatabase compileDb;
         compileDb.Open();
@@ -565,25 +569,22 @@ bool CodeCompletionManager::GetDefinitionsAndSearchPaths(LEditor* editor,
             searchPaths = cclp.GetIncludes();
 
             // get the mcros
-            definitions = cclp.GetMacros();
-        } else {
-            // we will probably will fail...
-            return false;
+            definitions << cclp.GetMacros();
         }
-    } else {
-        // get the include paths based on the project settings (this is per build configuration)
-        searchPaths = proj->GetIncludePaths();
-        CL_DEBUG("CxxPreProcessor will use the following include paths:");
-        CL_DEBUG_ARR(searchPaths);
-
-        // get the compiler include paths
-        // wxArrayString compileIncludePaths = compiler->GetDefaultIncludePaths();
-
-        // includePaths.insert(includePaths.end(), compileIncludePaths.begin(), compileIncludePaths.end());
-        definitions = proj->GetPreProcessors();
-        CL_DEBUG("CxxPreProcessor will use the following macros:");
-        CL_DEBUG_ARR(definitions);
     }
+#endif
+    // get the include paths based on the project settings (this is per build configuration)
+    searchPaths = proj->GetIncludePaths();
+    CL_DEBUG("CxxPreProcessor will use the following include paths:");
+    CL_DEBUG_ARR(searchPaths);
+
+    // get the compiler include paths
+    // wxArrayString compileIncludePaths = compiler->GetDefaultIncludePaths();
+
+    // includePaths.insert(includePaths.end(), compileIncludePaths.begin(), compileIncludePaths.end());
+    definitions = proj->GetPreProcessors();
+    CL_DEBUG("CxxPreProcessor will use the following macros:");
+    CL_DEBUG_ARR(definitions);
 
     // Append the compiler builtin macros
     wxArrayString builtinMacros = compiler->GetBuiltinMacros();

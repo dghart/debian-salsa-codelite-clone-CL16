@@ -288,6 +288,8 @@
     <File Name="cl_ssh.h"/>
     <File Name="cl_sftp_attribute.h"/>
     <File Name="cl_sftp_attribute.cpp"/>
+    <File Name="clSFTPEvent.h"/>
+    <File Name="clSFTPEvent.cpp"/>
   </VirtualDirectory>
   <VirtualDirectory Name="SocketAPI">
     <File Name="SocketAPI/clSocketBase.cpp"/>
@@ -296,6 +298,8 @@
     <File Name="SocketAPI/clSocketClient.h"/>
     <File Name="SocketAPI/clSocketServer.cpp"/>
     <File Name="SocketAPI/clSocketServer.h"/>
+    <File Name="SocketAPI/clSocketClientAsync.h"/>
+    <File Name="SocketAPI/clSocketClientAsync.cpp"/>
   </VirtualDirectory>
   <VirtualDirectory Name="PhpScanner">
     <File Name="PhpLexer.cpp"/>

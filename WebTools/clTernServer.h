@@ -8,12 +8,14 @@
 #include "clTernWorkerThread.h"
 #include "cl_calltip.h"
 #include "json_node.h"
+#include "cl_command_event.h"
 
 class IEditor;
 class wxStyledTextCtrl;
 class JSCodeCompletion;
 class IProcess;
 class clTernWorkerThread;
+
 class clTernServer : public wxEvtHandler
 {
     friend class clTernWorkerThread;
@@ -28,11 +30,11 @@ class clTernServer : public wxEvtHandler
     bool m_fatalError;
     long m_port;
     size_t m_recycleCount;
+    wxString m_workingDirectory;
 
 protected:
-    DECLARE_EVENT_TABLE()
-    void OnTernTerminated(wxCommandEvent& event);
-    void OnTernOutput(wxCommandEvent& event);
+    void OnTernTerminated(clProcessEvent& event);
+    void OnTernOutput(clProcessEvent& event);
     void PrintMessage(const wxString& message);
 
     void ProcessOutput(const wxString& output, wxCodeCompletionBoxEntry::Vec_t& entries);
@@ -46,26 +48,28 @@ protected:
     void OnError(const wxString& why);
     JSONElement CreateLocation(wxStyledTextCtrl* ctrl, int pos = wxNOT_FOUND);
     JSONElement CreateFilesArray(wxStyledTextCtrl* ctrl);
-    
+
 public:
     void RecycleIfNeeded(bool force = false);
     clTernServer(JSCodeCompletion* cc);
     virtual ~clTernServer();
 
     long GetPort() const { return m_port; }
-    bool Start();
+    bool Start(const wxString& workingDirectory);
     void Terminate();
+    void ClearFatalErrorFlag();
+
     /**
      * @brief post a CC request at the current editor position
      */
-    bool PostCCRequest(IEditor *editor);
+    bool PostCCRequest(IEditor* editor);
     /**
      * @brief post a function calltip at a given position. pos is the first position
      * before the open brace
      */
     bool PostFunctionTipRequest(IEditor* editor, int pos);
     const wxCodeCompletionBoxEntry::Vec_t& GetEntries() const { return m_entries; }
-    
+
     /**
      * @brief locate nodejs executable on this machine
      */

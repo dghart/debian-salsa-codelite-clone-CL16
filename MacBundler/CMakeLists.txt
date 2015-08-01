@@ -30,11 +30,6 @@ if ( USE_PCH )
     add_definitions(-Winvalid-pch)
 endif ( USE_PCH )
 
-# Add RPATH
-if (UNIX)
-set (LINKER_OPTIONS -Wl,-rpath,"${PLUGINS_DIR}")
-endif (UNIX)
-
 FILE(GLOB SRCS "*.cpp")
 
 # Define the output
@@ -45,8 +40,6 @@ set_target_properties(${PLUGIN_NAME} PROPERTIES PREFIX "")
 target_link_libraries(${PLUGIN_NAME} 
                       ${LINKER_OPTIONS} 
                       ${wxWidgets_LIBRARIES} 
-                      wxsqlite3 
-                      sqlite3lib 
                       libcodelite 
                       plugin)
 

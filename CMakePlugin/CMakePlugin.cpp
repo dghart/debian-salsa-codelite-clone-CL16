@@ -102,7 +102,7 @@ const wxString CMakePlugin::CMAKELISTS_FILE = "CMakeLists.txt";
 
 /* ************************************************************************ */
 
-static const wxString HELP_TAB_NAME = "CMake Help";
+static const wxString HELP_TAB_NAME = _("CMake Help");
 
 /* ************************************************************************ */
 /* FUNCTIONS                                                                */
@@ -204,7 +204,7 @@ CMakePlugin::CMakePlugin(IManager* manager)
     m_shortName = "CMakePlugin";
 
     // Create CMake configuration file
-    m_configuration.reset(new CMakeConfiguration(wxStandardPaths::Get().GetUserDataDir() +
+    m_configuration.reset(new CMakeConfiguration(clStandardPaths::Get().GetUserDataDir() +
                                                  wxFileName::GetPathSeparator() + "config/cmake.ini"));
 
     // Create cmake application
@@ -243,7 +243,7 @@ CMakePlugin::~CMakePlugin()
 
 wxFileName CMakePlugin::GetWorkspaceDirectory() const
 {
-    const Workspace* workspace = m_mgr->GetWorkspace();
+    const clCxxWorkspace* workspace = m_mgr->GetWorkspace();
     wxASSERT(workspace);
 
     return wxFileName::DirName(workspace->GetWorkspaceFileName().GetPath(wxPATH_GET_SEPARATOR | wxPATH_GET_VOLUME));
@@ -253,7 +253,7 @@ wxFileName CMakePlugin::GetWorkspaceDirectory() const
 
 wxFileName CMakePlugin::GetProjectDirectory(const wxString& projectName) const
 {
-    const Workspace* workspace = m_mgr->GetWorkspace();
+    const clCxxWorkspace* workspace = m_mgr->GetWorkspace();
     wxASSERT(workspace);
 
     wxString errMsg;
@@ -278,7 +278,7 @@ wxString CMakePlugin::GetSelectedProjectConfig() const
 
 BuildConfigPtr CMakePlugin::GetSelectedBuildConfig() const
 {
-    const Workspace* workspace = m_mgr->GetWorkspace();
+    const clCxxWorkspace* workspace = m_mgr->GetWorkspace();
     wxASSERT(workspace);
 
     const ProjectPtr projectPtr = GetSelectedProject();
@@ -444,8 +444,8 @@ void CMakePlugin::UnPlug()
     Notebook* notebook = m_mgr->GetWorkspacePaneNotebook();
     wxASSERT(notebook);
 
-    size_t pos = notebook->GetPageIndex("CMake Help");
-    if(pos != Notebook::npos) {
+    int pos = notebook->GetPageIndex("CMake Help");
+    if(pos != wxNOT_FOUND) {
         CMakeHelpTab* helpTab = dynamic_cast<CMakeHelpTab*>(notebook->GetPage(pos));
         if(helpTab) {
             helpTab->Stop();

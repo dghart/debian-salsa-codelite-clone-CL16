@@ -4,8 +4,8 @@
 // Do not modify this file by hand!
 //////////////////////////////////////////////////////////////////////
 
-#ifndef WORKSPACESETTINGSBASE_BASE_CLASSES_H
-#define WORKSPACESETTINGSBASE_BASE_CLASSES_H
+#ifndef CODELITE_LITEEDITOR_WORKSPACESETTINGSBASE_BASE_CLASSES_H
+#define CODELITE_LITEEDITOR_WORKSPACESETTINGSBASE_BASE_CLASSES_H
 
 #include <wx/settings.h>
 #include <wx/xrc/xmlres.h>
@@ -81,6 +81,7 @@ protected:
     wxTextCtrl* m_textCtrlMacros;
     wxCheckBox* m_checkBoxCpp11;
     wxCheckBox* m_checkBoxCpp14;
+    wxCheckBox* m_checkBoxSWTLW;
 
 protected:
     virtual void OnCCContentModified(wxCommandEvent& event) { event.Skip(); }
@@ -93,6 +94,7 @@ public:
     wxTextCtrl* GetTextCtrlMacros() { return m_textCtrlMacros; }
     wxCheckBox* GetCheckBoxCpp11() { return m_checkBoxCpp11; }
     wxCheckBox* GetCheckBoxCpp14() { return m_checkBoxCpp14; }
+    wxCheckBox* GetCheckBoxSWTLW() { return m_checkBoxSWTLW; }
     wxPanel* GetPanel6() { return m_panel6; }
     wxSplitterWindow* GetSplitter1() { return m_splitter1; }
     CodeCompletionBasePage(wxWindow* parent, wxWindowID id = wxID_ANY, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize(500,300), long style = wxTAB_TRAVERSAL);

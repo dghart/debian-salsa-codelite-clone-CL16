@@ -24,7 +24,7 @@ EditDlgBase::EditDlgBase(wxWindow* parent, wxWindowID id, const wxString& title,
         bBitmapLoaded = true;
     }
     
-    wxBoxSizer* boxSizer2 = new wxBoxSizer(wxVERTICAL);
+    boxSizer2 = new wxBoxSizer(wxVERTICAL);
     this->SetSizer(boxSizer2);
     
     m_stc10 = new wxStyledTextCtrl(this, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), 0);
@@ -66,7 +66,7 @@ EditDlgBase::EditDlgBase(wxWindow* parent, wxWindowID id, const wxString& title,
     
     boxSizer2->Add(m_stc10, 1, wxALL|wxEXPAND, 5);
     
-    wxBoxSizer* boxSizer4 = new wxBoxSizer(wxHORIZONTAL);
+    boxSizer4 = new wxBoxSizer(wxHORIZONTAL);
     
     boxSizer2->Add(boxSizer4, 0, wxALL|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5);
     
@@ -79,11 +79,19 @@ EditDlgBase::EditDlgBase(wxWindow* parent, wxWindowID id, const wxString& title,
     
     boxSizer4->Add(m_button8, 0, wxALL, 5);
     
+    SetName(wxT("EditDlgBase"));
     SetSizeHints(-1,-1);
     if ( GetSizer() ) {
          GetSizer()->Fit(this);
     }
-    Centre(wxBOTH);
+    CentreOnParent(wxBOTH);
+#if wxVERSION_NUMBER >= 2900
+    if(!wxPersistenceManager::Get().Find(this)) {
+        wxPersistenceManager::Get().RegisterAndRestore(this);
+    } else {
+        wxPersistenceManager::Get().Restore(this);
+    }
+#endif
 }
 
 EditDlgBase::~EditDlgBase()
@@ -100,7 +108,7 @@ DiffSideBySidePanelBase::DiffSideBySidePanelBase(wxWindow* parent, wxWindowID id
         bBitmapLoaded = true;
     }
     
-    wxBoxSizer* boxSizer13 = new wxBoxSizer(wxVERTICAL);
+    boxSizer13 = new wxBoxSizer(wxVERTICAL);
     this->SetSizer(boxSizer13);
     
     m_ribbonBar = new wxRibbonBar(this, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxRIBBON_BAR_DEFAULT_STYLE);
@@ -156,7 +164,7 @@ DiffSideBySidePanelBase::DiffSideBySidePanelBase(wxWindow* parent, wxWindowID id
     
     m_splitterPageLeft = new wxPanel(m_splitter, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxTAB_TRAVERSAL);
     
-    wxBoxSizer* boxSizer111 = new wxBoxSizer(wxVERTICAL);
+    boxSizer111 = new wxBoxSizer(wxVERTICAL);
     m_splitterPageLeft->SetSizer(boxSizer111);
     
     m_filePickerLeft = new wxFilePickerCtrl(m_splitterPageLeft, wxID_ANY, wxEmptyString, _("Select a file"), wxT("*"), wxDefaultPosition, wxSize(-1,-1), wxFLP_DEFAULT_STYLE|wxFLP_USE_TEXTCTRL|wxFLP_SMALL);
@@ -212,7 +220,7 @@ DiffSideBySidePanelBase::DiffSideBySidePanelBase(wxWindow* parent, wxWindowID id
     m_splitterPageRight = new wxPanel(m_splitter, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxTAB_TRAVERSAL);
     m_splitter->SplitVertically(m_splitterPageLeft, m_splitterPageRight, 0);
     
-    wxBoxSizer* boxSizer113 = new wxBoxSizer(wxVERTICAL);
+    boxSizer113 = new wxBoxSizer(wxVERTICAL);
     m_splitterPageRight->SetSizer(boxSizer113);
     
     m_filePickerRight = new wxFilePickerCtrl(m_splitterPageRight, wxID_ANY, wxEmptyString, _("Select a file"), wxT("*"), wxDefaultPosition, wxSize(-1,-1), wxFLP_DEFAULT_STYLE|wxFLP_USE_TEXTCTRL|wxFLP_SMALL);
@@ -264,11 +272,12 @@ DiffSideBySidePanelBase::DiffSideBySidePanelBase(wxWindow* parent, wxWindowID id
     
     boxSizer113->Add(m_staticTextRight, 0, wxALL|wxALIGN_LEFT, 2);
     
+    SetName(wxT("DiffSideBySidePanelBase"));
     SetSizeHints(-1,-1);
     if ( GetSizer() ) {
          GetSizer()->Fit(this);
     }
-    Centre(wxBOTH);
+    CentreOnParent(wxBOTH);
     // Connect events
     m_ribbonButtonBar49->Connect(wxID_REFRESH, wxEVT_COMMAND_RIBBONBUTTON_CLICKED, wxRibbonButtonBarEventHandler(DiffSideBySidePanelBase::OnRefreshDiff), NULL, this);
     m_ribbonButtonBar49->Connect(wxID_REFRESH, wxEVT_UPDATE_UI, wxUpdateUIEventHandler(DiffSideBySidePanelBase::OnRefreshDiffUI), NULL, this);
@@ -344,7 +353,7 @@ clGetTextFromUserBaseDialog::clGetTextFromUserBaseDialog(wxWindow* parent, wxWin
         bBitmapLoaded = true;
     }
     
-    wxBoxSizer* boxSizer135 = new wxBoxSizer(wxVERTICAL);
+    boxSizer135 = new wxBoxSizer(wxVERTICAL);
     this->SetSizer(boxSizer135);
     
     m_staticTextCaption = new wxStaticText(this, wxID_ANY, _("Caption"), wxDefaultPosition, wxSize(-1,-1), 0);
@@ -373,13 +382,263 @@ clGetTextFromUserBaseDialog::clGetTextFromUserBaseDialog(wxWindow* parent, wxWin
     m_stdBtnSizer137->AddButton(m_buttonOK);
     m_stdBtnSizer137->Realize();
     
+    SetName(wxT("clGetTextFromUserBaseDialog"));
     SetSizeHints(-1,-1);
     if ( GetSizer() ) {
          GetSizer()->Fit(this);
     }
-    Centre(wxBOTH);
+    CentreOnParent(wxBOTH);
+#if wxVERSION_NUMBER >= 2900
+    if(!wxPersistenceManager::Get().Find(this)) {
+        wxPersistenceManager::Get().RegisterAndRestore(this);
+    } else {
+        wxPersistenceManager::Get().Restore(this);
+    }
+#endif
 }
 
 clGetTextFromUserBaseDialog::~clGetTextFromUserBaseDialog()
+{
+}
+
+clTreeCtrlPanelBase::clTreeCtrlPanelBase(wxWindow* parent, wxWindowID id, const wxPoint& pos, const wxSize& size, long style)
+    : wxPanel(parent, id, pos, size, style)
+{
+    if ( !bBitmapLoaded ) {
+        // We need to initialise the default bitmap handler
+        wxXmlResource::Get()->AddHandler(new wxBitmapXmlHandler);
+        wxC9D6CInitBitmapResources();
+        bBitmapLoaded = true;
+    }
+    
+    boxSizer151 = new wxBoxSizer(wxVERTICAL);
+    this->SetSizer(boxSizer151);
+    
+    m_treeCtrl = new clFileViewerTreeCtrl(this, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxTR_DEFAULT_STYLE|wxTR_MULTIPLE|wxTR_HIDE_ROOT|wxTR_FULL_ROW_HIGHLIGHT|wxTR_NO_LINES|wxBORDER_STATIC);
+    
+    boxSizer151->Add(m_treeCtrl, 1, wxALL|wxEXPAND, 0);
+    
+    SetName(wxT("clTreeCtrlPanelBase"));
+    SetSizeHints(500,300);
+    if ( GetSizer() ) {
+         GetSizer()->Fit(this);
+    }
+    CentreOnParent(wxBOTH);
+    // Connect events
+    m_treeCtrl->Connect(wxEVT_COMMAND_TREE_ITEM_EXPANDING, wxTreeEventHandler(clTreeCtrlPanelBase::OnItemExpanding), NULL, this);
+    m_treeCtrl->Connect(wxEVT_COMMAND_TREE_ITEM_ACTIVATED, wxTreeEventHandler(clTreeCtrlPanelBase::OnItemActivated), NULL, this);
+    m_treeCtrl->Connect(wxEVT_COMMAND_TREE_ITEM_MENU, wxTreeEventHandler(clTreeCtrlPanelBase::OnContextMenu), NULL, this);
+    
+}
+
+clTreeCtrlPanelBase::~clTreeCtrlPanelBase()
+{
+    m_treeCtrl->Disconnect(wxEVT_COMMAND_TREE_ITEM_EXPANDING, wxTreeEventHandler(clTreeCtrlPanelBase::OnItemExpanding), NULL, this);
+    m_treeCtrl->Disconnect(wxEVT_COMMAND_TREE_ITEM_ACTIVATED, wxTreeEventHandler(clTreeCtrlPanelBase::OnItemActivated), NULL, this);
+    m_treeCtrl->Disconnect(wxEVT_COMMAND_TREE_ITEM_MENU, wxTreeEventHandler(clTreeCtrlPanelBase::OnContextMenu), NULL, this);
+    
+}
+
+NotebookNavigationDlgBase::NotebookNavigationDlgBase(wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style)
+    : wxDialog(parent, id, title, pos, size, style)
+{
+    if ( !bBitmapLoaded ) {
+        // We need to initialise the default bitmap handler
+        wxXmlResource::Get()->AddHandler(new wxBitmapXmlHandler);
+        wxC9D6CInitBitmapResources();
+        bBitmapLoaded = true;
+    }
+    
+    boxSizer157 = new wxBoxSizer(wxVERTICAL);
+    this->SetSizer(boxSizer157);
+    
+    m_panel161 = new wxPanel(this, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxWANTS_CHARS|wxTAB_TRAVERSAL);
+    
+    boxSizer157->Add(m_panel161, 1, wxEXPAND, 5);
+    
+    boxSizer163 = new wxBoxSizer(wxVERTICAL);
+    m_panel161->SetSizer(boxSizer163);
+    
+    m_dvListCtrl = new wxDataViewListCtrl(m_panel161, wxID_ANY, wxDefaultPosition, wxSize(400,300), wxDV_NO_HEADER|wxDV_ROW_LINES|wxDV_SINGLE|wxWANTS_CHARS|wxTAB_TRAVERSAL|wxBORDER_STATIC);
+    m_dvListCtrl->SetFocus();
+    
+    boxSizer163->Add(m_dvListCtrl, 1, wxALL|wxEXPAND, 2);
+    
+    m_dvListCtrl->AppendIconTextColumn(_("My Column"), wxDATAVIEW_CELL_INERT, -2, wxALIGN_LEFT);
+    
+    SetName(wxT("NotebookNavigationDlgBase"));
+    SetSizeHints(-1,-1);
+    if ( GetSizer() ) {
+         GetSizer()->Fit(this);
+    }
+    CentreOnParent(wxBOTH);
+#if wxVERSION_NUMBER >= 2900
+    if(!wxPersistenceManager::Get().Find(this)) {
+        wxPersistenceManager::Get().RegisterAndRestore(this);
+    } else {
+        wxPersistenceManager::Get().Restore(this);
+    }
+#endif
+    // Connect events
+    this->Connect(wxEVT_KEY_DOWN, wxKeyEventHandler(NotebookNavigationDlgBase::OnKeyDown), NULL, this);
+    this->Connect(wxEVT_KEY_UP, wxKeyEventHandler(NotebookNavigationDlgBase::OnKeyUp), NULL, this);
+    m_dvListCtrl->Connect(wxEVT_KEY_UP, wxKeyEventHandler(NotebookNavigationDlgBase::OnKeyUp), NULL, this);
+    m_dvListCtrl->Connect(wxEVT_KEY_DOWN, wxKeyEventHandler(NotebookNavigationDlgBase::OnKeyDown), NULL, this);
+    m_dvListCtrl->Connect(wxEVT_COMMAND_DATAVIEW_ITEM_ACTIVATED, wxDataViewEventHandler(NotebookNavigationDlgBase::OnItemActivated), NULL, this);
+    
+}
+
+NotebookNavigationDlgBase::~NotebookNavigationDlgBase()
+{
+    this->Disconnect(wxEVT_KEY_DOWN, wxKeyEventHandler(NotebookNavigationDlgBase::OnKeyDown), NULL, this);
+    this->Disconnect(wxEVT_KEY_UP, wxKeyEventHandler(NotebookNavigationDlgBase::OnKeyUp), NULL, this);
+    m_dvListCtrl->Disconnect(wxEVT_KEY_UP, wxKeyEventHandler(NotebookNavigationDlgBase::OnKeyUp), NULL, this);
+    m_dvListCtrl->Disconnect(wxEVT_KEY_DOWN, wxKeyEventHandler(NotebookNavigationDlgBase::OnKeyDown), NULL, this);
+    m_dvListCtrl->Disconnect(wxEVT_COMMAND_DATAVIEW_ITEM_ACTIVATED, wxDataViewEventHandler(NotebookNavigationDlgBase::OnItemActivated), NULL, this);
+    
+}
+
+clTreeCtrlPanelDefaultPageBase::clTreeCtrlPanelDefaultPageBase(wxWindow* parent, wxWindowID id, const wxPoint& pos, const wxSize& size, long style)
+    : wxPanel(parent, id, pos, size, style)
+{
+    if ( !bBitmapLoaded ) {
+        // We need to initialise the default bitmap handler
+        wxXmlResource::Get()->AddHandler(new wxBitmapXmlHandler);
+        wxC9D6CInitBitmapResources();
+        bBitmapLoaded = true;
+    }
+    
+    boxSizer167 = new wxBoxSizer(wxVERTICAL);
+    this->SetSizer(boxSizer167);
+    
+    m_panel169 = new wxPanel(this, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxTAB_TRAVERSAL|wxBORDER_STATIC);
+    m_panel169->SetBackgroundColour(wxColour(wxT("rgb(224,224,224)")));
+    
+    boxSizer167->Add(m_panel169, 1, wxALL|wxEXPAND, 0);
+    
+    boxSizer171 = new wxBoxSizer(wxVERTICAL);
+    m_panel169->SetSizer(boxSizer171);
+    
+    boxSizer171->Add(0, 0, 1, wxALL, 5);
+    
+    m_staticText177 = new wxStaticText(m_panel169, wxID_ANY, _("DRAG AND DROP\nA FOLDER HERE"), wxDefaultPosition, wxSize(-1,-1), wxALIGN_CENTRE);
+    m_staticText177->SetForegroundColour(wxColour(wxT("rgb(128,128,128)")));
+    wxFont m_staticText177Font = wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT);
+    m_staticText177Font.SetWeight(wxFONTWEIGHT_BOLD);
+    m_staticText177->SetFont(m_staticText177Font);
+    
+    boxSizer171->Add(m_staticText177, 0, wxALL|wxALIGN_CENTER_HORIZONTAL, 5);
+    
+    boxSizer171->Add(0, 0, 1, wxALL, 5);
+    
+    SetName(wxT("clTreeCtrlPanelDefaultPageBase"));
+    SetSizeHints(500,300);
+    if ( GetSizer() ) {
+         GetSizer()->Fit(this);
+    }
+    CentreOnParent(wxBOTH);
+    // Connect events
+    m_panel169->Connect(wxEVT_CONTEXT_MENU, wxContextMenuEventHandler(clTreeCtrlPanelDefaultPageBase::OnDefaultPageContextMenu), NULL, this);
+    
+}
+
+clTreeCtrlPanelDefaultPageBase::~clTreeCtrlPanelDefaultPageBase()
+{
+    m_panel169->Disconnect(wxEVT_CONTEXT_MENU, wxContextMenuEventHandler(clTreeCtrlPanelDefaultPageBase::OnDefaultPageContextMenu), NULL, this);
+    
+}
+
+clSingleChoiceDialogBase::clSingleChoiceDialogBase(wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style)
+    : wxDialog(parent, id, title, pos, size, style)
+{
+    if ( !bBitmapLoaded ) {
+        // We need to initialise the default bitmap handler
+        wxXmlResource::Get()->AddHandler(new wxBitmapXmlHandler);
+        wxC9D6CInitBitmapResources();
+        bBitmapLoaded = true;
+    }
+    
+    boxSizer181 = new wxBoxSizer(wxVERTICAL);
+    this->SetSizer(boxSizer181);
+    
+    wxArrayString m_listBoxArr;
+    m_listBox = new wxListBox(this, wxID_ANY, wxDefaultPosition, wxSize(300,200), m_listBoxArr, wxLB_SINGLE);
+    
+    boxSizer181->Add(m_listBox, 1, wxALL|wxEXPAND, 5);
+    
+    m_stdBtnSizer183 = new wxStdDialogButtonSizer();
+    
+    boxSizer181->Add(m_stdBtnSizer183, 0, wxALL|wxALIGN_CENTER_HORIZONTAL, 5);
+    
+    m_button185 = new wxButton(this, wxID_OK, wxT(""), wxDefaultPosition, wxSize(-1, -1), 0);
+    m_button185->SetDefault();
+    m_stdBtnSizer183->AddButton(m_button185);
+    
+    m_button187 = new wxButton(this, wxID_CANCEL, wxT(""), wxDefaultPosition, wxSize(-1, -1), 0);
+    m_stdBtnSizer183->AddButton(m_button187);
+    m_stdBtnSizer183->Realize();
+    
+    SetName(wxT("clSingleChoiceDialogBase"));
+    SetSizeHints(-1,-1);
+    if ( GetSizer() ) {
+         GetSizer()->Fit(this);
+    }
+    CentreOnParent(wxBOTH);
+#if wxVERSION_NUMBER >= 2900
+    if(!wxPersistenceManager::Get().Find(this)) {
+        wxPersistenceManager::Get().RegisterAndRestore(this);
+    } else {
+        wxPersistenceManager::Get().Restore(this);
+    }
+#endif
+    // Connect events
+    m_button185->Connect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(clSingleChoiceDialogBase::OnOKUI), NULL, this);
+    
+}
+
+clSingleChoiceDialogBase::~clSingleChoiceDialogBase()
+{
+    m_button185->Disconnect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(clSingleChoiceDialogBase::OnOKUI), NULL, this);
+    
+}
+
+clImageViewerBase::clImageViewerBase(wxWindow* parent, wxWindowID id, const wxPoint& pos, const wxSize& size, long style)
+    : wxPanel(parent, id, pos, size, style)
+{
+    if ( !bBitmapLoaded ) {
+        // We need to initialise the default bitmap handler
+        wxXmlResource::Get()->AddHandler(new wxBitmapXmlHandler);
+        wxC9D6CInitBitmapResources();
+        bBitmapLoaded = true;
+    }
+    
+    boxSizer194 = new wxBoxSizer(wxVERTICAL);
+    this->SetSizer(boxSizer194);
+    
+    m_scrollWin196 = new wxScrolledWindow(this, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxBORDER_THEME|wxHSCROLL|wxVSCROLL);
+    m_scrollWin196->SetScrollRate(5, 5);
+    
+    boxSizer194->Add(m_scrollWin196, 1, wxEXPAND, 2);
+    
+    boxSizer198 = new wxBoxSizer(wxVERTICAL);
+    m_scrollWin196->SetSizer(boxSizer198);
+    
+    boxSizer198->Add(0, 0, 1, wxALL, 5);
+    
+    m_staticBitmap = new wxStaticBitmap(m_scrollWin196, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize(-1,-1), 0 );
+    
+    boxSizer198->Add(m_staticBitmap, 0, wxALL|wxALIGN_CENTER_HORIZONTAL, 5);
+    
+    boxSizer198->Add(0, 0, 1, wxALL, 5);
+    
+    SetName(wxT("clImageViewerBase"));
+    SetSizeHints(500,300);
+    if ( GetSizer() ) {
+         GetSizer()->Fit(this);
+    }
+    CentreOnParent(wxBOTH);
+}
+
+clImageViewerBase::~clImageViewerBase()
 {
 }

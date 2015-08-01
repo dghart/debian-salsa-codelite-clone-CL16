@@ -141,6 +141,8 @@
       <File Name="clSTCLineKeeper.h"/>
     </VirtualDirectory>
     <File Name="CMakeLists.txt"/>
+    <File Name="clWorkspaceManager.h"/>
+    <File Name="clWorkspaceManager.cpp"/>
   </VirtualDirectory>
   <VirtualDirectory Name="include">
     <File Name="async_executable_cmd.h"/>
@@ -300,6 +302,16 @@
         <File Name="wxCodeCompletionBoxManager.h"/>
         <File Name="wxCodeCompletionBoxManager.cpp"/>
       </VirtualDirectory>
+      <VirtualDirectory Name="FileViewers">
+        <File Name="clTreeCtrlPanel.cpp"/>
+        <File Name="clTreeCtrlPanel.h"/>
+        <File Name="clFileViwerTreeCtrl.h"/>
+        <File Name="clFileViwerTreeCtrl.cpp"/>
+        <File Name="clImageViewer.h"/>
+        <File Name="clImageViewer.cpp"/>
+      </VirtualDirectory>
+      <File Name="clTreeCtrlPanelDefaultPage.h"/>
+      <File Name="clTreeCtrlPanelDefaultPage.cpp"/>
     </VirtualDirectory>
     <VirtualDirectory Name="Dialogs">
       <File Name="nameanddescdlg.h"/>
@@ -323,6 +335,11 @@
       <File Name="VirtualDirectorySelectorBase.wxcp"/>
       <File Name="EditDlg.h"/>
       <File Name="EditDlg.cpp"/>
+      <File Name="clSingleChoiceDialog.h"/>
+      <File Name="clSingleChoiceDialog.cpp"/>
+      <File Name="clSelectSymbolDialog.h"/>
+      <File Name="clSelectSymbolDialog.cpp"/>
+      <File Name="nameanddescdlg.wxcp"/>
     </VirtualDirectory>
     <VirtualDirectory Name="Notebook">
       <File Name="drawingutils.cpp"/>
@@ -331,16 +348,13 @@
       <File Name="dockablepane.h"/>
       <File Name="detachedpanesinfo.cpp"/>
       <File Name="detachedpanesinfo.h"/>
-      <File Name="fileclose.png"/>
-      <File Name="fileclose-pressed.png"/>
-      <File Name="notebook_ex.cpp"/>
-      <File Name="notebook_ex.h"/>
-      <File Name="notebook_ex_nav_dlg.cpp"/>
-      <File Name="notebook_ex_nav_dlg.h"/>
       <File Name="tabicons.h"/>
       <File Name="tabicons.cpp"/>
-      <File Name="gtk_notebook_ex.cpp"/>
-      <File Name="gtk_notebook_ex.h"/>
+      <File Name="Notebook.cpp"/>
+      <File Name="Notebook.h"/>
+      <File Name="notebook_bitmaps.cpp"/>
+      <File Name="NotebookNavigationDlg.h"/>
+      <File Name="NotebookNavigationDlg.cpp"/>
     </VirtualDirectory>
     <VirtualDirectory Name="wxAUI">
       <File Name="cl_aui_dock_art.h"/>
@@ -362,6 +376,8 @@
     <File Name="clBoostrapWizardPage.cpp"/>
     <File Name="clBootstrapWizard.h"/>
     <File Name="clBootstrapWizard.cpp"/>
+    <File Name="clWorkspaceView.h"/>
+    <File Name="clWorkspaceView.cpp"/>
   </VirtualDirectory>
   <VirtualDirectory Name="JobQueue">
     <File Name="jobqueue.cpp"/>
@@ -414,6 +430,8 @@
       <File Name="wxCodeCompletionBox_bitmaps.cpp"/>
       <File Name="clBoostrapWizardBase_plugin_bitmaps.cpp"/>
       <File Name="WSImporterDlgs_plugin_bitmaps.cpp"/>
+      <File Name="clSelectSymbolDialogBase_plugin_bitmaps.cpp"/>
+      <File Name="nameanddescdlg_plugin_bitmaps.cpp"/>
     </VirtualDirectory>
     <VirtualDirectory Name="base">
       <File Name="VirtualDirectorySelectorBase.h"/>
@@ -430,12 +448,17 @@
       <File Name="clBoostrapWizardBase.cpp"/>
       <File Name="WSImporterDlgs.h"/>
       <File Name="WSImporterDlgs.cpp"/>
+      <File Name="openresourcedialogmodel.cpp"/>
+      <File Name="openresourcedialogmodel.h"/>
+      <File Name="clSelectSymbolDialogBase.h"/>
+      <File Name="clSelectSymbolDialogBase.cpp"/>
     </VirtualDirectory>
     <File Name="openresourcedialogbase.wxcp"/>
     <File Name="plugin_general_wxcp.wxcp"/>
     <File Name="wxcrafter.wxcp"/>
     <File Name="clBoostrapWizardBase.wxcp"/>
     <File Name="WSImporterDlgs.wxcp"/>
+    <File Name="clSelectSymbolDialogBase.wxcp"/>
   </VirtualDirectory>
   <VirtualDirectory Name="sftp_ui">
     <File Name="AddSSHAcountDlg.cpp"/>
@@ -528,6 +551,11 @@
     <File Name="newkeyshortcutdlg.cpp"/>
     <File Name="newkeyshortcutdlg.h"/>
   </VirtualDirectory>
+  <Dependencies Name="Custom"/>
+  <Dependencies Name="Win_wxWidgets_29"/>
+  <Dependencies Name="Win_x64_Debug"/>
+  <Dependencies Name="Win_x64_Release"/>
+  <Dependencies Name="Win_x86_Release"/>
   <Settings Type="Dynamic Library">
     <GlobalSettings>
       <Compiler Options="" C_Options="" Assembler="">
@@ -577,7 +605,7 @@
         <CustomPostBuild/>
         <CustomPreBuild/>
       </AdditionalRules>
-      <Completion EnableCpp11="no">
+      <Completion EnableCpp11="no" EnableCpp14="no">
         <ClangCmpFlagsC/>
         <ClangCmpFlags/>
         <ClangPP/>
@@ -627,7 +655,7 @@
         <CustomPostBuild/>
         <CustomPreBuild/>
       </AdditionalRules>
-      <Completion EnableCpp11="no">
+      <Completion EnableCpp11="no" EnableCpp14="no">
         <ClangCmpFlagsC/>
         <ClangCmpFlags/>
         <ClangPP/>
@@ -678,7 +706,7 @@
         <CustomPostBuild/>
         <CustomPreBuild/>
       </AdditionalRules>
-      <Completion EnableCpp11="no">
+      <Completion EnableCpp11="no" EnableCpp14="no">
         <ClangCmpFlagsC/>
         <ClangCmpFlags/>
         <ClangPP/>
@@ -695,6 +723,7 @@
         <IncludePath Value="../PCH"/>
         <IncludePath Value="../sdk/libssh/include"/>
         <Preprocessor Value="USE_SFTP=1"/>
+        <Preprocessor Value="CL_BUILD=1"/>
       </Compiler>
       <Linker Options="-s;$(shell wx-config --libs std,stc,ribbon,propgrid --debug=no --unicode=yes)" Required="yes">
         <LibraryPath Value="../lib/gcc_lib"/>
@@ -731,7 +760,7 @@
         <CustomPostBuild/>
         <CustomPreBuild/>
       </AdditionalRules>
-      <Completion EnableCpp11="no">
+      <Completion EnableCpp11="no" EnableCpp14="no">
         <ClangCmpFlagsC/>
         <ClangCmpFlags/>
         <ClangPP/>
@@ -783,7 +812,7 @@
         <CustomPostBuild/>
         <CustomPreBuild/>
       </AdditionalRules>
-      <Completion EnableCpp11="no">
+      <Completion EnableCpp11="no" EnableCpp14="no">
         <ClangCmpFlagsC/>
         <ClangCmpFlags/>
         <ClangPP/>
@@ -791,9 +820,4 @@
       </Completion>
     </Configuration>
   </Settings>
-  <Dependencies Name="Custom"/>
-  <Dependencies Name="Win_wxWidgets_29"/>
-  <Dependencies Name="Win_x64_Debug"/>
-  <Dependencies Name="Win_x64_Release"/>
-  <Dependencies Name="Win_x86_Release"/>
 </CodeLite_Project>

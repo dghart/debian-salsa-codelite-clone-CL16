@@ -34,7 +34,7 @@
 #include "manager.h"
 #include "frame.h"
 #include "cl_editor.h"
-#include "notebook_ex.h"
+#include "Notebook.h"
 #include "cpp_symbol_tree.h"
 #include "windowstack.h"
 #include "macros.h"
@@ -48,6 +48,8 @@
 #include "cl_aui_dock_art.h"
 #include "event_notifier.h"
 #include "codelite_events.h"
+#include "clWorkspaceView.h"
+#include <algorithm>
 
 #ifdef __WXGTK20__
 // We need this ugly hack to workaround a gtk2-wxGTK name-clash
@@ -64,9 +66,14 @@ WorkspacePane::WorkspacePane(wxWindow* parent, const wxString& caption, wxAuiMan
 {
     CreateGUIControls();
     EventNotifier::Get()->Bind(wxEVT_INIT_DONE, &WorkspacePane::OnInitDone, this);
+    EventNotifier::Get()->Bind(wxEVT_EDITOR_CONFIG_CHANGED, &WorkspacePane::OnSettingsChanged, this);
 }
 
-WorkspacePane::~WorkspacePane() { EventNotifier::Get()->Unbind(wxEVT_INIT_DONE, &WorkspacePane::OnInitDone, this); }
+WorkspacePane::~WorkspacePane()
+{
+    EventNotifier::Get()->Unbind(wxEVT_INIT_DONE, &WorkspacePane::OnInitDone, this);
+    EventNotifier::Get()->Unbind(wxEVT_EDITOR_CONFIG_CHANGED, &WorkspacePane::OnSettingsChanged, this);
+}
 
 #define IS_DETACHED(name) (detachedPanes.Index(name) != wxNOT_FOUND) ? true : false
 
@@ -76,8 +83,12 @@ void WorkspacePane::CreateGUIControls()
     SetSizer(mainSizer);
 
     // add notebook for tabs
-    long bookStyle = wxVB_LEFT | wxAUI_NB_WINDOWLIST_BUTTON | wxBORDER_NONE;
-    m_book = new Notebook(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, bookStyle);
+    long style = (kNotebook_Default | kNotebook_AllowDnD);
+    if(!EditorConfigST::Get()->GetOptions()->IsNonEditorTabsAtTop()) {
+        style |= kNotebook_BottomTabs;
+    }
+
+    m_book = new Notebook(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, style);
 
     // Calculate the widest tab (the one with the 'Workspace' label)
     int xx, yy;
@@ -126,6 +137,9 @@ void WorkspacePane::CreateGUIControls()
         m_explorer = new FileExplorer(m_book, name);
         m_book->AddPage(m_explorer, name, false);
     }
+
+    // Add the "File Explorer" view to the list of files managed by the workspace-view
+    m_workspaceTab->GetView()->AddPage(m_explorer, _("File Explorer"), false);
 
 // Add the Open Windows Panel (Tabs)
 #ifndef __WXOSX__
@@ -244,14 +258,18 @@ void WorkspacePane::ApplySavedTabOrder() const
     // I've left the code in case anyone ever has time/inclination to fix it
     if((index >= 0) && (index < (int)m_book->GetPageCount())) {
         m_book->SetSelection(index);
+    } else if(m_book->GetPageCount()) {
+        m_book->SetSelection(0);
     }
-
     m_mgr->Update();
 }
 
 void WorkspacePane::SaveWorkspaceViewTabOrder() const
 {
-    wxArrayString panes = m_book->GetPagesTextInOrder();
+    wxArrayString panes;
+    clTabInfo::Vec_t tabs;
+    m_book->GetAllTabs(tabs);
+    std::for_each(tabs.begin(), tabs.end(), [&](clTabInfo::Ptr_t t) { panes.Add(t->GetLabel()); });
     clConfig::Get().SetWorkspaceTabOrder(panes, m_book->GetSelection());
 }
 
@@ -354,4 +372,20 @@ void WorkspacePane::OnInitDone(wxCommandEvent& event)
 {
     event.Skip();
     m_captionEnabler.Initialize(this, "Workspace View", &clMainFrame::Get()->GetDockingManager());
+}
+
+void WorkspacePane::SelectTab(const wxString& tabTitle)
+{
+    for(size_t i = 0; i < m_book->GetPageCount(); i++) {
+        if(m_book->GetPageText(i) == tabTitle) {
+            // requested to add a page which already exists
+            m_book->SetSelection(i);
+        }
+    }
+}
+
+void WorkspacePane::OnSettingsChanged(wxCommandEvent& event)
+{
+    event.Skip();
+    m_book->EnableStyle(kNotebook_BottomTabs, !EditorConfigST::Get()->GetOptions()->IsNonEditorTabsAtTop());
 }

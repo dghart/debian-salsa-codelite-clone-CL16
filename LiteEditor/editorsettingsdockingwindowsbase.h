@@ -4,8 +4,8 @@
 // Do not modify this file by hand!
 //////////////////////////////////////////////////////////////////////
 
-#ifndef EDITOR_OPTIONS_DOCKING_WINDOWS_BASE_CLASSES_H
-#define EDITOR_OPTIONS_DOCKING_WINDOWS_BASE_CLASSES_H
+#ifndef CODELITE_LITEEDITOR_EDITOR_OPTIONS_DOCKING_WINDOWS_BASE_CLASSES_H
+#define CODELITE_LITEEDITOR_EDITOR_OPTIONS_DOCKING_WINDOWS_BASE_CLASSES_H
 
 #include <wx/settings.h>
 #include <wx/xrc/xmlres.h>
@@ -16,6 +16,7 @@
 #include <wx/notebook.h>
 #include <wx/imaglist.h>
 #include <wx/radiobox.h>
+#include <wx/statbox.h>
 #include <wx/checkbox.h>
 #if wxVERSION_NUMBER >= 2900
 #include <wx/persist.h>
@@ -30,7 +31,9 @@ protected:
     wxNotebook* m_notebook10;
     wxPanel* m_panel12;
     wxRadioBox* m_radioBoxHint;
-    wxRadioBox* m_radioBoxTabControlStyle;
+    wxCheckBox* m_checkBoxShowXButton;
+    wxCheckBox* m_checkBoxEditorTabsFollowsTheme;
+    wxCheckBox* m_checkBoxPanesTabsAtBottom;
     wxCheckBox* m_checkBoxHideCaptions;
     wxCheckBox* m_checkBoxEnsureCaptionsVisible;
     wxPanel* m_panel14;
@@ -61,7 +64,9 @@ protected:
 
 public:
     wxRadioBox* GetRadioBoxHint() { return m_radioBoxHint; }
-    wxRadioBox* GetRadioBoxTabControlStyle() { return m_radioBoxTabControlStyle; }
+    wxCheckBox* GetCheckBoxShowXButton() { return m_checkBoxShowXButton; }
+    wxCheckBox* GetCheckBoxEditorTabsFollowsTheme() { return m_checkBoxEditorTabsFollowsTheme; }
+    wxCheckBox* GetCheckBoxPanesTabsAtBottom() { return m_checkBoxPanesTabsAtBottom; }
     wxCheckBox* GetCheckBoxHideCaptions() { return m_checkBoxHideCaptions; }
     wxCheckBox* GetCheckBoxEnsureCaptionsVisible() { return m_checkBoxEnsureCaptionsVisible; }
     wxPanel* GetPanel12() { return m_panel12; }

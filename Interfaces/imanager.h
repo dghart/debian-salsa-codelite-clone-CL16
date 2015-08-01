@@ -30,18 +30,18 @@
 #include "iconfigtool.h"
 #include "wx/treectrl.h"
 #include "project.h"
-#include "notebook_ex.h"
+#include "Notebook.h"
 #include "optionsconfig.h"
 #include "queuecommand.h"
 #include <wx/aui/framemanager.h>
 #include "bitmap_loader.h"
-#include "notebook_ex.h"
 #include <vector>
 #include "debugger.h"
 #include "clStatusBar.h"
 
+class clWorkspaceView;
 class TagsManager;
-class Workspace;
+class clCxxWorkspace;
 class EnvironmentConfig;
 class JobQueue;
 class wxApp;
@@ -73,6 +73,21 @@ enum TreeType { TreeFileView = 0, TreeFileExplorer };
 
 enum eOutputPaneTab { kOutputTab_Build, kOutputTab_Output };
 
+// A struct representing a tab in the notebook control
+struct clTab {
+    typedef std::vector<clTab> Vec_t;
+    wxString text;
+    wxWindow* window;
+    wxBitmap bitmap;
+    bool isFile;
+    wxFileName filename;
+    clTab()
+        : window(NULL)
+        , isFile(false)
+    {
+    }
+};
+
 //------------------------------------------------------------------
 // Defines the interface of the manager
 //------------------------------------------------------------------
@@ -96,14 +111,23 @@ public:
      * the selection
      */
     virtual void ShowOutputPane(const wxString& selectWindow = "") = 0;
-    
+
+    /**
+     * @brief show the toolbar. This only works when using the native toolbar
+     */
+    virtual void ShowToolBar(bool show = true) = 0;
+
+    /**
+     * @brief is the native toolbar visible?
+     */
+    virtual bool IsToolBarShown() const = 0;
     /**
      * @brief toggle the output pane
      * @param selectWindow tab within the 'Output Pane' to select, if empty don't change
      * the selection
      */
     virtual void ToggleOutputPane(const wxString& selectedWindow = "") = 0;
-    
+
     // return the current editor
     /**
      * @brief return the active editor
@@ -111,12 +135,12 @@ public:
      * editor open
      */
     virtual IEditor* GetActiveEditor() = 0;
-    
+
     /**
      * @brief return the main frame's status bar
      */
     virtual clStatusBar* GetStatusBar() = 0;
-    
+
     /**
      * @brief open file and make it the active editor
      * @param fileName the file to open - use absolute path
@@ -124,7 +148,7 @@ public:
      * @param lineno if lineno is not wxNOT_FOUD, the caret will placed on this line number
      * @return true if file opened
      */
-    virtual bool
+    virtual IEditor*
     OpenFile(const wxString& fileName, const wxString& projectName = wxEmptyString, int lineno = wxNOT_FOUND) = 0;
 
     /**
@@ -132,7 +156,7 @@ public:
      * @param rec browsing record
      * @return true on success false otherwise
      */
-    virtual bool OpenFile(const BrowseRecord& rec) = 0;
+    virtual IEditor* OpenFile(const BrowseRecord& rec) = 0;
 
     /**
      * @brief return a pointer to the configuration tool
@@ -213,10 +237,15 @@ public:
      */
     virtual TagsManager* GetTagsManager() = 0;
     /**
-     * @brief return a pointer to the workspace manager
-     * @sa Workspace
+     * @brief return a pointer to the ** C++ ** workspace manager
      */
-    virtual Workspace* GetWorkspace() = 0;
+    virtual clCxxWorkspace* GetWorkspace() = 0;
+
+    /**
+     * @brief return the workspace view tab
+     * @return
+     */
+    virtual clWorkspaceView* GetWorkspaceView() = 0;
 
     /**
      * @brief add files to a virtual folder in the project
