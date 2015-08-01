@@ -1,9 +1,3 @@
-u01_Remove-direct-dependencies-to-wxsqlite3-and-sqlite3l.patch
-u02_Remove-RPATH-settings-from-plugin-CMakeLists.patch
-u03_Remove-uses-of-__DATE__-and-__TIME__-from-libctags.patch
-u04_Fix-LLDBDebugger-undefined-symbol-error-when-using-L.patch
-u05_Fixed-https-github.com-eranif-codelite-issues-763.patch
-
 01_remove-bundled-cppcheck.patch
 02_remove-bundled-sqlite.patch
 04_remove-bundled-unittest++.patch
