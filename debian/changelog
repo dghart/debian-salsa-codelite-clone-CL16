@@ -1,3 +1,9 @@
+codelite (8.1+dfsg-1) UNRELEASED; urgency=medium
+
+  *
+
+ -- James Cowgill <james410@cowgill.org.uk>  Sat, 01 Aug 2015 13:07:06 +0100
+
 codelite (8.0.1+dfsg2-2) unstable; urgency=medium
 
   * Disable webview since CodeLite doesn't actually use it. (Closes: #790429)
