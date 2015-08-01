@@ -16,11 +16,7 @@
 #include "fileutils.h"
 #include "ieditor.h"
 #include <wx/stc/stc.h>
-
-BEGIN_EVENT_TABLE(clTernServer, wxEvtHandler)
-EVT_COMMAND(wxID_ANY, wxEVT_PROC_TERMINATED, clTernServer::OnTernTerminated)
-EVT_COMMAND(wxID_ANY, wxEVT_PROC_DATA_READ, clTernServer::OnTernOutput)
-END_EVENT_TABLE()
+#include <wx/msgdlg.h>
 
 clTernServer::clTernServer(JSCodeCompletion* cc)
     : m_jsCCManager(cc)
@@ -31,39 +27,38 @@ clTernServer::clTernServer(JSCodeCompletion* cc)
     , m_port(wxNOT_FOUND)
     , m_recycleCount(0)
 {
+    Bind(wxEVT_ASYNC_PROCESS_OUTPUT, &clTernServer::OnTernOutput, this);
+    Bind(wxEVT_ASYNC_PROCESS_TERMINATED, &clTernServer::OnTernTerminated, this);
 }
 
 clTernServer::~clTernServer() {}
 
-void clTernServer::OnTernOutput(wxCommandEvent& event)
+void clTernServer::OnTernOutput(clProcessEvent& event)
 {
-    ProcessEventData* ped = reinterpret_cast<ProcessEventData*>(event.GetClientData());
     static wxRegEx rePort("Listening on port ([0-9]+)");
-    if(rePort.IsValid() && rePort.Matches(ped->GetData())) {
-        wxString strPort = rePort.GetMatch(ped->GetData(), 1);
+    if(rePort.IsValid() && rePort.Matches(event.GetOutput())) {
+        wxString strPort = rePort.GetMatch(event.GetOutput(), 1);
         strPort.ToCLong(&m_port);
     }
-    PrintMessage(ped->GetData());
-    wxDELETE(ped);
+    PrintMessage(event.GetOutput());
 }
 
-void clTernServer::OnTernTerminated(wxCommandEvent& event)
+void clTernServer::OnTernTerminated(clProcessEvent& event)
 {
-    ProcessEventData* ped = reinterpret_cast<ProcessEventData*>(event.GetClientData());
-    wxDELETE(ped);
+    wxDELETE(m_tern);
     if(m_goingDown || !m_jsCCManager->IsEnabled()) {
-        wxDELETE(m_tern);
         return;
     }
     PrintMessage("Tern server terminated, will restart it\n");
-    Start();
+    Start(m_workingDirectory);
 }
 
-bool clTernServer::Start()
+bool clTernServer::Start(const wxString& workingDirectory)
 {
     if(m_fatalError) return false;
     if(!m_jsCCManager->IsEnabled()) return true;
 
+    m_workingDirectory = workingDirectory;
     WebToolsConfig conf;
     conf.Load();
 
@@ -86,21 +81,37 @@ bool clTernServer::Start()
     wxString nodeExe = nodeJS.GetFullPath();
     ::WrapWithQuotes(nodeExe);
 
+    wxFileName ternScript = ternFolder;
+    ternScript.AppendDir("bin");
+    ternScript.SetFullName("tern");
+    wxString ternScriptString = ternScript.GetFullPath();
+    ::WrapWithQuotes(ternScriptString);
+
     wxString command;
-    command << nodeExe << " "
-            << "bin" << wxFileName::GetPathSeparator() << "tern --persist ";
+    command << nodeExe << " " << ternScriptString << " --persistent ";
 
     if(conf.HasJavaScriptFlag(WebToolsConfig::kJSEnableVerboseLogging)) {
         command << " --verbose";
     }
 
     // Create a .tern-project file
-    wxFileName ternConfig(ternFolder.GetPath(), ".tern-project");
+    if(m_workingDirectory.IsEmpty()) {
+        m_workingDirectory = clStandardPaths::Get().GetUserDataDir();
+    }
+
+    wxFileName ternConfig(m_workingDirectory, ".tern-project");
     wxString content = conf.GetTernProjectFile();
-    FileUtils::WriteFileContent(ternConfig, content);
+    if(!FileUtils::WriteFileContent(ternConfig, content)) {
+        ::wxMessageBox(_("Could not write tern project file: ") + ternConfig.GetFullPath(),
+                       "CodeLite",
+                       wxICON_ERROR | wxOK | wxCENTER);
+        PrintMessage("Could not write tern project file: " + ternConfig.GetFullPath());
+        m_fatalError = true;
+        return false;
+    }
 
     PrintMessage(wxString() << "Starting " << command << "\n");
-    m_tern = ::CreateAsyncProcess(this, command, IProcessCreateDefault, ternFolder.GetPath());
+    m_tern = ::CreateAsyncProcess(this, command, IProcessCreateDefault, m_workingDirectory);
     if(!m_tern) {
         PrintMessage("Failed to start Tern server!");
         return false;
@@ -175,7 +186,7 @@ void clTernServer::RecycleIfNeeded(bool force)
 
     } else if(!m_tern) {
         // Tern was never started, start it now
-        Start();
+        Start(m_workingDirectory);
     }
 }
 
@@ -454,4 +465,9 @@ bool clTernServer::LocateNodeJS(wxFileName& nodeJS)
     nodeJS = fn;
     return true;
 #endif
+}
+
+void clTernServer::ClearFatalErrorFlag()
+{
+    m_fatalError = false;
 }

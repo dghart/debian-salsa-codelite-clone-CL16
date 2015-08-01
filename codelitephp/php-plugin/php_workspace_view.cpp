@@ -34,6 +34,8 @@
 #include "clFileOrFolderDropTarget.h"
 #include "php_configuration_data.h"
 #include <wx/msgdlg.h>
+#include "clWorkspaceView.h"
+#include "php_strings.h"
 
 #define CHECK_ID_FOLDER(id) \
     if(!id->IsFolder()) return
@@ -77,16 +79,14 @@ PHPWorkspaceView::PHPWorkspaceView(wxWindow* parent, IManager* mgr)
     m_bitmaps = bmpLoader->MakeStandardMimeMap();
     EventNotifier::Get()->Connect(
         wxEVT_CMD_EXECUTE_ACTIVE_PROJECT, clExecuteEventHandler(PHPWorkspaceView::OnRunActiveProject), NULL, this);
-    EventNotifier::Get()->Connect(
-        wxEVT_CMD_STOP_EXECUTED_PROGRAM, wxCommandEventHandler(PHPWorkspaceView::OnStopExecutedProgram), NULL, this);
-    EventNotifier::Get()->Connect(
-        wxEVT_CMD_IS_PROGRAM_RUNNING, wxCommandEventHandler(PHPWorkspaceView::OnIsProgramRunning), NULL, this);
+    EventNotifier::Get()->Bind(wxEVT_CMD_STOP_EXECUTED_PROGRAM, &PHPWorkspaceView::OnStopExecutedProgram, this);
+    EventNotifier::Get()->Bind(wxEVT_CMD_IS_PROGRAM_RUNNING, &PHPWorkspaceView::OnIsProgramRunning, this);
     EventNotifier::Get()->Connect(
         wxEVT_ACTIVE_EDITOR_CHANGED, wxCommandEventHandler(PHPWorkspaceView::OnEditorChanged), NULL, this);
     EventNotifier::Get()->Connect(wxEVT_PHP_FILE_RENAMED, PHPEventHandler(PHPWorkspaceView::OnFileRenamed), NULL, this);
     EventNotifier::Get()->Bind(wxPHP_PARSE_ENDED, &PHPWorkspaceView::OnPhpParserDone, this);
     EventNotifier::Get()->Bind(wxPHP_PARSE_PROGRESS, &PHPWorkspaceView::OnPhpParserProgress, this);
-
+    EventNotifier::Get()->Bind(wxEVT_PHP_WORKSPACE_LOADED, &PHPWorkspaceView::OnWorkspaceLoaded, this);
     EventNotifier::Get()->Bind(wxEVT_PHP_WORKSPACE_RENAMED, &PHPWorkspaceView::OnWorkspaceRenamed, this);
     BitmapLoader* bl = m_mgr->GetStdIcons();
     wxImageList* imageList = bl->MakeStandardMimeImageList();
@@ -101,16 +101,15 @@ PHPWorkspaceView::~PHPWorkspaceView()
 {
     EventNotifier::Get()->Disconnect(
         wxEVT_CMD_EXECUTE_ACTIVE_PROJECT, clExecuteEventHandler(PHPWorkspaceView::OnRunActiveProject), NULL, this);
-    EventNotifier::Get()->Disconnect(
-        wxEVT_CMD_STOP_EXECUTED_PROGRAM, wxCommandEventHandler(PHPWorkspaceView::OnStopExecutedProgram), NULL, this);
-    EventNotifier::Get()->Disconnect(
-        wxEVT_CMD_IS_PROGRAM_RUNNING, wxCommandEventHandler(PHPWorkspaceView::OnIsProgramRunning), NULL, this);
+    EventNotifier::Get()->Unbind(wxEVT_CMD_STOP_EXECUTED_PROGRAM, &PHPWorkspaceView::OnStopExecutedProgram, this);
+    EventNotifier::Get()->Unbind(wxEVT_CMD_IS_PROGRAM_RUNNING, &PHPWorkspaceView::OnIsProgramRunning, this);
     EventNotifier::Get()->Disconnect(
         wxEVT_ACTIVE_EDITOR_CHANGED, wxCommandEventHandler(PHPWorkspaceView::OnEditorChanged), NULL, this);
     EventNotifier::Get()->Disconnect(
         wxEVT_PHP_FILE_RENAMED, PHPEventHandler(PHPWorkspaceView::OnFileRenamed), NULL, this);
     EventNotifier::Get()->Unbind(wxPHP_PARSE_ENDED, &PHPWorkspaceView::OnPhpParserDone, this);
     EventNotifier::Get()->Unbind(wxPHP_PARSE_PROGRESS, &PHPWorkspaceView::OnPhpParserProgress, this);
+    EventNotifier::Get()->Unbind(wxEVT_PHP_WORKSPACE_LOADED, &PHPWorkspaceView::OnWorkspaceLoaded, this);
     EventNotifier::Get()->Unbind(wxEVT_PHP_WORKSPACE_RENAMED, &PHPWorkspaceView::OnWorkspaceRenamed, this);
     Unbind(wxEVT_DND_FOLDER_DROPPED, &PHPWorkspaceView::OnFolderDropped, this);
 }
@@ -123,6 +122,18 @@ void PHPWorkspaceView::OnFolderDropped(clCommandEvent& event)
         return;
     }
 
+    // If a workspace is already exist at the selected path - load it
+    wxArrayString workspaceFiles;
+    wxString workspaceFile;
+    wxDir::GetAllFiles(folders.Item(0), &workspaceFiles, "*.workspace", wxDIR_FILES);
+    // Check the workspace type
+    for(size_t i = 0; i < workspaceFiles.size(); ++i) {
+        if(FileExtManager::GetType(workspaceFiles.Item(i)) == FileExtManager::TypeWorkspacePHP) {
+            workspaceFile = workspaceFiles.Item(i);
+            break;
+        }
+    }
+
     wxFileName workspaceFileName;
     wxFileName projectFileName(folders.Item(0), "");
     projectFileName.SetName(projectFileName.GetDirs().Last());
@@ -133,19 +144,46 @@ void PHPWorkspaceView::OnFolderDropped(clCommandEvent& event)
         workspaceFileName.SetName(workspaceFileName.GetDirs().Last());
         workspaceFileName.SetExt("workspace");
 
+        if(!workspaceFile.IsEmpty()) {
+            workspaceFileName = wxFileName(workspaceFile);
+        }
+
+        if(!workspaceFileName.IsDirWritable()) {
+            wxString message;
+            message << _("Failed to create workspace '") << workspaceFileName.GetFullPath() << "'\n"
+                    << _("Permission denied.");
+            ::wxMessageBox(message, "CodeLite", wxOK | wxICON_ERROR | wxCENTER);
+            return;
+        }
         // Create an empty workspace
         if(!PHPWorkspace::Get()->Open(workspaceFileName.GetFullPath(), true)) {
             wxString message;
-            message << _("Failed to create workspace '") << workspaceFileName.GetFullPath() << "'\n"
-                    << _("File exists");
+            message << _("Failed to open workspace '") << workspaceFileName.GetFullPath() << "'\n" << _("File exists");
             ::wxMessageBox(message, "CodeLite", wxOK | wxICON_ERROR | wxCENTER);
             return;
         }
 
-        // We just created and opened a new workspace, add it to the "Recently used"
-        m_mgr->AddWorkspaceToRecentlyUsedList(workspaceFileName);
+        // // We just created and opened a new workspace, add it to the "Recently used"
+        // m_mgr->AddWorkspaceToRecentlyUsedList(workspaceFileName);
+        LoadWorkspace();
+
+        // Ensure that the view is visible
+        m_mgr->GetWorkspaceView()->SelectPage(PHPStrings::PHP_WORKSPACE_VIEW_LABEL);
+
+        // If we loaded an already existing workspace, we are done here
+        if(!workspaceFile.IsEmpty()) return;
 
     } else {
+        if(!workspaceFile.IsEmpty()) {
+            // its the same workspace - do nothing
+            if(PHPWorkspace::Get()->GetFilename().GetFullPath() == workspaceFile) return;
+            // Different workspaces, prompt the user to close its workspace before continuing
+            ::wxMessageBox(
+                _("The folder already contains a workspace file\nPlease close the current workspace before continuing"),
+                "CodeLite",
+                wxOK | wxICON_WARNING | wxCENTER);
+            return;
+        }
         workspaceFileName = PHPWorkspace::Get()->GetFilename();
     }
 
@@ -594,6 +632,9 @@ void PHPWorkspaceView::DoOpenFile(const wxTreeItemId& item)
     ItemData* data = DoGetItemData(item);
     if(data && data->IsFile()) {
         m_mgr->OpenFile(data->GetFile());
+        if(m_mgr->GetActiveEditor() && m_mgr->GetActiveEditor()->GetFileName().GetFullPath() == data->GetFile()) {
+            m_mgr->GetActiveEditor()->GetCtrl()->CallAfter(&wxStyledTextCtrl::SetFocus);
+        }
     }
 }
 
@@ -794,10 +835,10 @@ void PHPWorkspaceView::OnRunActiveProject(clExecuteEvent& e)
     }
 }
 
-void PHPWorkspaceView::OnIsProgramRunning(wxCommandEvent& e)
+void PHPWorkspaceView::OnIsProgramRunning(clExecuteEvent& e)
 {
     if(PHPWorkspace::Get()->IsOpen()) {
-        e.SetInt(PHPWorkspace::Get()->IsProjectRunning() ? 1 : 0);
+        e.SetAnswer(PHPWorkspace::Get()->IsProjectRunning());
 
     } else {
         // Must call skip !
@@ -805,7 +846,7 @@ void PHPWorkspaceView::OnIsProgramRunning(wxCommandEvent& e)
     }
 }
 
-void PHPWorkspaceView::OnStopExecutedProgram(wxCommandEvent& e)
+void PHPWorkspaceView::OnStopExecutedProgram(clExecuteEvent& e)
 {
     if(PHPWorkspace::Get()->IsOpen() && PHPWorkspace::Get()->IsProjectRunning()) {
         PHPWorkspace::Get()->StopExecutedProgram();
@@ -1326,6 +1367,10 @@ void PHPWorkspaceView::OnCollapse(wxCommandEvent& event)
     wxWindowUpdateLocker locker(m_treeCtrlView);
     wxTreeItemId root = m_treeCtrlView->GetRootItem();
     DoCollapseItem(root);
+    if(m_treeCtrlView->ItemHasChildren(root)) {
+        m_treeCtrlView->Expand(root);
+        m_treeCtrlView->Collapse(root);
+    }
 }
 
 void PHPWorkspaceView::OnCollapseUI(wxUpdateUIEvent& event) { event.Enable(PHPWorkspace::Get()->IsOpen()); }
@@ -1378,4 +1423,10 @@ void PHPWorkspaceView::DoSetProjectActive(const wxString& projectName)
         }
         child = m_treeCtrlView->GetNextChild(m_treeCtrlView->GetRootItem(), cookie);
     }
+}
+
+void PHPWorkspaceView::OnWorkspaceLoaded(PHPEvent& event)
+{
+    event.Skip();
+    m_mgr->GetWorkspaceView()->SelectPage(PHPStrings::PHP_WORKSPACE_VIEW_LABEL); // Ensure that the PHP view is selected
 }

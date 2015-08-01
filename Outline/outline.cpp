@@ -92,13 +92,13 @@ SymbolViewPlugin::SymbolViewPlugin(IManager *manager)
     Notebook *book = m_mgr->GetWorkspacePaneNotebook();
     if( IsPaneDetached() ) {
         // Make the window child of the main panel (which is the grand parent of the notebook)
-        DockablePane *cp = new DockablePane(book->GetParent()->GetParent(), book, wxT("Outline"), wxNullBitmap, wxSize(200, 200));
+        DockablePane *cp = new DockablePane(book->GetParent()->GetParent(), book, _("Outline"), wxNullBitmap, wxSize(200, 200));
         m_view = new OutlineTab(cp, m_mgr);
         cp->SetChildNoReparent(m_view);
 
     } else {
         m_view = new OutlineTab(book, m_mgr);
-        book->AddPage(m_view, wxT("Outline"), false);
+        book->AddPage(m_view, _("Outline"), false);
     }
 }
 
@@ -119,8 +119,8 @@ void SymbolViewPlugin::CreatePluginMenu(wxMenu *pluginsMenu)
 
 void SymbolViewPlugin::UnPlug()
 {
-    size_t where = m_mgr->GetWorkspacePaneNotebook()->GetPageIndex(m_view);
-    if ( where != Notebook::npos ) {
+    int where = m_mgr->GetWorkspacePaneNotebook()->GetPageIndex(m_view);
+    if ( where != wxNOT_FOUND ) {
         // this window might be floating
         m_mgr->GetWorkspacePaneNotebook()->RemovePage(where);
     }
@@ -134,28 +134,10 @@ bool SymbolViewPlugin::IsPaneDetached()
     DetachedPanesInfo dpi;
     m_mgr->GetConfigTool()->ReadObject(wxT("DetachedPanesList"), &dpi);
     wxArrayString detachedPanes = dpi.GetPanes();
-    return detachedPanes.Index(wxT("Outline")) != wxNOT_FOUND;
+    return detachedPanes.Index(_("Outline")) != wxNOT_FOUND;
 }
 
 int SymbolViewPlugin::DoFindTabIndex()
 {
-    std::vector<wxWindow*> windows;
-    Notebook *book = m_mgr->GetWorkspacePaneNotebook();
-    
-#if !CL_USE_NATIVEBOOK
-
-    book->GetEditorsInOrder(windows);
-    
-#else
-    
-    for(size_t i=0; i<book->GetPageCount(); i++) {
-        windows.push_back( book->GetPage(i) );
-    }
-    
-#endif
-    for(size_t i=0; i<windows.size(); i++) {
-        if(windows.at(i) == m_view )
-            return i;
-    }
-    return wxNOT_FOUND;
+    return m_mgr->GetWorkspacePaneNotebook()->GetPageIndex(m_view);
 }

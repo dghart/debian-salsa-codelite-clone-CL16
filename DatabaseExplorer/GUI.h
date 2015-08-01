@@ -4,8 +4,8 @@
 // Do not modify this file by hand!
 //////////////////////////////////////////////////////////////////////
 
-#ifndef GUI_BASE_CLASSES_H
-#define GUI_BASE_CLASSES_H
+#ifndef CODELITE_DATABASEEXPLORER_GUI_BASE_CLASSES_H
+#define CODELITE_DATABASEEXPLORER_GUI_BASE_CLASSES_H
 
 #include <wx/settings.h>
 #include <wx/xrc/xmlres.h>
@@ -42,6 +42,12 @@
 #include <wx/infobar.h>
 #include <wx/dataview.h>
 #include <wx/statline.h>
+#if wxVERSION_NUMBER >= 2900
+#include <wx/persist.h>
+#include <wx/persist/toplevel.h>
+#include <wx/persist/bookctrl.h>
+#include <wx/persist/treebook.h>
+#endif
 
 class _ImageExportDialog : public wxDialog
 {

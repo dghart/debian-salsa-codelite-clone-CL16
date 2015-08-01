@@ -5,6 +5,23 @@
 #include "event_notifier.h"
 #include "codelite_events.h"
 #include "WebToolsSettings.h"
+#include <wx/menu.h>
+#include "NoteJSWorkspace.h"
+#include "NodeJSWorkspaceView.h"
+#include "clWorkspaceManager.h"
+#include "globals.h"
+#include "clWorkspaceView.h"
+#include <wx/dirdlg.h>
+#include "tags_options_data.h"
+#include "ctags_manager.h"
+#include "PhpLexerAPI.h"
+#include "PHPSourceFile.h"
+#include "NodeJSDebuggerPane.h"
+#include "WebToolsConfig.h"
+#include "fileutils.h"
+#include "NodeJSEvents.h"
+#include "WebToolsBase.h"
+#include "bitmap_loader.h"
 
 static WebTools* thePlugin = NULL;
 
@@ -22,7 +39,7 @@ extern "C" EXPORT PluginInfo GetPluginInfo()
     PluginInfo info;
     info.SetAuthor(wxT("eran"));
     info.SetName(wxT("WebTools"));
-    info.SetDescription(wxT("Support for JavScript, HTML and other web development tools"));
+    info.SetDescription(_("Support for JavScript, HTML and other web development tools"));
     info.SetVersion(wxT("v1.0"));
     return info;
 }
@@ -32,10 +49,20 @@ extern "C" EXPORT int GetPluginInterfaceVersion() { return PLUGIN_INTERFACE_VERS
 WebTools::WebTools(IManager* manager)
     : IPlugin(manager)
     , m_lastColourUpdate(0)
+    , m_clangOldFlag(false)
+    , m_nodejsDebuggerPane(NULL)
+    , m_hideToolBarOnDebugStop(false)
 {
-    m_longName = wxT("Support for JavScript, XML, HTML and other web development tools");
+    m_longName = _("Support for JavScript, XML, HTML and other web development tools");
     m_shortName = wxT("WebTools");
 
+    // Register our new workspace type
+    NodeJSWorkspace::Get(); // Instantiate the singleton by faking a call
+    clWorkspaceManager::Get().RegisterWorkspace(new NodeJSWorkspace(true));
+    
+    WebToolsImages images;
+    BitmapLoader::RegisterImage(FileExtManager::TypeWorkspaceNodeJS, images.Bitmap("m_bmpNodeJS"));
+    
     // Create the syntax highligher worker thread
     m_jsColourThread = new JavaScriptSyntaxColourThread(this);
     m_jsColourThread->Create();
@@ -48,12 +75,15 @@ WebTools::WebTools(IManager* manager)
     EventNotifier::Get()->Bind(wxEVT_CC_CODE_COMPLETE_LANG_KEYWORD, &WebTools::OnCodeComplete, this);
     EventNotifier::Get()->Bind(wxEVT_CC_CODE_COMPLETE_FUNCTION_CALLTIP, &WebTools::OnCodeCompleteFunctionCalltip, this);
     EventNotifier::Get()->Bind(wxEVT_WORKSPACE_CLOSED, &WebTools::OnWorkspaceClosed, this);
+    EventNotifier::Get()->Bind(wxEVT_WORKSPACE_LOADED, &WebTools::OnWorkspaceLoaded, this);
     EventNotifier::Get()->Bind(wxEVT_ACTIVE_EDITOR_CHANGED, &WebTools::OnEditorChanged, this);
+    EventNotifier::Get()->Bind(wxEVT_NODEJS_DEBUGGER_STARTED, &WebTools::OnNodeJSDebuggerStarted, this);
+    EventNotifier::Get()->Bind(wxEVT_NODEJS_DEBUGGER_STOPPED, &WebTools::OnNodeJSDebuggerStopped, this);
 
     Bind(wxEVT_MENU, &WebTools::OnSettings, this, XRCID("webtools_settings"));
-    m_jsCodeComplete.Reset(new JSCodeCompletion());
+    m_jsCodeComplete.Reset(new JSCodeCompletion(""));
     m_xmlCodeComplete.Reset(new XMLCodeCompletion());
-    
+
     // Connect the timer
     m_timer = new wxTimer(this);
     m_timer->Start(3000);
@@ -62,7 +92,7 @@ WebTools::WebTools(IManager* manager)
     wxTheApp->Bind(wxEVT_MENU, &WebTools::OnCommentSelection, this, XRCID("comment_selection"));
 }
 
-WebTools::~WebTools() {}
+WebTools::~WebTools() { NodeJSWorkspace::Free(); }
 
 clToolBar* WebTools::CreateToolBar(wxWindow* parent)
 {
@@ -90,11 +120,14 @@ void WebTools::UnPlug()
     EventNotifier::Get()->Unbind(
         wxEVT_CC_CODE_COMPLETE_FUNCTION_CALLTIP, &WebTools::OnCodeCompleteFunctionCalltip, this);
     EventNotifier::Get()->Unbind(wxEVT_WORKSPACE_CLOSED, &WebTools::OnWorkspaceClosed, this);
+    EventNotifier::Get()->Unbind(wxEVT_WORKSPACE_LOADED, &WebTools::OnWorkspaceLoaded, this);
     EventNotifier::Get()->Unbind(wxEVT_ACTIVE_EDITOR_CHANGED, &WebTools::OnEditorChanged, this);
-    
+    EventNotifier::Get()->Unbind(wxEVT_NODEJS_DEBUGGER_STARTED, &WebTools::OnNodeJSDebuggerStarted, this);
+    EventNotifier::Get()->Unbind(wxEVT_NODEJS_DEBUGGER_STOPPED, &WebTools::OnNodeJSDebuggerStopped, this);
+
     wxTheApp->Unbind(wxEVT_MENU, &WebTools::OnCommentLine, this, XRCID("comment_line"));
     wxTheApp->Unbind(wxEVT_MENU, &WebTools::OnCommentSelection, this, XRCID("comment_selection"));
-    
+
     // Disconnect the timer events
     Unbind(wxEVT_TIMER, &WebTools::OnTimer, this, m_timer->GetId());
     m_timer->Stop();
@@ -195,9 +228,11 @@ void WebTools::OnSettings(wxCommandEvent& event)
     if(settings.ShowModal() == wxID_OK) {
         if(m_jsCodeComplete) {
             m_jsCodeComplete->Reload();
+            m_jsCodeComplete->ClearFatalError();
         }
         if(m_xmlCodeComplete) {
             m_xmlCodeComplete->Reload();
+            m_jsCodeComplete->ClearFatalError();
         }
     }
 }
@@ -278,7 +313,7 @@ void WebTools::OnCommentLine(wxCommandEvent& e)
     e.Skip();
     IEditor* editor = m_mgr->GetActiveEditor();
     CHECK_PTR_RET(editor);
-    
+
     if(IsJavaScriptFile(editor)) {
         e.Skip(false);
         editor->ToggleLineComment("//", wxSTC_C_COMMENTLINE);
@@ -290,7 +325,7 @@ void WebTools::OnCommentSelection(wxCommandEvent& e)
     e.Skip();
     IEditor* editor = m_mgr->GetActiveEditor();
     CHECK_PTR_RET(editor);
-    
+
     if(IsJavaScriptFile(editor)) {
         e.Skip(false);
         editor->CommentBlockSelection("/*", "*/");
@@ -304,11 +339,81 @@ bool WebTools::IsHTMLFile(IEditor* editor)
 
     // We should also support Code Completion when inside a mixed PHP and HTML file
     if(FileExtManager::IsPHPFile(editor->GetFileName())) {
+
+        // Check to see if we are inside a PHP section or not
         wxStyledTextCtrl* ctrl = editor->GetCtrl();
-        int styleAtCurPos = ctrl->GetStyleAt(ctrl->GetCurrentPos());
-        if(styleAtCurPos >= wxSTC_H_DEFAULT && styleAtCurPos <= wxSTC_H_ENTITY) {
-            return true;
-        }
+        wxString buffer = ctrl->GetTextRange(0, ctrl->GetCurrentPos());
+        return !PHPSourceFile::IsInPHPSection(buffer);
     }
     return false;
+}
+
+void WebTools::OnNodeJSDebuggerStarted(clDebugEvent& event)
+{
+    event.Skip();
+    m_savePerspective = clGetManager()->GetDockingManager()->SavePerspective();
+
+    // Show the debugger pane
+    if(!m_nodejsDebuggerPane) {
+        m_nodejsDebuggerPane = new NodeJSDebuggerPane(EventNotifier::Get()->TopFrame());
+        clGetManager()->GetDockingManager()->AddPane(m_nodejsDebuggerPane,
+                                                     wxAuiPaneInfo()
+                                                         .Layer(5)
+                                                         .Name("nodejs_debugger")
+                                                         .Caption("Node.js Debugger")
+                                                         .CloseButton(false)
+                                                         .MaximizeButton()
+                                                         .Bottom()
+                                                         .Position(0));
+    }
+
+    wxString layout;
+    wxFileName fnNodeJSLayout(clStandardPaths::Get().GetUserDataDir(), "nodejs.layout");
+    fnNodeJSLayout.AppendDir("config");
+    if(FileUtils::ReadFileContent(fnNodeJSLayout, layout)) {
+        m_mgr->GetDockingManager()->LoadPerspective(layout);
+    }
+    EnsureAuiPaneIsVisible("nodejs_debugger", true);
+
+    m_hideToolBarOnDebugStop = false;
+    if(!m_mgr->AllowToolbar()) {
+        // Using native toolbar
+        m_hideToolBarOnDebugStop = !m_mgr->IsToolBarShown();
+        m_mgr->ShowToolBar(true);
+    }
+}
+
+void WebTools::OnNodeJSDebuggerStopped(clDebugEvent& event)
+{
+    event.Skip();
+
+    wxFileName fnNodeJSLayout(clStandardPaths::Get().GetUserDataDir(), "nodejs.layout");
+    fnNodeJSLayout.AppendDir("config");
+    FileUtils::WriteFileContent(fnNodeJSLayout, m_mgr->GetDockingManager()->SavePerspective());
+
+    if(!m_savePerspective.IsEmpty()) {
+        m_mgr->GetDockingManager()->LoadPerspective(m_savePerspective);
+        m_savePerspective.clear();
+    }
+
+    if(m_hideToolBarOnDebugStop) {
+        m_mgr->ShowToolBar(false);
+    }
+}
+
+void WebTools::EnsureAuiPaneIsVisible(const wxString& paneName, bool update)
+{
+    wxAuiPaneInfo& pi = m_mgr->GetDockingManager()->GetPane(paneName);
+    if(pi.IsOk() && !pi.IsShown()) {
+        pi.Show();
+    }
+    if(update) {
+        m_mgr->GetDockingManager()->Update();
+    }
+}
+
+void WebTools::OnWorkspaceLoaded(wxCommandEvent& event)
+{
+    event.Skip();
+    m_jsCodeComplete.Reset(new JSCodeCompletion(wxFileName(event.GetString()).GetPath()));
 }

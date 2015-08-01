@@ -151,8 +151,9 @@ CScopeSettingsDlgBase::CScopeSettingsDlgBase(wxWindow* parent, wxWindowID id, co
     
     flexGridSizer18->Add(m_staticText20, 0, wxALL|wxALIGN_RIGHT|wxALIGN_CENTER_VERTICAL, 5);
     
-    m_filePickerCScopeExe = new wxFilePickerCtrl(this, wxID_ANY, wxEmptyString, _("Select a file"), wxT("*"), wxDefaultPosition, wxSize(-1,-1), wxFLP_DEFAULT_STYLE);
+    m_filePickerCScopeExe = new wxFilePickerCtrl(this, wxID_ANY, wxEmptyString, _("Select a file"), wxT("*"), wxDefaultPosition, wxSize(-1,-1), wxFLP_USE_TEXTCTRL|wxFLP_SMALL);
     m_filePickerCScopeExe->SetToolTip(_("Set the path to cscope executable"));
+    m_filePickerCScopeExe->SetFocus();
     
     flexGridSizer18->Add(m_filePickerCScopeExe, 0, wxALL|wxEXPAND, 5);
     
@@ -175,7 +176,11 @@ CScopeSettingsDlgBase::CScopeSettingsDlgBase(wxWindow* parent, wxWindowID id, co
     }
     CentreOnParent(wxBOTH);
 #if wxVERSION_NUMBER >= 2900
-    wxPersistenceManager::Get().RegisterAndRestore(this);
+    if(!wxPersistenceManager::Get().Find(this)) {
+        wxPersistenceManager::Get().RegisterAndRestore(this);
+    } else {
+        wxPersistenceManager::Get().Restore(this);
+    }
 #endif
 }
 

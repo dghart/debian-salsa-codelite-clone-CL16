@@ -29,11 +29,12 @@ protected:
     virtual void OnCollapse(wxCommandEvent& event);
     virtual void DoCollapseItem(wxTreeItemId& item);
     void OnFolderDropped(clCommandEvent& event);
-    
+
     virtual void OnCollapseUI(wxUpdateUIEvent& event);
     virtual void OnSetupRemoteUploadUI(wxUpdateUIEvent& event);
     virtual void OnItemActivated(wxTreeEvent& event);
     virtual void OnMenu(wxTreeEvent& event);
+    void OnWorkspaceLoaded(PHPEvent& event);
 #if USE_SFTP
     virtual void OnSetupRemoteUpload(wxAuiToolBarEvent& event);
 #endif
@@ -104,8 +105,8 @@ protected:
     void OnSyncProjectWithFileSystem(wxCommandEvent& e);
     void OnOpenWithDefaultApp(wxCommandEvent& e);
     void OnRunActiveProject(clExecuteEvent& e);
-    void OnStopExecutedProgram(wxCommandEvent& e);
-    void OnIsProgramRunning(wxCommandEvent& e);
+    void OnStopExecutedProgram(clExecuteEvent& e);
+    void OnIsProgramRunning(clExecuteEvent& e);
     void OnEditorChanged(wxCommandEvent& e);
     void OnFileRenamed(PHPEvent& e);
     void OnWorkspaceRenamed(PHPEvent& e);

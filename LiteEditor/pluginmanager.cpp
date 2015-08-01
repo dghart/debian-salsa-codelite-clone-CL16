@@ -322,7 +322,7 @@ TreeItemInfo PluginManager::GetSelectedTreeItemInfo(TreeType type)
     TreeItemInfo info;
     switch(type) {
     case TreeFileExplorer:
-        return clMainFrame::Get()->GetFileExplorer()->GetFileTree()->GetSelectedItemInfo();
+        return clMainFrame::Get()->GetFileExplorer()->GetItemInfo();
     case TreeFileView:
         return clMainFrame::Get()->GetWorkspaceTab()->GetFileView()->GetSelectedItemInfo();
     default:
@@ -334,7 +334,7 @@ wxTreeCtrl* PluginManager::GetTree(TreeType type)
 {
     switch(type) {
     case TreeFileExplorer:
-        return clMainFrame::Get()->GetFileExplorer()->GetFileTree()->Tree()->GetTreeCtrl();
+        return clMainFrame::Get()->GetFileExplorer()->GetTree();
     case TreeFileView:
         return clMainFrame::Get()->GetWorkspaceTab()->GetFileView();
     default:
@@ -346,16 +346,13 @@ Notebook* PluginManager::GetOutputPaneNotebook() { return clMainFrame::Get()->Ge
 
 Notebook* PluginManager::GetWorkspacePaneNotebook() { return clMainFrame::Get()->GetWorkspacePane()->GetNotebook(); }
 
-bool PluginManager::OpenFile(const wxString& fileName, const wxString& projectName, int lineno)
+IEditor* PluginManager::OpenFile(const wxString& fileName, const wxString& projectName, int lineno)
 {
-    if(clMainFrame::Get()->GetMainBook()->OpenFile(fileName, projectName, lineno)) {
-        LEditor* editor = clMainFrame::Get()->GetMainBook()->GetActiveEditor();
-        if(editor) {
-            editor->SetActive();
-        }
-        return true;
+    IEditor* editor = clMainFrame::Get()->GetMainBook()->OpenFile(fileName, projectName, lineno);
+    if(editor) {
+        editor->SetActive();
     }
-    return false;
+    return editor;
 }
 
 wxString PluginManager::GetStartupDirectory() const { return ManagerST::Get()->GetStartupDirectory(); }
@@ -366,7 +363,7 @@ bool PluginManager::IsWorkspaceOpen() const { return ManagerST::Get()->IsWorkspa
 
 TagsManager* PluginManager::GetTagsManager() { return TagsManagerST::Get(); }
 
-Workspace* PluginManager::GetWorkspace() { return WorkspaceST::Get(); }
+clCxxWorkspace* PluginManager::GetWorkspace() { return clCxxWorkspaceST::Get(); }
 
 bool PluginManager::AddFilesToVirtualFolder(wxTreeItemId& item, wxArrayString& paths)
 {
@@ -529,7 +526,7 @@ PluginManager::AddPage(wxWindow* win, const wxString& text, const wxString& tool
 
 bool PluginManager::SelectPage(wxWindow* win) { return clMainFrame::Get()->GetMainBook()->SelectPage(win); }
 
-bool PluginManager::OpenFile(const BrowseRecord& rec) { return clMainFrame::Get()->GetMainBook()->OpenFile(rec); }
+IEditor* PluginManager::OpenFile(const BrowseRecord& rec) { return clMainFrame::Get()->GetMainBook()->OpenFile(rec); }
 
 NavMgr* PluginManager::GetNavigationMgr() { return NavMgr::Get(); }
 
@@ -823,4 +820,22 @@ void PluginManager::ToggleOutputPane(const wxString& selectedWindow)
     } else {
         ManagerST::Get()->ShowOutputPane(selectedWindow);
     }
+}
+
+clWorkspaceView* PluginManager::GetWorkspaceView() { return clMainFrame::Get()->GetWorkspaceTab()->GetView(); }
+
+void PluginManager::ShowToolBar(bool show)
+{
+    wxCommandEvent event(wxEVT_MENU, XRCID("hide_tool_bar"));
+    event.SetInt(show ? 1 : 0);
+    event.SetEventObject(clMainFrame::Get());
+    clMainFrame::Get()->GetEventHandler()->AddPendingEvent(event);
+}
+bool PluginManager::IsToolBarShown() const
+{
+    if(clMainFrame::Get()->GetToolBar()) {
+        // we have native toolbar
+        return clMainFrame::Get()->GetToolBar()->IsShown();
+    }
+    return false;
 }

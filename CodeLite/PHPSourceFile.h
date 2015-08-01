@@ -70,7 +70,18 @@ protected:
      * @brief read the type
      */
     wxString ReadType();
-
+    
+    /**
+     * @brief read the value that comes after the 'extends' keyword
+     */
+    wxString ReadExtends();
+    
+    /**
+     * @brief read the tokens after the implements keyword
+     */
+    void ReadImplements(wxArrayString& impls);
+    
+    
     /**
      * @brief parse 'use' statements (outer scope, for aliasing)
      */
@@ -155,8 +166,14 @@ protected:
 public:
     PHPSourceFile(const wxFileName& filename);
     PHPSourceFile(const wxString& content);
+    
     virtual ~PHPSourceFile();
-
+    
+    /**
+     * @brief check if we are inside a PHP block at the end of the given buffer
+     */
+    static bool IsInPHPSection(const wxString& buffer);
+    
     /**
      * @brief return list of aliases (their short name) that appears on this file
      */

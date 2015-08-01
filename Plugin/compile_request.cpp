@@ -67,7 +67,7 @@ void CompileRequest::Process(IManager* manager)
 
     BuildSettingsConfig* bsc(manager ? manager->GetBuildSettingsConfigManager() : BuildSettingsConfigST::Get());
     BuildManager* bm(manager ? manager->GetBuildManager() : BuildManagerST::Get());
-    Workspace* w(manager ? manager->GetWorkspace() : WorkspaceST::Get());
+    clCxxWorkspace* w(manager ? manager->GetWorkspace() : clCxxWorkspaceST::Get());
     EnvironmentConfig* env(manager ? manager->GetEnv() : EnvironmentConfig::Instance());
 
     ProjectPtr proj = w->FindProjectByName(m_info.GetProject(), errMsg);
@@ -131,7 +131,12 @@ void CompileRequest::Process(IManager* manager)
         CompilerPtr cmp = bsc->GetCompiler(cmpType);
         if(cmp) {
             // Add the 'bin' folder of the compiler to the PATH environment variable
-            wxFileName cxx = cmp->GetTool("CXX");
+            wxString scxx = cmp->GetTool("CXX");
+            scxx.Trim().Trim(false);
+            scxx.StartsWith("\"", &scxx);
+            scxx.EndsWith("\"", &scxx);
+            // Strip the double quotes
+            wxFileName cxx(scxx);
             wxString pathvar;
             pathvar << cxx.GetPath() << clPATH_SEPARATOR;
             

@@ -45,7 +45,7 @@
 static ZoomNavigator* thePlugin = NULL;
 #define CHECK_CONDITION( cond ) if ( !cond ) return;
 
-const char* ZOOM_PANE_TITLE = "Zoom Navigator";
+const char* ZOOM_PANE_TITLE = _("Zoom Navigator");
 
 //Define the plugin entry point
 extern "C" EXPORT IPlugin *CreatePlugin(IManager *manager)
@@ -61,7 +61,7 @@ extern "C" EXPORT PluginInfo GetPluginInfo()
     PluginInfo info;
     info.SetAuthor(wxT("Brandon Captain"));
     info.SetName(wxT("ZoomNavigator"));
-    info.SetDescription(wxT("A dockable pane that shows a zoomed-out view of your code."));
+    info.SetDescription(_("A dockable pane that shows a zoomed-out view of your code."));
     info.SetVersion(wxT("v1.0"));
     return info;
 }
@@ -84,7 +84,7 @@ ZoomNavigator::ZoomNavigator(IManager *manager)
     , m_startupCompleted(false)
 {
     m_config = new clConfig("zoom-navigator.conf");
-    m_longName = wxT("Zoom Navigator");
+    m_longName = _("Zoom Navigator");
     m_shortName = wxT("ZoomNavigator");
     m_topWindow = m_mgr->GetTheApp();
     
@@ -109,10 +109,10 @@ void ZoomNavigator::UnPlug()
     m_topWindow->Disconnect(wxEVT_IDLE, wxIdleEventHandler(ZoomNavigator::OnIdle), NULL, this);
     m_topWindow->Disconnect(XRCID("zn_settings"), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(ZoomNavigator::OnSettings), NULL, this);
     // Remove the tab if it's actually docked in the workspace pane
-    size_t index(Notebook::npos);
+    int index(wxNOT_FOUND);
     index = m_mgr->GetWorkspacePaneNotebook()->GetPageIndex(zoompane);
-    if (index != Notebook::npos) {
-        m_mgr->GetWorkspacePaneNotebook()->RemovePage(index, false);
+    if (index != wxNOT_FOUND) {
+        m_mgr->GetWorkspacePaneNotebook()->RemovePage(index);
     }
     zoompane->Destroy();
 }

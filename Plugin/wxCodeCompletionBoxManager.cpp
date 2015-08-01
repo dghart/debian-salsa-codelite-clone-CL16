@@ -1,4 +1,6 @@
 #include "wxCodeCompletionBoxManager.h"
+
+#include <algorithm>
 #include <wx/app.h>
 #include "globals.h"
 #include "ieditor.h"
@@ -127,11 +129,28 @@ void wxCodeCompletionBoxManager::InsertSelection(const wxString& selection)
     IEditor* editor = manager->GetActiveEditor();
     if(editor) {
         wxStyledTextCtrl* ctrl = editor->GetCtrl();
-        // Default behviour: remove the partial text from teh editor and replace it
-        // with the selection
-        int start = ctrl->WordStartPosition(ctrl->GetCurrentPos(), true);
-        int end = ctrl->GetCurrentPos();
-        ctrl->SetSelection(start, end);
+        bool addParens(false);
+        int start = wxNOT_FOUND, end = wxNOT_FOUND;
+        std::vector<std::pair<int, int> > ranges;
+        if(ctrl->GetSelections() > 1) {
+            for(int i = 0; i < ctrl->GetSelections(); ++i) {
+                int nStart = ctrl->WordStartPosition(ctrl->GetSelectionNCaret(i), true);
+                int nEnd = ctrl->GetSelectionNCaret(i);
+                ranges.push_back(std::make_pair(nStart, nEnd));
+            }
+            std::sort(ranges.begin(), ranges.end(), [&](const std::pair<int, int>& e1, const std::pair<int, int>& e2) {
+                return e1.first < e2.first;
+            });
+        } else {
+            // Default behviour: remove the partial text from teh editor and replace it
+            // with the selection
+            start = ctrl->WordStartPosition(ctrl->GetCurrentPos(), true);
+            end = ctrl->GetCurrentPos();
+            ctrl->SetSelection(start, end);
+            if(ctrl->GetCharAt(end) != '(') {
+                addParens = true;
+            }
+        }
 
         wxString entryText = selection;
         if(entryText.Find("(") != wxNOT_FOUND) {
@@ -145,35 +164,69 @@ void wxCodeCompletionBoxManager::InsertSelection(const wxString& selection)
 
             CL_DEBUG("Inserting selection: %s", textToInsert);
             CL_DEBUG("Signature is: %s", funcSig);
-            
+
             // Check if already have an open paren, don't add another
-            bool addParens(false);
-            if(ctrl->GetCharAt(end) != '(') {
+            if(addParens) {
                 textToInsert << "()";
-                addParens = true;
             }
-            ctrl->ReplaceSelection(textToInsert);
-            if(!funcSig.IsEmpty()) {
-                
-                // Place the caret between the parenthesis
-                int caretPos(wxNOT_FOUND);
-                if(addParens) {
-                    caretPos = start + textToInsert.length() - 1;
-                } else {
-                    // Move the caret one char to the right
-                    caretPos = start + textToInsert.length() + 1;
+
+            if(!ranges.empty()) {
+                // Multiple carets
+                int offset = 0;
+                for(size_t i = 0; i < ranges.size(); ++i) {
+                    int from = ranges.at(i).first;
+                    int to = ranges.at(i).second;
+                    from += offset;
+                    to += offset;
+                    // Once we enter that text into the editor, it will change the original
+                    // offsets (in most cases the entered text is larger than that typed text)
+                    offset += textToInsert.length() - (to - from);
+                    ctrl->Replace(from, to, textToInsert);
+                    ctrl->SetSelectionNStart(i, from + textToInsert.length());
+                    ctrl->SetSelectionNEnd(i, from + textToInsert.length());
                 }
-                ctrl->SetCurrentPos(caretPos);
-                ctrl->SetSelection(caretPos, caretPos);
-                
-                // trigger a code complete for function calltip.
-                // We do this by simply mimicing the user action of going to the menubar:
-                // Edit->Display Function Calltip
-                wxCommandEvent event(wxEVT_MENU, XRCID("function_call_tip"));
-                wxTheApp->GetTopWindow()->GetEventHandler()->AddPendingEvent(event);
+            } else {
+                ctrl->ReplaceSelection(textToInsert);
+                if(!funcSig.IsEmpty()) {
+
+                    // Place the caret between the parenthesis
+                    int caretPos(wxNOT_FOUND);
+                    if(addParens) {
+                        caretPos = start + textToInsert.length() - 1;
+                    } else {
+                        // Move the caret one char to the right
+                        caretPos = start + textToInsert.length() + 1;
+                    }
+                    ctrl->SetCurrentPos(caretPos);
+                    ctrl->SetSelection(caretPos, caretPos);
+
+                    // trigger a code complete for function calltip.
+                    // We do this by simply mimicing the user action of going to the menubar:
+                    // Edit->Display Function Calltip
+                    wxCommandEvent event(wxEVT_MENU, XRCID("function_call_tip"));
+                    wxTheApp->GetTopWindow()->GetEventHandler()->AddPendingEvent(event);
+                }
             }
         } else {
-            ctrl->ReplaceSelection(entryText);
+            if(!ranges.empty()) {
+                // Multiple carets
+                int offset = 0;
+                for(size_t i = 0; i < ranges.size(); ++i) {
+                    int from = ranges.at(i).first;
+                    int to = ranges.at(i).second;
+                    from += offset;
+                    to += offset;
+                    // Once we enter that text into the editor, it will change the original
+                    // offsets (in most cases the entered text is larger than that typed text)
+                    offset += entryText.length() - (to - from);
+                    ctrl->Replace(from, to, entryText);
+                    ctrl->SetSelectionNStart(i, from + entryText.length());
+                    ctrl->SetSelectionNEnd(i, from + entryText.length());
+                }
+            } else {
+                // Default
+                ctrl->ReplaceSelection(entryText);
+            }
         }
     }
 }

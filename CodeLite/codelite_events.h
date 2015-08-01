@@ -158,12 +158,12 @@ wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_CMD_PROJ_SETTINGS_SAVED, clProjec
 wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_CMD_EXECUTE_ACTIVE_PROJECT, clExecuteEvent);
 
 // A user requested to stop the previously executed program
-wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_CMD_STOP_EXECUTED_PROGRAM, wxCommandEvent);
+wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_CMD_STOP_EXECUTED_PROGRAM, clExecuteEvent);
 
 // codelite sends this event to query plugins incase there is a program running
-// use evet.SetInt(1) to indicate that the plugin has launched an executable
+// use evet.SetAnswer(true) to indicate that the plugin has launched an executable
 // it is mainly used for displaying the 'Stop' button in the toolbar as active/disabled
-wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_CMD_IS_PROGRAM_RUNNING, wxCommandEvent);
+wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_CMD_IS_PROGRAM_RUNNING, clExecuteEvent);
 
 // ----------------------------------------------------------------------
 // Build Events
@@ -233,19 +233,19 @@ wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_PLUGIN_EXPORT_MAKEFILE, clBuildEv
  */
 // sent when the debugger is about to start
 // clientData is a pointer to a DebuggerStartupInfo structure
-wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_DEBUG_STARTING, wxCommandEvent);
+wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_DEBUG_STARTING, clDebugEvent);
 
 // sent right after the debugger started; program is not running yet
 // clientData is a pointer to a DebuggerStartupInfo structure
-wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_DEBUG_STARTED, wxCommandEvent);
+wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_DEBUG_STARTED, clDebugEvent);
 
 // sent just before the debugger stops
 // clientData is NULL
-wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_DEBUG_ENDING, wxCommandEvent);
+wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_DEBUG_ENDING, clDebugEvent);
 
 // sent after the debugger stopped
 // clientData is NULL
-wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_DEBUG_ENDED, wxCommandEvent);
+wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_DEBUG_ENDED, clDebugEvent);
 
 // set when the editor gains or loses
 // the control over the debugger
@@ -318,7 +318,7 @@ wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_CC_GENERATE_DOXY_BLOCK, clCodeCom
 /////////////////////////////////////////////////
 
 // User selected an option to create a new workspace
-wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_CMD_CREATE_NEW_WORKSPACE, wxCommandEvent);
+wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_CMD_CREATE_NEW_WORKSPACE, clCommandEvent);
 
 // Event type: clCommandEvent
 // A workspace file was selected by the user.
@@ -379,16 +379,6 @@ wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_CMD_OPEN_RESOURCE, wxCommandEvent
 // event.GetEventObject() holds a pointer to the editor triggered
 // the menu
 wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_CMD_EDITOR_CONTEXT_MENU, wxCommandEvent);
-
-// Event type: clCommandEvent
-// The Find In Files dialog requests an additional file mask
-// the format should be:
-// *.a;*.b
-// and should be placed at:
-// event.GetStrings().Add("*.a;*.b");
-// In order to set the mask that will be used (there can be multiple entries), use
-// event.SetString("*.mask");
-wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_CMD_GET_FIND_IN_FILES_MASK, clCommandEvent);
 
 // Event type: clCommandEvent
 // Sent by the Find IN Files dialog when the dialog is dismissed
@@ -688,6 +678,12 @@ wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_EDITOR_INITIALIZING, clCommandEve
 // Sent when the file system was modified externally (typically, this event is sent
 // after git pull, svn update etc)
 wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_FILE_SYSTEM_UPDATED, clFileSystemEvent);
+
+// Event: clFileSystemEvent
+// List of files were modified by the replace-in-files operation (this event will only include
+// the files that were modified on the file system directly and have no open editor)
+// Use clFileSystemEvent::GetStrings to get list of modified files
+wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_FILES_MODIFIED_REPLACE_IN_FILES, clFileSystemEvent);
 
 // Event: clCommandEvent
 // Sent when CodeLite requires to store the current workspace session

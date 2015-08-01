@@ -13,6 +13,7 @@
 #include "ColoursAndFontsManager.h"
 #include <algorithm>
 #include "globals.h"
+#include <wx/menu.h>
 
 #define STATUSBAR_LINE_COL_IDX 0
 #define STATUSBAR_ANIMATION_COL_IDX 1
@@ -50,7 +51,7 @@ clStatusBar::clStatusBar(wxWindow* parent, IManager* mgr)
     EventNotifier::Get()->Bind(wxEVT_WORKSPACE_CLOSED, &clStatusBar::OnWorkspaceClosed, this);
     Bind(wxEVT_STATUSBAR_CLICKED, &clStatusBar::OnFieldClicked, this);
 
-    wxCustomStatusBarField::Ptr_t lineCol(new wxCustomStatusBarFieldText(this, 200));
+    wxCustomStatusBarField::Ptr_t lineCol(new wxCustomStatusBarFieldText(this, 250));
     AddField(lineCol);
 
     wxCustomStatusBarField::Ptr_t buildAnimation(new wxCustomStatusBarAnimationField(

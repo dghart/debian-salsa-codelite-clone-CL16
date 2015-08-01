@@ -45,11 +45,6 @@ add_definitions(-DWXUSINGDLL_WXSQLITE3)
 add_definitions(-DWXUSINGDLL_CL)
 add_definitions(-DWXUSINGDLL_SDK)
 
-if (UNIX)
-# Add RPATH
-set (LINKER_OPTIONS -Wl,-rpath,"${PLUGINS_DIR}")
-endif()
-
 if(CMAKE_BUILD_TYPE MATCHES Debug OR CMAKE_BUILD_TYPE MATCHES DebugFull)
     ## Debug build of codelite
     set( CL_LIB_DIR lib)
@@ -94,8 +89,6 @@ target_link_libraries(${PLUGIN_NAME}
                       PHPParser
                       libcodelite
                       plugin
-                      wxsqlite3 
-                      sqlite3lib
                       )
 # Installation destination
 CL_INSTALL_PLUGIN(${PLUGIN_NAME})
@@ -106,8 +99,6 @@ target_link_libraries(PHPUnitTests
                      -L"${CMAKE_LIBRARY_OUTPUT_DIRECTORY}" 
                      -L"${CL_LIBPATH}" 
                      PHPParser 
-                     wxsqlite3 
-                     sqlite3lib 
                      libcodelite 
                      plugin 
                      ${ADDITIONAL_LIBRARIES} 

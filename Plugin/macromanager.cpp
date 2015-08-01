@@ -47,7 +47,7 @@ wxString MacroManager::Expand(const wxString& expression,
                               const wxString& confToBuild)
 {
     wxString expandedString(expression);
-    Workspace* workspace = WorkspaceST::Get();
+    clCxxWorkspace* workspace = clCxxWorkspaceST::Get();
 
     DollarEscaper de(expandedString);
 
@@ -107,6 +107,7 @@ wxString MacroManager::Expand(const wxString& expression,
             fpath.Replace(wxT("\\"), wxT("/"));
             expandedString.Replace(wxT("$(CurrentFilePath)"), fpath);
             expandedString.Replace(wxT("$(CurrentFileExt)"), fn.GetExt());
+            expandedString.Replace(wxT("$(CurrentFileFullName)"), fn.GetFullName());
 
             wxString ffullpath(fn.GetFullPath());
             ffullpath.Replace(wxT("\\"), wxT("/"));

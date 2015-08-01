@@ -33,6 +33,7 @@
 #include "procutils.h"
 #include <wx/tokenzr.h>
 #include <map>
+#include <wx/msgdlg.h>
 
 void FileUtils::OpenFileExplorer(const wxString& path)
 {
@@ -129,7 +130,8 @@ bool FileUtils::WriteFileContent(const wxFileName& fn, const wxString& content, 
 
 bool FileUtils::ReadFileContent(const wxFileName& fn, wxString& data, const wxMBConv& conv)
 {
-    wxFFile file(fn.GetFullPath().GetData(), wxT("rb"));
+    wxString filename = fn.GetFullPath();
+    wxFFile file(filename, wxT("rb"));
     if(file.IsOpened() == false) {
         // Nothing to be done
         return false;
@@ -208,7 +210,18 @@ FileUtils::OpenSSHTerminal(const wxString& sshClient, const wxString& connectStr
 {
 #ifdef __WXMSW__
     wxString command;
-    command << "cmd /C \"" << sshClient << " -P " << port << " " << connectString << " -pw " << password << "\"";
+    wxFileName putty(sshClient);
+    if(!putty.Exists()) {
+        wxMessageBox(_("Can't launch PuTTY. Don't know where it is ...."), "CodeLite", wxOK | wxCENTER | wxICON_ERROR);
+        return;
+    }
+    
+    wxString puttyClient = putty.GetFullPath();
+    if(puttyClient.Contains(" ")) {
+        puttyClient.Prepend("\"").Append("\"");
+    }
+
+    command << "cmd /C \"" << puttyClient << " -P " << port << " " << connectString << " -pw " << password << "\"";
     ::wxExecute(command, wxEXEC_ASYNC | wxEXEC_HIDE_CONSOLE);
 
 #elif defined(__WXGTK__)
@@ -307,4 +320,35 @@ wxString FileUtils::EncodeURI(const wxString& uri)
         }
     }
     return encoded;
+}
+
+bool FileUtils::FuzzyMatch(const wxString& needle, const wxString& haystack)
+{
+    wxArrayString parts = ::wxStringTokenize(needle, " \t", wxTOKEN_STRTOK);
+    for(size_t i = 0; i < parts.size(); ++i) {
+        wxString pattern = parts.Item(i);
+        pattern = pattern.Lower();
+        wxString lchaystack = haystack.Lower();
+        if(!lchaystack.Contains(pattern)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool FileUtils::IsHidden(const wxFileName& filename)
+{
+#ifdef __WXMSW__
+    DWORD dwAttrs = GetFileAttributes(filename.GetFullPath().c_str());
+    if(dwAttrs == INVALID_FILE_ATTRIBUTES) return false;
+    return (dwAttrs & FILE_ATTRIBUTE_HIDDEN) || (filename.GetFullName().StartsWith("."));
+#else
+    // is it enough to test for file name?
+    return filename.GetFullName().StartsWith(".");
+#endif
+}
+
+bool FileUtils::IsHidden(const wxString& filename)
+{
+    return IsHidden(filename);
 }

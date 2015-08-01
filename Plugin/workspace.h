@@ -34,7 +34,7 @@
 #include "json_node.h"
 #include <wx/event.h>
 #include <cl_command_event.h>
-//#include "ctags_manager.h"
+#include "IWorkspace.h"
 #include "configuration_mapping.h"
 #include "optionsconfig.h"
 #include "localworkspace.h"
@@ -46,30 +46,38 @@
  *
  */
 class CompileCommandsCreateor;
-class WXDLLIMPEXP_SDK Workspace
+class WXDLLIMPEXP_SDK clCxxWorkspace : public IWorkspace
 {
-    friend class WorkspaceST;
+    friend class clCxxWorkspaceST;
     friend class CompileCommandsCreateor;
+    
+    
+public:
+    // IWorkspace API
+    virtual wxString GetFilesMask() const;
+    virtual bool IsBuildSupported() const;
+    virtual bool IsProjectSupported() const;
 
 public:
     typedef std::map<wxString, ProjectPtr> ProjectMap_t;
-
+    
 protected:
     wxXmlDocument m_doc;
     wxFileName m_fileName;
-    Workspace::ProjectMap_t m_projects;
+    clCxxWorkspace::ProjectMap_t m_projects;
     wxString m_startupDir;
     time_t m_modifyTime;
     bool m_saveOnExit;
     BuildMatrixPtr m_buildMatrix;
 
-private:
+public:
     /// Constructor
-    Workspace();
+    clCxxWorkspace();
 
     /// Destructor
-    virtual ~Workspace();
+    virtual ~clCxxWorkspace();
 
+private:
     void DoUpdateBuildMatrix();
 
 public:
@@ -379,12 +387,15 @@ private:
     void RemoveProjectFromBuildMatrix(ProjectPtr prj);
 
     bool SaveXmlFile();
+
+    void SyncToLocalWorkspaceSTParserPaths();
+    void SyncFromLocalWorkspaceSTParserPaths();
 };
 
-class WXDLLIMPEXP_SDK WorkspaceST
+class WXDLLIMPEXP_SDK clCxxWorkspaceST
 {
 public:
-    static Workspace* Get();
+    static clCxxWorkspace* Get();
     static void Free();
 };
 

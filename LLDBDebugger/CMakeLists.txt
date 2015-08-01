@@ -71,11 +71,6 @@ if (WITH_LLDB MATCHES 1)
         add_definitions(-DWXUSINGDLL_CL)
         add_definitions(-DWXUSINGDLL_SDK)
 
-        # Add RPATH
-        if (UNIX)
-        set (LINKER_OPTIONS -Wl,-rpath,"${PLUGINS_DIR}")
-        endif (UNIX)
-
         ## By default, use the sources under the current folder
         FILE(GLOB PLUGIN_SRCS "*.cpp")
 
@@ -83,19 +78,15 @@ if (WITH_LLDB MATCHES 1)
         add_library(${PLUGIN_NAME} SHARED ${PLUGIN_SRCS})
 
         target_link_libraries(LLDBDebugger LLDBProtocol)
-if (APPLE)
-        link_directories(${LLDB_LIB_PATH})
-        target_link_libraries(${PLUGIN_NAME} ${LIBLLDB})
-endif()
+
         # Codelite plugins doesn't use the "lib" prefix.
         set_target_properties(${PLUGIN_NAME} PROPERTIES PREFIX "")
         target_link_libraries(${PLUGIN_NAME}
                               ${LINKER_OPTIONS}
                               ${wxWidgets_LIBRARIES}
+                              ${LIBLLDB}
                               libcodelite
                               plugin
-                              wxsqlite3 
-                              sqlite3lib
                               )
         # Installation destination
         CL_INSTALL_PLUGIN(${PLUGIN_NAME})

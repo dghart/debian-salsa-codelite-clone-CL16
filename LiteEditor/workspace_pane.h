@@ -26,7 +26,7 @@
 #define WORKSPACE_PANE_H
 
 #include <wx/filename.h>
-#include "notebook_ex.h"
+#include "Notebook.h"
 #include <wx/panel.h>
 #include <wx/timer.h>
 #include "clAuiCaptionEnabler.h"
@@ -62,6 +62,7 @@ protected:
     void DoShowTab(bool show, const wxString& title);
     wxWindow* DoGetControlByName(const wxString& title);
     void OnInitDone(wxCommandEvent& event);
+    void OnSettingsChanged(wxCommandEvent& event);
 
 public:
     WorkspacePane(wxWindow* parent, const wxString& caption, wxAuiManager* mgr);
@@ -80,6 +81,11 @@ public:
     WorkspaceTab* GetWorkspaceTab() { return m_workspaceTab; }
     FileExplorer* GetFileExplorer() { return m_explorer; }
     TabgroupsPane* GetTabgroupsTab() { return m_TabgroupsPane; }
+    /**
+     * @brief set an active tab by its title
+     * @param tabTitle the tab to select
+     */
+    void SelectTab(const wxString& tabTitle);
 };
 
 #endif // WORKSPACE_PANE_H

@@ -75,6 +75,9 @@
 #include "cc_box_tip_window.h"
 #include "clSTCLineKeeper.h"
 #include "clEditorStateLocker.h"
+#include <wx/dcmemory.h>
+#include <wx/dataobj.h>
+#include <wx/regex.h>
 //#include "clFileOrFolderDropTarget.h"
 
 // fix bug in wxscintilla.h
@@ -152,6 +155,130 @@ bool LEditor::m_ccShowPrivateMembers = true;
 bool LEditor::m_ccShowItemsComments = true;
 bool LEditor::m_ccInitialized = false;
 
+class clEditorDropTarget : public wxDropTarget
+{
+    wxStyledTextCtrl* m_stc;
+
+public:
+    clEditorDropTarget(wxStyledTextCtrl* stc)
+        : m_stc(stc)
+    {
+        wxDataObjectComposite* dataobj = new wxDataObjectComposite();
+        dataobj->Add(new wxTextDataObject(), true);
+        dataobj->Add(new wxFileDataObject());
+        SetDataObject(dataobj);
+    }
+
+    /**
+     * @brief do the actual drop action
+     * we support both text and file names
+     */
+    wxDragResult OnData(wxCoord x, wxCoord y, wxDragResult defaultDragResult)
+    {
+        if(!GetData()) {
+            return wxDragError;
+        }
+        wxDataObjectComposite* dataobjComp = static_cast<wxDataObjectComposite*>(GetDataObject());
+        if(!dataobjComp) return wxDragError;
+
+        wxDataFormat format = dataobjComp->GetReceivedFormat();
+        wxDataObject* dataobj = dataobjComp->GetObject(format);
+        switch(format.GetType()) {
+        case wxDF_FILENAME: {
+            wxFileDataObject* fileNameObj = static_cast<wxFileDataObject*>(dataobj);
+            DoFilesDrop(fileNameObj->GetFilenames());
+        } break;
+        case wxDF_UNICODETEXT: {
+            wxTextDataObject* textObj = static_cast<wxTextDataObject*>(dataobj);
+            wxString text = textObj->GetText();
+#ifdef __WXOSX__
+            // On OSX, textObj->GetText() returns some garbeled text
+            // so use the editor to get the text that we want to copy/move
+            text = m_stc->GetSelectedText();
+#endif
+            if(!DoTextDrop(text, x, y, (defaultDragResult == wxDragMove))) {
+                return wxDragCancel;
+            }
+        } break;
+        default:
+            break;
+        }
+        return defaultDragResult;
+    }
+
+    /**
+     * @brief open list of files in the editor
+     */
+    bool DoTextDrop(const wxString& text, wxCoord x, wxCoord y, bool moving)
+    {
+        // insert the text
+        int pos = m_stc->PositionFromPoint(wxPoint(x, y));
+        if(pos == wxNOT_FOUND) return false;
+        
+        // Don't allow dropping tabs on the editor
+        static wxRegEx re("\\{Class:Notebook,TabIndex:([0-9]+)\\}");
+        if(re.Matches(text)) return false;
+        
+        int selStart = m_stc->GetSelectionStart();
+        int selEnd = m_stc->GetSelectionEnd();
+
+        // No text dnd if the drop is on the selection
+        if((pos >= selStart) && (pos <= selEnd)) return false;
+        int length = (selEnd - selStart);
+        
+        m_stc->BeginUndoAction();
+        if(moving) {
+            // Clear the selection
+            
+            bool movingForward = (pos > selEnd);
+            m_stc->InsertText(pos, text);
+            if(movingForward) {
+                m_stc->Replace(selStart, selEnd, "");
+                pos -= length;
+            } else {
+                m_stc->Replace(selStart + length, selEnd + length, "");
+            }
+            m_stc->SetSelectionStart(pos);
+            m_stc->SetSelectionEnd(pos);
+            m_stc->SetCurrentPos(pos);
+        } else {
+            m_stc->SelectNone();
+            m_stc->SetSelectionStart(pos);
+            m_stc->SetSelectionEnd(pos);
+            m_stc->InsertText(pos, text);
+            m_stc->SetCurrentPos(pos);
+        }
+        m_stc->EndUndoAction();
+#ifndef __WXOSX__
+        m_stc->CallAfter(&wxStyledTextCtrl::SetSelection, pos, pos + length);
+#endif
+        return true;
+    }
+
+    /**
+     * @brief open list of files in the editor
+     */
+    void DoFilesDrop(const wxArrayString& filenames)
+    {
+        // Split the list into 2: files and folders
+        wxArrayString files, folders;
+        for(size_t i = 0; i < filenames.size(); ++i) {
+            if(wxFileName::DirExists(filenames.Item(i))) {
+                folders.Add(filenames.Item(i));
+            } else {
+                files.Add(filenames.Item(i));
+            }
+        }
+
+        for(size_t i = 0; i < files.size(); ++i) {
+            clMainFrame::Get()->GetMainBook()->OpenFile(files.Item(i));
+        }
+    }
+
+    bool OnDrop(wxCoord x, wxCoord y) { return true; }
+    wxDragResult OnDragOver(wxCoord x, wxCoord y, wxDragResult defResult) { return m_stc->DoDragOver(x, y, defResult); }
+};
+
 LEditor::LEditor(wxWindow* parent)
     : wxStyledTextCtrl(parent, wxID_ANY, wxDefaultPosition, wxSize(1, 1), wxNO_BORDER)
     , m_popupIsOn(false)
@@ -176,12 +303,13 @@ LEditor::LEditor(wxWindow* parent)
     , m_findBookmarksActive(false)
     , m_mgr(PluginManager::Get())
     , m_hasCCAnnotation(false)
+    , m_richTooltip(NULL)
 {
     DoUpdateOptions();
     EventNotifier::Get()->Bind(wxEVT_EDITOR_CONFIG_CHANGED, &LEditor::OnEditorConfigChanged, this);
     m_commandsProcessor.SetParent(this);
 
-    // SetDropTarget(new clFileOrFolderDropTarget(clMainFrame::Get()->GetMainBook()));
+    SetDropTarget(new clEditorDropTarget(this));
 
     // User timer to check if we need to highlight markers
     m_timerHighlightMarkers = new wxTimer(this);
@@ -235,6 +363,7 @@ LEditor::LEditor(wxWindow* parent)
 
 LEditor::~LEditor()
 {
+    wxDELETE(m_richTooltip);
     EventNotifier::Get()->Unbind(wxEVT_EDITOR_CONFIG_CHANGED, &LEditor::OnEditorConfigChanged, this);
 
     EventNotifier::Get()->Disconnect(
@@ -667,6 +796,11 @@ void LEditor::SetProperties()
         CmdKeyAssign(wxSTC_KEY_LEFT, wxSTC_SCMOD_CTRL, wxSTC_CMD_WORDLEFT);
         CmdKeyAssign(wxSTC_KEY_RIGHT, wxSTC_SCMOD_CTRL, wxSTC_CMD_WORDRIGHT);
     }
+
+#ifdef __WXOSX__
+    CmdKeyAssign(wxSTC_KEY_DOWN, wxSTC_SCMOD_CTRL, wxSTC_CMD_DOCUMENTEND);
+    CmdKeyAssign(wxSTC_KEY_UP, wxSTC_SCMOD_CTRL, wxSTC_CMD_DOCUMENTSTART);
+#endif
 }
 
 void LEditor::OnSavePoint(wxStyledTextEvent& event)
@@ -996,7 +1130,9 @@ void LEditor::OnSciUpdateUI(wxStyledTextEvent& event)
     int charCurrnt = SafeGetChar(pos);
 
     bool hasSelection = (GetSelectionStart() != GetSelectionEnd());
-    if(GetHighlightGuide() != wxNOT_FOUND) SetHighlightGuide(0);
+    if(GetHighlightGuide() != wxNOT_FOUND) {
+        SetHighlightGuide(0);
+    }
 
     if(m_hightlightMatchedBraces) {
         if(hasSelection) {
@@ -1029,12 +1165,14 @@ void LEditor::OnSciUpdateUI(wxStyledTextEvent& event)
         }
     }
 
-    int curLine = LineFromPosition(pos);
+    int mainSelectionPos = GetSelectionNCaret(GetMainSelection());
+    int curLine = LineFromPosition(mainSelectionPos);
 
     // update line number
     wxString message;
 
-    message << wxT("Ln ") << curLine + 1 << wxT(", Col ") << GetColumn(pos) << ", Pos " << pos;
+    message << wxT("Ln ") << curLine + 1 << wxT(", Col ") << GetColumn(mainSelectionPos) << ", Pos "
+            << mainSelectionPos;
 
     // Always update the status bar with event, calling it directly causes performance degredation
     m_mgr->GetStatusBar()->SetLinePosColumn(message);
@@ -1525,6 +1663,11 @@ void LEditor::OnDwellStart(wxStyledTextEvent& event)
     int margin = 0;
     wxPoint pt(ScreenToClient(wxGetMousePosition()));
     wxRect clientRect = GetClientRect();
+
+    // If the mouse is no longer over the editor, cancel the tooltip
+    if(!clientRect.Contains(pt)) {
+        return;
+    }
 
     // Always cancel the previous tooltip...
     DoCancelCodeCompletionBox();
@@ -2924,7 +3067,11 @@ void LEditor::OnKeyDown(wxKeyEvent& event)
         // Debugger tooltip is shown when clicking 'Control/CMD'
         // while the mouse is over a word
         clDebugEvent event(wxEVT_DBG_EXPR_TOOLTIP);
-        event.SetString(this->GetWordAtMousePointer());
+
+        wxString wordAtMouse;
+        wxRect rect;
+        GetWordAtMousePointer(wordAtMouse, rect);
+        event.SetString(wordAtMouse);
         if(EventNotifier::Get()->ProcessEvent(event)) {
             return;
         }
@@ -2954,16 +3101,26 @@ void LEditor::OnKeyDown(wxKeyEvent& event)
     }
 
     // let the context process it as well
-    if(GetFunctionTip()->IsActive() && event.GetKeyCode() == WXK_ESCAPE) {
-        GetFunctionTip()->Deactivate();
-        escapeUsed = true;
+    if(event.GetKeyCode() == WXK_ESCAPE) {
+
+        if(GetFunctionTip()->IsActive()) {
+            GetFunctionTip()->Deactivate();
+            escapeUsed = true;
+        }
+
+        // If we've not already used ESC, there's a reasonable chance that the user wants to close the QuickFind bar
+        if(!escapeUsed) {
+            clMainFrame::Get()->GetMainBook()->ShowQuickBar(
+                false); // There's no easy way to tell if it's actually showing, so just do a Close
+
+            // In addition, if we have multiple selections, de-select them
+            if(GetSelections()) {
+                clEditorStateLocker editor(this);
+                ClearSelections();
+            }
+        }
     }
 
-    // If we've not already used ESC, there's a reasonable chance that the user wants to close the QuickFind bar
-    if(event.GetKeyCode() == WXK_ESCAPE && !escapeUsed) {
-        clMainFrame::Get()->GetMainBook()->ShowQuickBar(
-            false); // There's no easy way to tell if it's actually showing, so just do a Close
-    }
     m_context->OnKeyDown(event);
 }
 
@@ -3040,6 +3197,7 @@ void LEditor::OnMotion(wxMouseEvent& event)
 void LEditor::OnLeftDown(wxMouseEvent& event)
 {
     HighlightWord(false);
+    wxDELETE(m_richTooltip);
 
     // hide completion box
     DoCancelCalltip();
@@ -3055,6 +3213,9 @@ void LEditor::OnLeftDown(wxMouseEvent& event)
         SetCaretAt(PositionFromPointClose(event.GetX(), event.GetY()));
     }
     SetActive();
+
+    // Clear any messages from the status bar
+    clGetManager()->GetStatusBar()->SetMessage("");
     event.Skip();
 }
 
@@ -3967,7 +4128,7 @@ void LEditor::DoShowCalltip(int pos, const wxString& title, const wxString& tip)
 
     // Place the tip on top of the mouse position, not under it
     pt.y -= m_calltip->GetSize().GetHeight();
-    m_calltip->PositionAt(pt, this);
+    m_calltip->CallAfter(&CCBoxTipWindow::PositionAt, pt, this);
 }
 
 void LEditor::DoCancelCalltip()
@@ -4287,6 +4448,7 @@ bool LEditor::DoFindAndSelect(const wxString& _pattern, const wxString& what, in
                 if(res && (line >= 0) && !again) {
                     SetEnsureCaretIsVisible(pos);
                     SetLineVisible(LineFromPosition(pos));
+                    CenterLinePreserveSelection(LineFromPosition(pos));
                 }
             }
 
@@ -4628,25 +4790,48 @@ bool LEditor::IsDetached() const
     return (tlw && (clMainFrame::Get() != tlw));
 }
 
-wxString LEditor::GetWordAtMousePointer()
+void LEditor::GetWordAtMousePointer(wxString& word, wxRect& wordRect)
 {
+    word.clear();
+    wordRect = wxRect();
+
+    long start = wxNOT_FOUND;
+    long end = wxNOT_FOUND;
     if(GetSelectedText().IsEmpty()) {
         wxPoint mousePtInScreenCoord = ::wxGetMousePosition();
         wxPoint clientPt = ScreenToClient(mousePtInScreenCoord);
         int pos = PositionFromPoint(clientPt);
         if(pos != wxNOT_FOUND) {
-            long start = WordStartPosition(pos, true);
-            long end = WordEndPosition(pos, true);
-            return GetTextRange(start, end);
-        } else {
-            return "";
+            start = WordStartPosition(pos, true);
+            end = WordEndPosition(pos, true);
         }
     } else {
-        return GetSelectedText();
+        start = GetSelectionStart();
+        end = GetSelectionEnd();
     }
+
+    wxFont font = StyleGetFont(0);
+    wxBitmap bmp(1, 1);
+    wxMemoryDC memdc(bmp);
+    memdc.SetFont(font);
+    wxSize sz = memdc.GetTextExtent(GetTextRange(start, end));
+    wxPoint ptStart = PointFromPosition(start);
+    wxRect rr(ptStart, sz);
+
+    word = GetTextRange(start, end);
+    wordRect = rr;
 }
 
-void LEditor::ShowRichTooltip(const wxString& tip, const wxString& title, int pos) { DoShowCalltip(pos, title, tip); }
+void LEditor::ShowRichTooltip(const wxString& tip, const wxString& title, int pos)
+{
+    if(m_richTooltip) return;
+    wxUnusedVar(pos);
+    wxString word;
+    wxRect rect;
+    GetWordAtMousePointer(word, rect);
+    m_richTooltip = new wxRichToolTip(title, tip);
+    m_richTooltip->ShowFor(this, &rect);
+}
 
 wxString LEditor::GetFirstSelection()
 {
@@ -4804,6 +4989,20 @@ void LEditor::SplitSelection()
     }
 }
 
+
+void LEditor::CenterLinePreserveSelection(int line)
+{
+    int linesOnScreen = LinesOnScreen();
+    // To place our line in the middle, the first visible line should be
+    // the: line - (linesOnScreen / 2)
+    int firstVisibleLine = line - (linesOnScreen / 2);
+    if(firstVisibleLine < 0) {
+        firstVisibleLine = 0;
+    }
+    EnsureVisible(firstVisibleLine);
+    SetFirstVisibleLine(firstVisibleLine);
+}
+
 void LEditor::CenterLine(int line, int col)
 {
     int linesOnScreen = LinesOnScreen();
@@ -4957,6 +5156,83 @@ void LEditor::CommentBlockSelection(const wxString& commentBlockStart, const wxS
     CharRight();
     ChooseCaretX();
 }
+
+void LEditor::QuickAddNext()
+{
+    if(!HasSelection()) return;
+    int count = GetSelections();
+    int start = GetSelectionNStart(count - 1);
+    int end = GetSelectionNEnd(count - 1);
+    if(GetSelections() == 1) {
+        ClearSelections();
+        SetSelection(start, end);
+        SetMainSelection(0);
+    }
+
+    wxString findWhat = GetTextRange(start, end);
+    int where = this->FindText(end, GetLength(), findWhat, wxSTC_FIND_MATCHCASE);
+    if(where != wxNOT_FOUND) {
+        AddSelection(where, where + findWhat.length());
+        CenterLineIfNeeded(LineFromPos(where));
+    }
+
+    wxString message;
+    message << _("Found and selected ") << GetSelections() << _(" matches");
+    clGetManager()->GetStatusBar()->SetMessage(message);
+}
+
+void LEditor::QuickFindAll()
+{
+    if(GetSelections() != 1) return;
+
+    int start = GetSelectionStart();
+    int end = GetSelectionEnd();
+    wxString findWhat = GetTextRange(start, end);
+    if(findWhat.IsEmpty()) return;
+
+    ClearSelections();
+
+    int matches(0);
+    int firstMatch(wxNOT_FOUND);
+    int where = this->FindText(0, GetLength(), findWhat, wxSTC_FIND_MATCHCASE);
+    while(where != wxNOT_FOUND) {
+        if(matches == 0) {
+            firstMatch = where;
+            SetSelection(where, where + findWhat.length());
+            SetMainSelection(0);
+            CenterLineIfNeeded(LineFromPos(where));
+
+        } else {
+            AddSelection(where, where + findWhat.length());
+        }
+        ++matches;
+        where = this->FindText(
+            where + findWhat.length(), GetLength(), findWhat, wxSTC_FIND_MATCHCASE | wxSTC_FIND_WHOLEWORD);
+    }
+    wxString message;
+    message << _("Found and selected ") << GetSelections() << _(" matches");
+    clGetManager()->GetStatusBar()->SetMessage(message);
+    if(firstMatch != wxNOT_FOUND) {
+        SetMainSelection(0);
+    }
+}
+
+void LEditor::CenterLineIfNeeded(int line, bool force)
+{
+    // Center this line
+    int linesOnScreen = LinesOnScreen();
+    if(force || ((line < GetFirstVisibleLine()) || (line > (GetFirstVisibleLine() + LinesOnScreen())))) {
+        // To place our line in the middle, the first visible line should be
+        // the: line - (linesOnScreen / 2)
+        int firstVisibleLine = line - (linesOnScreen / 2);
+        if(firstVisibleLine < 0) {
+            firstVisibleLine = 0;
+        }
+        EnsureVisible(firstVisibleLine);
+        SetFirstVisibleLine(firstVisibleLine);
+    }
+}
+
 
 // ----------------------------------
 // SelectionInfo

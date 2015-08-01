@@ -48,19 +48,37 @@ EditorSettingsDockingWindowsBase::EditorSettingsDockingWindowsBase(wxWindow* par
     m_radioBoxHint = new wxRadioBox(m_panel12, wxID_ANY, _("Docking Style:"), wxDefaultPosition, wxSize(-1, -1), m_radioBoxHintArr, 1, wxRA_SPECIFY_COLS);
     m_radioBoxHint->SetSelection(0);
     
-    bSizer2->Add(m_radioBoxHint, 1, wxALL|wxEXPAND, 5);
+    bSizer2->Add(m_radioBoxHint, 1, wxLEFT|wxRIGHT|wxTOP|wxEXPAND, 5);
     
-    wxArrayString m_radioBoxTabControlStyleArr;
-    m_radioBoxTabControlStyleArr.Add(_("Glossy"));
-    m_radioBoxTabControlStyleArr.Add(_("Curved"));
-    m_radioBoxTabControlStyle = new wxRadioBox(m_panel12, wxID_ANY, _("Tab Control Style:"), wxDefaultPosition, wxSize(-1, -1), m_radioBoxTabControlStyleArr, 1, wxRA_SPECIFY_COLS);
-    m_radioBoxTabControlStyle->SetSelection(0);
+    wxBoxSizer* boxSizer32 = new wxBoxSizer(wxVERTICAL);
     
-    bSizer2->Add(m_radioBoxTabControlStyle, 1, wxALL|wxEXPAND, 5);
+    boxSizer22->Add(boxSizer32, 0, wxLEFT|wxRIGHT|wxBOTTOM|wxEXPAND, 5);
+    
+    wxStaticBoxSizer* staticBoxSizer27 = new wxStaticBoxSizer( new wxStaticBox(m_panel12, wxID_ANY, _("Tabs")), wxVERTICAL);
+    
+    boxSizer32->Add(staticBoxSizer27, 0, wxALL|wxEXPAND, 5);
+    
+    m_checkBoxShowXButton = new wxCheckBox(m_panel12, wxID_ANY, _("Show close button on active tab"), wxDefaultPosition, wxSize(-1,-1), 0);
+    m_checkBoxShowXButton->SetValue(true);
+    m_checkBoxShowXButton->SetToolTip(_("Show close button on active tab"));
+    
+    staticBoxSizer27->Add(m_checkBoxShowXButton, 0, wxALL, 5);
+    
+    m_checkBoxEditorTabsFollowsTheme = new wxCheckBox(m_panel12, wxID_ANY, _("The editor tabs matches to the editor colour theme"), wxDefaultPosition, wxSize(-1,-1), 0);
+    m_checkBoxEditorTabsFollowsTheme->SetValue(true);
+    m_checkBoxEditorTabsFollowsTheme->SetToolTip(_("The editor tabs matches to the editor colour theme"));
+    
+    staticBoxSizer27->Add(m_checkBoxEditorTabsFollowsTheme, 0, wxALL, 5);
+    
+    m_checkBoxPanesTabsAtBottom = new wxCheckBox(m_panel12, wxID_ANY, _("Non editor tabs are placed at the bottom"), wxDefaultPosition, wxSize(-1,-1), 0);
+    m_checkBoxPanesTabsAtBottom->SetValue(true);
+    m_checkBoxPanesTabsAtBottom->SetToolTip(_("Non editor tabs are placed at the bottom"));
+    
+    staticBoxSizer27->Add(m_checkBoxPanesTabsAtBottom, 0, wxALL, 5);
     
     wxBoxSizer* boxSizer25 = new wxBoxSizer(wxVERTICAL);
     
-    boxSizer22->Add(boxSizer25, 0, wxALL, 5);
+    boxSizer22->Add(boxSizer25, 0, wxALL, 10);
     
     m_checkBoxHideCaptions = new wxCheckBox(m_panel12, wxID_ANY, _("Hide Docking Windows captions"), wxDefaultPosition, wxSize(-1,-1), 0);
     m_checkBoxHideCaptions->SetValue(false);
