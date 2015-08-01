@@ -5,7 +5,7 @@ Forwarded: not-needed
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- a/LiteEditor/CMakeLists.txt
 +++ b/LiteEditor/CMakeLists.txt
-@@ -157,7 +157,6 @@ if(NOT APPLE)
+@@ -150,7 +150,6 @@ if(NOT APPLE)
      install(
          DIRECTORY ${CL_SRC_ROOT}/Runtime/images 
                    ${CL_SRC_ROOT}/Runtime/gdb_printers 

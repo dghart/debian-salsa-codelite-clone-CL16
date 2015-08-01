@@ -4,21 +4,21 @@ Author: James Cowgill <james410@cowgill.org.uk>
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- a/LiteEditor/manager.cpp
 +++ b/LiteEditor/manager.cpp
-@@ -1479,8 +1479,7 @@ wxString Manager::GetProjectExecutionCom
+@@ -1484,8 +1484,7 @@ wxString Manager::GetProjectExecutionCom
      wd = bldConf->GetWorkingDirectory();
      wd = ExpandVariables(wd, GetProject(projectName), clMainFrame::Get()->GetMainBook()->GetActiveEditor());
  
--    wxFileName fnCodeliteTerminal(wxStandardPaths::Get().GetExecutablePath());
+-    wxFileName fnCodeliteTerminal(clStandardPaths::Get().GetExecutablePath());
 -    fnCodeliteTerminal.SetFullName("codelite-terminal");
 +    wxFileName fnCodeliteTerminal(clStandardPaths::Get().GetBinaryFullPath("codelite-terminal"));
  
      wxString title;
      title << cmd << " " << cmdArgs;
-@@ -1532,8 +1531,7 @@ wxString Manager::GetProjectExecutionCom
+@@ -1537,8 +1536,7 @@ wxString Manager::GetProjectExecutionCom
              wxString command;
              if(bldConf->GetPauseWhenExecEnds()) {
                  wxString ld_lib_path;
--                wxFileName exePath(wxStandardPaths::Get().GetExecutablePath());
+-                wxFileName exePath(clStandardPaths::Get().GetExecutablePath());
 -                wxFileName exeWrapper(exePath.GetPath(), wxT("codelite_exec"));
 +                wxFileName exeWrapper(clStandardPaths::Get().GetBinaryFullPath("codelite_exec"));
  
@@ -26,30 +26,30 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
                      command << wxT("/bin/sh -f ") << exeWrapper.GetFullPath() << wxT(" LD_LIBRARY_PATH=") << ld_lib_path
 --- a/Plugin/globals.cpp
 +++ b/Plugin/globals.cpp
-@@ -1785,7 +1785,7 @@ IProcess* LaunchTerminal(const wxString&
+@@ -1739,7 +1739,7 @@ IProcess* LaunchTerminal(const wxString&
  
  #else
      wxString command;
--    wxFileName fnCodeliteTerminal(wxStandardPaths::Get().GetExecutablePath());
+-    wxFileName fnCodeliteTerminal(clStandardPaths::Get().GetExecutablePath());
 +    wxFileName fnCodeliteTerminal(clStandardPaths::Get().GetBinFolder());
  
  #if defined(__WXMAC__)
      command << "/usr/bin/open \"" << fnCodeliteTerminal.GetPath(true) << "codelite-terminal.app\" --args ";
-@@ -1814,8 +1814,7 @@ wxString MakeExecInShellCommand(const wx
+@@ -1768,8 +1768,7 @@ wxString MakeExecInShellCommand(const wx
      wxString title(cmd);
  
      OptionsConfigPtr opts = EditorConfigST::Get()->GetOptions();
--    wxFileName fnCodeliteTerminal(wxStandardPaths::Get().GetExecutablePath());
+-    wxFileName fnCodeliteTerminal(clStandardPaths::Get().GetExecutablePath());
 -    fnCodeliteTerminal.SetFullName("codelite-terminal");
 +    wxFileName fnCodeliteTerminal(clStandardPaths::Get().GetBinaryFullPath("codelite-terminal"));
  
  // change directory to the working directory
  #if defined(__WXMAC__)
-@@ -1847,8 +1846,7 @@ wxString MakeExecInShellCommand(const wx
+@@ -1801,8 +1800,7 @@ wxString MakeExecInShellCommand(const wx
          // build the command
          wxString command;
          wxString ld_lib_path;
--        wxFileName exePath(wxStandardPaths::Get().GetExecutablePath());
+-        wxFileName exePath(clStandardPaths::Get().GetExecutablePath());
 -        wxFileName exeWrapper(exePath.GetPath(), wxT("codelite_exec"));
 +        wxFileName exeWrapper(clStandardPaths::Get().GetBinaryFullPath("codelite_exec"));
  
@@ -57,7 +57,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
              command << wxT("/bin/sh -f ") << exeWrapper.GetFullPath() << wxT(" LD_LIBRARY_PATH=") << ld_lib_path
 --- a/Plugin/pipedprocess.cpp
 +++ b/Plugin/pipedprocess.cpp
-@@ -28,6 +28,7 @@
+@@ -29,6 +29,7 @@
  #include <wx/sstream.h>
  #include "wx/msgdlg.h"
  #include <wx/filename.h>
@@ -65,11 +65,11 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  
  PipedProcess::PipedProcess(int id, const wxString &cmdLine)
  : wxProcess(NULL, id)
-@@ -54,8 +55,7 @@ void PipedProcess::Terminate()
+@@ -55,8 +56,7 @@ void PipedProcess::Terminate()
  {
  #ifdef __WXGTK__
  	wxString cmd;
--	wxFileName exePath(wxStandardPaths::Get().GetExecutablePath());
+-	wxFileName exePath(clStandardPaths::Get().GetExecutablePath());
 -	wxFileName script(exePath.GetPath(), wxT("codelite_kill_children"));
 +	wxFileName script(clStandardPaths::Get().GetBinaryFullPath("codelite_kill_children"));
  	cmd << wxT("/bin/sh -f ") << script.GetFullPath() << wxT(" ") << GetPid();
@@ -77,7 +77,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  #else
 --- a/Plugin/macros.h
 +++ b/Plugin/macros.h
-@@ -30,6 +30,8 @@
+@@ -31,6 +31,8 @@
  #include <map>
  #include <set>
  
@@ -86,14 +86,14 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  //-------------------------------------------------------
  // wxWidgets Connect macros
  //-------------------------------------------------------
-@@ -104,7 +106,7 @@ const wxString USE_GLOBAL_SETTINGS
- 
- // terminal macro
+@@ -107,7 +109,7 @@ const wxString CLEAN_PROJECT_PREFIX = _(
  #ifdef __WXGTK__
--#define TERMINAL_CMD  wxString::Format(wxT("%s/codelite_xterm '$(TITLE)' '$(CMD)'"), wxFileName(wxStandardPaths::Get().GetExecutablePath()).GetPath().c_str())
-+#define TERMINAL_CMD  wxString::Format(wxT("%s/codelite_xterm '$(TITLE)' '$(CMD)'"), clStandardPaths::Get().GetBinFolder().c_str())
+ #define TERMINAL_CMD                                               \
+     wxString::Format(wxT("%s/codelite_xterm '$(TITLE)' '$(CMD)'"), \
+-                     wxFileName(clStandardPaths::Get().GetExecutablePath()).GetPath().c_str())
++                     clStandardPaths::Get().GetBinFolder().c_str())
  #elif defined(__WXMAC__)
- #define TERMINAL_CMD  wxString::Format(wxT("%s/OpenTerm '$(CMD)'"), wxStandardPaths::Get().GetDataDir().c_str())
+ #define TERMINAL_CMD wxString::Format(wxT("%s/OpenTerm '$(CMD)'"), clStandardPaths::Get().GetDataDir().c_str())
  #else
 --- a/LiteEditor/app.cpp
 +++ b/LiteEditor/app.cpp
@@ -101,7 +101,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  #endif
      wxString oldpath;
      wxGetEnv(wxT("PATH"), &oldpath);
--    wxFileName execfpath(wxStandardPaths::Get().GetExecutablePath());
+-    wxFileName execfpath(clStandardPaths::Get().GetExecutablePath());
 -    wxSetEnv(wxT("PATH"), oldpath + pathsep + execfpath.GetPath());
 +    wxSetEnv(wxT("PATH"), oldpath + pathsep + clStandardPaths::Get().GetBinFolder());
      wxString newpath;
@@ -180,11 +180,11 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
      }
 --- a/CodeLite/cl_standard_paths.cpp
 +++ b/CodeLite/cl_standard_paths.cpp
-@@ -98,8 +98,7 @@ wxString clStandardPaths::GetDataDir() c
+@@ -90,8 +90,7 @@ wxString clStandardPaths::GetDataDir() c
  
  wxString clStandardPaths::GetBinFolder() const
  {
--    wxFileName fnExe( wxStandardPaths::Get().GetExecutablePath() );
+-    wxFileName fnExe(wxStandardPaths::Get().GetExecutablePath());
 -    return fnExe.GetPath();
 +    return wxStandardPaths::Get().GetPluginsDir();
  }
