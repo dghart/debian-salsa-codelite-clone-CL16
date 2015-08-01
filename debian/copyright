@@ -6,7 +6,6 @@ Files-Excluded:
  *.exe
  *.dll
  codelitephp/bin
- codelitephp/PHPParserUnitTests/Tests/Mage.php
  patches
  sdk/astyle
  sdk/clang
