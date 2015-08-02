@@ -1,11 +1,3 @@
-# Although built with the correct flags, the CodeFormatter plugin contains no
-# fortifiable function calls
-codelite-plugins binary: hardening-no-fortify-functions usr/lib/codelite/CodeFormatter.so
-
-# Although built with the correct flags, the LLDBDebugger plugin contains no
-# fortifiable function calls
-codelite-plugins binary: hardening-no-fortify-functions usr/lib/codelite/LLDBDebugger.so
-
-# Although built with the correct flags, the codelitephp plugin contains no
-# fortifiable function calls
-codelite-plugins binary: hardening-no-fortify-functions usr/lib/codelite/codelitephp.so
+# Although built with the correct flags, most CodeLite plugins do not contain
+# any fortifiable function calls.
+codelite-plugins binary: hardening-no-fortify-functions
