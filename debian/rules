@@ -7,7 +7,7 @@ DEB_HOST_MULTIARCH ?= $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed
 
-LLVM_VERSION := 3.5
+LLVM_VERSION := 3.6
 
 CONFIG_EXTRA := \
     -DCMAKE_INSTALL_LIBDIR=lib \
@@ -19,14 +19,14 @@ INSTALL_EXTRA :=
 
 # Disable clang / lldb on arches where they're not available (yet)
 #  Remember to update debian/control when changing these
-ARCH_NO_CLANG := hurd-i386 sparc
-ARCH_NO_LLDB := arm64 hurd-i386 mips64el ppc64el sparc
+ARCH_LLDB := amd64 armel armhf i386 mips mipsel powerpc s390x kfreebsd-amd64 kfreebsd-i386
+ARCH_CLANG := amd64 arm64 armel armhf i386 mips mipsel powerpc ppc64el s390x hurd-i386 kfreebsd-amd64 kfreebsd-i386
 
-ifneq (,$(filter $(DEB_HOST_ARCH),$(ARCH_NO_CLANG)))
+ifeq (,$(filter $(DEB_HOST_ARCH),$(ARCH_CLANG)))
 	CONFIG_EXTRA += -DENABLE_CLANG=0
 endif
 
-ifneq (,$(filter $(DEB_HOST_ARCH),$(ARCH_NO_LLDB)))
+ifeq (,$(filter $(DEB_HOST_ARCH),$(ARCH_LLDB)))
 	CONFIG_EXTRA += -DENABLE_LLDB=0
 	INSTALL_EXTRA += -Xcodelite-lldb -XLLDBDebugger.so
 endif
