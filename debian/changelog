@@ -1,8 +1,16 @@
-codelite (8.1+dfsg-1) UNRELEASED; urgency=medium
+codelite (8.1+dfsg-1) unstable; urgency=medium
 
-  *
+  * New upstream release.
 
- -- James Cowgill <james410@cowgill.org.uk>  Sat, 01 Aug 2015 13:07:06 +0100
+  * Build against LLVM 3.6.
+  * Opt-in to LLVM so that more arches can build codelite.
+  * Remove codelitephp/.../Mage.php exclusion from d/copyright now that file
+    has been removed upstream.
+  * Drop patches applied upstream.
+  * Override all hardening-no-fortify-functions warnings.
+    - Lots of false positives generated.
+
+ -- James Cowgill <james410@cowgill.org.uk>  Mon, 14 Sep 2015 23:58:21 +0100
 
 codelite (8.0.1+dfsg2-2) unstable; urgency=medium
 
