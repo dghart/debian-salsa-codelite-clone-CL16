@@ -28,10 +28,10 @@ usr/lib/codelite/cppchecker.so
 usr/lib/codelite/cscope.so
 usr/lib/codelite/git.so
 usr/lib/codelite/wxFormBuilder.so
-usr/lib/codelite/resources usr/share/codelite
 usr/share/codelite/PHP.zip
 usr/share/codelite/dics
 usr/share/codelite/javascript.zip
+usr/share/codelite/resources
 usr/share/codelite/templates/codedesigner
 usr/share/codelite/templates/formbuilder
 usr/share/codelite/templates/databaselayer
