@@ -28,7 +28,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
          if ( !tokens.IsEmpty() ) {
 --- a/LiteEditor/manager.cpp
 +++ b/LiteEditor/manager.cpp
-@@ -1938,7 +1938,7 @@ void Manager::DbgStart(long attachPid)
+@@ -1932,7 +1932,7 @@ void Manager::DbgStart(long attachPid)
      wxString terminal;
      wxArrayString tokens;
      wxArrayString configuredTerminal;

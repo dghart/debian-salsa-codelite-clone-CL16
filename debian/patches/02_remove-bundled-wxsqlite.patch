@@ -1,0 +1,37 @@
+Description: Remove bundled wxsqlite3 from CMakeLists.txt files
+Author: James Cowgill <james410@cowgill.org.uk>
+Forwarded: not-needed
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -490,7 +490,6 @@ if(APPLE)
+     add_subdirectory(sqlite3)
+ endif()
+ 
+-add_subdirectory(sdk/wxsqlite3)
+ add_subdirectory(sdk/wxshapeframework)
+ add_subdirectory(sdk/databaselayer)
+ add_subdirectory(CodeLite)
+@@ -566,9 +565,7 @@ if(APPLE)
+     add_dependencies(wxsqlite3 sqlite3lib)
+ endif()
+ 
+-add_dependencies(databaselayersqlite wxsqlite3)
+-add_dependencies(wxshapeframework wxsqlite3)
+-add_dependencies(libcodelite wxshapeframework databaselayersqlite wxsqlite3)
++add_dependencies(libcodelite wxshapeframework databaselayersqlite)
+ add_dependencies(plugin libcodelite)
+ add_dependencies(codelite plugin)
+ 
+--- a/CodeLite/CMakeLists.txt
++++ b/CodeLite/CMakeLists.txt
+@@ -106,7 +106,7 @@ if (UNIX AND NOT APPLE )
+                          ${wxWidgets_LIBRARIES} 
+                          -L"${CL_LIBPATH}" 
+                          ${SQLITE3_LIBRARY}
+-                         wxsqlite3 
++                         -lwxsqlite3-3.0
+                          ${LIBSSH_LIB} 
+                          ${ADDITIONAL_LIBRARIES})
+ else (UNIX AND NOT APPLE)
