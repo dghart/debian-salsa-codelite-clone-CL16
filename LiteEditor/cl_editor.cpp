@@ -78,6 +78,10 @@
 #include <wx/dcmemory.h>
 #include <wx/dataobj.h>
 #include <wx/regex.h>
+#include "clPrintout.h"
+#include <wx/printdlg.h>
+#include "ColoursAndFontsManager.h"
+#include "lexer_configuration.h"
 //#include "clFileOrFolderDropTarget.h"
 
 // fix bug in wxscintilla.h
@@ -132,6 +136,7 @@ EVT_KEY_UP(LEditor::OnKeyUp)
 EVT_LEFT_DOWN(LEditor::OnLeftDown)
 EVT_RIGHT_DOWN(LEditor::OnRightDown)
 EVT_MOTION(LEditor::OnMotion)
+EVT_MOUSEWHEEL(LEditor::OnMouseWheel)
 EVT_LEFT_UP(LEditor::OnLeftUp)
 EVT_LEAVE_WINDOW(LEditor::OnLeaveWindow)
 EVT_KILL_FOCUS(LEditor::OnFocusLost)
@@ -154,6 +159,9 @@ std::map<wxString, int> LEditor::ms_bookmarkShapes;
 bool LEditor::m_ccShowPrivateMembers = true;
 bool LEditor::m_ccShowItemsComments = true;
 bool LEditor::m_ccInitialized = false;
+
+wxPrintData* g_printData = NULL;
+wxPageSetupDialogData* g_pageSetupData = NULL;
 
 class clEditorDropTarget : public wxDropTarget
 {
@@ -214,22 +222,22 @@ public:
         // insert the text
         int pos = m_stc->PositionFromPoint(wxPoint(x, y));
         if(pos == wxNOT_FOUND) return false;
-        
+
         // Don't allow dropping tabs on the editor
         static wxRegEx re("\\{Class:Notebook,TabIndex:([0-9]+)\\}");
         if(re.Matches(text)) return false;
-        
+
         int selStart = m_stc->GetSelectionStart();
         int selEnd = m_stc->GetSelectionEnd();
 
         // No text dnd if the drop is on the selection
         if((pos >= selStart) && (pos <= selEnd)) return false;
         int length = (selEnd - selStart);
-        
+
         m_stc->BeginUndoAction();
         if(moving) {
             // Clear the selection
-            
+
             bool movingForward = (pos > selEnd);
             m_stc->InsertText(pos, text);
             if(movingForward) {
@@ -800,6 +808,14 @@ void LEditor::SetProperties()
 #ifdef __WXOSX__
     CmdKeyAssign(wxSTC_KEY_DOWN, wxSTC_SCMOD_CTRL, wxSTC_CMD_DOCUMENTEND);
     CmdKeyAssign(wxSTC_KEY_UP, wxSTC_SCMOD_CTRL, wxSTC_CMD_DOCUMENTSTART);
+
+    // OSX: wxSTC_SCMOD_CTRL => CMD key
+    CmdKeyAssign(wxSTC_KEY_RIGHT, wxSTC_SCMOD_CTRL, wxSTC_CMD_LINEEND);
+    CmdKeyAssign(wxSTC_KEY_LEFT, wxSTC_SCMOD_CTRL, wxSTC_CMD_HOME);
+
+    // OSX: wxSTC_SCMOD_META => CONTROL key
+    CmdKeyAssign(wxSTC_KEY_LEFT, wxSTC_SCMOD_META, wxSTC_CMD_WORDPARTLEFT);
+    CmdKeyAssign(wxSTC_KEY_RIGHT, wxSTC_SCMOD_META, wxSTC_CMD_WORDPARTRIGHT);
 #endif
 }
 
@@ -964,7 +980,7 @@ void LEditor::OnCharAdded(wxStyledTextEvent& event)
             wxString restOfLine = GetTextRange(pos, lineEndPos);
             wxString restOfLineTrimmed = restOfLine;
             restOfLineTrimmed.Trim().Trim(false);
-            bool shiftCode = !restOfLineTrimmed.StartsWith(")");
+            bool shiftCode = (!restOfLineTrimmed.StartsWith(")")) && (!restOfLineTrimmed.IsEmpty());
 
             if(shiftCode) {
                 SetSelection(pos, lineEndPos);
@@ -3066,14 +3082,20 @@ void LEditor::OnKeyDown(wxKeyEvent& event)
     if(keyIsControl) {
         // Debugger tooltip is shown when clicking 'Control/CMD'
         // while the mouse is over a word
-        clDebugEvent event(wxEVT_DBG_EXPR_TOOLTIP);
-
-        wxString wordAtMouse;
-        wxRect rect;
-        GetWordAtMousePointer(wordAtMouse, rect);
-        event.SetString(wordAtMouse);
-        if(EventNotifier::Get()->ProcessEvent(event)) {
-            return;
+        wxPoint pt = ScreenToClient(wxGetMousePosition());
+        int pos = PositionFromPointClose(pt.x, pt.y);
+        if(pos != wxNOT_FOUND) {
+            int wordStart = WordStartPos(pos, true);
+            int wordEnd = WordEndPos(pos, true);
+            wxString wordAtMouse = GetTextRange(wordStart, wordEnd);
+            if(!wordAtMouse.IsEmpty()) {
+                // wxLogMessage("Event wxEVT_DBG_EXPR_TOOLTIP is fired for string: %s", wordAtMouse);
+                clDebugEvent tipEvent(wxEVT_DBG_EXPR_TOOLTIP);
+                tipEvent.SetString(wordAtMouse);
+                if(EventNotifier::Get()->ProcessEvent(tipEvent)) {
+                    return;
+                }
+            }
         }
     }
 
@@ -3277,7 +3299,8 @@ void LEditor::DoBreakptContextMenu(wxPoint pt)
         menu.Append(XRCID("delete_breakpoint"), wxString(_("Remove Breakpoint")));
         menu.Append(XRCID("ignore_breakpoint"), wxString(_("Ignore Breakpoint")));
         // On MSWin it often crashes the debugger to try to load-then-disable a bp
-        // so don't show the menu item unless the debugger is running *** Hmm, that was written about 4 years ago. Let's
+        // so don't show the menu item unless the debugger is running *** Hmm, that was written about 4 years ago.
+        // Let's
         // try it again...
         menu.Append(XRCID("toggle_breakpoint_enabled_status"),
                     bp.is_enabled ? wxString(_("Disable Breakpoint")) : wxString(_("Enable Breakpoint")));
@@ -3669,7 +3692,8 @@ void LEditor::OnDragStart(wxStyledTextEvent& e)
 void LEditor::OnDragEnd(wxStyledTextEvent& e)
 {
     // For future reference, this will only be called when D'n'D ends successfully with a drop.
-    // Unfortunately scintilla doesn't seem to provide any notification when ESC is pressed, or the drop-zone is invalid
+    // Unfortunately scintilla doesn't seem to provide any notification when ESC is pressed, or the drop-zone is
+    // invalid
     m_isDragging = false; // Turn on calltips again
 
     e.Skip();
@@ -3754,6 +3778,9 @@ void LEditor::DoHighlightWord()
             while(!GetLineVisible(line) && line < lastDocLine) {
                 ++line;
             }
+
+            // EOF?
+            if(line >= lastDocLine) break;
 
             while(GetLineVisible(line) && line <= lastDocLine) {
                 if(offset == -1) {
@@ -4267,7 +4294,8 @@ void LEditor::OnChange(wxStyledTextEvent& event)
             if(!currentOpen) {
                 GetCommandsProcessor().StartNewTextCommand(isInsert ? CLC_insert : CLC_delete);
             }
-            // We need to cope with a selection being deleted by typing; this results in 0x2012 followed immediately by
+            // We need to cope with a selection being deleted by typing; this results in 0x2012 followed immediately
+            // by
             // 0x11 i.e. with no intervening wxSTC_STARTACTION
             else if(isInsert && currentOpen->GetCommandType() != CLC_insert) {
                 GetCommandsProcessor().ProcessOpenCommand();
@@ -4989,7 +5017,6 @@ void LEditor::SplitSelection()
     }
 }
 
-
 void LEditor::CenterLinePreserveSelection(int line)
 {
     int linesOnScreen = LinesOnScreen();
@@ -5105,17 +5132,28 @@ void LEditor::ToggleLineComment(const wxString& commentSymbol, int commentStyle)
     int start = GetSelectionStart();
     int end = GetSelectionEnd();
     if(LineFromPosition(PositionBefore(end)) != LineFromPosition(end)) {
-        end = std::max(start, PositionBefore(end));
+        end = wxMax(start, PositionBefore(end));
     }
 
-    bool doingComment = GetStyleAt(start) != commentStyle;
+    // If the caret is set at the EOL position
+    int lineStartPos = PositionFromLine(GetCurrentLine());
+    int lineEndPos = PositionBefore(LineEnd(GetCurrentLine()));
+    bool atEOL = (lineEndPos == GetCurrentPos()) && // The caret is placed at the end of the line
+                 (lineStartPos != lineEndPos);      // The line is not empty
+    if(atEOL) {
+        start = PositionBefore(start); // Use the style of previous position (this is due to bug in some lexer which
+                                       // don't give the EOL char
+                                       // the same style as the char before it
+    }
 
-    int line_start = LineFromPosition(start);
-    int line_end = LineFromPosition(end);
+    bool doingComment = (GetStyleAt(start) != commentStyle);
+
+    int lineStart = LineFromPosition(start);
+    int lineEnd = LineFromPosition(end);
 
     BeginUndoAction();
-    for(; line_start <= line_end; line_start++) {
-        start = PositionFromLine(line_start);
+    for(; lineStart <= lineEnd; lineStart++) {
+        start = PositionFromLine(lineStart);
         if(doingComment) {
             InsertText(start, commentSymbol);
 
@@ -5132,7 +5170,7 @@ void LEditor::ToggleLineComment(const wxString& commentSymbol, int commentStyle)
     }
     EndUndoAction();
 
-    SetCaretAt(PositionFromLine(line_end + 1));
+    SetCaretAt(PositionFromLine(lineEnd + 1));
     ChooseCaretX();
 }
 
@@ -5170,7 +5208,7 @@ void LEditor::QuickAddNext()
     }
 
     wxString findWhat = GetTextRange(start, end);
-    int where = this->FindText(end, GetLength(), findWhat, wxSTC_FIND_MATCHCASE);
+    int where = this->FindText(end, GetLength(), findWhat, wxSTC_FIND_MATCHCASE | wxSTC_FIND_WHOLEWORD);
     if(where != wxNOT_FOUND) {
         AddSelection(where, where + findWhat.length());
         CenterLineIfNeeded(LineFromPos(where));
@@ -5194,7 +5232,7 @@ void LEditor::QuickFindAll()
 
     int matches(0);
     int firstMatch(wxNOT_FOUND);
-    int where = this->FindText(0, GetLength(), findWhat, wxSTC_FIND_MATCHCASE);
+    int where = this->FindText(0, GetLength(), findWhat, wxSTC_FIND_MATCHCASE | wxSTC_FIND_WHOLEWORD);
     while(where != wxNOT_FOUND) {
         if(matches == 0) {
             firstMatch = where;
@@ -5233,6 +5271,64 @@ void LEditor::CenterLineIfNeeded(int line, bool force)
     }
 }
 
+void LEditor::Print()
+{
+    if(g_printData == NULL) {
+        g_printData = new wxPrintData();
+        g_pageSetupData = new wxPageSetupDialogData();
+        (*g_pageSetupData) = *g_printData;
+        PageSetup();
+    }
+
+    // Black on White print mode
+    SetPrintColourMode(wxSTC_PRINT_BLACKONWHITE);
+
+    // No magnifications
+    SetPrintMagnification(0);
+
+    wxPrintDialogData printDialogData(*g_printData);
+    wxPrinter printer(&printDialogData);
+    clPrintout printout(this, GetFileName().GetFullPath());
+
+    if(!printer.Print(this, &printout, true /*prompt*/)) {
+        if(wxPrinter::GetLastError() == wxPRINTER_ERROR) {
+            wxLogError(wxT("There was a problem printing. Perhaps your current printer is not set correctly?"));
+        } else {
+            wxLogMessage(wxT("You canceled printing"));
+        }
+    } else {
+        (*g_printData) = printer.GetPrintDialogData().GetPrintData();
+    }
+}
+
+void LEditor::PageSetup()
+{
+    if(g_printData == NULL) {
+        g_printData = new wxPrintData();
+        g_pageSetupData = new wxPageSetupDialogData();
+        (*g_pageSetupData) = *g_printData;
+    }
+    wxPageSetupDialog pageSetupDialog(this, g_pageSetupData);
+    pageSetupDialog.ShowModal();
+    (*g_printData) = pageSetupDialog.GetPageSetupData().GetPrintData();
+    (*g_pageSetupData) = pageSetupDialog.GetPageSetupData();
+}
+
+void LEditor::OnMouseWheel(wxMouseEvent& event)
+{
+    event.Skip();
+    if(::wxGetKeyState(WXK_CONTROL) && !GetOptions()->IsMouseZoomEnabled()) {
+        event.Skip(false);
+        return;
+    }
+}
+
+void LEditor::ClearCCAnnotations()
+{
+    if(IsHasCCAnnotation()) {
+        AnnotationClearAll();
+    }
+}
 
 // ----------------------------------
 // SelectionInfo

@@ -50,17 +50,18 @@ class WXDLLIMPEXP_SDK clCxxWorkspace : public IWorkspace
 {
     friend class clCxxWorkspaceST;
     friend class CompileCommandsCreateor;
-    
-    
+
 public:
-    // IWorkspace API
+    virtual void GetProjectFiles(const wxString& projectName, wxArrayString& files) const;
+    virtual void GetWorkspaceFiles(wxArrayString& files) const;
     virtual wxString GetFilesMask() const;
     virtual bool IsBuildSupported() const;
     virtual bool IsProjectSupported() const;
+    virtual wxString GetProjectFromFile(const wxFileName& filename) const;
 
 public:
     typedef std::map<wxString, ProjectPtr> ProjectMap_t;
-    
+
 protected:
     wxXmlDocument m_doc;
     wxFileName m_fileName;
@@ -197,7 +198,7 @@ public:
     /**
      * Return all project names under this workspace
      */
-    void GetProjectList(wxArrayString& list);
+    void GetProjectList(wxArrayString& list) const;
 
     /**
      * Add an existing project to the workspace. If no workspace is open,
@@ -321,6 +322,14 @@ public:
     void AddProjectToBuildMatrix(ProjectPtr prj);
 
     //----------------------------------
+    // Workspace Parser Macros
+    //----------------------------------
+    /**
+     * @brief return the workspace environment variables
+     */
+    wxString GetParserMacros();
+
+    //----------------------------------
     // Workspace environment variables
     //----------------------------------
     /**
@@ -390,6 +399,8 @@ private:
 
     void SyncToLocalWorkspaceSTParserPaths();
     void SyncFromLocalWorkspaceSTParserPaths();
+    void SyncToLocalWorkspaceSTParserMacros();
+    void SyncFromLocalWorkspaceSTParserMacros();
 };
 
 class WXDLLIMPEXP_SDK clCxxWorkspaceST

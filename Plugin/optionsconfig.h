@@ -55,7 +55,7 @@ public:
         Opt_TabColourPersistent = 0x00010000,
         Opt_Unused3 = 0x00020000,
         Opt_Use_CodeLite_Terminal = 0x00040000,
-        Opt_NonEditorTabsBottom = 0x00080000,
+        Opt_Unused6 = 0x00080000,
         Opt_Unused5 = 0x00100000,
         Opt_AllowCaretAfterEndOfLine = 0x00200000,
         Opt_HideDockingWindowCaption = 0x00400000,
@@ -64,6 +64,7 @@ public:
         Opt_WrapCmdWithDoubleQuotes = 0x02000000,
         Opt_FoldHighlightActiveBlock = 0x04000000,
         Opt_EnsureCaptionsVisible = 0x08000000,
+        Opt_DisableMouseCtrlZoom = 0x10000000,
     };
 
 protected:
@@ -135,6 +136,8 @@ protected:
     bool m_trimOnlyModifiedLines;
     size_t m_options;
     wxColour m_debuggerMarkerLine;
+    wxDirection m_workspaceTabsDirection; // Up/Down/Left/Right
+    wxDirection m_outputTabsDirection;    // Up/Down
 
 public:
     // Helpers
@@ -154,6 +157,16 @@ public:
     OptionsConfig(wxXmlNode* node);
     virtual ~OptionsConfig(void);
 
+    void SetOutputTabsDirection(const wxDirection& outputTabsDirection)
+    {
+        this->m_outputTabsDirection = outputTabsDirection;
+    }
+    void SetWorkspaceTabsDirection(const wxDirection& workspaceTabsDirection)
+    {
+        this->m_workspaceTabsDirection = workspaceTabsDirection;
+    }
+    const wxDirection& GetOutputTabsDirection() const { return m_outputTabsDirection; }
+    const wxDirection& GetWorkspaceTabsDirection() const { return m_workspaceTabsDirection; }
     wxString GetEOLAsString() const;
     //-------------------------------------
     // Setters/Getters
@@ -162,9 +175,7 @@ public:
     bool IsTabColourMatchesTheme() const { return !HasOption(Opt_TabColourPersistent); }
     void SetTabHasXButton(bool b) { EnableOption(Opt_TabNoXButton, !b); }
     bool IsTabHasXButton() const { return !HasOption(Opt_TabNoXButton); }
-    void SetNonEditorTabsAtTop(bool b) { EnableOption(Opt_NonEditorTabsBottom, !b); }
-    bool IsNonEditorTabsAtTop() const { return !HasOption(Opt_NonEditorTabsBottom); }
-    
+
     void SetOptions(size_t options) { this->m_options = options; }
     size_t GetOptions() const { return m_options; }
     void SetTrimOnlyModifiedLines(bool trimOnlyModifiedLines) { this->m_trimOnlyModifiedLines = trimOnlyModifiedLines; }
@@ -407,8 +418,9 @@ public:
     void SetWrapSelectionBrackets(bool b) { return EnableOption(Opt_WrapBrackets, b); }
 
     void MSWWrapCmdWithDoubleQuotes(bool b) { EnableOption(Opt_WrapCmdWithDoubleQuotes, b); }
-    bool MSWIsWrapCmdWithDoubleQuotes() const { return HasOption(Opt_WrapCmdWithDoubleQuotes); }
-
+    bool MSWIsWrapCmdWithDoubleQuotes() const { return true; }
+    bool IsMouseZoomEnabled() const { return !HasOption(Opt_DisableMouseCtrlZoom); }
+    void SetMouseZoomEnabled(bool b) { EnableOption(Opt_DisableMouseCtrlZoom, !b); }
     /**
      * Return an XML representation of this object
      * \return XML node

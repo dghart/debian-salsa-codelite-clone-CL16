@@ -167,7 +167,6 @@
   <VirtualDirectory Name="Commons">
     <File Name="xmlutils.cpp"/>
     <File Name="sync_queue.cpp"/>
-    <File Name="macros.h"/>
     <File Name="xmlutils.h"/>
     <File Name="sync_queue.h"/>
     <File Name="globals.h"/>
@@ -312,6 +311,8 @@
       </VirtualDirectory>
       <File Name="clTreeCtrlPanelDefaultPage.h"/>
       <File Name="clTreeCtrlPanelDefaultPage.cpp"/>
+      <File Name="clResizableTooltip.h"/>
+      <File Name="clResizableTooltip.cpp"/>
     </VirtualDirectory>
     <VirtualDirectory Name="Dialogs">
       <File Name="nameanddescdlg.h"/>
@@ -367,6 +368,8 @@
       <File Name="clAuiMainNotebookTabArt.cpp"/>
       <File Name="clAuiCaptionEnabler.h"/>
       <File Name="clAuiCaptionEnabler.cpp"/>
+      <File Name="clDockingManager.h"/>
+      <File Name="clDockingManager.cpp"/>
     </VirtualDirectory>
     <File Name="cl_aui_tool_stickness.h"/>
     <File Name="cl_aui_tool_stickness.cpp"/>

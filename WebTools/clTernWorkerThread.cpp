@@ -3,6 +3,7 @@
 #include "clTernServer.h"
 #include <wx/buffer.h>
 #include <sstream>
+#include "file_logger.h"
 
 clTernWorkerThread::clTernWorkerThread(clTernServer* ternServer)
     : m_ternSerer(ternServer)
@@ -63,15 +64,18 @@ void clTernWorkerThread::ProcessRequest(ThreadRequest* request)
 
         std::string strBuffer = ss.str();
         buffer.AppendData(strBuffer.c_str(), strBuffer.length());
-
+        
+        CL_DEBUG("[WebTools] %s", strBuffer.c_str());
+        
         client->Send(buffer);
         wxMemoryBuffer output;
         client->Read(output, 5);
 
-        // Stip the HTTP headers and send only the JSON reply back to the main thread
+        // Strip the HTTP headers and send only the JSON reply back to the main thread
         wxString str = wxString::From8BitData((const char*)output.GetData(), output.GetDataLen());
         int where = str.Find("\r\n\r\n");
         if(where == wxNOT_FOUND) {
+            CL_DEBUG("Tern invalid output:\n%s\n", str);
             m_ternSerer->CallAfter(&clTernServer::OnError, "Invalid output");
             return;
         }
@@ -84,7 +88,7 @@ void clTernWorkerThread::ProcessRequest(ThreadRequest* request)
         clTernWorkerThread::Reply reply;
         reply.json.swap(json);
         reply.filename.swap(r->filename);
-        reply.isFunctionTip = r->isFunctionTip;
+        reply.requestType = r->type;
 
         m_ternSerer->CallAfter(&clTernServer::OnTernWorkerThreadDone, reply);
 

@@ -80,7 +80,7 @@
 #include "threadlistpanel.h"
 #include "memoryview.h"
 #include "attachdbgprocdlg.h"
-#include "listctrlpanel.h"
+#include "DebuggerCallstackView.h"
 #include "cl_editor.h"
 #include "custombuildrequest.h"
 #include "compile_request.h"
@@ -460,9 +460,7 @@ void Manager::AddToRecentlyOpenedWorkspaces(const wxString& fileName)
     m_recentWorkspaces.AddFileToHistory(fileName);
 
     // sync between the history object and the configuration file
-    wxArrayString files;
-    m_recentWorkspaces.GetFiles(files);
-    EditorConfigST::Get()->SetRecentItems(files, wxT("RecentWorkspaces"));
+    clConfig::Get().AddRecentWorkspace(fileName);
 
     // The above call to AddFileToHistory() rewrote the Recent Workspaces menu
     // Unfortunately it rewrote it with path/to/foo.workspace, and we'd prefer
@@ -476,14 +474,10 @@ void Manager::ClearWorkspaceHistory()
     for(size_t i = 0; i < count; i++) {
         m_recentWorkspaces.RemoveFileFromHistory(0);
     }
-    wxArrayString files;
-    EditorConfigST::Get()->SetRecentItems(files, wxT("RecentWorkspaces"));
+    clConfig::Get().ClearRecentWorkspaces();
 }
 
-void Manager::GetRecentlyOpenedWorkspaces(wxArrayString& files)
-{
-    EditorConfigST::Get()->GetRecentItems(files, wxT("RecentWorkspaces"));
-}
+void Manager::GetRecentlyOpenedWorkspaces(wxArrayString& files) { files = clConfig::Get().GetRecentWorkspaces(); }
 
 //--------------------------- Workspace Projects Mgmt -----------------------------
 
@@ -646,6 +640,8 @@ void Manager::ImportMSVSSolution(const wxString& path, const wxString& defaultCo
         // Retag workspace
         wxCommandEvent event(wxEVT_COMMAND_MENU_SELECTED, XRCID("retag_workspace"));
         clMainFrame::Get()->GetEventHandler()->AddPendingEvent(event);
+    } else {
+        wxMessageBox(wxT("Solution/workspace unsupported"), wxMessageBoxCaptionStr, wxOK | wxCENTRE | wxSTAY_ON_TOP);
     }
 }
 
@@ -1396,11 +1392,11 @@ wxString Manager::GetProjectNameByFile(const wxString& fullPathFileName, bool ca
             wxString fdest = CLRealPath(f);
             if(fdest != f) {
                 if(caseSensitive) {
-                    if(f.Cmp(fullPathFileName) == 0 || f.Cmp(linkDestination) == 0) {
+                    if(fdest.Cmp(fullPathFileName) == 0 || fdest.Cmp(linkDestination) == 0) {
                         return proj->GetName();
                     }
                 } else {
-                    if(f.CmpNoCase(fullPathFileName) == 0 || f.CmpNoCase(linkDestination) == 0) {
+                    if(fdest.CmpNoCase(fullPathFileName) == 0 || fdest.CmpNoCase(linkDestination) == 0) {
                         return proj->GetName();
                     }
                 }
@@ -1852,9 +1848,7 @@ void Manager::DoUpdateDebuggerTabControl(wxWindow* curpage)
         //--------------------------------------------------------------------
 
         if(curpage == pane->GetLocalsTable() || IsPaneVisible(wxGetTranslation(DebuggerPane::LOCALS))) {
-
             // update the locals tree
-            pane->GetLocalsTable()->UpdateVariableObjects();
             dbgr->QueryLocals();
             dbgr->ListRegisters();
         }
@@ -2453,7 +2447,9 @@ void Manager::UpdateFileLine(const wxString& filename, int lineno, bool repositi
         m_frameLineno = wxNOT_FOUND;
     }
 
-    if(repositionEditor) DbgMarkDebuggerLine(fileName, lineNumber);
+    if(repositionEditor) {
+        DbgMarkDebuggerLine(fileName, lineNumber);
+    }
 
     UpdateDebuggerPane();
 }
@@ -2533,15 +2529,9 @@ void Manager::UpdateGotControl(const DebuggerEventData& e)
         }
 
         // Print the stack trace
-        wxAuiPaneInfo& info = clMainFrame::Get()->GetDockingManager().GetPane(wxT("Debugger"));
         if(showDialog) {
             // select the "Call Stack" tab
             clMainFrame::Get()->GetDebuggerPane()->SelectTab(DebuggerPane::FRAMES);
-        }
-
-        if(info.IsShown()) {
-            // Refresh the view
-            CallAfter(&Manager::UpdateDebuggerPane);
         }
 
         if(!userTriggered) {
@@ -3731,4 +3721,20 @@ void Manager::OnCmdRestart(wxCommandEvent& event)
 {
     wxUnusedVar(event);
     DoRestartCodeLite();
+}
+
+bool Manager::IsDebuggerViewVisible(const wxString& name)
+{
+    DebuggerPane* debuggerPane = clMainFrame::Get()->GetDebuggerPane();
+    if(debuggerPane) {
+        int sel = debuggerPane->GetNotebook()->GetSelection();
+        if(sel != wxNOT_FOUND) {
+            if(debuggerPane->GetNotebook()->GetPageText(sel) == name) {
+                return true;
+            }
+        }
+    }
+    
+    // Also test if the pane is detached
+    return IsPaneVisible(name);
 }

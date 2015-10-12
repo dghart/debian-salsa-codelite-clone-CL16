@@ -61,10 +61,11 @@ protected:
     void OnPaint(wxPaintEvent& e);
     void OnEraseBG(wxEraseEvent& e);
     void OnMouseLeft(wxMouseEvent& e);
-    wxRect DoPrintText(wxDC& dc, wxString& text, wxPoint& pt);
+    wxRect DoPrintText(wxDC& dc, wxString& text, wxPoint& pt, size_t &maxWidth);
     wxString DoStripMarkups();
     void DoInitialize(const wxString& tip, size_t numOfTips, bool simpleTip);
-
+    void DoDrawTip(wxDC& dc, size_t &max_width);
+    
 public:
     CCBoxTipWindow(wxWindow* parent, const wxString& tip, size_t numOfTips, bool simpleTip = false);
     CCBoxTipWindow(wxWindow* parent, const wxString& tip);

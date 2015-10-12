@@ -18,8 +18,6 @@ clEditorStateLocker::clEditorStateLocker(wxStyledTextCtrl* ctrl)
 
 clEditorStateLocker::~clEditorStateLocker()
 {
-    m_ctrl->SetFirstVisibleLine(m_firstVisibleLine);
-
     // restore the position.
     if(m_position > m_ctrl->GetLastPosition()) {
         m_position = m_ctrl->GetLastPosition();
@@ -42,6 +40,8 @@ clEditorStateLocker::~clEditorStateLocker()
     ApplyBookmarks();
     ApplyBreakpoints();
     ApplyFolds();
+    
+    m_ctrl->SetFirstVisibleLine(m_firstVisibleLine); // We must do this _after_ ApplyFolds() or the display may scroll down
 }
 
 void clEditorStateLocker::ApplyBookmarks() { ApplyBookmarks(m_ctrl, m_bookmarks); }
@@ -89,7 +89,13 @@ void clEditorStateLocker::ApplyFolds(wxStyledTextCtrl* ctrl, const clEditorState
         // If we cared enough, we could have saved a fold-level too, and/or the function name +/- the line's
         // displacement within the function. But for now...
         if(ctrl->GetFoldLevel(line) & wxSTC_FOLDLEVELHEADERFLAG) {
-            ctrl->ToggleFold(line);
+#if wxVERSION_NUMBER >= 3100
+            ctrl->FoldLine(line, wxSTC_FOLDACTION_CONTRACT);
+#else
+            if (ctrl->GetFoldExpanded(line)) { // For <wx3.1 check first, and only toggle if needed
+                ctrl->ToggleFold(line);
+            }
+#endif
         }
     }
 }

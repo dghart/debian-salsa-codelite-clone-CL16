@@ -7,6 +7,7 @@
 #include <wx/arrstr.h>
 #include "PHPEntityClass.h"
 #include "PHPDocVisitor.h"
+#include "PHPEntityFunctionAlias.h"
 
 #define NEXT_TOKEN_BREAK_IF_NOT(t, action) \
     {                                      \
@@ -159,6 +160,11 @@ void PHPSourceFile::Parse(int exitDepth)
         case kPHP_T_INCLUDE:
         case kPHP_T_INCLUDE_ONCE:
             // Handle include files
+            m_lookBackTokens.clear();
+            break;
+        case kPHP_T_FOREACH:
+            // found "foreach" statement
+            OnForEach();
             m_lookBackTokens.clear();
             break;
         case kPHP_T_USE:
@@ -1076,6 +1082,18 @@ void PHPSourceFile::OnUseTrait()
             }
             tempname.clear();
         } break;
+        case '{': {
+            // we are looking at a case like:
+            // use A, B { ... }
+            if(!tempname.IsEmpty()) {
+                identifiers.Add(MakeIdentifierAbsolute(tempname));
+                ParseUseTraitsBody();
+            }
+            tempname.clear();
+            // add the traits as list of 'extends'
+            clas->Cast<PHPEntityClass>()->SetTraits(identifiers);
+            return;
+        } break;
         case ';': {
             if(!tempname.IsEmpty()) {
                 identifiers.Add(MakeIdentifierAbsolute(tempname));
@@ -1177,6 +1195,119 @@ void PHPSourceFile::ReadImplements(wxArrayString& impls)
             }
             UngetToken(token);
             return;
+        }
+    }
+}
+
+/*foreach (array_expression as $value)
+    statement
+foreach (array_expression as $key => $value)
+    statement*/
+void PHPSourceFile::OnForEach()
+{
+    // read until the "as" keyword
+    phpLexerToken token;
+    if(!ReadUntilFound(kPHP_T_AS, token)) return;
+
+    // Found the "as" key word and consumed it
+    if(!NextToken(token)) return;
+
+    phpLexerToken peekToken;
+    if(!NextToken(peekToken)) return;
+
+    // Ensure we got a variable
+    if(token.type != kPHP_T_VARIABLE) return;
+
+    // Check to see if we are using the syntax of:
+    // foreach (array_expression as $key => $value)
+    if(peekToken.type == kPHP_T_DOUBLE_ARROW) {
+        if(!NextToken(token) || token.type != kPHP_T_VARIABLE) {
+            return;
+        }
+    } else {
+        UngetToken(peekToken);
+    }
+
+    // Create a new variable
+    PHPEntityBase::Ptr_t var(new PHPEntityVariable());
+    var->SetFullName(token.text);
+    var->SetFilename(m_filename.GetFullPath());
+    var->SetLine(token.lineNumber);
+
+    if(!CurrentScope()->FindChild(var->GetFullName(), true)) {
+        CurrentScope()->AddChild(var);
+    }
+}
+
+void PHPSourceFile::ParseUseTraitsBody()
+{
+    wxString fullname, alias, temp;
+    phpLexerToken token;
+    bool cont = true;
+    while(cont && NextToken(token)) {
+        switch(token.type) {
+        case '}': {
+            cont = false;
+        } break;
+        case ',':
+        case ';': {
+            if(fullname.IsEmpty()) {
+                // no full name yet
+                fullname.swap(temp);
+
+            } else if(alias.IsEmpty()) {
+                alias.swap(temp);
+            }
+
+            if(alias.IsEmpty()) {
+                // no alias provided, use the last part of the fullname
+                alias = fullname.AfterLast('\\');
+            }
+
+            if(!fullname.IsEmpty() && !alias.IsEmpty()) {
+                // Use namespace is alway refered as fullpath namespace
+                // So writing:
+                // use Zend\Mvc\Controll\Action;
+                // is equal for writing:
+                // use \Zend\Mvc\Controll\Action;
+                // For simplicitiy, we change it to fully qualified path
+                // so parsing is easier
+                if(!fullname.StartsWith("\\")) {
+                    fullname.Prepend("\\");
+                }
+                PHPEntityBase::Ptr_t funcAlias(new PHPEntityFunctionAlias());
+                funcAlias->Cast<PHPEntityFunctionAlias>()->SetRealname(MakeIdentifierAbsolute(fullname));
+                funcAlias->Cast<PHPEntityFunctionAlias>()->SetScope(CurrentScope()->GetFullName());
+                funcAlias->SetShortName(alias);
+                funcAlias->SetFullName(CurrentScope()->GetFullName() + "\\" + alias);
+                funcAlias->SetFilename(GetFilename());
+                funcAlias->SetLine(token.lineNumber);
+                CurrentScope()->AddChild(funcAlias);
+            }
+
+            temp.clear();
+            fullname.clear();
+            alias.clear();
+        } break;
+        case kPHP_T_PAAMAYIM_NEKUDOTAYIM: {
+            // Convert "::" into "\\"
+            temp << "\\";
+        } break;
+        case kPHP_T_AS: {
+            fullname.swap(temp);
+            temp.clear();
+        } break;
+        case kPHP_T_INSTEADOF: {
+            // For now, we are not interested in
+            // A insteadof b; statements, so just clear the collected data so far
+            fullname.clear();
+            temp.clear();
+            alias.clear();
+            if(!ConsumeUntil(';')) return;
+        } break;
+        default:
+            temp << token.text;
+            break;
         }
     }
 }

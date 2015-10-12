@@ -1,10 +1,12 @@
 #include "new_php_workspace_dlg.h"
 #include <windowattrmanager.h>
 #include "php_strings.h"
+#include "cl_standard_paths.h"
 
 NewPHPWorkspaceDlg::NewPHPWorkspaceDlg(wxWindow* parent)
     : NewPHPWorkspaceBaseDlg(parent)
 {
+    m_textCtrlPath->ChangeValue(clStandardPaths::Get().GetDocumentsDir());
     CenterOnParent();
     SetName("NewPHPWorkspaceDlg");
     WindowAttrManager::Load(this);
@@ -34,11 +36,9 @@ void NewPHPWorkspaceDlg::OnNameUpdated(wxCommandEvent& event)
 
 void NewPHPWorkspaceDlg::OnOK(wxCommandEvent& event)
 {
-    wxFileName fn(GetWorkspacePath());
-    wxLogNull noLog;
-    wxMkdir(fn.GetPath());
     EndModal(wxID_OK);
 }
+
 void NewPHPWorkspaceDlg::OnCheckMakeSeparateDir(wxCommandEvent& event)
 {
     m_textCtrlPreview->ChangeValue(GetWorkspacePath());
@@ -46,12 +46,12 @@ void NewPHPWorkspaceDlg::OnCheckMakeSeparateDir(wxCommandEvent& event)
 
 void NewPHPWorkspaceDlg::OnOKUI(wxUpdateUIEvent& event)
 {
-    event.Enable(!m_textCtrlPath->IsEmpty() && !m_textCtrlName->GetValue().IsEmpty());
+    event.Enable(!m_textCtrlPath->GetValue().IsEmpty() && !m_textCtrlName->GetValue().IsEmpty());
 }
 
 void NewPHPWorkspaceDlg::OnBrowse(wxCommandEvent& event)
 {
-    wxString path = ::wxDirSelector(_("select a folder"));
+    wxString path = ::wxDirSelector(_("select a folder"), m_textCtrlPath->GetValue());
     if(!path.IsEmpty()) {
         m_textCtrlPath->ChangeValue(path);
         m_textCtrlPreview->ChangeValue(GetWorkspacePath());

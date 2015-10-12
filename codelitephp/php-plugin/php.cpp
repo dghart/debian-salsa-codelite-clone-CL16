@@ -10,7 +10,6 @@
 #include "quick_outline_dlg.h"
 #include <wx/app.h>
 #include <wx/filedlg.h>
-#include "new_workspace_selection_dlg.h"
 #include "new_php_workspace_dlg.h"
 #include "php_workspace.h"
 #include "php_workspace_view.h"
@@ -314,8 +313,16 @@ void PhpPlugin::OnNewWorkspace(clCommandEvent& e)
         // Create a PHP workspace
         NewPHPWorkspaceDlg newWspDlg(m_mgr->GetTheApp()->GetTopWindow());
         if(newWspDlg.ShowModal() == wxID_OK) {
+            // Ensure that the workspace path exists
+            wxFileName workspaceFile(newWspDlg.GetWorkspacePath());
+            if(!workspaceFile.Mkdir(wxS_DIR_DEFAULT, wxPATH_MKDIR_FULL)) {
+                ::wxMessageBox(wxString::Format(_("Could not create workspace folder:\n%s"), workspaceFile.GetPath()),
+                               "CodeLite",
+                               wxICON_ERROR | wxOK | wxCENTER);
+                return;
+            }
             PHPWorkspace::Get()->Create(newWspDlg.GetWorkspacePath());
-            DoOpenWorkspace(newWspDlg.GetWorkspacePath());
+            DoOpenWorkspace(newWspDlg.GetWorkspacePath(), false /* create if missing */, newWspDlg.IsCreateProject());
         }
     }
 }
@@ -381,7 +388,7 @@ void PhpPlugin::OnOpenWorkspace(clCommandEvent& e)
     DoOpenWorkspace(workspaceFile.GetFullPath());
 }
 
-void PhpPlugin::DoOpenWorkspace(const wxString& filename, bool createIfMissing)
+void PhpPlugin::DoOpenWorkspace(const wxString& filename, bool createIfMissing, bool createProjectFromSources)
 {
     // notify codelite to close the currently opened workspace
     wxCommandEvent eventClose(wxEVT_COMMAND_MENU_SELECTED, XRCID("close_workspace"));
@@ -406,6 +413,18 @@ void PhpPlugin::DoOpenWorkspace(const wxString& filename, bool createIfMissing)
 
     // Select the 'PHP' tab
     m_mgr->GetWorkspaceView()->SelectPage(PHPStrings::PHP_WORKSPACE_VIEW_LABEL);
+
+    if(createProjectFromSources) {
+        PHPConfigurationData conf;
+        PHPProject::CreateData cd;
+        conf.Load();
+        cd.importFilesUnderPath = true;
+        cd.name = PHPWorkspace::Get()->GetWorkspaceName();
+        cd.phpExe = conf.GetPhpExe();
+        cd.path = PHPWorkspace::Get()->GetFilename().GetPath();
+        cd.projectType = PHPProjectSettingsData::kRunAsCLI;
+        m_workspaceView->CallAfter(&PHPWorkspaceView::CreateNewProject, cd);
+    }
 }
 
 void PhpPlugin::OnOpenResource(wxCommandEvent& e)
@@ -441,7 +460,7 @@ void PhpPlugin::OnGetActiveProjectFiles(wxCommandEvent& e)
             wxString activeProjectName = PHPWorkspace::Get()->GetActiveProjectName();
             PHPProject::Ptr_t proj = PHPWorkspace::Get()->GetProject(activeProjectName);
             CHECK_PTR_RET(proj);
-            const wxArrayString& projfiles = proj->GetFiles();
+            const wxArrayString& projfiles = proj->GetFiles(NULL);
             pfiles->insert(pfiles->end(), projfiles.begin(), projfiles.end());
         }
     } else {

@@ -1697,6 +1697,10 @@ void GitPlugin::OnProcessTerminated(clProcessEvent& event)
             ga.action = gitListModified;
             m_gitActionQueue.push_back(ga);
         }
+        
+        // Reload files if needed
+        EventNotifier::Get()->PostReloadExternallyModifiedEvent(true);
+        
     } else if(ga.action == gitCommitList) {
         GitCommitListDlg* dlg = new GitCommitListDlg(m_topWindow, m_repositoryDirectory, this);
         dlg->SetCommitList(m_commandOutput);
@@ -2466,6 +2470,12 @@ void GitPlugin::OnCommandOutput(clCommandEvent& event)
     m_console->AddText(event.GetString());
     wxString processOutput = event.GetString();
     processOutput.MakeLower();
+    if(processOutput.Contains("username for")) {
+        wxString user = ::wxGetTextFromUser(event.GetString(), "Git");
+        if(!user.IsEmpty()) {
+            event.SetString(user);
+        }
+    }
     if(processOutput.Contains("password for")) {
         wxString pass = ::wxGetPasswordFromUser(event.GetString(), "Git");
         if(!pass.IsEmpty()) {
@@ -2511,7 +2521,7 @@ void GitPlugin::DoShowCommitDialog(const wxString& diff, wxString& commitArgs)
     GitCommitDlg dlg(m_topWindow);
     dlg.AppendDiff(diff);
     if(dlg.ShowModal() == wxID_OK) {
-        if(dlg.GetSelectedFiles().IsEmpty()) return;
+        if(dlg.GetSelectedFiles().IsEmpty() && !dlg.IsAmending()) return;
         wxString message = dlg.GetCommitMessage();
         if(!message.IsEmpty() || dlg.IsAmending()) {
 

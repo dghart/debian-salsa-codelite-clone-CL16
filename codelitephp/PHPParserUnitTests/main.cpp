@@ -145,7 +145,7 @@ TEST_FUNC(test_abstract_class_with_self)
 
     PHPEntityBase::List_t matches = lookup.FindChildren(
         resolved->GetDbId(), PHPLookupTable::kLookupFlags_StartsWith | expr.GetLookupFlags(), expr.GetFilter());
-    CHECK_SIZE(matches.size(), 1);
+    CHECK_SIZE(matches.size(), 4);
     PrintMatches(matches);
     return true;
 }
@@ -529,6 +529,43 @@ TEST_FUNC(test_use_trait)
     expr.Suggest(resolved, lookup, matches);
 
     CHECK_SIZE(matches.size(), 2);
+    return true;
+}
+
+TEST_FUNC(test_goto_def_with_trait)
+{
+    PHPSourceFile sourceFile(wxFileName("../Tests/test_goto_def_with_trait.php"));
+    sourceFile.SetParseFunctionBody(true);
+    sourceFile.Parse();
+    lookup.UpdateSourceFile(sourceFile);
+    
+    PHPExpression expr(sourceFile.GetText());
+    PHPEntityBase::Ptr_t resolved = expr.Resolve(lookup, sourceFile.GetFilename().GetFullPath());
+    CHECK_BOOL(resolved);
+    
+    PHPEntityBase::List_t matches;
+    expr.Suggest(resolved, lookup, matches);
+
+    CHECK_SIZE(matches.size(), 2);
+    return true;
+}
+
+TEST_FUNC(test_trait_alias)
+{
+    PHPSourceFile sourceFile(wxFileName("../Tests/test_trait_alias.php"));
+    sourceFile.SetParseFunctionBody(true);
+    sourceFile.Parse();
+    lookup.UpdateSourceFile(sourceFile);
+    
+    PHPExpression expr(sourceFile.GetText());
+    PHPEntityBase::Ptr_t resolved = expr.Resolve(lookup, sourceFile.GetFilename().GetFullPath());
+    CHECK_BOOL(resolved);
+    CHECK_STRING(resolved->GetFullName(), "\\Aliased_Talker");
+    
+    PHPEntityBase::List_t matches;
+    expr.Suggest(resolved, lookup, matches);
+
+    CHECK_SIZE(matches.size(), 5);
     return true;
 }
 

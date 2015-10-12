@@ -93,6 +93,20 @@ protected:
     void OnUseTrait();
     
     /**
+     * @brief we are looking at a case like:
+     * use A, B { 
+     *  B::bigTalk as talk;
+     * }
+     * parse the inner block and scan for aliases
+     */
+    void ParseUseTraitsBody();
+    
+    /**
+     * @brief found 'foreach' statement
+     */
+    void OnForEach();
+    
+    /**
      * @brief 'namespace' keyword found
      */
     void OnNamespace();

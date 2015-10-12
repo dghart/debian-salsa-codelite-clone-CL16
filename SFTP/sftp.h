@@ -50,9 +50,12 @@ public:
     ~SFTP();
 
     void FileDownloadedSuccessfully(const wxString& localFileName);
+    void OpenWithDefaultApp(const wxString& localFileName);
+    void OpenContainingFolder(const wxString& localFileName);
     void AddRemoteFile(const RemoteFileInfo& remoteFile);
 
 protected:
+    void OnToggleTab(clCommandEvent& event);
     void OnReplaceInFiles(clFileSystemEvent& e);
     void OnAccountManager(wxCommandEvent& e);
     void OnSettings(wxCommandEvent& e);

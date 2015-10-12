@@ -8,6 +8,7 @@
 #include <wx/timer.h>
 #include "ieditor.h"
 #include "XMLCodeCompletion.h"
+#include "CSSCodeCompletion.h"
 
 class NodeJSDebuggerPane;
 class NodeJSWorkspaceView;
@@ -19,6 +20,7 @@ class WebTools : public IPlugin
     JavaScriptSyntaxColourThread* m_jsColourThread;
     JSCodeCompletion::Ptr_t m_jsCodeComplete;
     XMLCodeCompletion::Ptr_t m_xmlCodeComplete;
+    CSSCodeCompletion::Ptr_t m_cssCodeComplete;
 
     time_t m_lastColourUpdate;
     wxTimer* m_timer;
@@ -28,15 +30,19 @@ class WebTools : public IPlugin
     NodeJSDebuggerPane* m_nodejsDebuggerPane;
     wxString m_savePerspective;
     bool m_hideToolBarOnDebugStop;
-    
+
 protected:
     void OnWorkspaceClosed(wxCommandEvent& event);
     void OnWorkspaceLoaded(wxCommandEvent& event);
     void OnEditorChanged(wxCommandEvent& event);
-    void OnRefreshColours(clCommandEvent& event);
+    void DoRefreshColours(const wxString& filename);
+    void OnFileLoaded(clCommandEvent& event);
+    void OnEditorContextMenu(clContextMenuEvent& event);
+    void OnFileSaved(clCommandEvent& event);
     void OnThemeChanged(wxCommandEvent& event);
     void OnCodeComplete(clCodeCompletionEvent& event);
     void OnCodeCompleteFunctionCalltip(clCodeCompletionEvent& event);
+    void OnFindSymbol(clCodeCompletionEvent& event);
     void ColourJavaScript(const JavaScriptSyntaxColourThread::Reply& reply);
     void OnSettings(wxCommandEvent& event);
     void OnTimer(wxTimerEvent& event);
@@ -44,15 +50,18 @@ protected:
     void OnCommentSelection(wxCommandEvent& e);
     void OnNodeJSDebuggerStarted(clDebugEvent& event);
     void OnNodeJSDebuggerStopped(clDebugEvent& event);
+    void OnIsDebugger(clDebugEvent& event);
 
 private:
     bool IsJavaScriptFile(const wxString& filename);
     bool IsJavaScriptFile(const wxFileName& filename);
     bool IsJavaScriptFile(IEditor* editor);
     bool IsHTMLFile(IEditor* editor);
+    bool IsCSSFile(IEditor* editor);
     bool InsideJSComment(IEditor* editor);
     bool InsideJSString(IEditor* editor);
     void EnsureAuiPaneIsVisible(const wxString& paneName, bool update);
+
 public:
     WebTools(IManager* manager);
     ~WebTools();
