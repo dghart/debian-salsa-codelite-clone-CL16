@@ -1,4 +1,3 @@
-debian/codelite.xpm             usr/share/pixmaps
 usr/bin/codelite
 usr/bin/codelite-make
 usr/bin/codelite_fix_files
