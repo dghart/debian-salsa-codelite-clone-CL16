@@ -31,9 +31,9 @@ Recommends:
  g++,
  xterm | x-terminal-emulator
 Suggests: codelite-plugins
-Description: Powerful and lightweight C/C++ IDE
- CodeLite is a powerful and lightweight C/C++ IDE which comes with but is not
- limited to the following features:
+Description: Powerful and lightweight IDE
+ CodeLite is a powerful and lightweight IDE specializing in C, C++, PHP and
+ Javascript. Its features include:
   * Generic support for compilers
   * Built-in GDB support
   * Database-based Code Completion mechanism
@@ -58,9 +58,9 @@ Recommends:
  nodejs,
  qt4-qmake,
  valgrind
-Description: Powerful and lightweight C/C++ IDE - plugins
- CodeLite is a powerful and lightweight C/C++ IDE which comes with but is not
- limited to the following features:
+Description: Powerful and lightweight IDE - plugins
+ CodeLite is a powerful and lightweight IDE specializing in C, C++, PHP and
+ Javascript. Its features include:
   * Generic support for compilers
   * Built-in GDB support
   * Database-based Code Completion mechanism
