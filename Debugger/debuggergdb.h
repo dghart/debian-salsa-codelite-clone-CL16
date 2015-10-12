@@ -51,13 +51,14 @@ class DbgCmdHandler;
 class DbgCmdCLIHandler;
 class IProcess;
 
-WX_DECLARE_STRING_HASH_MAP(DbgCmdHandler*, HandlersMap);
+
+typedef std::map<wxString, DbgCmdHandler*> HandlersMap_t;
 
 extern const wxEventType wxEVT_GDB_STOP_DEBUGGER;
 
 class DbgGdb : public wxEvtHandler, public IDebugger
 {
-    HandlersMap m_handlers;
+    HandlersMap_t m_handlers;
     long m_debuggeePid;
     ConsoleFinder m_consoleFinder;
     std::vector<BreakpointInfo> m_bpList;
@@ -113,11 +114,11 @@ public:
     virtual bool Run(const wxString& args, const wxString& comm);
     virtual bool Stop();
     virtual bool Break(const BreakpointInfo& bp);
-    virtual bool SetEnabledState(const int bid, const bool enable);
-    virtual bool SetIgnoreLevel(const int bid, const int ignorecount);
+    virtual bool SetEnabledState(double bid, const bool enable);
+    virtual bool SetIgnoreLevel(double bid, const int ignorecount);
     virtual bool SetCondition(const BreakpointInfo& bp);
     virtual bool SetCommands(const BreakpointInfo& bp);
-    virtual bool RemoveBreak(int bid);
+    virtual bool RemoveBreak(double bid);
     virtual bool RemoveAllBreaks();
     virtual bool StepIn();
     virtual bool StepOut();
@@ -151,7 +152,7 @@ public:
     virtual void AssignValue(const wxString& expression, const wxString& newValue);
     virtual bool Jump(wxString filename, int line);
     virtual bool ListRegisters();
-
+    virtual bool UpdateWatch(const wxString& name);
     /**
      * @brief restart the debugger (execute 'run')
      * @return true on success, false otherwise

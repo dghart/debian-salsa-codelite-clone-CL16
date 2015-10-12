@@ -24,6 +24,7 @@
 //////////////////////////////////////////////////////////////////////////////
 
 #include "precompiled_header.h"
+#include "autoversion.h"
 #include "my_menu_bar.h"
 #include "bitmap_loader.h"
 #include <wx/wupdlock.h>
@@ -64,6 +65,7 @@
 #include "clBootstrapWizard.h"
 #include "clWorkspaceManager.h"
 #include "clSingleChoiceDialog.h"
+#include <wx/richmsgdlg.h>
 
 #ifdef __WXGTK20__
 // We need this ugly hack to workaround a gtk2-wxGTK name-clash
@@ -144,9 +146,6 @@
 //////////////////////////////////////////////////
 
 // from auto-generated file svninfo.cpp:
-extern wxString CODELITE_VERSION_STR;
-extern const wxChar* clGitRevision;
-
 static wxStopWatch gStopWatch;
 
 // from iconsextra.cpp:
@@ -215,6 +214,10 @@ EVT_MENU_RANGE(RecentFilesSubMenuID, RecentFilesSubMenuID + 10, clMainFrame::OnR
 EVT_MENU_RANGE(RecentWorkspaceSubMenuID, RecentWorkspaceSubMenuID + 10, clMainFrame::OnRecentWorkspace)
 EVT_MENU_RANGE(ID_MENU_CUSTOM_TARGET_FIRST, ID_MENU_CUSTOM_TARGET_MAX, clMainFrame::OnBuildCustomTarget)
 EVT_MENU(wxID_EXIT, clMainFrame::OnQuit)
+// print
+EVT_MENU(wxID_PRINT, clMainFrame::OnPrint)
+EVT_UPDATE_UI(wxID_PRINT, clMainFrame::OnFileExistUpdateUI)
+EVT_MENU(wxID_PAGE_SETUP, clMainFrame::OnPageSetup)
 
 EVT_UPDATE_UI(XRCID("refresh_file"), clMainFrame::OnFileExistUpdateUI)
 EVT_UPDATE_UI(XRCID("save_file"), clMainFrame::OnFileSaveUI)
@@ -222,6 +225,7 @@ EVT_UPDATE_UI(XRCID("save_file_as"), clMainFrame::OnFileExistUpdateUI)
 EVT_UPDATE_UI(XRCID("save_all"), clMainFrame::OnFileSaveAllUI)
 EVT_UPDATE_UI(XRCID("save_tab_group"), clMainFrame::OnFileExistUpdateUI)
 EVT_UPDATE_UI(XRCID("close_file"), clMainFrame::OnFileCloseUI)
+EVT_UPDATE_UI(XRCID("recent_workspaces"), clMainFrame::OnRecentWorkspaceUI)
 
 //--------------------------------------------------
 // Edit menu
@@ -321,16 +325,6 @@ EVT_UPDATE_UI(XRCID("view_welcome_page_at_startup"), clMainFrame::OnLoadWelcomeP
 EVT_UPDATE_UI(XRCID("show_nav_toolbar"), clMainFrame::OnShowNavBarUI)
 EVT_UPDATE_UI(viewAsSubMenuID, clMainFrame::OnFileExistUpdateUI)
 EVT_UPDATE_UI_RANGE(viewAsMenuItemID, viewAsMenuItemMaxID, clMainFrame::DispatchUpdateUIEvent)
-
-EVT_MENU(XRCID("show_workspace_tab"), clMainFrame::OnViewShowWorkspaceTab)
-EVT_MENU(XRCID("show_explorer_tab"), clMainFrame::OnViewShowExplorerTab)
-EVT_MENU(XRCID("show_tabs_tab"), clMainFrame::OnViewShowTabs)
-EVT_MENU(XRCID("show_tabgroups_tab"), clMainFrame::OnViewShowTabgroups)
-
-EVT_UPDATE_UI(XRCID("show_workspace_tab"), clMainFrame::OnViewShowWorkspaceTabUI)
-EVT_UPDATE_UI(XRCID("show_explorer_tab"), clMainFrame::OnViewShowExplorerTabUI)
-EVT_UPDATE_UI(XRCID("show_tabs_tab"), clMainFrame::OnViewShowTabsUI)
-EVT_UPDATE_UI(XRCID("show_tabgroups_tab"), clMainFrame::OnViewShowTabgroupsUI)
 
 //-------------------------------------------------------
 // Search menu
@@ -568,6 +562,7 @@ EVT_UPDATE_UI(wxID_BACKWARD, clMainFrame::OnBackwardForwardUI)
 // Workspace Pane tab context menu
 //-------------------------------------------------------
 EVT_MENU(XRCID("detach_wv_tab"), clMainFrame::OnDetachWorkspaceViewTab)
+EVT_MENU(XRCID("hide_wv_tab"), clMainFrame::OnHideWorkspaceViewTab)
 
 //-------------------------------------------------------
 // Debugger Pane tab context menu
@@ -657,6 +652,7 @@ EVT_COMMAND(wxID_ANY, wxEVT_CMD_DELETE_DOCKPANE, clMainFrame::OnDestroyDetachedP
 END_EVENT_TABLE()
 
 clMainFrame* clMainFrame::m_theFrame = NULL;
+bool clMainFrame::m_initCompleted = false;
 
 clMainFrame::clMainFrame(wxWindow* pParent,
                          wxWindowID id,
@@ -904,7 +900,7 @@ void clMainFrame::Initialize(bool loadLastSession)
 {
     // set the revision number in the frame title
     wxString title(_("CodeLite "));
-    title << clGitRevision;
+    title << CODELITE_VERSION_STRING;
 
     // initialize the environment variable configuration manager
     EnvironmentConfig::Instance()->Load();
@@ -1063,6 +1059,7 @@ void clMainFrame::CreateGUIControls(void)
     m_workspacePane = new WorkspacePane(this, wxT("Workspace View"), &m_mgr);
     m_mgr.AddPane(m_workspacePane,
                   wxAuiPaneInfo()
+                      .PinButton()
                       .CaptionVisible(true)
                       .MinimizeButton()
                       .MaximizeButton()
@@ -2223,7 +2220,7 @@ void clMainFrame::OnFileExistUpdateUI(wxUpdateUIEvent& event)
 void clMainFrame::OnAbout(wxCommandEvent& WXUNUSED(event))
 {
     wxString mainTitle;
-    mainTitle = CODELITE_VERSION_STR;
+    mainTitle = CODELITE_VERSION_STRING;
 
     AboutDlg dlg(this, mainTitle);
     dlg.SetInfo(mainTitle);
@@ -3480,8 +3477,8 @@ void clMainFrame::CreateRecentlyOpenedWorkspacesMenu()
     if(item && menu) {
         wxMenu* submenu = item->GetSubMenu();
         if(submenu) {
-            for(size_t i = 0; i < files.GetCount(); i++) {
-                hs.AddFileToHistory(files.Item(i));
+            for(size_t i = files.GetCount(); i > 0; --i) {
+                hs.AddFileToHistory(files.Item(i - 1));
             }
             // set this menu as the recent file menu
             hs.SetBaseId(RecentWorkspaceSubMenuID + 1);
@@ -4000,6 +3997,8 @@ void clMainFrame::CompleteInitialization()
     eventShowTabBar.SetInt(clConfig::Get().Read(kConfigShowTabBar, true));
     OnShowTabBar(eventShowTabBar);
     ShowOrHideCaptions();
+
+    m_initCompleted = true;
 }
 
 void clMainFrame::OnAppActivated(wxActivateEvent& e)
@@ -4294,33 +4293,24 @@ void clMainFrame::OnSingleInstanceRaise(clCommandEvent& e)
 
 void clMainFrame::OnNewVersionAvailable(wxCommandEvent& e)
 {
-    WebUpdateJobData* data = reinterpret_cast<WebUpdateJobData*>(e.GetClientData());
-    if(data) {
-        if(data->IsUpToDate() == false) {
-
-            m_codeliteDownloadPageURL = data->GetUrl();
-            ButtonDetails btn;
-            btn.buttonLabel = _("Download Now!");
-            btn.commandId = XRCID("goto_codelite_download_url");
-            btn.isDefault = true;
-            btn.window = this;
-
-            GetMainBook()->ShowMessage(
-                _("A new version of codelite is available"),
-                true,
-                PluginManager::Get()->GetStdIcons()->LoadBitmap(wxT("messages/48/software_upgrade")),
-                btn);
-
-        } else {
-            if(!data->GetShowMessage()) {
-                wxLogMessage(wxString() << "Info: codelite is up-to-date (or newer), version used: "
-                                        << data->GetCurVersion() << ", version on site: " << data->GetNewVersion());
-            } else {
-                // User initiated the version check request
-                GetMainBook()->ShowMessage(_("CodeLite is up-to-date"));
+    if(e.GetEventType() == wxEVT_CMD_VERSION_UPTODATE) {
+        // All is up to date
+        wxMessageBox(_("You already have the latest version of CodeLite"), "CodeLite", wxOK | wxCENTRE, this);
+    } else {
+        WebUpdateJobData* data = reinterpret_cast<WebUpdateJobData*>(e.GetClientData());
+        if(data) {
+            if(data->IsUpToDate() == false) {
+                wxRichMessageDialog dlg(this,
+                                        _("A new version of CodeLite is available for download"),
+                                        "CodeLite",
+                                        wxYES_NO | wxCANCEL | wxYES_DEFAULT | wxCENTRE | wxICON_INFORMATION);
+                dlg.SetYesNoLabels(_("Download"), _("No"));
+                if(dlg.ShowModal() == wxID_YES) {
+                    ::wxLaunchDefaultBrowser(data->GetUrl());
+                }
             }
+            wxDELETE(data);
         }
-        delete data;
     }
 }
 
@@ -4339,6 +4329,16 @@ void clMainFrame::OnDetachWorkspaceViewTab(wxCommandEvent& e)
     GetWorkspacePane()->GetNotebook()->RemovePage(sel);
     pane->SetChildNoReparent(page);
     wxUnusedVar(e);
+}
+
+void clMainFrame::OnHideWorkspaceViewTab(wxCommandEvent& e)
+{
+    size_t sel = GetWorkspacePane()->GetNotebook()->GetSelection();
+    wxString text = GetWorkspacePane()->GetNotebook()->GetPageText(sel);
+
+    clCommandEvent eventHide(wxEVT_SHOW_WORKSPACE_TAB);
+    eventHide.SetSelected(false).SetString(text);
+    EventNotifier::Get()->AddPendingEvent(eventHide);
 }
 
 void clMainFrame::OnNewDetachedPane(wxCommandEvent& e)
@@ -5107,15 +5107,9 @@ void clMainFrame::OnPreviousFiFMatch(wxCommandEvent& e)
     GetOutputPane()->GetFindResultsTab()->PrevMatch();
 }
 
-void clMainFrame::OnNextFiFMatchUI(wxUpdateUIEvent& e)
-{
-    CHECK_SHUTDOWN();
-}
+void clMainFrame::OnNextFiFMatchUI(wxUpdateUIEvent& e) { CHECK_SHUTDOWN(); }
 
-void clMainFrame::OnPreviousFiFMatchUI(wxUpdateUIEvent& e)
-{
-    CHECK_SHUTDOWN();
-}
+void clMainFrame::OnPreviousFiFMatchUI(wxUpdateUIEvent& e) { CHECK_SHUTDOWN(); }
 
 void clMainFrame::OnFindResourceXXX(wxCommandEvent& e)
 {
@@ -5603,54 +5597,7 @@ void clMainFrame::OnGrepWordUI(wxUpdateUIEvent& e)
 }
 
 void clMainFrame::OnPchCacheEnded(wxCommandEvent& e) { e.Skip(); }
-
 void clMainFrame::OnPchCacheStarted(wxCommandEvent& e) { e.Skip(); }
-
-////////////////// View -> Workspace View -> /////////////////////////////////////
-
-void clMainFrame::OnViewShowExplorerTab(wxCommandEvent& e)
-{
-    DoEnableWorkspaceViewFlag(e.IsChecked(), View_Show_Explorer_Tab);
-    GetWorkspacePane()->UpdateTabs();
-}
-
-void clMainFrame::OnViewShowExplorerTabUI(wxUpdateUIEvent& event)
-{
-    event.Check(GetWorkspacePane()->IsTabVisible(View_Show_Explorer_Tab));
-}
-
-void clMainFrame::OnViewShowTabgroups(wxCommandEvent& e)
-{
-    DoEnableWorkspaceViewFlag(e.IsChecked(), View_Show_Tabgroups_Tab);
-    GetWorkspacePane()->UpdateTabs();
-}
-
-void clMainFrame::OnViewShowTabgroupsUI(wxUpdateUIEvent& event)
-{
-    event.Check(GetWorkspacePane()->IsTabVisible(View_Show_Tabgroups_Tab));
-}
-
-void clMainFrame::OnViewShowTabs(wxCommandEvent& e)
-{
-    DoEnableWorkspaceViewFlag(e.IsChecked(), View_Show_Tabs_Tab);
-    GetWorkspacePane()->UpdateTabs();
-}
-
-void clMainFrame::OnViewShowTabsUI(wxUpdateUIEvent& event)
-{
-    event.Check(GetWorkspacePane()->IsTabVisible(View_Show_Tabs_Tab));
-}
-
-void clMainFrame::OnViewShowWorkspaceTab(wxCommandEvent& e)
-{
-    DoEnableWorkspaceViewFlag(e.IsChecked(), View_Show_Workspace_Tab);
-    GetWorkspacePane()->UpdateTabs();
-}
-
-void clMainFrame::OnViewShowWorkspaceTabUI(wxUpdateUIEvent& event)
-{
-    event.Check(GetWorkspacePane()->IsTabVisible(View_Show_Workspace_Tab));
-}
 
 ///////////////////// Helper methods /////////////////////////////
 
@@ -6191,10 +6138,11 @@ void clMainFrame::OnMarkEditorReadonlyUI(wxUpdateUIEvent& e)
 void clMainFrame::OnWorkspaceLoaded(wxCommandEvent& e)
 {
     e.Skip();
-
-    // Ensure that the workspace view is visible
-    DoEnableWorkspaceViewFlag(true, View_Show_Workspace_Tab);
-    GetWorkspacePane()->UpdateTabs();
+    // If the workspace tab is visible, make it active
+    int where = GetWorkspacePane()->GetNotebook()->GetPageIndex(_("Workspace"));
+    if(where != wxNOT_FOUND) {
+        GetWorkspacePane()->GetNotebook()->SetSelection(where);
+    }
 }
 
 void clMainFrame::OnFileOpenFolder(wxCommandEvent& event)
@@ -6234,4 +6182,24 @@ void clMainFrame::OnDebugEnded(clDebugEvent& event)
         clGetManager()->ShowToolBar(false);
     }
     m_toggleToolBar = false;
+}
+
+void clMainFrame::OnPrint(wxCommandEvent& event)
+{
+    if(GetMainBook()->GetActiveEditor(true)) {
+        GetMainBook()->GetActiveEditor(true)->Print();
+    }
+}
+
+void clMainFrame::OnPageSetup(wxCommandEvent& event)
+{
+    if(GetMainBook()->GetActiveEditor(true)) {
+        GetMainBook()->GetActiveEditor(true)->PageSetup();
+    }
+}
+
+void clMainFrame::OnRecentWorkspaceUI(wxUpdateUIEvent& e)
+{
+    // We don't allow reloading of recent workspace while another is opened
+    e.Enable(!clWorkspaceManager::Get().IsWorkspaceOpened());
 }

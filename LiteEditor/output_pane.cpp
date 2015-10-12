@@ -84,9 +84,14 @@ void OutputPane::CreateGUIControls()
     SetSizer(mainSizer);
 
     long style = (kNotebook_Default | kNotebook_AllowDnD);
-    if(!EditorConfigST::Get()->GetOptions()->IsNonEditorTabsAtTop()) {
+    if(EditorConfigST::Get()->GetOptions()->GetWorkspaceTabsDirection() == wxBOTTOM) {
         style |= kNotebook_BottomTabs;
+    } else if(EditorConfigST::Get()->GetOptions()->GetWorkspaceTabsDirection() == wxLEFT) {
+        style |= kNotebook_LeftTabs;
+    } else if(EditorConfigST::Get()->GetOptions()->GetWorkspaceTabsDirection() == wxRIGHT) {
+        style |= kNotebook_RightTabs;
     }
+
     m_book = new Notebook(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, style);
 
     BitmapLoader* bmpLoader = PluginManager::Get()->GetStdIcons();
@@ -122,7 +127,7 @@ void OutputPane::CreateGUIControls()
     m_book->AddPage(
         m_showUsageTab, wxGetTranslation(SHOW_USAGE), false, bmpLoader->LoadBitmap(wxT("toolbars/16/search/find")));
 
-    m_outputWind = new ShellTab(m_book, wxID_ANY, wxGetTranslation(OUTPUT_WIN));
+    m_outputWind = new OutputTab(m_book, wxID_ANY, wxGetTranslation(OUTPUT_WIN));
     m_book->AddPage(
         m_outputWind, wxGetTranslation(OUTPUT_WIN), false, bmpLoader->LoadBitmap(wxT("output-pane/16/terminal")));
 
@@ -250,5 +255,5 @@ void OutputPane::ApplySavedTabOrder() const
 void OutputPane::OnSettingsChanged(wxCommandEvent& event)
 {
     event.Skip();
-    m_book->EnableStyle(kNotebook_BottomTabs, !EditorConfigST::Get()->GetOptions()->IsNonEditorTabsAtTop());
+    m_book->SetTabDirection(EditorConfigST::Get()->GetOptions()->GetOutputTabsDirection());
 }

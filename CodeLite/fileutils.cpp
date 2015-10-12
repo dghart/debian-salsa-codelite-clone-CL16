@@ -108,8 +108,15 @@ void FileUtils::OpenTerminal(const wxString& path)
     cmd = GTKGetTerminal("");
 
 #elif defined(__WXMAC__)
+    strPath = path;
+    if(strPath.Contains(" ")) {
+        strPath.Prepend("\\\"").Append("\\\"");
+    }
     // osascript -e 'tell app "Terminal" to do script "echo hello"'
     cmd << "osascript -e 'tell app \"Terminal\" to do script \"cd " << strPath << "\"'";
+    CL_DEBUG(cmd);
+    ::system(cmd.mb_str(wxConvUTF8).data());
+    return;
 #endif
     if(cmd.IsEmpty()) return;
     ::wxExecute(cmd);
@@ -159,13 +166,17 @@ void FileUtils::OSXOpenDebuggerTerminalAndGetTTY(const wxString& path, wxString&
     tty.Clear();
     wxString command;
     wxString tmpfile;
+    wxString escapedPath = path;
+    if(escapedPath.Contains(" ")) {
+        escapedPath.Prepend("\"").Append("\"");
+    }
     tmpfile << "/tmp/terminal.tty." << ::wxGetProcessId();
-    command << "osascript -e 'tell app \"Terminal\" to do script \"cd " << path << " && tty > " << tmpfile
+    command << "osascript -e 'tell app \"Terminal\" to do script \"tty > " << tmpfile
             << " && clear && sleep 12345\"'";
     CL_DEBUG("Executing: %s", command);
     long res = ::wxExecute(command);
     if(res == 0) {
-        CL_WARNING("Failed to execute command");
+        CL_WARNING("Failed to execute command:\n%s", command);
         return;
     }
 
@@ -189,20 +200,23 @@ void FileUtils::OSXOpenDebuggerTerminalAndGetTTY(const wxString& path, wxString&
         wxString psCommand;
         psCommand << "ps -A -o ppid,command";
         wxString psOutput = ProcUtils::SafeExecuteCommand(psCommand);
+        CL_DEBUG("PS output:\n%s\n", psOutput);
         wxArrayString lines = ::wxStringTokenize(psOutput, "\n", wxTOKEN_STRTOK);
         for(size_t u = 0; u < lines.GetCount(); ++u) {
-            wxString ppidString = lines.Item(u).BeforeFirst(' ');
-            wxString pidCommand = lines.Item(u).AfterFirst(' ');
-            ppidString.Trim().Trim(false);
-            pidCommand.Trim().Trim(false);
-            if(pidCommand.Contains("sleep") && pidCommand.Contains("12345")) {
+            wxString l = lines.Item(u);
+            l.Trim().Trim(false);
+            if(l.Contains("sleep") && l.Contains("12345")) {
                 // we got a match
+                CL_DEBUG("Got a match!");
+                wxString ppidString = l.BeforeFirst(' ');
                 ppidString.ToCLong(&pid);
                 break;
             }
         }
         break;
     }
+    CL_DEBUG("PID is: %d\n", (int)pid);
+    CL_DEBUG("TTY is: %s\n", tty);
 }
 
 void

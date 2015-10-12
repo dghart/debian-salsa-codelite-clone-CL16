@@ -21,7 +21,6 @@
 #include <wx/listbox.h>
 #include <wx/button.h>
 #include <wx/choice.h>
-#include <wx/statbox.h>
 #include <wx/checkbox.h>
 #if wxVERSION_NUMBER >= 2900
 #include <wx/persist.h>
@@ -33,17 +32,13 @@
 class FindInFilesDialogBase : public wxDialog
 {
 protected:
-    wxBoxSizer* boxSizer7;
     wxPanel* m_panelMainPanel;
-    wxBoxSizer* boxSizer95;
-    wxBoxSizer* boxSizer50;
-    wxFlexGridSizer* fgSizer41;
     wxStaticText* m_staticText1;
     wxComboBox* m_findString;
+    wxStaticText* m_staticText102;
+    wxComboBox* m_replaceString;
     wxStaticText* m_staticText2;
-    wxBoxSizer* bSizer9;
     wxListBox* m_listPaths;
-    wxBoxSizer* boxSizer1;
     wxButton* m_btnAddPath;
     wxButton* m_btnClearSelectedPath;
     wxStaticText* m_staticText3;
@@ -51,13 +46,11 @@ protected:
     wxStaticText* m_staticText5;
     wxChoice* m_choiceEncoding;
     wxStaticText* m_staticText97;
-    wxStaticBoxSizer* staticBoxSizer98;
-    wxFlexGridSizer* fgSizer3;
     wxCheckBox* m_matchCase;
     wxCheckBox* m_matchWholeWord;
+    wxCheckBox* m_checkBoxPipeForGrep;
     wxCheckBox* m_regualrExpression;
     wxCheckBox* m_checkBoxSaveFilesBeforeSearching;
-    wxBoxSizer* bSizer2;
     wxButton* m_find;
     wxButton* m_replaceAll;
     wxButton* m_stop;
@@ -70,12 +63,15 @@ protected:
     virtual void OnFind(wxCommandEvent& event) { event.Skip(); }
     virtual void OnFindWhatUI(wxUpdateUIEvent& event) { event.Skip(); }
     virtual void OnReplace(wxCommandEvent& event) { event.Skip(); }
+    virtual void OnReplaceUI(wxUpdateUIEvent& event) { event.Skip(); }
     virtual void OnStop(wxCommandEvent& event) { event.Skip(); }
     virtual void OnButtonClose(wxCommandEvent& event) { event.Skip(); }
 
 public:
     wxStaticText* GetStaticText1() { return m_staticText1; }
     wxComboBox* GetFindString() { return m_findString; }
+    wxStaticText* GetStaticText102() { return m_staticText102; }
+    wxComboBox* GetReplaceString() { return m_replaceString; }
     wxStaticText* GetStaticText2() { return m_staticText2; }
     wxListBox* GetListPaths() { return m_listPaths; }
     wxButton* GetBtnAddPath() { return m_btnAddPath; }
@@ -87,6 +83,7 @@ public:
     wxStaticText* GetStaticText97() { return m_staticText97; }
     wxCheckBox* GetMatchCase() { return m_matchCase; }
     wxCheckBox* GetMatchWholeWord() { return m_matchWholeWord; }
+    wxCheckBox* GetCheckBoxPipeForGrep() { return m_checkBoxPipeForGrep; }
     wxCheckBox* GetRegualrExpression() { return m_regualrExpression; }
     wxCheckBox* GetCheckBoxSaveFilesBeforeSearching() { return m_checkBoxSaveFilesBeforeSearching; }
     wxButton* GetFind() { return m_find; }

@@ -6,15 +6,18 @@
 #include <wx/socket.h>
 #include "NodeJSSocket.h"
 #include "NodeJSDebuggerBreakpointManager.h"
+#include "TerminalEmulator.h"
+#include "NodeJS.h"
 
-class IProcess;
+class NodeJSDebuggerTooltip;
 class NodeJSDebugger : public wxEvtHandler
 {
     NodeJSSocket::Ptr_t m_socket;
-    IProcess* m_node;
+    TerminalEmulator m_node;
     NodeJSBptManager m_bptManager;
     bool m_canInteract;
     wxStringSet_t m_tempFiles;
+    NodeJSDebuggerTooltip* m_tooltip;
 
 public:
     typedef SmartPtr<NodeJSDebugger> Ptr_t;
@@ -32,6 +35,7 @@ protected:
     void OnDebugStepOut(clDebugEvent& event);
     void OnTooltip(clDebugEvent& event);
     void OnCanInteract(clDebugEvent& event);
+    void OnAttach(clDebugEvent& event);
 
     // CodeLite events
     void OnWorkspaceOpened(wxCommandEvent& event);
@@ -39,10 +43,13 @@ protected:
     void OnEditorChanged(wxCommandEvent& event);
 
     // Process event
-    void OnNodeTerminated(clProcessEvent& event);
-    void OnNodeOutput(clProcessEvent& event);
+    void OnNodeTerminated(clCommandEvent& event);
+    void OnNodeOutput(clCommandEvent& event);
     void OnHighlightLine(clDebugEvent& event);
     void OnEvalExpression(clDebugEvent& event);
+
+    // The tip needs to be destroyed
+    void OnDestroyTip(clCommandEvent& event);
 
 protected:
     bool IsConnected();
@@ -52,6 +59,7 @@ protected:
 public:
     NodeJSDebugger();
     virtual ~NodeJSDebugger();
+    void ShowTooltip(const wxString& expression, const wxString& jsonOutput);
 
     void AddTempFile(const wxString& filename) { m_tempFiles.insert(filename); }
 
@@ -105,6 +113,11 @@ public:
      * @brief load the content of a given file name
      */
     void GetCurrentFrameSource(const wxString& filename, int line);
+
+    /**
+     * @brief The request lookup is used to lookup objects based on their handle
+     */
+    void Lookup(const std::vector<int>& handles, eNodeJSContext context);
 
     //--------------------------------------------------
     // API END

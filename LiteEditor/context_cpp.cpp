@@ -1798,7 +1798,12 @@ void ContextCpp::OnAddMultiImpl(wxCommandEvent& e)
     for(; iter != protos.end(); ++iter) {
         tags.push_back(iter->second);
     }
-
+    
+    // Sort the functions according to their line number (asc)
+    std::sort(tags.begin(), tags.end(), [&](TagEntryPtr a, TagEntryPtr b) {
+        return (a->GetLine() < b->GetLine());
+    });
+    
     wxString targetFile;
     FindSwappedFile(rCtrl.GetFileName(), targetFile);
 
@@ -3209,7 +3214,7 @@ void ContextCpp::OnCodeCompleteFiles(clCodeCompletionEvent& event)
         // to do that, we temporary replace the word-chars of the wxSTC control to include
         // these chars, perform the selection and then restore the word chars
         wxString newWordChars = origWordChars;
-        newWordChars << "./";
+        newWordChars << "./-$";
         GetCtrl().SetWordChars(newWordChars);
         int startPos = GetCtrl().WordStartPos(GetCtrl().GetCurrentPos(), true);
         int endPos = GetCtrl().GetCurrentPos();

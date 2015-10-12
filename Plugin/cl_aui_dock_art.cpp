@@ -32,6 +32,9 @@
 #include "cl_command_event.h"
 #include "event_notifier.h"
 #include "drawingutils.h"
+#include "imanager.h"
+#include "clStatusBar.h"
+#include <wx/xrc/xmlres.h>
 
 // --------------------------------------------
 
@@ -65,10 +68,15 @@ static wxString wxAuiChopText(wxDC& dc, const wxString& text, int max_size)
 clAuiDockArt::clAuiDockArt(IManager* manager)
     : m_manager(manager)
 {
+    m_dockCloseBmp = wxXmlResource::Get()->LoadBitmap("aui-close");
+    m_dockMoreBmp = wxXmlResource::Get()->LoadBitmap("aui-more");
+    m_dockExpandeBmp = wxXmlResource::Get()->LoadBitmap("aui-expand");
+    m_dockMinimizeBmp = wxXmlResource::Get()->LoadBitmap("aui-minimize");
 }
 
 clAuiDockArt::~clAuiDockArt() {}
 
+#define AUI_BUTTON_SIZE 12
 void clAuiDockArt::DrawPaneButton(wxDC& dc,
                                   wxWindow* window,
                                   int button,
@@ -76,7 +84,26 @@ void clAuiDockArt::DrawPaneButton(wxDC& dc,
                                   const wxRect& _rect,
                                   wxAuiPaneInfo& pane)
 {
-    wxAuiDefaultDockArt::DrawPaneButton(dc, window, button, button_state, _rect, pane);
+    int xx = _rect.GetTopLeft().x + ((_rect.GetWidth() - AUI_BUTTON_SIZE) / 2);
+    int yy = _rect.GetTopLeft().y + ((_rect.GetHeight() - AUI_BUTTON_SIZE) / 2);
+    switch(button) {
+    case wxAUI_BUTTON_CLOSE:
+        dc.DrawBitmap(m_dockCloseBmp, xx, yy);
+        break;
+    case wxAUI_BUTTON_MAXIMIZE_RESTORE:
+        if(pane.IsMaximized()) {
+            dc.DrawBitmap(m_dockMinimizeBmp, xx, yy);
+        } else {
+            dc.DrawBitmap(m_dockExpandeBmp, xx, yy);
+        }
+        break;
+    case wxAUI_BUTTON_PIN:
+        dc.DrawBitmap(m_dockMoreBmp, xx, yy);
+        break;
+    default:
+        wxAuiDefaultDockArt::DrawPaneButton(dc, window, button, button_state, _rect, pane);
+        break;
+    }
 }
 
 void
@@ -89,48 +116,62 @@ clAuiDockArt::DrawCaption(wxDC& dc, wxWindow* window, const wxString& text, cons
     if(tmpRect.GetWidth() == 0) tmpRect.SetWidth(1);
 
     wxBitmap bmp(tmpRect.GetSize());
-    wxMemoryDC memDc;
-    memDc.SelectObject(bmp);
-    memDc.SetFont(m_captionFont);
+    {
+        wxMemoryDC memDc;
+        memDc.SelectObject(bmp);
 
-    // Prepare the colours
-    wxColour bgColour, penColour, textColour;
-    textColour = wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT);
-    bgColour = DrawingUtils::DarkColour(wxSystemSettings::GetColour(wxSYS_COLOUR_3DFACE), 3.0);
-    penColour = wxSystemSettings::GetColour(wxSYS_COLOUR_3DSHADOW);
+        wxGCDC gdc;
+        wxDC* pDC = NULL;
+        if(!DrawingUtils::GetGCDC(memDc, gdc)) {
+            pDC = &memDc;
+        } else {
+            pDC = &gdc;
+        }
 
-    memDc.SetPen(penColour);
-    memDc.SetBrush(bgColour);
-    memDc.DrawRectangle(tmpRect);
+        // Prepare the colours
+        wxColour bgColour, penColour, textColour;
+        textColour = wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT);
+        bgColour = DrawingUtils::DarkColour(wxSystemSettings::GetColour(wxSYS_COLOUR_3DFACE), 2.0);
+        ; // Same as the notebook background colour
+        penColour = wxSystemSettings::GetColour(wxSYS_COLOUR_3DSHADOW);
+        penColour = bgColour;
 
-    memDc.SetPen(penColour);
-    memDc.SetBrush(*wxTRANSPARENT_BRUSH);
-    memDc.DrawRectangle(tmpRect);
+        wxFont f = wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT);
+        pDC->SetFont(f);
+        pDC->SetPen(penColour);
+        pDC->SetBrush(bgColour);
+        pDC->DrawRectangle(tmpRect);
 
-    int caption_offset = 0;
-    if(pane.icon.IsOk()) {
-        DrawIcon(memDc, tmpRect, pane);
-        caption_offset += pane.icon.GetWidth() + 3;
-    } else {
-        caption_offset = 3;
+        pDC->SetPen(penColour);
+        pDC->SetBrush(*wxTRANSPARENT_BRUSH);
+        pDC->DrawRectangle(tmpRect);
+
+        int caption_offset = 0;
+        if(pane.icon.IsOk()) {
+            DrawIcon(gdc, tmpRect, pane);
+            caption_offset += pane.icon.GetWidth() + 3;
+        } else {
+            caption_offset = 3;
+        }
+        pDC->SetTextForeground(textColour);
+        wxCoord w, h;
+        pDC->GetTextExtent(wxT("ABCDEFHXfgkj"), &w, &h);
+
+        wxRect clip_rect = tmpRect;
+        clip_rect.width -= 3; // text offset
+        clip_rect.width -= 2; // button padding
+        if(pane.HasCloseButton()) clip_rect.width -= m_buttonSize;
+        if(pane.HasPinButton()) clip_rect.width -= m_buttonSize;
+        if(pane.HasMaximizeButton()) clip_rect.width -= m_buttonSize;
+
+        wxString draw_text = wxAuiChopText(gdc, text, clip_rect.width);
+
+        wxSize textSize = pDC->GetTextExtent(draw_text);
+        pDC->SetTextForeground(textColour);
+        pDC->DrawText(draw_text, tmpRect.x + 3 + caption_offset, tmpRect.y + ((tmpRect.height - textSize.y) / 2));
+        memDc.SelectObject(wxNullBitmap);
     }
-    memDc.SetTextForeground(textColour);
 
-    wxCoord w, h;
-    memDc.GetTextExtent(wxT("ABCDEFHXfgkj"), &w, &h);
-
-    wxRect clip_rect = tmpRect;
-    clip_rect.width -= 3; // text offset
-    clip_rect.width -= 2; // button padding
-    if(pane.HasCloseButton()) clip_rect.width -= m_buttonSize;
-    if(pane.HasPinButton()) clip_rect.width -= m_buttonSize;
-    if(pane.HasMaximizeButton()) clip_rect.width -= m_buttonSize;
-
-    wxString draw_text = wxAuiChopText(memDc, text, clip_rect.width);
-
-    wxSize textSize = memDc.GetTextExtent(draw_text);
-    memDc.DrawText(draw_text, tmpRect.x + 3 + caption_offset, tmpRect.y + ((tmpRect.height - textSize.y) / 2));
-    memDc.SelectObject(wxNullBitmap);
     dc.DrawBitmap(bmp, rect.x, rect.y, true);
 }
 
@@ -147,21 +188,26 @@ void clAuiDockArt::DrawBorder(wxDC& dc, wxWindow* window, const wxRect& rect, wx
 {
     wxColour penColour;
 #ifdef __WXMAC__
-    penColour = wxColour("rgb(102, 102, 102)");
-    
+    penColour = DrawingUtils::GetAUIPaneBGColour();
 #else
     penColour = wxSystemSettings::GetColour(wxSYS_COLOUR_3DSHADOW);
 #endif
-    dc.SetPen(penColour);
+    dc.SetPen(DrawingUtils::DarkColour(wxSystemSettings::GetColour(wxSYS_COLOUR_3DFACE), 2.0));
     dc.SetBrush(*wxTRANSPARENT_BRUSH);
     dc.DrawRectangle(rect);
 }
 
 void clAuiDockArt::DrawSash(wxDC& dc, wxWindow* window, int orientation, const wxRect& rect)
 {
+    wxColour sashColour = wxSystemSettings::GetColour(wxSYS_COLOUR_3DFACE);
+#if 0
+    if(clGetManager() && clGetManager()->GetStatusBar() && clGetManager()->GetStatusBar()->GetArt()) {
+        sashColour = clGetManager()->GetStatusBar()->GetArt()->GetBgColour();
+    }
+#endif
     wxUnusedVar(window);
     wxUnusedVar(orientation);
     dc.SetPen(*wxTRANSPARENT_PEN);
-    dc.SetBrush(wxSystemSettings::GetColour(wxSYS_COLOUR_3DFACE));
+    dc.SetBrush(sashColour);
     dc.DrawRectangle(rect);
 }

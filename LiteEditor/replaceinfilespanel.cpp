@@ -34,6 +34,7 @@
 #include "replaceinfilespanel.h"
 #include "clFileSystemEvent.h"
 #include "event_notifier.h"
+#include "macros.h"
 
 BEGIN_EVENT_TABLE(ReplaceInFilesPanel, FindResultsTab)
 EVT_BUTTON(XRCID("unmark_all"), ReplaceInFilesPanel::OnUnmarkAll)
@@ -76,11 +77,12 @@ ReplaceInFilesPanel::ReplaceInFilesPanel(wxWindow* parent, int id, const wxStrin
     vertSizer->Add(horzSizer, 0, wxEXPAND | wxTOP | wxBOTTOM);
 
     // grab the base class scintilla and put our sizer in its place
-    wxSizer* mainSizer = m_hSizer;
+    wxSizer* mainSizer = m_vSizer;
     mainSizer->Detach(m_sci);
     vertSizer->Add(m_sci, 1, wxEXPAND | wxALL, 1);
 
     m_tb->DeleteTool(XRCID("repeat_output"));
+    m_tb->DeleteTool(XRCID("recent_searches"));
     m_tb->Realize();
 
 #ifdef __WXMAC__
@@ -123,8 +125,17 @@ void ReplaceInFilesPanel::OnSearchMatch(wxCommandEvent& e)
 
 void ReplaceInFilesPanel::OnSearchEnded(wxCommandEvent& e)
 {
+    SearchSummary* summary = (SearchSummary*)e.GetClientData();
+    CHECK_PTR_RET(summary);
+    
+    // set the "Replace With" field with the user value
+    m_replaceWith->ChangeValue(summary->GetReplaceWith());
+    
     FindResultsTab::OnSearchEnded(e);
     OnMarkAll(e);
+    
+    // Set the focus to the "Replace With" field
+    m_replaceWith->CallAfter(&wxComboBox::SetFocus);
 }
 
 void ReplaceInFilesPanel::OnMarginClick(wxStyledTextEvent& e)

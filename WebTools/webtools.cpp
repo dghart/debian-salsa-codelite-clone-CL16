@@ -53,36 +53,50 @@ WebTools::WebTools(IManager* manager)
     , m_nodejsDebuggerPane(NULL)
     , m_hideToolBarOnDebugStop(false)
 {
-    m_longName = _("Support for JavScript, XML, HTML and other web development tools");
+    m_longName = _("Support for JavScript, XML, HTML, CSS and other web development tools");
     m_shortName = wxT("WebTools");
 
     // Register our new workspace type
     NodeJSWorkspace::Get(); // Instantiate the singleton by faking a call
     clWorkspaceManager::Get().RegisterWorkspace(new NodeJSWorkspace(true));
-    
+
     WebToolsImages images;
     BitmapLoader::RegisterImage(FileExtManager::TypeWorkspaceNodeJS, images.Bitmap("m_bmpNodeJS"));
-    
+
     // Create the syntax highligher worker thread
     m_jsColourThread = new JavaScriptSyntaxColourThread(this);
     m_jsColourThread->Create();
     m_jsColourThread->Run();
 
-    EventNotifier::Get()->Bind(wxEVT_FILE_LOADED, &WebTools::OnRefreshColours, this);
-    EventNotifier::Get()->Bind(wxEVT_FILE_SAVED, &WebTools::OnRefreshColours, this);
+    EventNotifier::Get()->Bind(wxEVT_FILE_LOADED, &WebTools::OnFileLoaded, this);
+    EventNotifier::Get()->Bind(wxEVT_FILE_SAVED, &WebTools::OnFileSaved, this);
     EventNotifier::Get()->Bind(wxEVT_CL_THEME_CHANGED, &WebTools::OnThemeChanged, this);
+
+    // Context menu
+    EventNotifier::Get()->Bind(wxEVT_CONTEXT_MENU_EDITOR, &WebTools::OnEditorContextMenu, this);
+
+    // Code completion related events
     EventNotifier::Get()->Bind(wxEVT_CC_CODE_COMPLETE, &WebTools::OnCodeComplete, this);
     EventNotifier::Get()->Bind(wxEVT_CC_CODE_COMPLETE_LANG_KEYWORD, &WebTools::OnCodeComplete, this);
     EventNotifier::Get()->Bind(wxEVT_CC_CODE_COMPLETE_FUNCTION_CALLTIP, &WebTools::OnCodeCompleteFunctionCalltip, this);
+    EventNotifier::Get()->Bind(wxEVT_CC_FIND_SYMBOL, &WebTools::OnFindSymbol, this);
+
+    // Workspace related events
     EventNotifier::Get()->Bind(wxEVT_WORKSPACE_CLOSED, &WebTools::OnWorkspaceClosed, this);
     EventNotifier::Get()->Bind(wxEVT_WORKSPACE_LOADED, &WebTools::OnWorkspaceLoaded, this);
+
+    // Theme management
     EventNotifier::Get()->Bind(wxEVT_ACTIVE_EDITOR_CHANGED, &WebTools::OnEditorChanged, this);
+
+    // Debugger related
     EventNotifier::Get()->Bind(wxEVT_NODEJS_DEBUGGER_STARTED, &WebTools::OnNodeJSDebuggerStarted, this);
     EventNotifier::Get()->Bind(wxEVT_NODEJS_DEBUGGER_STOPPED, &WebTools::OnNodeJSDebuggerStopped, this);
+    EventNotifier::Get()->Bind(wxEVT_DBG_IS_PLUGIN_DEBUGGER, &WebTools::OnIsDebugger, this);
 
     Bind(wxEVT_MENU, &WebTools::OnSettings, this, XRCID("webtools_settings"));
     m_jsCodeComplete.Reset(new JSCodeCompletion(""));
     m_xmlCodeComplete.Reset(new XMLCodeCompletion());
+    m_cssCodeComplete.Reset(new CSSCodeCompletion());
 
     // Connect the timer
     m_timer = new wxTimer(this);
@@ -93,6 +107,7 @@ WebTools::WebTools(IManager* manager)
 }
 
 WebTools::~WebTools() { NodeJSWorkspace::Free(); }
+
 
 clToolBar* WebTools::CreateToolBar(wxWindow* parent)
 {
@@ -112,8 +127,9 @@ void WebTools::CreatePluginMenu(wxMenu* pluginsMenu)
 
 void WebTools::UnPlug()
 {
-    EventNotifier::Get()->Unbind(wxEVT_FILE_LOADED, &WebTools::OnRefreshColours, this);
-    EventNotifier::Get()->Unbind(wxEVT_FILE_SAVED, &WebTools::OnRefreshColours, this);
+    EventNotifier::Get()->Unbind(wxEVT_CONTEXT_MENU_EDITOR, &WebTools::OnEditorContextMenu, this);
+    EventNotifier::Get()->Unbind(wxEVT_FILE_LOADED, &WebTools::OnFileLoaded, this);
+    EventNotifier::Get()->Unbind(wxEVT_FILE_SAVED, &WebTools::OnFileSaved, this);
     EventNotifier::Get()->Unbind(wxEVT_CL_THEME_CHANGED, &WebTools::OnThemeChanged, this);
     EventNotifier::Get()->Unbind(wxEVT_CC_CODE_COMPLETE, &WebTools::OnCodeComplete, this);
     EventNotifier::Get()->Unbind(wxEVT_CC_CODE_COMPLETE_LANG_KEYWORD, &WebTools::OnCodeComplete, this);
@@ -124,7 +140,8 @@ void WebTools::UnPlug()
     EventNotifier::Get()->Unbind(wxEVT_ACTIVE_EDITOR_CHANGED, &WebTools::OnEditorChanged, this);
     EventNotifier::Get()->Unbind(wxEVT_NODEJS_DEBUGGER_STARTED, &WebTools::OnNodeJSDebuggerStarted, this);
     EventNotifier::Get()->Unbind(wxEVT_NODEJS_DEBUGGER_STOPPED, &WebTools::OnNodeJSDebuggerStopped, this);
-
+    EventNotifier::Get()->Unbind(wxEVT_DBG_IS_PLUGIN_DEBUGGER, &WebTools::OnIsDebugger, this);
+    
     wxTheApp->Unbind(wxEVT_MENU, &WebTools::OnCommentLine, this, XRCID("comment_line"));
     wxTheApp->Unbind(wxEVT_MENU, &WebTools::OnCommentSelection, this, XRCID("comment_selection"));
 
@@ -138,11 +155,10 @@ void WebTools::UnPlug()
     m_jsCodeComplete.Reset(NULL);
 }
 
-void WebTools::OnRefreshColours(clCommandEvent& event)
+void WebTools::DoRefreshColours(const wxString& filename)
 {
-    event.Skip();
-    if(FileExtManager::GetType(event.GetFileName()) == FileExtManager::TypeJS) {
-        m_jsColourThread->QueueFile(event.GetFileName());
+    if(FileExtManager::GetType(filename) == FileExtManager::TypeJS) {
+        m_jsColourThread->QueueFile(filename);
     }
 }
 
@@ -191,6 +207,10 @@ void WebTools::OnCodeComplete(clCodeCompletionEvent& event)
         // Html code completion
         event.Skip(false);
         m_xmlCodeComplete->HtmlCodeComplete(editor);
+    } else if(editor && m_cssCodeComplete && IsCSSFile(editor)) {
+        // CSS code completion
+        event.Skip(false);
+        m_cssCodeComplete->CssCodeComplete(editor);
     }
 }
 
@@ -415,5 +435,60 @@ void WebTools::EnsureAuiPaneIsVisible(const wxString& paneName, bool update)
 void WebTools::OnWorkspaceLoaded(wxCommandEvent& event)
 {
     event.Skip();
-    m_jsCodeComplete.Reset(new JSCodeCompletion(wxFileName(event.GetString()).GetPath()));
+    wxFileName workspaceFile = event.GetString();
+    if(FileExtManager::GetType(workspaceFile.GetFullPath()) == FileExtManager::TypeWorkspaceNodeJS) {
+        m_jsCodeComplete.Reset(new JSCodeCompletion(workspaceFile.GetPath()));
+    } else {
+        // For non NodeJS workspaces, create the .tern files under
+        // the .codelite folder
+        workspaceFile.AppendDir(".codelite");
+        m_jsCodeComplete.Reset(new JSCodeCompletion(workspaceFile.GetPath()));
+    }
+}
+
+bool WebTools::IsCSSFile(IEditor* editor)
+{
+    return (FileExtManager::GetType(editor->GetFileName().GetFullName()) == FileExtManager::TypeCSS);
+}
+
+void WebTools::OnFindSymbol(clCodeCompletionEvent& event)
+{
+    event.Skip();
+    IEditor* editor = m_mgr->GetActiveEditor();
+    if(editor && m_jsCodeComplete && IsJavaScriptFile(editor) && !InsideJSComment(editor)) {
+        event.Skip(false);
+        m_jsCodeComplete->FindDefinition(editor);
+    }
+}
+
+void WebTools::OnFileLoaded(clCommandEvent& event)
+{
+    event.Skip();
+    DoRefreshColours(event.GetFileName());
+}
+
+void WebTools::OnFileSaved(clCommandEvent& event)
+{
+    event.Skip();
+    DoRefreshColours(event.GetFileName());
+    IEditor* editor = m_mgr->GetActiveEditor();
+    if(editor && m_jsCodeComplete && IsJavaScriptFile(editor) && !InsideJSComment(editor)) {
+        //m_jsCodeComplete->ReparseFile(editor);
+        m_jsCodeComplete->ResetTern();
+    }
+}
+
+void WebTools::OnEditorContextMenu(clContextMenuEvent& event)
+{
+    event.Skip();
+    IEditor* editor = m_mgr->GetActiveEditor();
+    if(editor && m_jsCodeComplete && IsJavaScriptFile(editor) && !InsideJSComment(editor)) {
+        m_jsCodeComplete->AddContextMenu(event.GetMenu(), editor);
+    }
+}
+
+void WebTools::OnIsDebugger(clDebugEvent& event)
+{
+    event.Skip(); // always call skip
+    //event.GetStrings().Add("NodeJS Debugger");
 }

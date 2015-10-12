@@ -19,6 +19,7 @@
 #include "php_strings.h"
 #include "php_configuration_data.h"
 #include "clWorkspaceManager.h"
+#include <algorithm>
 
 #ifndef __WXMSW__
 #include <errno.h>
@@ -155,10 +156,10 @@ bool PHPWorkspace::Open(const wxString& filename, bool createIfMissing)
 
     // Perform a quick re-parse of the workspace
     ParseWorkspace(false);
-    
+
     // set this workspace as the active one
     clWorkspaceManager::Get().SetWorkspace(this);
-    
+
     // and finally, request codelite to keep this workspace in the recently opened workspace list
     clGetManager()->AddWorkspaceToRecentlyUsedList(GetFilename());
 
@@ -559,6 +560,10 @@ PHPProject::Ptr_t PHPWorkspace::GetProjectForFile(const wxFileName& filename) co
 
 bool PHPWorkspace::AddProject(const wxFileName& projectFile, wxString& errmsg)
 {
+    if(!CanCreateProjectAtPath(projectFile, true)) {
+        return false;
+    }
+
     PHPProject::Ptr_t proj(new PHPProject());
     proj->Load(projectFile);
 
@@ -630,4 +635,33 @@ wxString PHPWorkspace::GetFilesMask() const
     // set the default find in files mask
     PHPConfigurationData conf;
     return conf.Load().GetFindInFilesMask();
+}
+
+wxString PHPWorkspace::GetProjectFromFile(const wxFileName& filename) const
+{
+    PHPProject::Map_t::const_iterator iter =
+        std::find_if(m_projects.begin(), m_projects.end(), [&](const PHPProject::Map_t::value_type& v) {
+            wxString path = filename.GetPath();
+            return path.StartsWith(v.second->GetFilename().GetPath());
+        });
+
+    if(iter != m_projects.end()) {
+        return iter->second->GetName();
+    }
+    return wxEmptyString;
+}
+
+void PHPWorkspace::GetProjectFiles(const wxString& projectName, wxArrayString& files) const
+{
+    PHPProject::Ptr_t p = GetProject(projectName.IsEmpty() ? GetActiveProjectName() : projectName);
+    CHECK_PTR_RET(p);
+
+    p->GetFilesArray(files);
+}
+
+void PHPWorkspace::GetWorkspaceFiles(wxArrayString& files) const
+{
+    std::for_each(m_projects.begin(), m_projects.end(), [&](const PHPProject::Map_t::value_type& v) {
+        v.second->GetFilesArray(files);
+    });
 }

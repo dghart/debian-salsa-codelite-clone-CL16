@@ -115,6 +115,10 @@ void clTreeCtrlPanel::OnContextMenu(wxTreeEvent& event)
         menu.AppendSeparator();
         menu.Append(XRCID("tree_ctrl_delete_file"), _("Delete"));
 
+        menu.AppendSeparator();
+        menu.Append(XRCID("tree_ctrl_open_containig_folder"), _("Open Containing Folder"));
+        menu.Append(XRCID("tree_ctrl_open_shell_folder"), _("Open Shell"));
+
         // Now that we added the basic menu, let the plugin
         // adjust it
         wxArrayString files, folders;
@@ -132,6 +136,9 @@ void clTreeCtrlPanel::OnContextMenu(wxTreeEvent& event)
         menu.Bind(wxEVT_MENU, &clTreeCtrlPanel::OnDeleteSelections, this, XRCID("tree_ctrl_delete_file"));
         menu.Bind(
             wxEVT_MENU, &clTreeCtrlPanel::OnOpenWithDefaultApplication, this, XRCID("tree_ctrl_open_with_default_app"));
+        menu.Bind(wxEVT_MENU, &clTreeCtrlPanel::OnOpenContainingFolder, this, XRCID("tree_ctrl_open_containig_folder"));
+        menu.Bind(wxEVT_MENU, &clTreeCtrlPanel::OnOpenShellFolder, this, XRCID("tree_ctrl_open_shell_folder"));
+
         PopupMenu(&menu);
     } else {
         // context menu elsewhere
@@ -354,7 +361,7 @@ void clTreeCtrlPanel::OnNewFile(wxCommandEvent& event)
     CHECK_COND_RET(cd->IsFolder());
 
     wxString filename =
-        ::clGetTextFromUser(_("New File"), _("Set the file name:"), m_newfileTemplate, m_newfileTemplateHighlightLen);
+        ::clGetTextFromUser(_("New File"), _("Set the file name:"), m_newfileTemplate);
     if(filename.IsEmpty()) return; // user cancelled
 
     wxFileName file(cd->GetPath(), filename);
@@ -700,6 +707,9 @@ void clTreeCtrlPanel::OnOpenContainingFolder(wxCommandEvent& event)
 
     if(cd && cd->IsFolder()) {
         FileUtils::OpenFileExplorer(cd->GetPath());
+    } else if(cd && cd->IsFile()) {
+        wxFileName fn(cd->GetPath());
+        FileUtils::OpenFileExplorerAndSelect(fn);
     }
 }
 
@@ -710,6 +720,9 @@ void clTreeCtrlPanel::OnOpenShellFolder(wxCommandEvent& event)
 
     if(cd && cd->IsFolder()) {
         FileUtils::OpenTerminal(cd->GetPath());
+    } else if(cd && cd->IsFile()) {
+        wxFileName fn(cd->GetPath());
+        FileUtils::OpenTerminal(fn.GetPath());
     }
 }
 

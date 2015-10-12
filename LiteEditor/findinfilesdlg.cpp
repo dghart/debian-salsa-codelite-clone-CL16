@@ -56,14 +56,15 @@ FindInFilesDialog::FindInFilesDialog(wxWindow* parent, const wxString& dataName)
     m_findString->Clear();
     m_findString->Append(m_data.GetFindStringArr());
     m_findString->SetValue(m_data.GetFindString());
-
+    m_replaceString->Append(m_data.GetReplaceStringArr());
+    m_replaceString->SetValue(m_data.GetReplaceString());
     m_fileTypes->SetSelection(0);
 
     m_matchCase->SetValue(m_data.GetFlags() & wxFRD_MATCHCASE);
     m_matchWholeWord->SetValue(m_data.GetFlags() & wxFRD_MATCHWHOLEWORD);
     m_regualrExpression->SetValue(m_data.GetFlags() & wxFRD_REGULAREXPRESSION);
     m_checkBoxSaveFilesBeforeSearching->SetValue(m_data.GetFlags() & wxFRD_SAVE_BEFORE_SEARCH);
-    
+    m_checkBoxPipeForGrep->SetValue(m_data.GetFlags() & wxFRD_ENABLE_PIPE_SUPPORT);
     // Set encoding
     wxArrayString astrEncodings;
     wxFontEncoding fontEnc;
@@ -103,6 +104,7 @@ FindInFilesDialog::~FindInFilesDialog()
     // Update the data
     m_data.SetFlags(GetSearchFlags());
     m_data.SetFindString(m_findString->GetValue());
+    m_data.SetReplaceString(m_replaceString->GetValue());
     m_data.SetEncoding(m_choiceEncoding->GetStringSelection());
     wxString value = m_fileTypes->GetValue();
     value.Trim().Trim(false);
@@ -199,11 +201,12 @@ SearchData FindInFilesDialog::DoGetSearchData()
 {
     SearchData data;
     wxString findStr(m_data.GetFindString());
-    if(m_findString->GetValue().IsEmpty() == false) {
+    if(!m_findString->GetValue().IsEmpty()) {
         findStr = m_findString->GetValue();
     }
 
     data.SetFindString(findStr);
+    data.SetReplaceWith(m_replaceString->GetValue());
 
     m_data.SetFlags(GetSearchFlags());
     size_t flags = m_data.GetFlags();
@@ -222,22 +225,43 @@ SearchData FindInFilesDialog::DoGetSearchData()
     data.SetSkipComments(flags & wxFRD_SKIP_COMMENTS);
     data.SetSkipStrings(flags & wxFRD_SKIP_STRINGS);
     data.SetColourComments(flags & wxFRD_COLOUR_COMMENTS);
-
+    data.SetEnablePipeSupport(flags & wxFRD_ENABLE_PIPE_SUPPORT);
     wxArrayString searchWhere = m_listPaths->GetStrings();
     wxArrayString files;
     wxArrayString rootDirs;
+    
     for(size_t i = 0; i < searchWhere.GetCount(); ++i) {
         const wxString& rootDir = searchWhere.Item(i);
         // Check both translations and otherwise: the history may contain either
         if((rootDir == wxGetTranslation(SEARCH_IN_WORKSPACE)) || (rootDir == SEARCH_IN_WORKSPACE)) {
-            ManagerST::Get()->GetWorkspaceFiles(files);
+            if(!clWorkspaceManager::Get().IsWorkspaceOpened()) continue;
+            clWorkspaceManager::Get().GetWorkspace()->GetWorkspaceFiles(files);
 
         } else if((rootDir == wxGetTranslation(SEARCH_IN_PROJECT)) || (rootDir == SEARCH_IN_PROJECT)) {
-            ManagerST::Get()->GetActiveProjectFiles(files);
+            if(!clWorkspaceManager::Get().IsWorkspaceOpened()) continue;
+            if(clWorkspaceManager::Get().GetWorkspace()->IsProjectSupported()) {
+                // get the active project files
+                clWorkspaceManager::Get().GetWorkspace()->GetProjectFiles("", files);
+            } else {
+                // search the entire workspace
+                clWorkspaceManager::Get().GetWorkspace()->GetWorkspaceFiles(files);
+            }
 
         } else if((rootDir == wxGetTranslation(SEARCH_IN_CURR_FILE_PROJECT)) ||
                   (rootDir == SEARCH_IN_CURR_FILE_PROJECT)) {
-            ManagerST::Get()->GetActiveFileProjectFiles(files);
+
+            if(!clWorkspaceManager::Get().IsWorkspaceOpened()) continue;
+            IEditor* editor = clGetManager()->GetActiveEditor();
+            if(!editor) continue;
+
+            if(clWorkspaceManager::Get().GetWorkspace()->IsProjectSupported()) {
+                wxString projectName =
+                    clWorkspaceManager::Get().GetWorkspace()->GetProjectFromFile(editor->GetFileName());
+                clWorkspaceManager::Get().GetWorkspace()->GetProjectFiles(projectName, files);
+            } else {
+                // search the entire workspace
+                clWorkspaceManager::Get().GetWorkspace()->GetWorkspaceFiles(files);
+            }
 
         } else if((rootDir == wxGetTranslation(SEARCH_IN_CURRENT_FILE)) || (rootDir == SEARCH_IN_CURRENT_FILE)) {
             LEditor* editor = clMainFrame::Get()->GetMainBook()->GetActiveEditor();
@@ -258,6 +282,18 @@ SearchData FindInFilesDialog::DoGetSearchData()
             rootDirs.Add(searchWhere.Item(i));
         }
     }
+
+    // Remove duplicates
+    wxStringSet_t filesSet;
+    wxArrayString uniqueFiles;
+    std::for_each(files.begin(), files.end(), [&](const wxString& file) {
+        if(filesSet.count(file) == 0) {
+            filesSet.insert(file);
+            uniqueFiles.Add(file);
+        }
+    });
+
+    files.swap(uniqueFiles);
 
     data.SetFiles(files);       // list of files
     data.SetRootDirs(rootDirs); // folders
@@ -372,6 +408,7 @@ size_t FindInFilesDialog::GetSearchFlags()
     if(m_matchWholeWord->IsChecked()) flags |= wxFRD_MATCHWHOLEWORD;
     if(m_regualrExpression->IsChecked()) flags |= wxFRD_REGULAREXPRESSION;
     if(m_checkBoxSaveFilesBeforeSearching->IsChecked()) flags |= wxFRD_SAVE_BEFORE_SEARCH;
+    if(m_checkBoxPipeForGrep->IsChecked()) flags |= wxFRD_ENABLE_PIPE_SUPPORT;
     return flags;
 }
 
@@ -413,4 +450,9 @@ void FindInFilesDialog::DoAddSearchPaths(const wxArrayString& paths)
     for(size_t i = 0; i < paths.size(); ++i) {
         DoAddSearchPath(paths.Item(i));
     }
+}
+void FindInFilesDialog::OnReplaceUI(wxUpdateUIEvent& event)
+{
+    event.Enable(!m_findString->GetValue().IsEmpty() && !m_listPaths->IsEmpty() &&
+                 !m_replaceString->GetValue().IsEmpty());
 }

@@ -9,12 +9,13 @@
 #include "fileutils.h"
 #include <wx/stopwatch.h>
 #include <wx/log.h>
+#include "PHPEntityFunctionAlias.h"
 
 wxDEFINE_EVENT(wxPHP_PARSE_STARTED, clParseEvent);
 wxDEFINE_EVENT(wxPHP_PARSE_ENDED, clParseEvent);
 wxDEFINE_EVENT(wxPHP_PARSE_PROGRESS, clParseEvent);
 
-static wxString PHP_SCHEMA_VERSION = "7.0.6";
+static wxString PHP_SCHEMA_VERSION = "9.0.1";
 
 //------------------------------------------------
 // Metadata table
@@ -78,6 +79,28 @@ const static wxString CREATE_FUNCTION_TABLE_SQL_IDX4 =
     "CREATE INDEX IF NOT EXISTS FUNCTION_TABLE_IDX_4 ON FUNCTION_TABLE(NAME)";
 const static wxString CREATE_FUNCTION_TABLE_SQL_IDX5 =
     "CREATE INDEX IF NOT EXISTS FUNCTION_TABLE_IDX_5 ON FUNCTION_TABLE(LINE_NUMBER)";
+
+//------------------------------------------------
+// Function Alias table
+//------------------------------------------------
+const static wxString CREATE_FUNCTION_ALIAS_TABLE_SQL =
+    "CREATE TABLE IF NOT EXISTS FUNCTION_ALIAS_TABLE(ID INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, "
+    "SCOPE_ID INTEGER NOT NULL DEFAULT -1, "
+    "NAME TEXT, "         // no scope, just the function name
+    "REALNAME TEXT, "     // The fullname of the actual function we are referencing
+    "FULLNAME TEXT, "     // Fullname with scope (of the alias name)
+    "SCOPE TEXT, "        // Usually, this means the namespace\class
+    "LINE_NUMBER INTEGER NOT NULL DEFAULT 0, "
+    "FILE_NAME TEXT )";
+
+const static wxString CREATE_FUNCTION_ALIAS_TABLE_SQL_IDX1 =
+    "CREATE INDEX IF NOT EXISTS FUNCTION_ALIAS_TABLE_IDX_1 ON FUNCTION_ALIAS_TABLE(SCOPE_ID)";
+const static wxString CREATE_FUNCTION_ALIAS_TABLE_SQL_IDX2 =
+    "CREATE INDEX IF NOT EXISTS FUNCTION_ALIAS_TABLE_IDX_2 ON FUNCTION_ALIAS_TABLE(NAME)";
+const static wxString CREATE_FUNCTION_ALIAS_TABLE_SQL_IDX3 =
+    "CREATE INDEX IF NOT EXISTS FUNCTION_ALIAS_TABLE_IDX_3 ON FUNCTION_ALIAS_TABLE(REALNAME)";
+const static wxString CREATE_FUNCTION_ALIAS_TABLE_SQL_IDX4 =
+    "CREATE UNIQUE INDEX IF NOT EXISTS FUNCTION_ALIAS_TABLE_IDX_4 ON FUNCTION_ALIAS_TABLE(NAME,REALNAME,SCOPE_ID)";
 
 //------------------------------------------------
 // Variables table
@@ -217,6 +240,7 @@ void PHPLookupTable::CreateSchema()
         m_db.ExecuteUpdate("drop table if exists SCHEMA_VERSION");
         m_db.ExecuteUpdate("drop table if exists SCOPE_TABLE");
         m_db.ExecuteUpdate("drop table if exists FUNCTION_TABLE");
+        m_db.ExecuteUpdate("drop table if exists FUNCTION_ALIAS_TABLE");
         m_db.ExecuteUpdate("drop table if exists VARIABLES_TABLE");
         m_db.ExecuteUpdate("drop table if exists FILES_TABLE");
     }
@@ -242,6 +266,13 @@ void PHPLookupTable::CreateSchema()
         m_db.ExecuteUpdate(CREATE_FUNCTION_TABLE_SQL_IDX3);
         m_db.ExecuteUpdate(CREATE_FUNCTION_TABLE_SQL_IDX4);
         m_db.ExecuteUpdate(CREATE_FUNCTION_TABLE_SQL_IDX5);
+
+        // function alias table
+        m_db.ExecuteUpdate(CREATE_FUNCTION_ALIAS_TABLE_SQL);
+        m_db.ExecuteUpdate(CREATE_FUNCTION_ALIAS_TABLE_SQL_IDX1);
+        m_db.ExecuteUpdate(CREATE_FUNCTION_ALIAS_TABLE_SQL_IDX2);
+        m_db.ExecuteUpdate(CREATE_FUNCTION_ALIAS_TABLE_SQL_IDX3);
+        m_db.ExecuteUpdate(CREATE_FUNCTION_ALIAS_TABLE_SQL_IDX4);
 
         // variables (function args, globals class members and consts)
         m_db.ExecuteUpdate(CREATE_VARIABLES_TABLE_SQL);
@@ -353,7 +384,25 @@ PHPLookupTable::DoFindMemberOf(wxLongLong parentDbId, const wxString& exactName,
                 matches.push_back(match);
             }
         }
+        
+        if(matches.empty()) {
+            // Search functions alias table
+            wxString sql;
+            sql << "SELECT * from FUNCTION_ALIAS_TABLE WHERE SCOPE_ID=" << parentDbId << " AND NAME='" << exactName << "'";
+            wxSQLite3Statement st = m_db.PrepareStatement(sql);
+            wxSQLite3ResultSet res = st.ExecuteQuery();
 
+            while(res.NextRow()) {
+                PHPEntityBase::Ptr_t match(new PHPEntityFunctionAlias());
+                match->FromResultSet(res);
+                PHPEntityBase::Ptr_t pFunc = FindFunction(match->Cast<PHPEntityFunctionAlias>()->GetRealname());
+                if(pFunc) {
+                    match->Cast<PHPEntityFunctionAlias>()->SetFunc(pFunc);
+                    matches.push_back(match);
+                }
+            }
+        }
+        
         if(matches.empty() && parentIsNamespace) {
             // search the scope table as well
             wxString sql;
@@ -790,7 +839,15 @@ void PHPLookupTable::DeleteFileEntries(const wxFileName& filename, bool autoComm
             st.Bind(st.GetParamIndex(":FILE_NAME"), filename.GetFullPath());
             st.ExecuteUpdate();
         }
-
+        
+        {
+            wxString sql;
+            sql << "delete from FUNCTION_ALIAS_TABLE where FILE_NAME=:FILE_NAME";
+            wxSQLite3Statement st = m_db.PrepareStatement(sql);
+            st.Bind(st.GetParamIndex(":FILE_NAME"), filename.GetFullPath());
+            st.ExecuteUpdate();
+        }
+        
         {
             wxString sql;
             sql << "delete from VARIABLES_TABLE where FILE_NAME=:FILE_NAME";
@@ -866,16 +923,43 @@ void PHPLookupTable::DoFindChildren(PHPEntityBase::List_t& matches,
             while(res.NextRow()) {
                 PHPEntityBase::Ptr_t match(new PHPEntityFunction());
                 match->FromResultSet(res);
-                bool isStatic = match->HasFlag(kFunc_Static);
-                if(isStatic & CollectingStatics(flags)) {
+                bool isStaticFunction = match->HasFlag(kFunc_Static);
+                if(isStaticFunction) {
+                    // always return static functions
                     matches.push_back(match);
 
-                } else if(!isStatic && !CollectingStatics(flags)) {
+                } else {
+                    // Non static function.
+                    if(!(flags & kLookupFlags_Static)) {
+                        matches.push_back(match);
+                    }
+                }
+            }
+        }
+        
+        {
+            // load function aliases
+            wxString sql;
+            sql << "SELECT * from FUNCTION_ALIAS_TABLE WHERE SCOPE_ID=" << parentId << " AND ";
+            DoAddNameFilter(sql, nameHint, flags);
+            DoAddLimit(sql);
+
+            wxSQLite3Statement st = m_db.PrepareStatement(sql);
+            wxSQLite3ResultSet res = st.ExecuteQuery();
+            while(res.NextRow()) {
+                PHPEntityBase::Ptr_t match(new PHPEntityFunctionAlias());
+                match->FromResultSet(res);
+                const wxString& realFuncName = match->Cast<PHPEntityFunctionAlias>()->GetRealname();
+                // Load the function pointed by this reference
+                PHPEntityBase::Ptr_t pFunc = FindFunction(realFuncName);
+                if(pFunc) {
+                    // Keep the reference to the real function
+                    match->Cast<PHPEntityFunctionAlias>()->SetFunc(pFunc);
                     matches.push_back(match);
                 }
             }
         }
-
+        
         {
             // Add members from the variables table
             wxString sql;
@@ -974,7 +1058,14 @@ void PHPLookupTable::ClearAll(bool autoCommit)
             wxSQLite3Statement st = m_db.PrepareStatement(sql);
             st.ExecuteUpdate();
         }
-
+        
+        {
+            wxString sql;
+            sql << "delete from FUNCTION_ALIAS_TABLE";
+            wxSQLite3Statement st = m_db.PrepareStatement(sql);
+            st.ExecuteUpdate();
+        }
+        
         if(autoCommit) m_db.Commit();
     } catch(wxSQLite3Exception& e) {
         if(autoCommit) m_db.Rollback();
@@ -1194,6 +1285,23 @@ PHPEntityBase::List_t PHPLookupTable::FindSymbol(const wxString& name)
             //---------------------------------------------------------------------
             wxString sql;
             sql << "SELECT * from FUNCTION_TABLE WHERE NAME='" << name << "'";
+
+            wxSQLite3Statement st = m_db.PrepareStatement(sql);
+            wxSQLite3ResultSet res = st.ExecuteQuery();
+
+            while(res.NextRow()) {
+                PHPEntityBase::Ptr_t match(new PHPEntityFunction());
+                match->FromResultSet(res);
+                matches.push_back(match);
+            }
+        }
+        
+        {
+            //---------------------------------------------------------------------
+            // Load function aliases
+            //---------------------------------------------------------------------
+            wxString sql;
+            sql << "SELECT * from FUNCTION_ALIAS_TABLE WHERE NAME='" << name << "'";
 
             wxSQLite3Statement st = m_db.PrepareStatement(sql);
             wxSQLite3ResultSet res = st.ExecuteQuery();
