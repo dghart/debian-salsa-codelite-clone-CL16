@@ -1,8 +1,22 @@
-codelite (9.0+dfsg-1) UNRELEASED; urgency=medium
+codelite (9.0+dfsg-1) unstable; urgency=medium
 
-  *
+  * New upstream release.
 
- -- James Cowgill <james410@cowgill.org.uk>  Mon, 12 Oct 2015 20:40:47 +0100
+  * debian/codelite.menu:
+    - Remove menu file and xpm icon.
+  * debian/codelite.install:
+    - Do not install clgcc and clg++ executables.
+  * debian/codelite-plugins.links:
+    - Drop /usr/lib/codelite/resources symlink.
+  * debian/control:
+    - Adjust description to note other supported programming languages.
+  * debian/patches:
+    - Refresh patches.
+    - Modify 02_remove-bundled-sqlite.patch to only remove wxsqlite since
+      upstream now does not bundle sqlite.
+    - Modify stripping patch to also remove duplicate Debian build flags.
+
+ -- James Cowgill <james410@cowgill.org.uk>  Tue, 13 Oct 2015 14:20:28 +0100
 
 codelite (8.1+dfsg-1) unstable; urgency=medium
 
