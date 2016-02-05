@@ -1,7 +1,7 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //
-// copyright            : (C) 2014 The CodeLite Team
+// copyright            : (C) 2014 Eran Ifrah
 // file name            : continuousbuild.h
 //
 // -------------------------------------------------------------------------
@@ -30,6 +30,7 @@
 #include "buildprocess.h"
 #include "compiler.h"
 #include "cl_command_event.h"
+#include "clTabTogglerHelper.h"
 
 class wxEvtHandler;
 class ContinousBuildPane;
@@ -42,7 +43,8 @@ class ContinuousBuild : public IPlugin
     BuildProcess m_buildProcess;
     wxArrayString m_files;
     bool m_buildInProgress;
-
+    clTabTogglerHelper::Ptr_t m_tabHelper;
+    
 public:
     void DoBuild(const wxString& fileName);
 

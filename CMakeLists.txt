@@ -38,6 +38,10 @@ project( "CodeLite" )
 ## Generate compile_commands.json file for code completion
 set( CMAKE_EXPORT_COMPILE_COMMANDS 1 )
 
+if( UNIX AND NOT APPLE)
+    set( CMAKE_LIBRARY_ARCHITECTURE x86_64-linux-gnu ) # add search path needed by (at least) libssh and gtk2 libraries
+endif()
+
 set( CL_PREFIX "/usr" )
 if (CMAKE_CURRENT_LIST_DIR) # since cmake 2.8.3
     set( CL_SRC_ROOT ${CMAKE_CURRENT_LIST_DIR})
@@ -58,6 +62,8 @@ set( IS_FREEBSD 0 )
 set( BUILD_WXC 0 )
 set( CL_COPY_WX_LIBS 0 )
 set( WITH_SFTP 1 )
+
+set (CMAKE_CXX_FLAGS -Wno-deprecated-declarations) # Avoid very multiple warnings spam due to deprecated wx methods
 
 if ( UNIX )
     execute_process(COMMAND pwd OUTPUT_VARIABLE BUILD_DIRECTORY OUTPUT_STRIP_TRAILING_WHITESPACE)
@@ -381,7 +387,7 @@ if ( MAKE_DEB )
 
     set(CPACK_GENERATOR                   "DEB")
     set(CPACK_PACKAGE_NAME                "CodeLite")
-    set(CPACK_PACKAGE_VERSION             "9.0.0")
+    set(CPACK_PACKAGE_VERSION             "9.1.0")
     set(CPACK_DEBIAN_PACKAGE_MAINTAINER   "Eran Ifrah <eran.ifrah@gmail.com>")
     set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "C/C++/PHP and Node.js IDE (Integrated Development Environment)")
     set(CPACK_DEBIAN_PACKAGE_SECTION      "devel")
@@ -401,8 +407,8 @@ if (USE_CLANG)
 
 if (APPLE)
   set( CLANG_INCLUDE "${CL_SRC_ROOT}/sdk/clang/include" )
-  set( CLANG_LIBRARY "-L${CL_SRC_ROOT}/sdk/clang/lib -lclang" )
-  set( CLANG_BINARY "${CL_SRC_ROOT}/sdk/clang/lib/libclang.dylib")
+  set( CLANG_LIBRARY "-L${CL_SRC_ROOT}/sdk/clang/lib -lclang.3.7" )
+  set( CLANG_BINARY "${CL_SRC_ROOT}/sdk/clang/lib/libclang.3.7.dylib")
 
 elseif (MINGW)
   find_package(LLVM)

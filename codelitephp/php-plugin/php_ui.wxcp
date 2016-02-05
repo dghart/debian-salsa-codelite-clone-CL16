@@ -1,7 +1,7 @@
 {
  "metadata": {
   "m_generatedFilesDir": ".",
-  "m_objCounter": 689,
+  "m_objCounter": 692,
   "m_includeFiles": [],
   "m_bitmapFunction": "wxCF01InitBitmapResources",
   "m_bitmapsFile": "php_ui_php-plugin_bitmaps.cpp",
@@ -9,6 +9,7 @@
   "m_outputFileName": "php_ui",
   "m_firstWindowId": 8000,
   "m_useEnum": true,
+  "m_useUnderscoreMacro": true,
   "m_templateClasses": [{
     "m_includeFile": "#include \"php_file_layout_tree.h\"",
     "m_allocationLine": "m_treeCtrlLayout = new PHPFileLayoutTree($parent);",
@@ -28,11 +29,11 @@
    "m_properties": [{
      "type": "string",
      "m_label": "Size:",
-     "m_value": "400,400"
+     "m_value": "400,300"
     }, {
      "type": "string",
      "m_label": "Minimum Size:",
-     "m_value": ""
+     "m_value": "400,300"
     }, {
      "type": "string",
      "m_label": "Name:",
@@ -156,117 +157,9 @@
       }],
      "m_events": [],
      "m_children": [{
-       "m_type": 4406,
-       "proportion": 0,
-       "border": 5,
-       "gbSpan": ",",
-       "gbPosition": ",",
-       "m_styles": ["wxTE_PROCESS_ENTER"],
-       "m_sizerFlags": ["wxALL", "wxLEFT", "wxRIGHT", "wxTOP", "wxBOTTOM", "wxEXPAND"],
-       "m_properties": [{
-         "type": "winid",
-         "m_label": "ID:",
-         "m_winid": "wxID_ANY"
-        }, {
-         "type": "string",
-         "m_label": "Size:",
-         "m_value": ""
-        }, {
-         "type": "string",
-         "m_label": "Minimum Size:",
-         "m_value": ""
-        }, {
-         "type": "string",
-         "m_label": "Name:",
-         "m_value": "m_textCtrl"
-        }, {
-         "type": "multi-string",
-         "m_label": "Tooltip:",
-         "m_value": ""
-        }, {
-         "type": "colour",
-         "m_label": "Bg Colour:",
-         "colour": "<Default>"
-        }, {
-         "type": "colour",
-         "m_label": "Fg Colour:",
-         "colour": "<Default>"
-        }, {
-         "type": "font",
-         "m_label": "Font:",
-         "m_value": ""
-        }, {
-         "type": "bool",
-         "m_label": "Hidden",
-         "m_value": false
-        }, {
-         "type": "bool",
-         "m_label": "Disabled",
-         "m_value": false
-        }, {
-         "type": "bool",
-         "m_label": "Focused",
-         "m_value": true
-        }, {
-         "type": "string",
-         "m_label": "Class Name:",
-         "m_value": ""
-        }, {
-         "type": "string",
-         "m_label": "Include File:",
-         "m_value": ""
-        }, {
-         "type": "string",
-         "m_label": "Style:",
-         "m_value": ""
-        }, {
-         "type": "string",
-         "m_label": "Value:",
-         "m_value": ""
-        }, {
-         "type": "string",
-         "m_label": "Text Hint",
-         "m_value": ""
-        }, {
-         "type": "string",
-         "m_label": "Max Length:",
-         "m_value": "0"
-        }, {
-         "type": "bool",
-         "m_label": "Auto Complete Directories:",
-         "m_value": false
-        }, {
-         "type": "bool",
-         "m_label": "Auto Complete Files:",
-         "m_value": false
-        }],
-       "m_events": [{
-         "m_eventName": "wxEVT_KEY_DOWN",
-         "m_eventClass": "wxKeyEvent",
-         "m_eventHandler": "wxKeyEventHandler",
-         "m_functionNameAndSignature": "OnKeyDown(wxKeyEvent& event)",
-         "m_description": "Process a wxEVT_KEY_DOWN event (any key has been pressed)",
-         "m_noBody": false
-        }, {
-         "m_eventName": "wxEVT_COMMAND_TEXT_UPDATED",
-         "m_eventClass": "wxCommandEvent",
-         "m_eventHandler": "wxCommandEventHandler",
-         "m_functionNameAndSignature": "OnTextEntered(wxCommandEvent& event)",
-         "m_description": "Respond to a wxEVT_COMMAND_TEXT_UPDATED event, generated when the text changes.\nNotice that this event will be sent when the text controls contents changes\n - whether this is due to user input or comes from the program itself\n(for example, if SetValue() is called); see ChangeValue() for a function which does not send this event.",
-         "m_noBody": false
-        }, {
-         "m_eventName": "wxEVT_COMMAND_TEXT_ENTER",
-         "m_eventClass": "wxCommandEvent",
-         "m_eventHandler": "wxCommandEventHandler",
-         "m_functionNameAndSignature": "OnEnter(wxCommandEvent& event)",
-         "m_description": "Respond to a wxEVT_COMMAND_TEXT_ENTER event, generated when enter is pressed in a text control\n(which must have wxTE_PROCESS_ENTER style for this event to be generated).",
-         "m_noBody": false
-        }],
-       "m_children": []
-      }, {
        "m_type": 4465,
        "proportion": 1,
-       "border": 5,
+       "border": 2,
        "gbSpan": ",",
        "gbPosition": ",",
        "m_styles": [],
@@ -278,11 +171,11 @@
         }, {
          "type": "string",
          "m_label": "Size:",
-         "m_value": ""
+         "m_value": "400,300"
         }, {
          "type": "string",
          "m_label": "Minimum Size:",
-         "m_value": ""
+         "m_value": "400,300"
         }, {
          "type": "string",
          "m_label": "Name:",
@@ -348,7 +241,7 @@
     }, {
      "type": "string",
      "m_label": "Minimum Size:",
-     "m_value": ""
+     "m_value": "500,300"
     }, {
      "type": "string",
      "m_label": "Name:",
@@ -2155,11 +2048,11 @@
    "m_properties": [{
      "type": "string",
      "m_label": "Size:",
-     "m_value": "-1,-1"
+     "m_value": "400,300"
     }, {
      "type": "string",
      "m_label": "Minimum Size:",
-     "m_value": ""
+     "m_value": "400,300"
     }, {
      "type": "string",
      "m_label": "Name:",
@@ -2666,11 +2559,11 @@
    "m_properties": [{
      "type": "string",
      "m_label": "Size:",
-     "m_value": ""
+     "m_value": "500,300"
     }, {
      "type": "string",
      "m_label": "Minimum Size:",
-     "m_value": ""
+     "m_value": "500,300"
     }, {
      "type": "string",
      "m_label": "Name:",
@@ -3099,7 +2992,7 @@
                "border": 5,
                "gbSpan": ",",
                "gbPosition": ",",
-               "m_styles": ["wxFLP_DEFAULT_STYLE", "wxFLP_USE_TEXTCTRL", "wxFLP_FILE_MUST_EXIST"],
+               "m_styles": ["wxFLP_DEFAULT_STYLE", "wxFLP_USE_TEXTCTRL", "wxFLP_SMALL", "wxFLP_FILE_MUST_EXIST"],
                "m_sizerFlags": ["wxLEFT", "wxTOP", "wxBOTTOM", "wxEXPAND", "wxALIGN_CENTER_VERTICAL"],
                "m_properties": [{
                  "type": "winid",
@@ -5130,11 +5023,11 @@
    "m_properties": [{
      "type": "string",
      "m_label": "Size:",
-     "m_value": ""
+     "m_value": "-1,-1"
     }, {
      "type": "string",
      "m_label": "Minimum Size:",
-     "m_value": ""
+     "m_value": "600,500"
     }, {
      "type": "string",
      "m_label": "Name:",
@@ -5816,7 +5709,7 @@
                      "border": 5,
                      "gbSpan": ",",
                      "gbPosition": ",",
-                     "m_styles": ["wxFLP_DEFAULT_STYLE", "wxFLP_USE_TEXTCTRL"],
+                     "m_styles": ["wxFLP_DEFAULT_STYLE", "wxFLP_USE_TEXTCTRL", "wxFLP_SMALL"],
                      "m_sizerFlags": ["wxALL", "wxLEFT", "wxRIGHT", "wxTOP", "wxBOTTOM", "wxEXPAND"],
                      "m_properties": [{
                        "type": "winid",
@@ -5977,7 +5870,7 @@
                      "border": 5,
                      "gbSpan": "1,1",
                      "gbPosition": "0,0",
-                     "m_styles": ["wxFLP_DEFAULT_STYLE", "wxFLP_USE_TEXTCTRL"],
+                     "m_styles": ["wxFLP_DEFAULT_STYLE", "wxFLP_USE_TEXTCTRL", "wxFLP_SMALL"],
                      "m_sizerFlags": ["wxALL", "wxLEFT", "wxRIGHT", "wxTOP", "wxBOTTOM", "wxEXPAND"],
                      "m_properties": [{
                        "type": "winid",
@@ -6138,7 +6031,7 @@
                      "border": 5,
                      "gbSpan": ",",
                      "gbPosition": ",",
-                     "m_styles": ["wxFLP_DEFAULT_STYLE", "wxFLP_USE_TEXTCTRL"],
+                     "m_styles": ["wxFLP_DEFAULT_STYLE", "wxFLP_USE_TEXTCTRL", "wxFLP_SMALL"],
                      "m_sizerFlags": ["wxALL", "wxLEFT", "wxRIGHT", "wxTOP", "wxBOTTOM", "wxEXPAND"],
                      "m_properties": [{
                        "type": "winid",
@@ -6299,7 +6192,7 @@
                      "border": 5,
                      "gbSpan": ",",
                      "gbPosition": ",",
-                     "m_styles": ["wxDIRP_DEFAULT_STYLE", "wxDIRP_USE_TEXTCTRL"],
+                     "m_styles": ["wxDIRP_SMALL", "wxDIRP_DEFAULT_STYLE", "wxDIRP_USE_TEXTCTRL", "wxDIRP_DIR_MUST_EXIST"],
                      "m_sizerFlags": ["wxALL", "wxLEFT", "wxRIGHT", "wxTOP", "wxBOTTOM", "wxEXPAND"],
                      "m_properties": [{
                        "type": "winid",
@@ -8900,11 +8793,11 @@
    "m_properties": [{
      "type": "string",
      "m_label": "Size:",
-     "m_value": "-1,-1"
+     "m_value": "400,200"
     }, {
      "type": "string",
      "m_label": "Minimum Size:",
-     "m_value": "-1,-1"
+     "m_value": "400,200"
     }, {
      "type": "string",
      "m_label": "Name:",
@@ -9154,7 +9047,7 @@
          "border": 5,
          "gbSpan": "1,1",
          "gbPosition": "0,0",
-         "m_styles": ["wxDIRP_DEFAULT_STYLE", "wxDIRP_USE_TEXTCTRL"],
+         "m_styles": ["wxDIRP_SMALL", "wxDIRP_DEFAULT_STYLE", "wxDIRP_USE_TEXTCTRL"],
          "m_sizerFlags": ["wxALL", "wxLEFT", "wxRIGHT", "wxTOP", "wxBOTTOM", "wxEXPAND"],
          "m_properties": [{
            "type": "winid",
@@ -9697,7 +9590,7 @@
           }, {
            "type": "bitmapPicker",
            "m_label": "Bitmap File:",
-           "m_path": "../resources/php-project-settings.png"
+           "m_path": "../../bitmaps/16-cog.png"
           }, {
            "type": "filePicker",
            "m_label": "Disabled-Bitmap File",
@@ -9759,7 +9652,7 @@
           }, {
            "type": "bitmapPicker",
            "m_label": "Bitmap File:",
-           "m_path": "../resources/cloud-copy.png"
+           "m_path": "../../bitmaps/16-remote-folder.png"
           }, {
            "type": "filePicker",
            "m_label": "Disabled-Bitmap File",
@@ -9821,7 +9714,7 @@
           }, {
            "type": "bitmapPicker",
            "m_label": "Bitmap File:",
-           "m_path": "../../LiteEditor/res/collapse.png"
+           "m_path": "../../bitmaps/16-fold.png"
           }, {
            "type": "filePicker",
            "m_label": "Disabled-Bitmap File",
@@ -10372,6 +10265,13 @@
                "m_functionNameAndSignature": "OnCallStackItemActivated(wxDataViewEvent& event)",
                "m_description": "Process a wxEVT_COMMAND_DATAVIEW_ITEM_ACTIVATED event.\nThis event is triggered by double clicking an item or pressing some special key (usually \"Enter\") when it is focused",
                "m_noBody": false
+              }, {
+               "m_eventName": "wxEVT_COMMAND_DATAVIEW_ITEM_CONTEXT_MENU",
+               "m_eventClass": "wxDataViewEvent",
+               "m_eventHandler": "wxDataViewEventHandler",
+               "m_functionNameAndSignature": "OnCallStackMenu(wxDataViewEvent& event)",
+               "m_description": "Process a wxEVT_COMMAND_DATAVIEW_ITEM_CONTEXT_MENU event generated when the user right clicks inside the control.\nNotice that this menu is generated even if the click didn't occur on any valid item, in this case wxDataViewEvent::GetItem() simply returns an invalid item.",
+               "m_noBody": false
               }],
              "m_children": [{
                "m_type": 4472,
@@ -10703,7 +10603,7 @@
                 }, {
                  "type": "font",
                  "m_label": "Font:",
-                 "m_value": "wxSYS_ANSI_FIXED_FONT,normal,normal,normal"
+                 "m_value": ""
                 }, {
                  "type": "bool",
                  "m_label": "Hidden",
@@ -11165,7 +11065,7 @@
        "border": 2,
        "gbSpan": "1,1",
        "gbPosition": "0,0",
-       "m_styles": ["wxDV_VERT_RULES", "wxDV_ROW_LINES", "wxDV_SINGLE"],
+       "m_styles": ["wxDV_VERT_RULES", "wxDV_ROW_LINES", "wxDV_MULTIPLE"],
        "m_sizerFlags": ["wxALL", "wxLEFT", "wxRIGHT", "wxTOP", "wxBOTTOM", "wxEXPAND"],
        "m_properties": [{
          "type": "winid",
@@ -11252,6 +11152,13 @@
          "m_eventHandler": "wxDataViewEventHandler",
          "m_functionNameAndSignature": "OnLocalExpanding(wxDataViewEvent& event)",
          "m_description": "Process a wxEVT_COMMAND_DATAVIEW_ITEM_EXPANDING event",
+         "m_noBody": false
+        }, {
+         "m_eventName": "wxEVT_COMMAND_DATAVIEW_ITEM_CONTEXT_MENU",
+         "m_eventClass": "wxDataViewEvent",
+         "m_eventHandler": "wxDataViewEventHandler",
+         "m_functionNameAndSignature": "OnLocalsMenu(wxDataViewEvent& event)",
+         "m_description": "Process a wxEVT_COMMAND_DATAVIEW_ITEM_CONTEXT_MENU event generated when the user right clicks inside the control.\nNotice that this menu is generated even if the click didn't occur on any valid item, in this case wxDataViewEvent::GetItem() simply returns an invalid item.",
          "m_noBody": false
         }],
        "m_children": [{
@@ -11458,26 +11365,7 @@
       }, {
        "type": "filePicker",
        "m_label": "Bitmap File:",
-       "m_path": "../../codelite-icons/toolbars/16/standard/forward.png"
-      }],
-     "m_events": [],
-     "m_children": []
-    }, {
-     "m_type": 4482,
-     "proportion": 0,
-     "border": 5,
-     "gbSpan": "1,1",
-     "gbPosition": "0,0",
-     "m_styles": [],
-     "m_sizerFlags": [],
-     "m_properties": [{
-       "type": "string",
-       "m_label": "Name:",
-       "m_value": "m_bmpArrowDisabled"
-      }, {
-       "type": "filePicker",
-       "m_label": "Bitmap File:",
-       "m_path": "../../codelite-icons/toolbars/16/standard/forward-disabled.png"
+       "m_path": "../../bitmaps/16-forward.png"
       }],
      "m_events": [],
      "m_children": []
@@ -11496,7 +11384,7 @@
       }, {
        "type": "filePicker",
        "m_label": "Bitmap File:",
-       "m_path": "../resources/console.png"
+       "m_path": "../../bitmaps/16-console.png"
       }],
      "m_events": [],
      "m_children": []
@@ -11515,7 +11403,7 @@
       }, {
        "type": "filePicker",
        "m_label": "Bitmap File:",
-       "m_path": "../resources/devil.png"
+       "m_path": "../../bitmaps/16-executable.png"
       }],
      "m_events": [],
      "m_children": []
@@ -11534,7 +11422,7 @@
       }, {
        "type": "filePicker",
        "m_label": "Bitmap File:",
-       "m_path": "../resources/elephant.png"
+       "m_path": "../../bitmaps/16-php-workspace.png"
       }],
      "m_events": [],
      "m_children": []
@@ -11572,7 +11460,7 @@
       }, {
        "type": "filePicker",
        "m_label": "Bitmap File:",
-       "m_path": "../resources/refresh.png"
+       "m_path": "../../bitmaps/16-debugger_restart.png"
       }],
      "m_events": [],
      "m_children": []
@@ -11591,7 +11479,7 @@
       }, {
        "type": "filePicker",
        "m_label": "Bitmap File:",
-       "m_path": "../resources/php-workspace.png"
+       "m_path": "../../bitmaps/16-php-workspace.png"
       }],
      "m_events": [],
      "m_children": []
@@ -12702,7 +12590,7 @@
     }, {
      "type": "string",
      "m_label": "Minimum Size:",
-     "m_value": "-1,-1"
+     "m_value": "400,200"
     }, {
      "type": "string",
      "m_label": "Name:",
@@ -13870,7 +13758,7 @@
     }, {
      "type": "string",
      "m_label": "Minimum Size:",
-     "m_value": "-1,-1"
+     "m_value": "500,300"
     }, {
      "type": "string",
      "m_label": "Name:",
@@ -16181,11 +16069,11 @@
    "m_properties": [{
      "type": "string",
      "m_label": "Size:",
-     "m_value": "500,300"
+     "m_value": "-1,-1"
     }, {
      "type": "string",
      "m_label": "Minimum Size:",
-     "m_value": "-1,-1"
+     "m_value": "500,300"
     }, {
      "type": "string",
      "m_label": "Name:",
@@ -17868,7 +17756,7 @@
     }, {
      "type": "string",
      "m_label": "Minimum Size:",
-     "m_value": "-1,-1"
+     "m_value": "500,300"
     }, {
      "type": "string",
      "m_label": "Name:",

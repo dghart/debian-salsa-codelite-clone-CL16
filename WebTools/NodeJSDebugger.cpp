@@ -25,6 +25,7 @@
 #include "NodeJSLookupHandler.h"
 #include "NodeJSDebuggerTooltip.h"
 #include <signal.h>
+#include <algorithm>
 
 #define CHECK_RUNNING() \
     if(!IsConnected()) return
@@ -98,6 +99,11 @@ NodeJSDebugger::~NodeJSDebugger()
     // fire stop event (needed to reload the normal layout)
     clDebugEvent event(wxEVT_NODEJS_DEBUGGER_STOPPED);
     EventNotifier::Get()->AddPendingEvent(event);
+
+    // Clear all markers
+    IEditor::List_t editors;
+    clGetManager()->GetAllEditors(editors);
+    std::for_each(editors.begin(), editors.end(), [&](IEditor* e) { e->DelAllCompilerMarkers(); });
 }
 
 void NodeJSDebugger::OnCanInteract(clDebugEvent& event)
@@ -162,18 +168,7 @@ void NodeJSDebugger::OnDebugStart(clDebugEvent& event)
         return;
     }
 
-    wxString command = dlg.GetCommand();
-
-    if(!m_node.ExecuteConsole(command, "", false, command)) {
-        ::wxMessageBox(_("Failed to start NodeJS application"), "CodeLite", wxOK | wxICON_ERROR | wxCENTER);
-        m_socket.Reset(NULL);
-    }
-
-    // already connected?
-    m_socket.Reset(new NodeJSSocket(this));
-    NodeJSWorkspaceUser userConf(NodeJSWorkspace::Get()->GetFilename().GetFullPath());
-    userConf.Load();
-    m_socket->Connect("127.0.0.1", userConf.GetDebuggerPort());
+    StartDebugger(dlg.GetCommand(), dlg.GetWorkingDirectory());
 }
 
 void NodeJSDebugger::OnDebugStepIn(clDebugEvent& event)
@@ -301,13 +296,24 @@ void NodeJSDebugger::ConnectionEstablished()
 
 void NodeJSDebugger::ConnectionLost(const wxString& errmsg)
 {
-    wxUnusedVar(errmsg);
+    CL_DEBUG(errmsg);
+#ifdef __WXGTK__
+#if 0
+    if(errmsg != "Debug session stopped") {
+        ::wxMessageBox(_("Node.js debugger disconnected unexpectedly\nYou might want to check the console to see if "
+                         "there are any useful messages"),
+                       _("CodeLite"),
+                       wxICON_WARNING | wxOK_DEFAULT | wxCENTER);
+    }
+#endif
+#else
     m_node.Terminate();
     m_socket.Reset(NULL);
 
     clDebugEvent event(wxEVT_NODEJS_DEBUGGER_STOPPED);
     event.SetDebuggerName("Node.js");
     EventNotifier::Get()->AddPendingEvent(event);
+#endif
 
     // Clear the debugger markers
     ClearDebuggerMarker();
@@ -327,6 +333,22 @@ void NodeJSDebugger::OnNodeTerminated(clCommandEvent& event)
 {
     wxUnusedVar(event);
     EventNotifier::Get()->TopFrame()->Raise();
+
+    // Restart the network thread
+    wxBusyCursor bc;
+#ifndef __WXGTK__
+    m_socket.Reset(NULL);
+#else
+    m_node.Terminate();
+    m_socket.Reset(NULL);
+
+    clDebugEvent eventStop(wxEVT_NODEJS_DEBUGGER_STOPPED);
+    eventStop.SetDebuggerName("Node.js");
+    EventNotifier::Get()->AddPendingEvent(eventStop);
+
+    // Clear the debugger markers
+    ClearDebuggerMarker();
+#endif
 }
 
 void NodeJSDebugger::OnWorkspaceClosed(wxCommandEvent& event) { event.Skip(); }
@@ -499,10 +521,14 @@ void NodeJSDebugger::OnHighlightLine(clDebugEvent& event)
     }
 }
 
-void NodeJSDebugger::ExceptionThrown()
+void NodeJSDebugger::ExceptionThrown(const NodeJSDebuggerException& exc)
 {
     // Switch to the 'Console' view
     clDebugEvent event(wxEVT_NODEJS_DEBUGGER_EXCEPTION_THROWN);
+    event.SetFileName(exc.script);
+    event.SetLineNumber(exc.line);
+    event.SetString(exc.message);
+    event.SetInt(exc.column);
     EventNotifier::Get()->AddPendingEvent(event);
 }
 
@@ -669,3 +695,16 @@ void NodeJSDebugger::OnAttach(clDebugEvent& event)
 #endif
 }
 
+void NodeJSDebugger::StartDebugger(const wxString& command, const wxString& workingDirectory)
+{
+    if(!m_node.ExecuteConsole(command, workingDirectory, true, command)) {
+        ::wxMessageBox(_("Failed to start NodeJS application"), "CodeLite", wxOK | wxICON_ERROR | wxCENTER);
+        m_socket.Reset(NULL);
+    }
+
+    // already connected?
+    m_socket.Reset(new NodeJSSocket(this));
+    NodeJSWorkspaceUser userConf(NodeJSWorkspace::Get()->GetFilename().GetFullPath());
+    userConf.Load();
+    m_socket->Connect("127.0.0.1", userConf.GetDebuggerPort());
+}

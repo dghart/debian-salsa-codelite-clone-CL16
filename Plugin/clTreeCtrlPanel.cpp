@@ -37,7 +37,7 @@ clTreeCtrlPanel::clTreeCtrlPanel(wxWindow* parent)
 
     EventNotifier::Get()->Bind(wxEVT_ACTIVE_EDITOR_CHANGED, &clTreeCtrlPanel::OnActiveEditorChanged, this);
     EventNotifier::Get()->Bind(wxEVT_INIT_DONE, &clTreeCtrlPanel::OnInitDone, this);
-
+    EventNotifier::Get()->Bind(wxEVT_CMD_FIND_IN_FILES_SHOWING, &clTreeCtrlPanel::OnFindInFilesShowing, this);
     m_defaultView = new clTreeCtrlPanelDefaultPage(this);
     GetSizer()->Add(m_defaultView, 1, wxEXPAND);
     GetTreeCtrl()->Hide();
@@ -48,11 +48,17 @@ clTreeCtrlPanel::~clTreeCtrlPanel()
     Unbind(wxEVT_DND_FOLDER_DROPPED, &clTreeCtrlPanel::OnFolderDropped, this);
     EventNotifier::Get()->Unbind(wxEVT_ACTIVE_EDITOR_CHANGED, &clTreeCtrlPanel::OnActiveEditorChanged, this);
     EventNotifier::Get()->Unbind(wxEVT_INIT_DONE, &clTreeCtrlPanel::OnInitDone, this);
+    EventNotifier::Get()->Unbind(wxEVT_CMD_FIND_IN_FILES_SHOWING, &clTreeCtrlPanel::OnFindInFilesShowing, this);
 }
 
 void clTreeCtrlPanel::OnContextMenu(wxTreeEvent& event)
 {
-    wxTreeItemId item = GetTreeCtrl()->GetFocusedItem();
+    wxTreeItemId item = event.GetItem();
+    CHECK_ITEM_RET(item);
+
+    GetTreeCtrl()->SetFocusedItem(event.GetItem());
+    GetTreeCtrl()->SelectItem(event.GetItem());
+
     clTreeCtrlData* cd = GetItemData(item);
 
     if(cd && cd->IsFolder()) {
@@ -206,6 +212,7 @@ void clTreeCtrlPanel::DoExpandItem(const wxTreeItemId& parent, bool expand)
     bool cont = dir.GetFirst(&filename, wxEmptyString);
     while(cont) {
         wxFileName fullpath(folderPath, filename);
+        // Make sure we don't add the same folder twice
         if(wxFileName::DirExists(fullpath.GetFullPath())) {
             // a folder
             if(!(m_options & kShowHiddenFolders) && FileUtils::IsHidden(fullpath)) {
@@ -214,6 +221,7 @@ void clTreeCtrlPanel::DoExpandItem(const wxTreeItemId& parent, bool expand)
             }
             DoAddFolder(parent, fullpath.GetFullPath());
         } else {
+            // make sure we don't add the same file twice
             if(!(m_options & kShowHiddenFiles) && FileUtils::IsHidden(fullpath)) {
                 cont = dir.GetNext(&filename);
                 continue;
@@ -251,6 +259,18 @@ void clTreeCtrlPanel::AddFolder(const wxString& path)
 wxTreeItemId clTreeCtrlPanel::DoAddFile(const wxTreeItemId& parent, const wxString& path)
 {
     wxFileName filename(path);
+    clTreeCtrlData* parentData = GetItemData(parent);
+    if(!parentData) {
+        return wxTreeItemId();
+    }
+    if(parentData->GetIndex()) {
+        wxTreeItemId cachedItem = parentData->GetIndex()->Find(filename.GetFullName());
+        if(cachedItem.IsOk()) {
+            // the item already exists, return it
+            return cachedItem;
+        }
+    }
+
     clTreeCtrlData* cd = new clTreeCtrlData(clTreeCtrlData::kFile);
     cd->SetPath(filename.GetFullPath());
 
@@ -260,7 +280,6 @@ wxTreeItemId clTreeCtrlPanel::DoAddFile(const wxTreeItemId& parent, const wxStri
     }
     wxTreeItemId fileItem = GetTreeCtrl()->AppendItem(parent, filename.GetFullName(), imgIdx, imgIdx, cd);
     // Add this entry to the index
-    clTreeCtrlData* parentData = GetItemData(parent);
     if(parentData->GetIndex()) {
         parentData->GetIndex()->Add(filename.GetFullName(), fileItem);
     }
@@ -278,23 +297,36 @@ wxTreeItemId clTreeCtrlPanel::DoAddFolder(const wxTreeItemId& parent, const wxSt
         return topFoldersItems.Item(where);
     }
 
-    // Add the folder
-    clTreeCtrlData* cd = new clTreeCtrlData(clTreeCtrlData::kFolder);
-    cd->SetPath(path);
-
     wxFileName filename(path, "");
-
     wxString displayName;
     if(filename.GetDirCount() && GetTreeCtrl()->GetRootItem() != parent) {
         displayName << filename.GetDirs().Last();
     } else {
         displayName << path;
     }
+
+    clTreeCtrlData* parentData = GetItemData(parent);
+    if(!parentData) {
+        return wxTreeItemId();
+    }
+
+    // Check the index before adding new folder
+    if(parentData->GetIndex()) {
+        wxTreeItemId cachedItem = parentData->GetIndex()->Find(displayName);
+        if(cachedItem.IsOk()) {
+            // the item already exists, return it
+            return cachedItem;
+        }
+    }
+
+    // Add the folder
+    clTreeCtrlData* cd = new clTreeCtrlData(clTreeCtrlData::kFolder);
+    cd->SetPath(path);
+
     int imgIdx = m_bmpLoader.GetMimeImageId(FileExtManager::TypeFolder);
     wxTreeItemId itemFolder = GetTreeCtrl()->AppendItem(parent, displayName, imgIdx, imgIdx, cd);
 
     // Add this entry to the index
-    clTreeCtrlData* parentData = GetItemData(parent);
     if(parentData->GetIndex()) {
         parentData->GetIndex()->Add(displayName, itemFolder);
     }
@@ -360,8 +392,7 @@ void clTreeCtrlPanel::OnNewFile(wxCommandEvent& event)
     CHECK_PTR_RET(cd);
     CHECK_COND_RET(cd->IsFolder());
 
-    wxString filename =
-        ::clGetTextFromUser(_("New File"), _("Set the file name:"), m_newfileTemplate);
+    wxString filename = ::clGetTextFromUser(_("New File"), _("Set the file name:"), m_newfileTemplate);
     if(filename.IsEmpty()) return; // user cancelled
 
     wxFileName file(cd->GetPath(), filename);
@@ -435,10 +466,12 @@ void clTreeCtrlPanel::SelectItem(const wxTreeItemId& item)
     }
 
     GetTreeCtrl()->SelectItem(item);
+    // GetTreeCtrl()->SetFocusedItem(item);
     GetTreeCtrl()->EnsureVisible(item);
 }
 
-struct FileOrFolder {
+struct FileOrFolder
+{
     wxTreeItemId item;
     bool folder;
     wxString path;
@@ -830,4 +863,17 @@ void clTreeCtrlPanel::OnOpenWithDefaultApplication(wxCommandEvent& event)
     for(size_t i = 0; i < files.size(); ++i) {
         ::wxLaunchDefaultApplication(files.Item(i));
     }
+}
+
+void clTreeCtrlPanel::OnFindInFilesShowing(clCommandEvent& event)
+{
+    event.Skip();
+    if(!IsShownOnScreen()) return;
+
+    wxArrayString folders, files;
+    GetSelections(folders, files);
+    
+    // Append the folders to the Find IN Files dialog search paths
+    wxArrayString& outPaths = event.GetStrings();
+    outPaths.insert(outPaths.end(), folders.begin(), folders.end());
 }

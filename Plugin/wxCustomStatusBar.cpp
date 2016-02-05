@@ -76,10 +76,16 @@ void wxCustomStatusBarFieldText::SetText(const wxString& text)
         // valid rect
         wxCustomStatusBarArt::Ptr_t art = m_parent->GetArt();
         if(art->GetName() == m_parent->GetLastArtNameUsedForPaint()) {
+#ifdef __WXOSX__
+            m_parent->Refresh();
+            return;
+#endif
             // Make sure we draw only when the "art" objects are in sync with the field
             // and with the bar itself
             wxBitmap bmp(m_rect.GetSize());
             wxMemoryDC memDc;
+            m_parent->PrepareDC(memDc);
+
             memDc.SelectObject(bmp);
             wxFont font = wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT);
             font.SetPointSize(10);
@@ -112,6 +118,7 @@ void wxCustomStatusBarFieldText::SetText(const wxString& text)
             memDc.SelectObject(wxNullBitmap);
             // bmp contains the field content, draw it
             wxClientDC dc(m_parent);
+            m_parent->PrepareDC(dc);
             dc.DrawBitmap(bmp, m_rect.GetTopLeft());
         }
     }
@@ -120,10 +127,8 @@ void wxCustomStatusBarFieldText::SetText(const wxString& text)
 //========================------------------------------------
 //========================------------------------------------
 
-wxCustomStatusBarAnimationField::wxCustomStatusBarAnimationField(wxCustomStatusBar* parent,
-                                                                 const wxBitmap& sprite,
-                                                                 wxOrientation spriteOrientation,
-                                                                 const wxSize& animSize)
+wxCustomStatusBarAnimationField::wxCustomStatusBarAnimationField(
+    wxCustomStatusBar* parent, const wxBitmap& sprite, wxOrientation spriteOrientation, const wxSize& animSize)
     : wxCustomStatusBarField(parent)
 {
     m_animation = new wxPNGAnimation(parent, sprite, spriteOrientation, animSize);
@@ -191,17 +196,24 @@ wxCustomStatusBar::wxCustomStatusBar(wxWindow* parent, wxWindowID id, long style
     : wxStatusBar(parent, id, style)
     , m_art(new wxCustomStatusBarArt("Dark"))
     , m_mainText(new wxCustomStatusBarFieldText(this, 0))
+    , m_timer(NULL)
 {
+    SetBackgroundStyle(wxBG_STYLE_PAINT);
     m_mainText->Cast<wxCustomStatusBarFieldText>()->SetTextAlignment(wxALIGN_LEFT);
-    
+
     Bind(wxEVT_PAINT, &wxCustomStatusBar::OnPaint, this);
     Bind(wxEVT_ERASE_BACKGROUND, &wxCustomStatusBar::OnEraseBackround, this);
     Bind(wxEVT_LEFT_DOWN, &wxCustomStatusBar::OnLeftDown, this);
     Bind(wxEVT_MOTION, &wxCustomStatusBar::OnMouseMotion, this);
+    m_timer = new wxTimer(this);
+    Bind(wxEVT_TIMER, &wxCustomStatusBar::OnTimer, this, m_timer->GetId());
 }
 
 wxCustomStatusBar::~wxCustomStatusBar()
 {
+    m_timer->Stop();
+    wxDELETE(m_timer);
+
     Unbind(wxEVT_PAINT, &wxCustomStatusBar::OnPaint, this);
     Unbind(wxEVT_ERASE_BACKGROUND, &wxCustomStatusBar::OnEraseBackround, this);
     Unbind(wxEVT_LEFT_DOWN, &wxCustomStatusBar::OnLeftDown, this);
@@ -210,7 +222,9 @@ wxCustomStatusBar::~wxCustomStatusBar()
 
 void wxCustomStatusBar::OnPaint(wxPaintEvent& event)
 {
-    wxBufferedPaintDC dc(this);
+    wxAutoBufferedPaintDC dc(this);
+    PrepareDC(dc);
+
     wxRect rect = GetClientRect();
 
     // Remember which art name used for painting
@@ -251,7 +265,7 @@ void wxCustomStatusBar::OnPaint(wxPaintEvent& event)
     // Draw the main field
     //===----------------------
     // update the rect
-    
+
     wxRect mainRect(0, rect.y, offsetX, rect.height);
     dc.SetClippingRegion(mainRect);
     m_mainText->SetRect(mainRect);
@@ -262,7 +276,7 @@ void wxCustomStatusBar::OnPaint(wxPaintEvent& event)
     //===----------------------
     // Draw the fields
     //===----------------------
-    
+
     for(size_t i = 0; i < m_fields.size(); ++i) {
         // Prepare the rect
         wxRect fieldRect(offsetX, rect.y, m_fields.at(i)->GetWidth(), rect.height);
@@ -294,6 +308,9 @@ void wxCustomStatusBar::RemoveField(size_t index)
 {
     if(index >= m_fields.size()) return;
     m_fields.erase(m_fields.begin() + index);
+    if(m_timer->IsRunning()) {
+        m_timer->Stop();
+    }
     Refresh();
 }
 
@@ -316,25 +333,34 @@ void wxCustomStatusBar::OnLeftDown(wxMouseEvent& event)
 void wxCustomStatusBar::ClearText()
 {
     m_text.Clear();
+    if(m_timer->IsRunning()) {
+        m_timer->Stop();
+    }
     Refresh();
 }
 
-void wxCustomStatusBar::SetText(const wxString& message)
+void wxCustomStatusBar::SetText(const wxString& message, int secondsToLive)
 {
+    // Stop any timer
+    if(m_timer->IsRunning()) {
+        m_timer->Stop();
+    }
+
     m_text = message;
     SetToolTip(message);
-    
+
     // Make sure we draw only when the "art" objects are in sync with the field
     // and with the bar itself
     wxRect mainRect = DoGetMainFieldRect();
-    wxBitmap bmp(mainRect.GetSize());
-    wxMemoryDC memDc;
-    memDc.SelectObject(bmp);
-    
+
     // update the rect
     m_mainText->SetRect(mainRect);
     m_mainText->Cast<wxCustomStatusBarFieldText>()->SetText(m_text);
     m_mainText->Cast<wxCustomStatusBarFieldText>()->SetTooltip(m_text);
+
+    if(secondsToLive != wxNOT_FOUND) {
+        m_timer->Start(secondsToLive * 1000, true);
+    }
 }
 
 void wxCustomStatusBar::OnMouseMotion(wxMouseEvent& event)
@@ -387,5 +413,7 @@ wxRect wxCustomStatusBar::DoGetMainFieldRect()
     wxRect mainRect(0, rect.y, offsetX, rect.height);
     return mainRect;
 }
+
+void wxCustomStatusBar::OnTimer(wxTimerEvent& event) { SetText(""); }
 
 bool wxCustomStatusBarField::HitTest(const wxPoint& point) const { return m_rect.Contains(point); }

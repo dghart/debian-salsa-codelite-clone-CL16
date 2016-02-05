@@ -50,7 +50,7 @@
 
 static int ID_TOOL_SOURCE_CODE_FORMATTER = ::wxNewId();
 
-extern "C" EXPORT char* STDCALL AStyleMain(const char* pSourceIn,
+extern "C" char* STDCALL AStyleMain(const char* pSourceIn,
                                            const char* pOptions,
                                            void(STDCALL* fpError)(int, const char*),
                                            char*(STDCALL* fpAlloc)(unsigned long));
@@ -77,7 +77,7 @@ static CodeFormatter* theFormatter = NULL;
 
 // Allocate the code formatter on the heap, it will be freed by
 // the application
-extern "C" EXPORT IPlugin* CreatePlugin(IManager* manager)
+CL_PLUGIN_API IPlugin* CreatePlugin(IManager* manager)
 {
     if(theFormatter == 0) {
         theFormatter = new CodeFormatter(manager);
@@ -85,17 +85,17 @@ extern "C" EXPORT IPlugin* CreatePlugin(IManager* manager)
     return theFormatter;
 }
 
-extern "C" EXPORT PluginInfo GetPluginInfo()
+CL_PLUGIN_API PluginInfo* GetPluginInfo()
 {
-    PluginInfo info;
+    static PluginInfo info;
     info.SetAuthor(wxT("Eran Ifrah"));
     info.SetName(wxT("Source Code Formatter"));
     info.SetDescription(_("Source Code Formatter (Supports C/C++/Obj-C/JavaScript/PHP files)"));
     info.SetVersion(wxT("v2.0"));
-    return info;
+    return &info;
 }
 
-extern "C" EXPORT int GetPluginInterfaceVersion() { return PLUGIN_INTERFACE_VERSION; }
+CL_PLUGIN_API int GetPluginInterfaceVersion() { return PLUGIN_INTERFACE_VERSION; }
 
 CodeFormatter::CodeFormatter(IManager* manager)
     : IPlugin(manager)
@@ -154,34 +154,18 @@ clToolBar* CodeFormatter::CreateToolBar(wxWindow* parent)
         // support both toolbars icon size
         int size = m_mgr->GetToolbarIconSize();
 
-        tb = new clToolBar(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, clTB_DEFAULT_STYLE);
+        tb = new clToolBar(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, clTB_DEFAULT_STYLE_PLUGIN);
         tb->SetToolBitmapSize(wxSize(size, size));
 
         BitmapLoader* bmpLoader = m_mgr->GetStdIcons();
-        if(size == 24) {
-            tb->AddTool(XRCID("format_source"),
-                        _("Format Source"),
-                        bmpLoader->LoadBitmap(wxT("toolbars/24/codeformatter/code-format")),
-                        _("Format Source Code"));
-            tb->AddTool(XRCID("formatter_options"),
-                        _("Format Options"),
-                        bmpLoader->LoadBitmap(wxT("toolbars/24/codeformatter/code-format-options")),
-                        _("Source Code Formatter Options..."));
-        } else {
-            // 16
-            tb->AddTool(XRCID("format_source"),
-                        _("Format Source"),
-                        bmpLoader->LoadBitmap(wxT("toolbars/16/codeformatter/code-format")),
-                        _("Format Source Code"));
-            tb->AddTool(XRCID("formatter_options"),
-                        _("Format Options"),
-                        bmpLoader->LoadBitmap(wxT("toolbars/16/codeformatter/code-format-options")),
-                        _("Source Code Formatter Options..."));
-        }
-
-#if defined(__WXMAC__)
-        tb->AddSeparator();
-#endif
+        tb->AddTool(XRCID("format_source"),
+                    _("Format Source"),
+                    bmpLoader->LoadBitmap("format", size),
+                    _("Format Source Code"));
+        tb->AddTool(XRCID("formatter_options"),
+                    _("Format Options"),
+                    bmpLoader->LoadBitmap("cog", size),
+                    _("Source Code Formatter Options..."));
         tb->Realize();
     }
 
@@ -655,11 +639,8 @@ bool CodeFormatter::ClangFormatBuffer(const wxString& content,
     return res;
 }
 
-bool CodeFormatter::ClangFormatFile(const wxFileName& filename,
-                                    wxString& formattedOutput,
-                                    int& cursorPosition,
-                                    int startOffset,
-                                    int length)
+bool CodeFormatter::ClangFormatFile(
+    const wxFileName& filename, wxString& formattedOutput, int& cursorPosition, int startOffset, int length)
 {
     FormatOptions options;
     m_mgr->GetConfigTool()->ReadObject(wxT("FormatterOptions"), &options);

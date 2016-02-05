@@ -70,13 +70,14 @@ void QuickDebugDlg::Initialize()
     if(m_WD->GetCount() > 0) {
         m_WD->SetSelection(0);
     }
-    m_textCtrlArgs->SetValue(info.GetArguments());
+    m_textCtrlArgs->ChangeValue(info.GetArguments());
 
     wxString startupCmds;
     for(size_t i = 0; i < info.GetStartCmds().GetCount(); i++) {
         startupCmds << info.GetStartCmds().Item(i) << wxT("\n");
     }
-    m_textCtrlCmds->SetValue(startupCmds);
+    m_textCtrlCmds->ChangeValue(startupCmds);
+    m_textCtrlDebuggerExec->ChangeValue(info.GetAlternateDebuggerExec());
 }
 
 void QuickDebugDlg::OnButtonBrowseExe(wxCommandEvent& event)
@@ -112,6 +113,7 @@ void QuickDebugDlg::OnButtonDebug(wxCommandEvent& event)
     info.SetWDs(ReturnWithStringPrepended(m_WD->GetStrings(), GetWorkingDirectory(), MAX_NO_ITEMS));
     info.SetStartCmds(GetStartupCmds());
     info.SetArguments(m_textCtrlArgs->GetValue());
+    info.SetAlternateDebuggerExec(m_textCtrlDebuggerExec->GetValue());
     EditorConfigST::Get()->WriteObject(wxT("QuickDebugDlg"), &info);
 
     
@@ -155,4 +157,10 @@ void QuickDebugDlg::OnButtonBrowseWD(wxCommandEvent& event)
         m_WD->Insert(ans, 0);
         m_WD->SetSelection(0);
     }
+}
+void QuickDebugDlg::OnSelectAlternateDebugger(wxCommandEvent& event)
+{
+    wxString debuggerPath = ::wxFileSelector(_("Choose debugger:"));
+    if(debuggerPath.IsEmpty()) return;
+    m_textCtrlDebuggerExec->ChangeValue(debuggerPath);
 }

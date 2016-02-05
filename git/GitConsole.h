@@ -1,7 +1,7 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //
-// copyright            : (C) 2014 The CodeLite Team
+// copyright            : (C) 2014 Eran Ifrah
 // file name            : GitConsole.h
 //
 // -------------------------------------------------------------------------
@@ -82,6 +82,7 @@ protected:
     virtual void OnClearGitLog(wxCommandEvent& event);
     virtual void OnStopGitProcess(wxCommandEvent& event);
     void OnOpenFile(wxCommandEvent& e);
+    void OnCloseView(wxCommandEvent& e);
     void OnWorkspaceClosed(wxCommandEvent& e);
     void OnConfigurationChanged(wxCommandEvent& e);
     void OnEditorThemeChanged(wxCommandEvent& e);

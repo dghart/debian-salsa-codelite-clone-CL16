@@ -58,7 +58,7 @@
 static UnitTestPP* thePlugin = NULL;
 
 // Define the plugin entry point
-extern "C" EXPORT IPlugin* CreatePlugin(IManager* manager)
+CL_PLUGIN_API IPlugin* CreatePlugin(IManager* manager)
 {
     if(thePlugin == 0) {
         thePlugin = new UnitTestPP(manager);
@@ -66,17 +66,17 @@ extern "C" EXPORT IPlugin* CreatePlugin(IManager* manager)
     return thePlugin;
 }
 
-extern "C" EXPORT PluginInfo GetPluginInfo()
+CL_PLUGIN_API PluginInfo* GetPluginInfo()
 {
-    PluginInfo info;
+    static PluginInfo info;
     info.SetAuthor(wxT("Eran Ifrah"));
     info.SetName(wxT("UnitTestPP"));
     info.SetDescription(_("A Unit test plugin based on the UnitTest++ framework"));
     info.SetVersion(wxT("v1.0"));
-    return info;
+    return &info;
 }
 
-extern "C" EXPORT int GetPluginInterfaceVersion() { return PLUGIN_INTERFACE_VERSION; }
+CL_PLUGIN_API int GetPluginInterfaceVersion() { return PLUGIN_INTERFACE_VERSION; }
 
 UnitTestPP::UnitTestPP(IManager* manager)
     : IPlugin(manager)
@@ -98,10 +98,10 @@ UnitTestPP::UnitTestPP(IManager* manager)
         wxEVT_CMD_EXECUTE_ACTIVE_PROJECT, clExecuteEventHandler(UnitTestPP::OnRunProject), NULL, this);
 
     m_outputPage = new UnitTestsPage(m_mgr->GetOutputPaneNotebook(), m_mgr);
-    m_mgr->GetOutputPaneNotebook()->AddPage(m_outputPage,
-                                            _("UnitTest++"),
-                                            false,
-                                            m_mgr->GetStdIcons()->LoadBitmap("toolbars/16/unittest++/run_as_unittest"));
+    m_mgr->GetOutputPaneNotebook()->AddPage(
+        m_outputPage, _("UnitTest++"), false, m_mgr->GetStdIcons()->LoadBitmap("ok"));
+    m_tabHelper.reset(new clTabTogglerHelper(_("UnitTest++"), m_outputPage, "", NULL));
+    m_tabHelper->SetOutputTabBmp(m_mgr->GetStdIcons()->LoadBitmap("ok"));
 
     m_longName = _("A Unit test plugin based on the UnitTest++ framework");
     m_shortName = wxT("UnitTestPP");
@@ -121,23 +121,14 @@ clToolBar* UnitTestPP::CreateToolBar(wxWindow* parent)
     if(m_mgr->AllowToolbar()) {
         int size = m_mgr->GetToolbarIconSize();
 
-        tb = new clToolBar(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, clTB_DEFAULT_STYLE);
+        tb = new clToolBar(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, clTB_DEFAULT_STYLE_PLUGIN);
         tb->SetToolBitmapSize(wxSize(size, size));
 
         BitmapLoader& bitmapLoader = *m_mgr->GetStdIcons();
-
-        if(size == 24) {
-            tb->AddTool(XRCID("run_unit_tests"),
-                        _("Run Unit tests..."),
-                        bitmapLoader.LoadBitmap(wxT("toolbars/24/unittest++/run_as_unittest")),
-                        _("Run project as unit test project..."));
-
-        } else {
-            tb->AddTool(XRCID("run_unit_tests"),
-                        _("Run Unit tests..."),
-                        bitmapLoader.LoadBitmap(wxT("toolbars/16/unittest++/run_as_unittest")),
-                        _("Run project as unit test project..."));
-        }
+        tb->AddTool(XRCID("run_unit_tests"),
+                    _("Run Unit tests..."),
+                    bitmapLoader.LoadBitmap("ok", size),
+                    _("Run project as unit test project..."));
         tb->Realize();
     }
     return tb;
@@ -190,6 +181,21 @@ void UnitTestPP::CreatePluginMenu(wxMenu* pluginsMenu)
 
 void UnitTestPP::UnPlug()
 {
+    m_tabHelper.reset(NULL);
+
+    // Connect the events to us
+    wxTheApp->Disconnect(XRCID("run_unit_tests"),
+                         wxEVT_COMMAND_MENU_SELECTED,
+                         wxCommandEventHandler(UnitTestPP::OnRunUnitTests),
+                         NULL,
+                         (wxEvtHandler*)this);
+
+    wxTheApp->Disconnect(XRCID("run_unit_tests"),
+                         wxEVT_UPDATE_UI,
+                         wxUpdateUIEventHandler(UnitTestPP::OnRunUnitTestsUI),
+                         NULL,
+                         (wxEvtHandler*)this);
+
     Unbind(wxEVT_ASYNC_PROCESS_OUTPUT, &UnitTestPP::OnProcessRead, this);
     Unbind(wxEVT_ASYNC_PROCESS_TERMINATED, &UnitTestPP::OnProcessTerminated, this);
 
@@ -508,10 +514,7 @@ void UnitTestPP::OnMarkProjectAsUT(wxCommandEvent& e)
     p->Save();
 }
 
-void UnitTestPP::OnProcessRead(clProcessEvent& e)
-{
-    m_output << e.GetOutput();
-}
+void UnitTestPP::OnProcessRead(clProcessEvent& e) { m_output << e.GetOutput(); }
 
 void UnitTestPP::OnProcessTerminated(clProcessEvent& e)
 {
@@ -583,7 +586,10 @@ void UnitTestPP::DoRunProject(ProjectPtr project)
     wxString wd;
     wxString cmd = m_mgr->GetProjectExecutionCommand(project->GetName(), wd);
     DirSaver ds;
-
+    
+    // Ensure that the ut++ page is shown and selected
+    m_mgr->ShowOutputPane("UnitTest++");
+    
     // first we need to CD to the project directory
     ::wxSetWorkingDirectory(project->GetFileName().GetPath());
 

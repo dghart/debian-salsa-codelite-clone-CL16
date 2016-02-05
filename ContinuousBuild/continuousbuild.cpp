@@ -1,7 +1,7 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //
-// copyright            : (C) 2014 The CodeLite Team
+// copyright            : (C) 2014 Eran Ifrah
 // file name            : continuousbuild.cpp
 //
 // -------------------------------------------------------------------------
@@ -46,7 +46,7 @@
 
 static ContinuousBuild* thePlugin = NULL;
 // Define the plugin entry point
-extern "C" EXPORT IPlugin* CreatePlugin(IManager* manager)
+CL_PLUGIN_API IPlugin* CreatePlugin(IManager* manager)
 {
     if(thePlugin == 0) {
         thePlugin = new ContinuousBuild(manager);
@@ -54,17 +54,17 @@ extern "C" EXPORT IPlugin* CreatePlugin(IManager* manager)
     return thePlugin;
 }
 
-extern "C" EXPORT PluginInfo GetPluginInfo()
+CL_PLUGIN_API PluginInfo* GetPluginInfo()
 {
-    PluginInfo info;
+    static PluginInfo info;
     info.SetAuthor(wxT("eran"));
     info.SetName(wxT("ContinuousBuild"));
     info.SetDescription(_("Continuous build plugin which compiles files on save and report errors"));
     info.SetVersion(wxT("v1.0"));
-    return info;
+    return &info;
 }
 
-extern "C" EXPORT int GetPluginInterfaceVersion() { return PLUGIN_INTERFACE_VERSION; }
+CL_PLUGIN_API int GetPluginInterfaceVersion() { return PLUGIN_INTERFACE_VERSION; }
 
 static const wxString CONT_BUILD = _("BuildQ");
 
@@ -77,8 +77,10 @@ ContinuousBuild::ContinuousBuild(IManager* manager)
     m_view = new ContinousBuildPane(m_mgr->GetOutputPaneNotebook(), m_mgr, this);
 
     // add our page to the output pane notebook
-    m_mgr->GetOutputPaneNotebook()->AddPage(m_view, CONT_BUILD, false, LoadBitmapFile(wxT("compfile.png")));
-
+    m_mgr->GetOutputPaneNotebook()->AddPage(m_view, CONT_BUILD, false, m_mgr->GetStdIcons()->LoadBitmap("execute"));
+    m_tabHelper.reset(new clTabTogglerHelper(CONT_BUILD, m_view, "", NULL));
+    m_tabHelper->SetOutputTabBmp(m_mgr->GetStdIcons()->LoadBitmap("execute"));
+    
     m_topWin = m_mgr->GetTheApp();
     EventNotifier::Get()->Connect(wxEVT_FILE_SAVED, clCommandEventHandler(ContinuousBuild::OnFileSaved), NULL, this);
     EventNotifier::Get()->Connect(
@@ -108,14 +110,16 @@ void ContinuousBuild::HookPopupMenu(wxMenu* menu, MenuType type)
 
 void ContinuousBuild::UnPlug()
 {
+    m_tabHelper.reset(NULL);
     // before this plugin is un-plugged we must remove the tab we added
     for(size_t i = 0; i < m_mgr->GetOutputPaneNotebook()->GetPageCount(); i++) {
         if(m_view == m_mgr->GetOutputPaneNotebook()->GetPage(i)) {
             m_mgr->GetOutputPaneNotebook()->RemovePage(i);
-            m_view->Destroy();
             break;
         }
     }
+    m_view->Destroy();
+    
     EventNotifier::Get()->Disconnect(wxEVT_FILE_SAVED, clCommandEventHandler(ContinuousBuild::OnFileSaved), NULL, this);
     EventNotifier::Get()->Disconnect(
         wxEVT_FILE_SAVE_BY_BUILD_START, wxCommandEventHandler(ContinuousBuild::OnIgnoreFileSaved), NULL, this);
@@ -226,7 +230,7 @@ void ContinuousBuild::DoBuild(const wxString& fileName)
     // Fire it up
     EventNotifier::Get()->AddPendingEvent(event);
 
-    EnvSetter env(NULL, NULL, projectName);
+    EnvSetter env(NULL, NULL, projectName, bldConf->GetName());
     CL_DEBUG(wxString::Format(wxT("cmd:%s\n"), cmd.c_str()));
     if(!m_buildProcess.Execute(cmd, fileName, project->GetFileName().GetPath(), this)) return;
 

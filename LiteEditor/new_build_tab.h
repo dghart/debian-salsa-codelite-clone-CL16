@@ -173,12 +173,14 @@ class NewBuildTab : public wxPanel
     bool m_buildInProgress;
     wxString m_cygwinRoot;
     std::map<int, BuildLineInfo*> m_viewData;
+    int m_maxlineWidth;
+    int m_lastLineColoured;
 
 protected:
     void InitView(const wxString& theme = "");
     void CenterLineInView(int line);
     void DoCacheRegexes();
-    BuildLineInfo* DoProcessLine(const wxString& line, bool isSummaryLine);
+    BuildLineInfo* DoProcessLine(const wxString& line);
     void DoProcessOutput(bool compilationEnded, bool isSummaryLine);
     void DoSearchForDirectory(const wxString& line);
     bool DoGetCompilerPatterns(const wxString& compilerName, CmpPatterns& patterns);
@@ -188,6 +190,8 @@ protected:
     bool DoSelectAndOpen(int buildViewLine, bool centerLine);
     wxFont DoGetFont() const;
     void DoCentreErrorLine(BuildLineInfo* bli, LEditor* editor, bool centerLine);
+    void ColourOutput();
+    CmpPatternPtr GetMatchingRegex(const wxString& lineText, LINE_SEVERITY& severity);
 
 public:
     NewBuildTab(wxWindow* parent);
@@ -222,6 +226,7 @@ protected:
     void OnClearUI(wxUpdateUIEvent& e);
     void OnStyleNeeded(wxStyledTextEvent& event);
     void OnHotspotClicked(wxStyledTextEvent& event);
+    void OnIdle(wxIdleEvent& event);
 };
 
 #endif // NEWBUILDTAB_H

@@ -1,7 +1,7 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //
-// copyright            : (C) 2014 The CodeLite Team
+// copyright            : (C) 2014 Eran Ifrah
 // file name            : databaseexplorer.cpp
 //
 // -------------------------------------------------------------------------
@@ -32,19 +32,19 @@
 #include "wx/wxsf/AutoLayout.h"
 #include "event_notifier.h"
 
-#ifdef DBL_USE_MYSQL
+//#ifdef DBL_USE_MYSQL
 #include "MySqlDbAdapter.h"
-#endif
+//#endif
 
-#ifdef DBL_USE_SQLITE
+//#ifdef DBL_USE_SQLITE
 #include "SqliteDbAdapter.h"
-#endif
+//#endif
 
-#ifdef DBL_USE_POSTGRES
+//#ifdef DBL_USE_POSTGRES
 #include "PostgreSqlDbAdapter.h"
-#endif
+//#endif
 
-#define DBE_VERSION "0.5.2 Beta"
+#define DBE_VERSION "0.5.3 Beta"
 
 static DatabaseExplorer* thePlugin = NULL;
 
@@ -78,7 +78,7 @@ wxString wxbuildinfo(wxbuildinfoformat format)
 }
 
 // Define the plugin entry point
-extern "C" EXPORT IPlugin* CreatePlugin(IManager* manager)
+CL_PLUGIN_API IPlugin* CreatePlugin(IManager* manager)
 {
     if(thePlugin == 0) {
         thePlugin = new DatabaseExplorer(manager);
@@ -86,17 +86,17 @@ extern "C" EXPORT IPlugin* CreatePlugin(IManager* manager)
     return thePlugin;
 }
 
-extern "C" EXPORT PluginInfo GetPluginInfo()
+CL_PLUGIN_API PluginInfo* GetPluginInfo()
 {
-    PluginInfo info;
+    static PluginInfo info;
     info.SetAuthor(wxT("Peter Janků, Michal Bližňák, Tomas Bata University in Zlin, Czech Republic (www.fai.utb.cz)"));
     info.SetName(_("DatabaseExplorer"));
     info.SetDescription(_("DatabaseExplorer for CodeLite"));
     info.SetVersion(DBE_VERSION);
-    return info;
+    return &info;
 }
 
-extern "C" EXPORT int GetPluginInterfaceVersion() { return PLUGIN_INTERFACE_VERSION; }
+CL_PLUGIN_API int GetPluginInterfaceVersion() { return PLUGIN_INTERFACE_VERSION; }
 
 DatabaseExplorer::DatabaseExplorer(IManager* manager)
     : IPlugin(manager)
@@ -202,7 +202,7 @@ void DatabaseExplorer::OnAbout(wxCommandEvent& e)
     info.SetName(_("DatabaseExplorer"));
     info.SetVersion(version);
     info.SetDescription(desc);
-    info.SetCopyright(_("2011 - 2012 (C) Tomas Bata University, Zlin, Czech Republic"));
+    info.SetCopyright(_("2011 - 2015 (C) Tomas Bata University, Zlin, Czech Republic"));
     info.SetWebSite(_("http://www.fai.utb.cz"));
     info.AddDeveloper(wxT("Peter Janků"));
     info.AddDeveloper(wxT("Michal Bližňák"));
@@ -251,9 +251,9 @@ void DatabaseExplorer::DoOpenFile(const wxFileName& filename)
                 break;
 
             case IDbAdapter::atPOSTGRES:
-#ifdef DBL_USE_POSTGRES
+//#ifdef DBL_USE_POSTGRES
                 adapter = new PostgreSqlDbAdapter();
-#endif
+//#endif
                 break;
 
             default:

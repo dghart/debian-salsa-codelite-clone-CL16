@@ -121,6 +121,7 @@ class clMainFrame : public wxFrame
 
     // Printing
     wxPrintDialogData m_printDlgData;
+    wxToolBar* m_mainToolBar;
 
 public:
     static bool m_initCompleted;
@@ -129,7 +130,8 @@ protected:
     bool IsEditorEvent(wxEvent& event);
     void DoCreateBuildDropDownMenu(wxMenu* menu);
     void DoShowToolbars(bool show);
-
+    void InitializeLogo();
+    
 public:
     static clMainFrame* Get();
     static void Initialize(bool loadLastSession);
@@ -290,13 +292,12 @@ public:
 private:
     // make our frame's constructor private
     clMainFrame(wxWindow* pParent,
-                wxWindowID id,
-                const wxString& title,
-                const wxPoint& pos,
-                const wxSize& size,
-                long style = wxMINIMIZE_BOX | wxMAXIMIZE_BOX | wxCLOSE_BOX | wxCAPTION | wxSYSTEM_MENU |
-                             wxRESIZE_BORDER |
-                             wxCLIP_CHILDREN);
+        wxWindowID id,
+        const wxString& title,
+        const wxPoint& pos,
+        const wxSize& size,
+        long style = wxMINIMIZE_BOX | wxMAXIMIZE_BOX | wxCLOSE_BOX | wxCAPTION | wxSYSTEM_MENU | wxRESIZE_BORDER |
+            wxCLIP_CHILDREN);
     wxString CreateWorkspaceTable();
     wxString CreateFilesTable();
     void StartTimer();
@@ -306,7 +307,7 @@ private:
      * Construct all the GUI controls of the main frame. this function is called
      * at construction time
      */
-    void CreateGUIControls(void);
+    void CreateGUIControls();
     /**
      * \brief update the path & name of the build tool
      * on windows, try to locate make, followed by mingw32-make
@@ -330,6 +331,8 @@ private:
     void CreateNativeToolbar16();
     void ToggleToolBars(bool all);
 
+    void SetToolBar(wxToolBar* tb);
+
     void ViewPaneUI(const wxString& paneName, wxUpdateUIEvent& event);
     void CreateRecentlyOpenedFilesMenu();
     void CreateWelcomePage();
@@ -346,6 +349,7 @@ private:
 public:
     void ViewPane(const wxString& paneName, bool checked);
     void ShowOrHideCaptions();
+    wxToolBar* GetMainToolBar() const { return m_mainToolBar; }
 
 protected:
     //----------------------------------------------------
@@ -367,6 +371,7 @@ protected:
     void OnFileLoadTabGroup(wxCommandEvent& event);
     void OnNativeTBUnRedoDropdown(wxCommandEvent& event);
     void OnTBUnRedo(wxAuiToolBarEvent& event);
+    void OnTBSave(wxAuiToolBarEvent& event);
     void OnCompleteWord(wxCommandEvent& event);
     void OnCompleteWordRefreshList(wxCommandEvent& event);
     void OnFunctionCalltip(wxCommandEvent& event);
@@ -381,6 +386,7 @@ protected:
     void OnFileSaveAll(wxCommandEvent& event);
     void OnFileSaveTabGroup(wxCommandEvent& event);
     void OnFileExistUpdateUI(wxUpdateUIEvent& event);
+    void OnCopyFilePathRelativeToWorkspaceUI(wxUpdateUIEvent& event);
     void OnFileSaveAllUI(wxUpdateUIEvent& event);
     void OnCompleteWordUpdateUI(wxUpdateUIEvent& event);
     void OnFunctionCalltipUI(wxUpdateUIEvent& event);
@@ -441,6 +447,7 @@ protected:
     void OnImportMSVS(wxCommandEvent& e);
     void OnDebugAttach(wxCommandEvent& event);
     void OnCopyFilePath(wxCommandEvent& event);
+    void OnCopyFilePathRelativeToWorkspace(wxCommandEvent& event);
     void OnCopyFilePathOnly(wxCommandEvent& event);
     void OnCopyFileName(wxCommandEvent& event);
     void OnHighlightWord(wxCommandEvent& event);
@@ -487,6 +494,10 @@ protected:
     void OnDebugStopUI(wxUpdateUIEvent& e);
     void OnDebugManageBreakpointsUI(wxUpdateUIEvent& e);
     void OnDebugCmd(wxCommandEvent& e);
+    void OnToggleReverseDebugging(wxCommandEvent& e);
+    void OnToggleReverseDebuggingRecording(wxCommandEvent& e);
+    void OnToggleReverseDebuggingUI(wxUpdateUIEvent& e);
+    void OnToggleReverseDebuggingRecordingUI(wxUpdateUIEvent& e);
     void OnDebugCmdUI(wxUpdateUIEvent& e);
     void OnDebuggerSettings(wxCommandEvent& e);
     void OnLinkClicked(wxHtmlLinkEvent& e);

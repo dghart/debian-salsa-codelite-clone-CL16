@@ -1,7 +1,7 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //
-// copyright            : (C) 2014 The CodeLite Team
+// copyright            : (C) 2014 Eran Ifrah
 // file name            : cl_command_event.cpp
 //
 // -------------------------------------------------------------------------
@@ -272,6 +272,7 @@ clSourceFormatEvent& clSourceFormatEvent::operator=(const clSourceFormatEvent& s
 
 clContextMenuEvent::clContextMenuEvent(wxEventType commandType, int winid)
     : clCommandEvent(commandType, winid)
+    , m_editor(NULL)
 {
 }
 clContextMenuEvent::clContextMenuEvent(const clContextMenuEvent& event) { *this = event; }

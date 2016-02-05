@@ -1,7 +1,7 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //
-// copyright            : (C) 2014 The CodeLite Team
+// copyright            : (C) 2014 Eran Ifrah
 // file name            : new_build_tab.cpp
 //
 // -------------------------------------------------------------------------
@@ -54,6 +54,7 @@
 #include "attribute_style.h"
 #include "optionsconfig.h"
 #include "editor_config.h"
+#include "clSingleChoiceDialog.h"
 
 #define IS_VALID_LINE(lineNumber) ((lineNumber >= 0 && lineNumber < m_view->GetLineCount()))
 #ifdef __WXMSW__
@@ -74,8 +75,7 @@ void SetActive(LEditor* editor)
 
 //////////////////////////////////////////////////////////////
 
-struct AnnotationInfo
-{
+struct AnnotationInfo {
     int line;
     LINE_SEVERITY severity;
     wxString text;
@@ -99,6 +99,8 @@ NewBuildTab::NewBuildTab(wxWindow* parent)
     , m_skipWarnings(false)
     , m_buildpaneScrollTo(ScrollToFirstError)
     , m_buildInProgress(false)
+    , m_maxlineWidth(wxNOT_FOUND)
+    , m_lastLineColoured(wxNOT_FOUND)
 {
     m_curError = m_errorsAndWarningsList.end();
     wxBoxSizer* bs = new wxBoxSizer(wxVERTICAL);
@@ -107,7 +109,8 @@ NewBuildTab::NewBuildTab(wxWindow* parent)
     m_view = new wxStyledTextCtrl(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxBORDER_NONE);
     // We dont really want to collect undo in the output tabs...
     InitView();
-    m_view->Bind(wxEVT_STC_STYLENEEDED, &NewBuildTab::OnStyleNeeded, this);
+    Bind(wxEVT_IDLE, &NewBuildTab::OnIdle, this);
+
     m_view->Bind(wxEVT_STC_HOTSPOT_CLICK, &NewBuildTab::OnHotspotClicked, this);
     EventNotifier::Get()->Bind(wxEVT_CL_THEME_CHANGED, &NewBuildTab::OnThemeChanged, this);
 
@@ -130,16 +133,10 @@ NewBuildTab::NewBuildTab(wxWindow* parent)
     EventNotifier::Get()->Connect(
         wxEVT_WORKSPACE_CLOSED, wxCommandEventHandler(NewBuildTab::OnWorkspaceClosed), NULL, this);
 
-    wxTheApp->Connect(XRCID("next_build_error"),
-                      wxEVT_COMMAND_MENU_SELECTED,
-                      wxCommandEventHandler(NewBuildTab::OnNextBuildError),
-                      NULL,
-                      this);
-    wxTheApp->Connect(XRCID("next_build_error"),
-                      wxEVT_UPDATE_UI,
-                      wxUpdateUIEventHandler(NewBuildTab::OnNextBuildErrorUI),
-                      NULL,
-                      this);
+    wxTheApp->Connect(XRCID("next_build_error"), wxEVT_COMMAND_MENU_SELECTED,
+        wxCommandEventHandler(NewBuildTab::OnNextBuildError), NULL, this);
+    wxTheApp->Connect(XRCID("next_build_error"), wxEVT_UPDATE_UI,
+        wxUpdateUIEventHandler(NewBuildTab::OnNextBuildErrorUI), NULL, this);
 }
 
 NewBuildTab::~NewBuildTab()
@@ -153,16 +150,10 @@ NewBuildTab::~NewBuildTab()
         wxEVT_SHELL_COMMAND_ADDLINE, clCommandEventHandler(NewBuildTab::OnBuildAddLine), NULL, this);
     EventNotifier::Get()->Disconnect(
         wxEVT_SHELL_COMMAND_PROCESS_ENDED, clCommandEventHandler(NewBuildTab::OnBuildEnded), NULL, this);
-    wxTheApp->Disconnect(XRCID("next_build_error"),
-                         wxEVT_COMMAND_MENU_SELECTED,
-                         wxCommandEventHandler(NewBuildTab::OnNextBuildError),
-                         NULL,
-                         this);
-    wxTheApp->Disconnect(XRCID("next_build_error"),
-                         wxEVT_UPDATE_UI,
-                         wxUpdateUIEventHandler(NewBuildTab::OnNextBuildErrorUI),
-                         NULL,
-                         this);
+    wxTheApp->Disconnect(XRCID("next_build_error"), wxEVT_COMMAND_MENU_SELECTED,
+        wxCommandEventHandler(NewBuildTab::OnNextBuildError), NULL, this);
+    wxTheApp->Disconnect(XRCID("next_build_error"), wxEVT_UPDATE_UI,
+        wxUpdateUIEventHandler(NewBuildTab::OnNextBuildErrorUI), NULL, this);
 }
 
 void NewBuildTab::OnBuildEnded(clCommandEvent& e)
@@ -277,7 +268,7 @@ void NewBuildTab::OnBuildStarted(clCommandEvent& e)
         ManagerST::Get()->ShowOutputPane(OutputPane::BUILD_WIN, true);
 
     } else if(m_showMe == BuildTabSettingsData::ShowOnEnd && m_autoHide &&
-              ManagerST::Get()->IsPaneVisible(opane->GetCaption()) && win == this) {
+        ManagerST::Get()->IsPaneVisible(opane->GetCaption()) && win == this) {
         // user prefers to see build/errors tabs only at end of unsuccessful build
         ManagerST::Get()->HidePane(opane->GetName());
     }
@@ -307,67 +298,30 @@ void NewBuildTab::OnBuildAddLine(clCommandEvent& e)
     DoProcessOutput(false, false);
 }
 
-BuildLineInfo* NewBuildTab::DoProcessLine(const wxString& line, bool isSummaryLine)
+BuildLineInfo* NewBuildTab::DoProcessLine(const wxString& line)
 {
     BuildLineInfo* buildLineInfo = new BuildLineInfo();
-
-    if(line.Lower().Contains("entering directory") || line.Lower().Contains("leaving directory")) {
-        buildLineInfo->SetSeverity(SV_DIR_CHANGE);
-    } else if(isSummaryLine) {
-        // Set the severity
-        buildLineInfo->SetSeverity(SV_NONE);
-    } else {
-
-        // Find *warnings* first
-        bool isWarning = false;
-
-        if(!m_cmp) {
-            return buildLineInfo;
-        }
-
-        CmpPatterns cmpPatterns;
-        if(!DoGetCompilerPatterns(m_cmp->GetName(), cmpPatterns)) {
-            return buildLineInfo;
-        }
-
-        // If it is not an error, maybe it's a warning
-        for(size_t i = 0; i < cmpPatterns.warningPatterns.size(); i++) {
-            CmpPatternPtr cmpPatterPtr = cmpPatterns.warningPatterns.at(i);
-            BuildLineInfo bli;
-            if(cmpPatterPtr->Matches(line, bli)) {
-                buildLineInfo->SetFilename(bli.GetFilename());
-                buildLineInfo->SetSeverity(bli.GetSeverity());
-                buildLineInfo->SetLineNumber(bli.GetLineNumber());
-                buildLineInfo->NormalizeFilename(m_directories, m_cygwinRoot);
-                buildLineInfo->SetRegexLineMatch(bli.GetRegexLineMatch());
-                buildLineInfo->SetColumn(bli.GetColumn());
-                // keep this info in the errors+warnings list only
-                m_errorsAndWarningsList.push_back(buildLineInfo);
-
-                m_warnCount++;
-                isWarning = true;
-                break;
-            }
-        }
-        if(!isWarning) {
-            for(size_t i = 0; i < cmpPatterns.errorsPatterns.size(); i++) {
-                BuildLineInfo bli;
-                CmpPatternPtr cmpPatterPtr = cmpPatterns.errorsPatterns.at(i);
-                if(cmpPatterPtr->Matches(line, bli)) {
-                    buildLineInfo->SetFilename(bli.GetFilename());
-                    buildLineInfo->SetSeverity(bli.GetSeverity());
-                    buildLineInfo->SetLineNumber(bli.GetLineNumber());
-                    buildLineInfo->NormalizeFilename(m_directories, m_cygwinRoot);
-                    buildLineInfo->SetRegexLineMatch(bli.GetRegexLineMatch());
-                    buildLineInfo->SetColumn(bli.GetColumn());
-
-                    // keep this info in both lists (errors+warnings AND errors)
-                    m_errorsAndWarningsList.push_back(buildLineInfo);
-                    m_errorsList.push_back(buildLineInfo);
-                    m_errorCount++;
-                    break;
-                }
-            }
+    LINE_SEVERITY severity;
+    // Get the matching regex for this line
+    CmpPatternPtr cmpPatterPtr = GetMatchingRegex(line, severity);
+    buildLineInfo->SetSeverity(severity);
+    BuildLineInfo bli;
+    if(cmpPatterPtr && cmpPatterPtr->Matches(line, bli)) {
+        buildLineInfo->SetFilename(bli.GetFilename());
+        buildLineInfo->SetSeverity(bli.GetSeverity());
+        buildLineInfo->SetLineNumber(bli.GetLineNumber());
+        buildLineInfo->NormalizeFilename(m_directories, m_cygwinRoot);
+        buildLineInfo->SetRegexLineMatch(bli.GetRegexLineMatch());
+        buildLineInfo->SetColumn(bli.GetColumn());
+        if(severity == SV_WARNING) {
+            // Warning
+            m_errorsAndWarningsList.push_back(buildLineInfo);
+            m_warnCount++;
+        } else {
+            // Error
+            m_errorsAndWarningsList.push_back(buildLineInfo);
+            m_errorsList.push_back(buildLineInfo);
+            m_errorCount++;
         }
     }
     return buildLineInfo;
@@ -387,8 +341,8 @@ void NewBuildTab::DoCacheRegexes()
         Compiler::CmpListInfoPattern::const_iterator iter;
         for(iter = errPatterns.begin(); iter != errPatterns.end(); iter++) {
 
-            CmpPatternPtr compiledPatternPtr(new CmpPattern(
-                new wxRegEx(iter->pattern), iter->fileNameIndex, iter->lineNumberIndex, iter->columnIndex, SV_ERROR));
+            CmpPatternPtr compiledPatternPtr(new CmpPattern(new wxRegEx(iter->pattern, wxRE_ADVANCED | wxRE_ICASE),
+                iter->fileNameIndex, iter->lineNumberIndex, iter->columnIndex, SV_ERROR));
             if(compiledPatternPtr->GetRegex()->IsValid()) {
                 cmpPatterns.errorsPatterns.push_back(compiledPatternPtr);
             }
@@ -396,8 +350,8 @@ void NewBuildTab::DoCacheRegexes()
 
         for(iter = warnPatterns.begin(); iter != warnPatterns.end(); iter++) {
 
-            CmpPatternPtr compiledPatternPtr(new CmpPattern(
-                new wxRegEx(iter->pattern), iter->fileNameIndex, iter->lineNumberIndex, iter->columnIndex, SV_WARNING));
+            CmpPatternPtr compiledPatternPtr(new CmpPattern(new wxRegEx(iter->pattern, wxRE_ADVANCED | wxRE_ICASE),
+                iter->fileNameIndex, iter->lineNumberIndex, iter->columnIndex, SV_WARNING));
             if(compiledPatternPtr->GetRegex()->IsValid()) {
                 cmpPatterns.warningPatterns.push_back(compiledPatternPtr);
             }
@@ -421,7 +375,8 @@ bool NewBuildTab::DoGetCompilerPatterns(const wxString& compilerName, CmpPattern
 void NewBuildTab::DoClear()
 {
     wxFont font = DoGetFont();
-
+    m_lastLineColoured = wxNOT_FOUND;
+    m_maxlineWidth = wxNOT_FOUND;
     m_buildInterrupted = false;
     m_directories.Clear();
     m_buildInfoPerFile.clear();
@@ -556,6 +511,7 @@ void NewBuildTab::OnWorkspaceLoaded(wxCommandEvent& e)
 
 void NewBuildTab::DoProcessOutput(bool compilationEnded, bool isSummaryLine)
 {
+    wxUnusedVar(isSummaryLine);
     if(!compilationEnded && m_output.Find(wxT("\n")) == wxNOT_FOUND) {
         // still dont have a complete line
         return;
@@ -575,7 +531,7 @@ void NewBuildTab::DoProcessOutput(bool compilationEnded, bool isSummaryLine)
         // If this is a line similar to 'Entering directory `'
         // add the path in the directories array
         DoSearchForDirectory(buildLine);
-        BuildLineInfo* buildLineInfo = DoProcessLine(buildLine, isSummaryLine);
+        BuildLineInfo* buildLineInfo = DoProcessLine(buildLine);
 
         // keep the line info
         if(buildLineInfo->GetFilename().IsEmpty() == false) {
@@ -597,7 +553,21 @@ void NewBuildTab::DoProcessOutput(bool compilationEnded, bool isSummaryLine)
 
         m_view->SetEditable(true);
         buildLine.Trim();
+        int curline = m_view->GetLineCount() - 1;
         m_view->AppendText(buildLine + "\n");
+
+        // get the newly added line width
+        int endPosition = m_view->GetLineEndPosition(curline); // get character position from begin
+        int beginPosition = m_view->PositionFromLine(curline); // and end of line
+
+        wxPoint beginPos = m_view->PointFromPosition(beginPosition);
+        wxPoint endPos = m_view->PointFromPosition(endPosition);
+
+        int curLen = (endPos.x - beginPos.x) + 10;
+        m_maxlineWidth = wxMax(m_maxlineWidth, curLen);
+        if(m_maxlineWidth > 0) {
+            m_view->SetScrollWidth(m_maxlineWidth);
+        }
         m_view->SetEditable(false);
 
         if(clConfig::Get().Read(kConfigBuildAutoScroll, true)) {
@@ -626,7 +596,7 @@ void NewBuildTab::DoToggleWindow()
 {
     bool success = m_errorCount == 0 && (m_skipWarnings || m_warnCount == 0);
     bool viewing = ManagerST::Get()->IsPaneVisible(wxT("Output View")) &&
-                   (clMainFrame::Get()->GetOutputPane()->GetNotebook()->GetCurrentPage() == this);
+        (clMainFrame::Get()->GetOutputPane()->GetNotebook()->GetCurrentPage() == this);
     bool skipwarnings(false);
 
     if(!success) {
@@ -743,7 +713,11 @@ bool NewBuildTab::DoSelectAndOpen(int buildViewLine, bool centerLine)
                     fileArr.Add(candidates.at(i).GetFullPath());
                 }
 
-                wxString selection = wxGetSingleChoice(_("Select a file to open:"), _("Choose a file"), fileArr);
+                clSingleChoiceDialog dlg(EventNotifier::Get()->TopFrame(), fileArr);
+                dlg.SetLabel(_("Select a file to open"));
+                if(dlg.ShowModal() != wxID_OK) return false;
+
+                wxString selection = dlg.GetSelection();
                 if(selection.IsEmpty()) return false;
 
                 fn = wxFileName(selection);
@@ -923,12 +897,12 @@ void NewBuildTab::InitView(const wxString& theme)
     } else {
         m_view->MarkerSetBackground(LEX_GCC_MARKER, wxColour(defaultStyle.GetBgColour()).ChangeLightness(90));
     }
-    
+
     // Hide all margins
     for(int i = 0; i <= wxSTC_MARGIN_RTEXT; ++i) {
         m_view->SetMarginWidth(i, 0);
     }
-    
+
     // make the symbol margin 5 pixel width
     m_view->SetMarginType(0, wxSTC_MARGIN_SYMBOL);
     m_view->SetMarginWidth(0, 5);
@@ -974,6 +948,107 @@ void NewBuildTab::DoCentreErrorLine(BuildLineInfo* bli, LEditor* editor, bool ce
         m_view->SetFirstVisibleLine(firstVisibleLine);
     }
     SetActive(editor);
+}
+
+void NewBuildTab::ColourOutput()
+{
+    // Loop over the lines and colour them
+    int fromLine = (m_lastLineColoured == wxNOT_FOUND) ? 0 : m_lastLineColoured;
+    int untilLine = (m_view->GetLineCount() - 1);
+
+    if(fromLine == untilLine) {
+        return;
+    }
+
+    for(int i = fromLine; (i < untilLine) && (untilLine >= fromLine); ++i) {
+        int startPos = m_view->PositionFromLine(i);
+        int lineEndPos = m_view->GetLineEndPosition(i);
+
+        m_view->StartStyling(startPos, 0x1f); // text styling
+        // Run the regexes
+        wxString lineText = m_view->GetLine(i);
+        LINE_SEVERITY severity;
+        GetMatchingRegex(lineText, severity);
+        switch(severity) {
+        case SV_WARNING:
+            m_view->SetStyling((lineEndPos - startPos), LEX_GCC_WARNING);
+            break;
+        case SV_ERROR:
+            m_view->SetStyling((lineEndPos - startPos), LEX_GCC_ERROR);
+            break;
+        case SV_SUCCESS:
+            m_view->SetStyling((lineEndPos - startPos), LEX_GCC_DEFAULT);
+            break;
+        case SV_DIR_CHANGE:
+            m_view->SetStyling((lineEndPos - startPos), LEX_GCC_INFO);
+            break;
+        case SV_NONE:
+        default:
+            m_view->SetStyling((lineEndPos - startPos), LEX_GCC_DEFAULT);
+            break;
+        }
+    }
+    m_lastLineColoured = untilLine;
+}
+
+CmpPatternPtr NewBuildTab::GetMatchingRegex(const wxString& lineText, LINE_SEVERITY& severity)
+{
+    if(lineText.Lower().Contains("entering directory") || lineText.Lower().Contains("leaving directory")) {
+        severity = SV_DIR_CHANGE;
+        return NULL;
+
+    } else if(lineText.StartsWith("====")) {
+        severity = SV_NONE;
+        return NULL;
+
+    } else {
+
+        // Find *warnings* first
+        bool isWarning = false;
+
+        if(!m_cmp) {
+            severity = SV_NONE;
+            return NULL;
+        }
+
+        CmpPatterns cmpPatterns;
+        if(!DoGetCompilerPatterns(m_cmp->GetName(), cmpPatterns)) {
+            severity = SV_NONE;
+            return NULL;
+        }
+
+        // If it is not an error, maybe it's a warning
+        for(size_t i = 0; i < cmpPatterns.warningPatterns.size(); i++) {
+            CmpPatternPtr cmpPatterPtr = cmpPatterns.warningPatterns.at(i);
+            BuildLineInfo bli;
+            if(cmpPatterPtr->Matches(lineText, bli)) {
+                severity = SV_WARNING;
+                return cmpPatterPtr;
+            }
+        }
+        if(!isWarning) {
+            for(size_t i = 0; i < cmpPatterns.errorsPatterns.size(); i++) {
+                BuildLineInfo bli;
+                CmpPatternPtr cmpPatterPtr = cmpPatterns.errorsPatterns.at(i);
+                if(cmpPatterPtr->Matches(lineText, bli)) {
+                    severity = SV_ERROR;
+                    return cmpPatterPtr;
+                }
+            }
+        }
+    }
+
+    // Default
+    severity = SV_NONE;
+    return NULL;
+}
+
+void NewBuildTab::OnIdle(wxIdleEvent& event)
+{
+    if(m_view->IsEmpty()) {
+        return;
+    }
+    ColourOutput();
 }
 
 ////////////////////////////////////////////

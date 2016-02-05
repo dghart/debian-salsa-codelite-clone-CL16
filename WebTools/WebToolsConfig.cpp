@@ -1,14 +1,20 @@
 #include "WebToolsConfig.h"
 #include "json_node.h"
+#include "NodeJSLocator.h"
+#include <set>
+#include <algorithm>
+#include <vector>
 
 WebToolsConfig::WebToolsConfig()
     : clConfigItem("WebTools")
-    , m_jsFlags(kJSEnableCC | kJSLibraryBrowser | kJSLibraryEcma5 | kJSLibraryJQuery | kJSPluginAngular |
-                kJSPluginNode |
-                kJSPluginStrings)
+    , m_jsFlags(kJSEnableCC | kJSLibraryBrowser | kJSLibraryEcma5 | kJSLibraryEcma6 | kJSPluginStrings | kJSPluginNode)
     , m_xmlFlags(kXmlEnableCC)
     , m_htmlFlags(kHtmlEnableCC)
 {
+    NodeJSLocator locator;
+    locator.Locate();
+    m_nodejs = locator.GetNodejs();
+    m_npm = locator.GetNpm();
 }
 
 WebToolsConfig::~WebToolsConfig() {}
@@ -32,6 +38,8 @@ void WebToolsConfig::FromJSON(const JSONElement& json)
     m_jsFlags = json.namedObject("m_jsFlags").toSize_t(m_jsFlags);
     m_xmlFlags = json.namedObject("m_xmlFlags").toSize_t(m_xmlFlags);
     m_htmlFlags = json.namedObject("m_htmlFlags").toSize_t(m_htmlFlags);
+    m_nodejs = json.namedObject("m_nodejs").toString(m_nodejs);
+    m_npm = json.namedObject("m_npm").toString(m_npm);
 }
 
 JSONElement WebToolsConfig::ToJSON() const
@@ -40,6 +48,8 @@ JSONElement WebToolsConfig::ToJSON() const
     element.addProperty("m_jsFlags", m_jsFlags);
     element.addProperty("m_xmlFlags", m_xmlFlags);
     element.addProperty("m_htmlFlags", m_htmlFlags);
+    element.addProperty("m_nodejs", m_nodejs);
+    element.addProperty("m_npm", m_npm);
     return element;
 }
 
@@ -60,25 +70,46 @@ wxString WebToolsConfig::GetTernProjectFile() const
     JSONElement plugins = JSONElement::createObject("plugins");
     root.toElement().append(plugins);
 
+    std::vector<wxString> pluginsToLoad;
+
+    // basic plugins that should always get loaded
+    pluginsToLoad.push_back("commonjs");
+    pluginsToLoad.push_back("modules");
+
     if(m_jsFlags & kJSPluginNode) {
-        JSONElement node = JSONElement::createObject("node");
-        plugins.append(node);
+        pluginsToLoad.push_back("node_resolve");
+        pluginsToLoad.push_back("node");
     }
-    
+
     if(m_jsFlags & kJSPluginRequireJS) {
-        JSONElement node = JSONElement::createObject("requirejs");
-        plugins.append(node);
+        pluginsToLoad.push_back("requirejs");
     }
 
     if(m_jsFlags & kJSPluginStrings) {
-        JSONElement complete_strings = JSONElement::createObject("complete_strings");
-        plugins.append(complete_strings);
+        pluginsToLoad.push_back("complete_strings");
     }
 
     if(m_jsFlags & kJSPluginAngular) {
-        JSONElement angular = JSONElement::createObject("angular");
-        plugins.append(angular);
+        pluginsToLoad.push_back("angular");
     }
 
+    if(m_jsFlags & kJSWebPack) {
+        pluginsToLoad.push_back("webpack");
+    }
+
+    if(m_jsFlags & kJSNodeExpress) {
+        pluginsToLoad.push_back("node_resolve");
+        pluginsToLoad.push_back("node");
+        pluginsToLoad.push_back("node-express");
+    }
+
+    std::set<wxString> uniquePlugins;
+    std::for_each(pluginsToLoad.begin(), pluginsToLoad.end(), [&](const wxString& name) {
+        if(uniquePlugins.count(name) == 0) {
+            uniquePlugins.insert(name);
+            JSONElement node = JSONElement::createObject(name);
+            plugins.append(node);
+        }
+    });
     return root.toElement().format();
 }

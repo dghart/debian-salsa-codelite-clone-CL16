@@ -9,6 +9,7 @@
   "m_outputFileName": "",
   "m_firstWindowId": 1000,
   "m_useEnum": true,
+  "m_useUnderscoreMacro": true,
   "m_templateClasses": []
  },
  "windows": [{
@@ -103,7 +104,7 @@
     }, {
      "type": "bitmapPicker",
      "m_label": "Bitmap File:",
-     "m_path": "../LiteEditor/res/100_x_400_white.png"
+     "m_path": ""
     }, {
      "type": "bitmapPicker",
      "m_label": "Bitmap File (16x16)  :",
@@ -265,7 +266,7 @@
           }, {
            "type": "colour",
            "m_label": "Fg Colour:",
-           "colour": "(255,255,255)"
+           "colour": "<Default>"
           }, {
            "type": "font",
            "m_label": "Font:",
@@ -314,11 +315,11 @@
           }, {
            "type": "colour",
            "m_label": "Gradient Start",
-           "colour": "(64,64,64)"
+           "colour": "ButtonFace"
           }, {
            "type": "colour",
            "m_label": "Gradient End",
-           "colour": "(64,64,64)"
+           "colour": "ButtonFace"
           }],
          "m_events": [],
          "m_children": []
@@ -612,7 +613,7 @@
           }, {
            "type": "colour",
            "m_label": "Fg Colour:",
-           "colour": "(255,255,255)"
+           "colour": "<Default>"
           }, {
            "type": "font",
            "m_label": "Font:",
@@ -661,11 +662,11 @@
           }, {
            "type": "colour",
            "m_label": "Gradient Start",
-           "colour": "(64,64,64)"
+           "colour": "ButtonFace"
           }, {
            "type": "colour",
            "m_label": "Gradient End",
-           "colour": "(64,64,64)"
+           "colour": "ButtonFace"
           }],
          "m_events": [],
          "m_children": []
@@ -975,7 +976,7 @@
               }, {
                "type": "bool",
                "m_label": "Default Button",
-               "m_value": false
+               "m_value": true
               }, {
                "type": "bitmapPicker",
                "m_label": "Bitmap File:",
@@ -1339,7 +1340,7 @@
           }, {
            "type": "colour",
            "m_label": "Fg Colour:",
-           "colour": "(255,255,255)"
+           "colour": "<Default>"
           }, {
            "type": "font",
            "m_label": "Font:",
@@ -1388,11 +1389,11 @@
           }, {
            "type": "colour",
            "m_label": "Gradient Start",
-           "colour": "(64,64,64)"
+           "colour": "ButtonFace"
           }, {
            "type": "colour",
            "m_label": "Gradient End",
-           "colour": "(64,64,64)"
+           "colour": "ButtonFace"
           }],
          "m_events": [],
          "m_children": []
@@ -1860,7 +1861,7 @@
           }, {
            "type": "colour",
            "m_label": "Fg Colour:",
-           "colour": "(255,255,255)"
+           "colour": "<Default>"
           }, {
            "type": "font",
            "m_label": "Font:",
@@ -1909,11 +1910,11 @@
           }, {
            "type": "colour",
            "m_label": "Gradient Start",
-           "colour": "(64,64,64)"
+           "colour": "ButtonFace"
           }, {
            "type": "colour",
            "m_label": "Gradient End",
-           "colour": "(64,64,64)"
+           "colour": "ButtonFace"
           }],
          "m_events": [],
          "m_children": []
@@ -2252,7 +2253,7 @@
           }, {
            "type": "colour",
            "m_label": "Fg Colour:",
-           "colour": "(255,255,255)"
+           "colour": "<Default>"
           }, {
            "type": "font",
            "m_label": "Font:",
@@ -2301,11 +2302,11 @@
           }, {
            "type": "colour",
            "m_label": "Gradient Start",
-           "colour": "(64,64,64)"
+           "colour": "ButtonFace"
           }, {
            "type": "colour",
            "m_label": "Gradient End",
-           "colour": "(64,64,64)"
+           "colour": "ButtonFace"
           }],
          "m_events": [],
          "m_children": []

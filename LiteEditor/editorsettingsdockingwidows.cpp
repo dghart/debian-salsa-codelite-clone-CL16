@@ -1,7 +1,7 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //
-// copyright            : (C) 2014 The CodeLite Team
+// copyright            : (C) 2014 Eran Ifrah
 // file name            : editorsettingsdockingwidows.cpp
 //
 // -------------------------------------------------------------------------
@@ -56,6 +56,16 @@ EditorSettingsDockingWindows::EditorSettingsDockingWindows(wxWindow* parent)
     m_checkBoxEnsureCaptionsVisible->SetValue(options->IsEnsureCaptionsVisible());
     m_checkBoxEditorTabsFollowsTheme->SetValue(options->IsTabColourMatchesTheme());
     m_checkBoxShowXButton->SetValue(options->IsTabHasXButton());
+    m_choiceTabStyle->SetSelection(options->GetOptions() & OptionsConfig::Opt_TabStyleMinimal ? 1 : 0);
+#if 0
+    {
+        wxArrayString tabOptionsArr;
+        tabOptionsArr.Add(wxT("TOP"));
+        tabOptionsArr.Add(wxT("BOTTOM"));
+        m_choiceWorkspaceTabsOrientation->Clear();
+        m_choiceWorkspaceTabsOrientation->Append(tabOptionsArr);
+    }
+#endif
     switch(options->GetOutputTabsDirection()) {
     case wxTOP:
         m_choiceOutputTabsOrientation->SetSelection(0);
@@ -66,6 +76,22 @@ EditorSettingsDockingWindows::EditorSettingsDockingWindows(wxWindow* parent)
     default:
         break;
     }
+
+#if 0
+    // On OSX we dont support left-right (due to blurred images)
+    switch(options->GetWorkspaceTabsDirection()) {
+    case wxLEFT:
+    case wxTOP:
+        m_choiceWorkspaceTabsOrientation->SetSelection(0);
+        break;
+    case wxRIGHT:
+    case wxBOTTOM:
+        m_choiceWorkspaceTabsOrientation->SetSelection(1);
+        break;
+    default:
+        break;
+    }
+#else
     switch(options->GetWorkspaceTabsDirection()) {
     case wxLEFT:
         m_choiceWorkspaceTabsOrientation->SetSelection(0);
@@ -82,12 +108,10 @@ EditorSettingsDockingWindows::EditorSettingsDockingWindows(wxWindow* parent)
     default:
         break;
     }
-    
-    m_checkBoxHideOutputPaneNotIfDebug->Connect(
-        wxEVT_UPDATE_UI,
-        wxUpdateUIEventHandler(EditorSettingsDockingWindows::OnHideOutputPaneNotIfDebugUI),
-        NULL,
-        this);
+#endif
+
+    m_checkBoxHideOutputPaneNotIfDebug->Connect(wxEVT_UPDATE_UI,
+        wxUpdateUIEventHandler(EditorSettingsDockingWindows::OnHideOutputPaneNotIfDebugUI), NULL, this);
 }
 
 void EditorSettingsDockingWindows::Save(OptionsConfigPtr options)
@@ -116,6 +140,8 @@ void EditorSettingsDockingWindows::Save(OptionsConfigPtr options)
     options->SetEnsureCaptionsVisible(m_checkBoxEnsureCaptionsVisible->IsChecked());
     options->SetTabColourMatchesTheme(m_checkBoxEditorTabsFollowsTheme->IsChecked());
     options->SetTabHasXButton(m_checkBoxShowXButton->IsChecked());
+    options->EnableOption(OptionsConfig::Opt_TabStyleMinimal, (m_choiceTabStyle->GetSelection() == 1));
+    
     switch(m_choiceOutputTabsOrientation->GetSelection()) {
     case 0:
         options->SetOutputTabsDirection(wxTOP);
@@ -142,7 +168,7 @@ void EditorSettingsDockingWindows::Save(OptionsConfigPtr options)
     default:
         break;
     }
-    
+
     // Keep the quickreplacebar in sync
     clMainFrame::Get()->GetMainBook()->ShowQuickReplaceBar(m_checkBoxShowReplaceBar->IsChecked());
 }

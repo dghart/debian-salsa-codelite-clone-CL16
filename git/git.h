@@ -1,7 +1,7 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //
-// copyright            : (C) 2014 The CodeLite Team
+// copyright            : (C) 2014 Eran Ifrah
 // file name            : git.h
 //
 // -------------------------------------------------------------------------
@@ -49,6 +49,7 @@
 #include "cl_command_event.h"
 #include "gitui.h"
 #include <vector>
+#include "clTabTogglerHelper.h"
 
 class clCommandProcessor;
 class gitAction
@@ -94,6 +95,9 @@ struct GitCmd {
 
 class GitPlugin : public IPlugin
 {
+    friend class GitConsole;
+    friend class GitCommitListDlg;
+    
     typedef std::map<int, int> IntMap_t;
     enum {
         gitNone = 0,
@@ -161,6 +165,7 @@ class GitPlugin : public IPlugin
     wxArrayString m_filesSelected;
     wxString m_selectedFolder;
     clCommandProcessor* m_commandProcessor;
+    clTabTogglerHelper::Ptr_t m_tabToggler;
 
 private:
     void DoCreateTreeImages();
@@ -238,7 +243,6 @@ private:
     void OnGarbageColletion(wxCommandEvent& e);
     void OnOpenMSYSGit(wxCommandEvent& e);
     void OnActiveProjectChanged(clProjectSettingsEvent& event);
-    
 
 #if 0
     void OnBisectStart(wxCommandEvent& e);
@@ -260,7 +264,17 @@ private:
 public:
     GitPlugin(IManager* manager);
     ~GitPlugin();
-
+    
+    void StoreWorkspaceRepoDetails();
+    void WorkspaceClosed();
+    
+    /**
+     * @brief fetch the next 100 commits (skip 'skip' first commits)
+     * and show them in the commit list dialog
+     * @param skip number of first commits to skip
+     */
+    void FetchNextCommits(int skip);
+    
     GitConsole* GetConsole() { return m_console; }
     const wxString& GetRepositoryDirectory() const { return m_repositoryDirectory; }
     IProcess* GetProcess() { return m_process; }

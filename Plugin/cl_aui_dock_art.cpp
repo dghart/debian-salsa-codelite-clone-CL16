@@ -1,7 +1,7 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //
-// copyright            : (C) 2014 The CodeLite Team
+// copyright            : (C) 2014 Eran Ifrah
 // file name            : cl_aui_dock_art.cpp
 //
 // -------------------------------------------------------------------------
@@ -77,12 +77,8 @@ clAuiDockArt::clAuiDockArt(IManager* manager)
 clAuiDockArt::~clAuiDockArt() {}
 
 #define AUI_BUTTON_SIZE 12
-void clAuiDockArt::DrawPaneButton(wxDC& dc,
-                                  wxWindow* window,
-                                  int button,
-                                  int button_state,
-                                  const wxRect& _rect,
-                                  wxAuiPaneInfo& pane)
+void clAuiDockArt::DrawPaneButton(
+    wxDC& dc, wxWindow* window, int button, int button_state, const wxRect& _rect, wxAuiPaneInfo& pane)
 {
     int xx = _rect.GetTopLeft().x + ((_rect.GetWidth() - AUI_BUTTON_SIZE) / 2);
     int yy = _rect.GetTopLeft().y + ((_rect.GetHeight() - AUI_BUTTON_SIZE) / 2);
@@ -114,7 +110,57 @@ clAuiDockArt::DrawCaption(wxDC& dc, wxWindow* window, const wxString& text, cons
     // Hackishly prevent assertions on linux
     if(tmpRect.GetHeight() == 0) tmpRect.SetHeight(1);
     if(tmpRect.GetWidth() == 0) tmpRect.SetWidth(1);
+#ifdef __WXOSX__
+    tmpRect = rect;
+    window->PrepareDC(dc);
 
+    // Prepare the colours
+    wxColour bgColour, penColour, textColour;
+    textColour = wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT);
+    bgColour = DrawingUtils::DarkColour(wxSystemSettings::GetColour(wxSYS_COLOUR_3DFACE), 2.0);
+    ; // Same as the notebook background colour
+    penColour = wxSystemSettings::GetColour(wxSYS_COLOUR_3DSHADOW);
+    penColour = bgColour;
+
+    wxFont f = wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT);
+    dc.SetFont(f);
+    dc.SetPen(penColour);
+    dc.SetBrush(bgColour);
+    dc.DrawRectangle(tmpRect);
+
+    // Fill the caption to look like OSX caption
+    wxColour topColour("#d3d2d3");
+    wxColour bottomColour("#e8e8e8");
+    dc.GradientFillLinear(tmpRect, topColour, bottomColour, wxNORTH);
+    
+    dc.SetPen(penColour);
+    dc.SetBrush(*wxTRANSPARENT_BRUSH);
+    dc.DrawRectangle(tmpRect);
+    
+    int caption_offset = 0;
+    if(pane.icon.IsOk()) {
+        DrawIcon(dc, tmpRect, pane);
+        caption_offset += pane.icon.GetWidth() + 3;
+    } else {
+        caption_offset = 3;
+    }
+    dc.SetTextForeground(textColour);
+    wxCoord w, h;
+    dc.GetTextExtent(wxT("ABCDEFHXfgkj"), &w, &h);
+
+    wxRect clip_rect = tmpRect;
+    clip_rect.width -= 3; // text offset
+    clip_rect.width -= 2; // button padding
+    if(pane.HasCloseButton()) clip_rect.width -= m_buttonSize;
+    if(pane.HasPinButton()) clip_rect.width -= m_buttonSize;
+    if(pane.HasMaximizeButton()) clip_rect.width -= m_buttonSize;
+
+    wxString draw_text = wxAuiChopText(dc, text, clip_rect.width);
+    wxSize textSize = dc.GetTextExtent(draw_text);
+    
+    dc.SetTextForeground(textColour);
+    dc.DrawText(draw_text, tmpRect.x + 3 + caption_offset, tmpRect.y + ((tmpRect.height - textSize.y) / 2));
+#else
     wxBitmap bmp(tmpRect.GetSize());
     {
         wxMemoryDC memDc;
@@ -171,8 +217,8 @@ clAuiDockArt::DrawCaption(wxDC& dc, wxWindow* window, const wxString& text, cons
         pDC->DrawText(draw_text, tmpRect.x + 3 + caption_offset, tmpRect.y + ((tmpRect.height - textSize.y) / 2));
         memDc.SelectObject(wxNullBitmap);
     }
-
     dc.DrawBitmap(bmp, rect.x, rect.y, true);
+#endif
 }
 
 void clAuiDockArt::DrawBackground(wxDC& dc, wxWindow* window, int orientation, const wxRect& rect)
@@ -199,15 +245,13 @@ void clAuiDockArt::DrawBorder(wxDC& dc, wxWindow* window, const wxRect& rect, wx
 
 void clAuiDockArt::DrawSash(wxDC& dc, wxWindow* window, int orientation, const wxRect& rect)
 {
-    wxColour sashColour = wxSystemSettings::GetColour(wxSYS_COLOUR_3DFACE);
-#if 0
-    if(clGetManager() && clGetManager()->GetStatusBar() && clGetManager()->GetStatusBar()->GetArt()) {
-        sashColour = clGetManager()->GetStatusBar()->GetArt()->GetBgColour();
-    }
-#endif
+#if 1
+    wxAuiDefaultDockArt::DrawSash(dc, window, orientation, rect);
+#else
     wxUnusedVar(window);
     wxUnusedVar(orientation);
     dc.SetPen(*wxTRANSPARENT_PEN);
-    dc.SetBrush(sashColour);
+    dc.SetBrush(DrawingUtils::GetStippleBrush());
     dc.DrawRectangle(rect);
+#endif
 }

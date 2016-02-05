@@ -15,7 +15,7 @@
 static WordCompletionPlugin* thePlugin = NULL;
 
 // Define the plugin entry point
-extern "C" EXPORT IPlugin* CreatePlugin(IManager* manager)
+CL_PLUGIN_API IPlugin* CreatePlugin(IManager* manager)
 {
     if(thePlugin == 0) {
         thePlugin = new WordCompletionPlugin(manager);
@@ -23,17 +23,17 @@ extern "C" EXPORT IPlugin* CreatePlugin(IManager* manager)
     return thePlugin;
 }
 
-extern "C" EXPORT PluginInfo GetPluginInfo()
+CL_PLUGIN_API PluginInfo* GetPluginInfo()
 {
-    PluginInfo info;
+    static PluginInfo info;
     info.SetAuthor(wxT("Eran Ifrah"));
     info.SetName(wxT("Word Completion"));
     info.SetDescription(_("Suggest completion based on words typed in the editors"));
     info.SetVersion(wxT("v1.0"));
-    return info;
+    return &info;
 }
 
-extern "C" EXPORT int GetPluginInterfaceVersion() { return PLUGIN_INTERFACE_VERSION; }
+CL_PLUGIN_API int GetPluginInterfaceVersion() { return PLUGIN_INTERFACE_VERSION; }
 
 WordCompletionPlugin::WordCompletionPlugin(IManager* manager)
     : IPlugin(manager)
@@ -93,7 +93,7 @@ void WordCompletionPlugin::OnWordComplete(wxCommandEvent& event)
     wxString suggestString;
     wxCodeCompletionBoxEntry::Vec_t entries;
     wxCodeCompletionBox::BmpVec_t bitmaps;
-    bitmaps.push_back(m_images.Bitmap("m_bmpWord"));
+    bitmaps.push_back(m_mgr->GetStdIcons()->LoadBitmap("word"));
 
     // Filter (what the user has typed so far)
     wxStyledTextCtrl* stc = activeEditor->GetCtrl();
@@ -147,13 +147,10 @@ void WordCompletionPlugin::OnWordComplete(wxCommandEvent& event)
         entries.push_back(wxCodeCompletionBoxEntry::New(*iter, 0));
     }
 
-    wxCodeCompletionBoxManager::Get().ShowCompletionBox(activeEditor->GetCtrl(),
-                                                        entries,
-                                                        bitmaps,
-                                                        event.GetId() == XRCID("text_word_complete") ?
-                                                            wxCodeCompletionBox::kInsertSingleMatch :
-                                                            wxCodeCompletionBox::kNone,
-                                                        wxNOT_FOUND);
+    wxCodeCompletionBoxManager::Get().ShowCompletionBox(activeEditor->GetCtrl(), entries, bitmaps,
+        event.GetId() == XRCID("text_word_complete") ? wxCodeCompletionBox::kInsertSingleMatch :
+                                                       wxCodeCompletionBox::kNone,
+        wxNOT_FOUND);
 }
 
 void WordCompletionPlugin::OnSettings(wxCommandEvent& event)

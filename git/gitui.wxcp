@@ -1,7 +1,7 @@
 {
  "metadata": {
   "m_generatedFilesDir": ".",
-  "m_objCounter": 342,
+  "m_objCounter": 347,
   "m_includeFiles": [],
   "m_bitmapFunction": "wxCrafterpca4kKInitBitmapResources",
   "m_bitmapsFile": "gitui_git_bitmaps.cpp",
@@ -9,6 +9,7 @@
   "m_outputFileName": "gitui",
   "m_firstWindowId": 6000,
   "m_useEnum": true,
+  "m_useUnderscoreMacro": true,
   "m_templateClasses": [{
     "m_includeFile": "#include \"gitCommitEditor.h\"",
     "m_allocationLine": "$name = new GitCommitEditor( $parent );",
@@ -109,11 +110,11 @@
     }, {
      "type": "bitmapPicker",
      "m_label": "Bitmap File (16x16)  :",
-     "m_path": "icons/png/git.png"
+     "m_path": "../bitmaps/16-git.png"
     }, {
      "type": "bitmapPicker",
      "m_label": "Bitmap File (32x32)  :",
-     "m_path": ""
+     "m_path": "../bitmaps/16-git@2x.png"
     }, {
      "type": "bitmapPicker",
      "m_label": "Bitmap File (64x64)  :",
@@ -2094,11 +2095,11 @@
     }, {
      "type": "bitmapPicker",
      "m_label": "Bitmap File (16x16)  :",
-     "m_path": "icons/png/git.png"
+     "m_path": "../bitmaps/16-git.png"
     }, {
      "type": "bitmapPicker",
      "m_label": "Bitmap File (32x32)  :",
-     "m_path": ""
+     "m_path": "../bitmaps/16-git@2x.png"
     }, {
      "type": "bitmapPicker",
      "m_label": "Bitmap File (64x64)  :",
@@ -2205,7 +2206,7 @@
           }, {
            "type": "bitmapPicker",
            "m_label": "Bitmap File:",
-           "m_path": "../LiteEditor/res/16/select-all.png"
+           "m_path": "../bitmaps/16-ok.png"
           }, {
            "type": "filePicker",
            "m_label": "Disabled-Bitmap File",
@@ -2361,7 +2362,7 @@
           }, {
            "type": "bitmapPicker",
            "m_label": "Bitmap File:",
-           "m_path": "wxART_DELETE,wxART_TOOLBAR,16"
+           "m_path": "../bitmaps/16-clear.png"
           }, {
            "type": "filePicker",
            "m_label": "Disabled-Bitmap File",
@@ -3631,11 +3632,11 @@
     }, {
      "type": "bitmapPicker",
      "m_label": "Bitmap File (16x16)  :",
-     "m_path": "icons/png/git.png"
+     "m_path": "../bitmaps/16-git.png"
     }, {
      "type": "bitmapPicker",
      "m_label": "Bitmap File (32x32)  :",
-     "m_path": ""
+     "m_path": "../bitmaps/16-git@2x.png"
     }, {
      "type": "bitmapPicker",
      "m_label": "Bitmap File (64x64)  :",
@@ -3690,7 +3691,7 @@
        "border": 5,
        "gbSpan": "1,1",
        "gbPosition": "0,0",
-       "m_styles": ["wxSP_LIVE_UPDATE", "wxSP_NO_XP_THEME", "wxSP_3DSASH"],
+       "m_styles": ["wxSP_LIVE_UPDATE", "wxSP_3DSASH"],
        "m_sizerFlags": ["wxALL", "wxLEFT", "wxRIGHT", "wxTOP", "wxBOTTOM", "wxEXPAND"],
        "m_properties": [{
          "type": "winid",
@@ -3861,105 +3862,330 @@
             }],
            "m_events": [],
            "m_children": [{
-             "m_type": 4428,
+             "m_type": 4401,
              "proportion": 0,
              "border": 5,
              "gbSpan": "1,1",
              "gbPosition": "0,0",
-             "m_styles": ["wxTE_PROCESS_ENTER"],
-             "m_sizerFlags": ["wxALL", "wxLEFT", "wxRIGHT", "wxTOP", "wxBOTTOM", "wxEXPAND"],
+             "m_styles": [],
+             "m_sizerFlags": ["wxEXPAND"],
              "m_properties": [{
-               "type": "winid",
-               "m_label": "ID:",
-               "m_winid": "wxID_ANY"
-              }, {
-               "type": "string",
-               "m_label": "Size:",
-               "m_value": "-1,-1"
-              }, {
                "type": "string",
                "m_label": "Minimum Size:",
                "m_value": "-1,-1"
               }, {
                "type": "string",
                "m_label": "Name:",
-               "m_value": "m_searchCtrlFilter"
-              }, {
-               "type": "multi-string",
-               "m_label": "Tooltip:",
-               "m_value": "Search the commit list\\nThe search is performed on all columns"
-              }, {
-               "type": "colour",
-               "m_label": "Bg Colour:",
-               "colour": "<Default>"
-              }, {
-               "type": "colour",
-               "m_label": "Fg Colour:",
-               "colour": "<Default>"
-              }, {
-               "type": "font",
-               "m_label": "Font:",
-               "m_value": ""
-              }, {
-               "type": "bool",
-               "m_label": "Hidden",
-               "m_value": false
-              }, {
-               "type": "bool",
-               "m_label": "Disabled",
-               "m_value": false
-              }, {
-               "type": "bool",
-               "m_label": "Focused",
-               "m_value": false
-              }, {
-               "type": "string",
-               "m_label": "Class Name:",
-               "m_value": ""
-              }, {
-               "type": "string",
-               "m_label": "Include File:",
-               "m_value": ""
+               "m_value": "boxSizer343"
               }, {
                "type": "string",
                "m_label": "Style:",
                "m_value": ""
               }, {
-               "type": "string",
-               "m_label": "Value:",
-               "m_value": ""
-              }, {
-               "type": "bool",
-               "m_label": "Show Cancel Button",
-               "m_value": false
-              }, {
-               "type": "bool",
-               "m_label": "Show Search Button",
-               "m_value": true
+               "type": "choice",
+               "m_label": "Orientation:",
+               "m_selection": 1,
+               "m_options": ["wxVERTICAL", "wxHORIZONTAL"]
               }],
-             "m_events": [{
-               "m_eventName": "wxEVT_COMMAND_TEXT_ENTER",
-               "m_eventClass": "wxCommandEvent",
-               "m_eventHandler": "wxCommandEventHandler",
-               "m_functionNameAndSignature": "OnSearchCommitList(wxCommandEvent& event)",
-               "m_description": "Respond to a wxEVT_COMMAND_TEXT_ENTER event, generated when enter is pressed in a text control\n(which must have wxTE_PROCESS_ENTER style for this event to be generated).",
-               "m_noBody": false
+             "m_events": [],
+             "m_children": [{
+               "m_type": 4428,
+               "proportion": 1,
+               "border": 2,
+               "gbSpan": "1,1",
+               "gbPosition": "0,0",
+               "m_styles": ["wxTE_PROCESS_ENTER"],
+               "m_sizerFlags": ["wxALL", "wxLEFT", "wxRIGHT", "wxTOP", "wxBOTTOM", "wxALIGN_CENTER_VERTICAL"],
+               "m_properties": [{
+                 "type": "winid",
+                 "m_label": "ID:",
+                 "m_winid": "wxID_ANY"
+                }, {
+                 "type": "string",
+                 "m_label": "Size:",
+                 "m_value": "-1,-1"
+                }, {
+                 "type": "string",
+                 "m_label": "Minimum Size:",
+                 "m_value": "-1,-1"
+                }, {
+                 "type": "string",
+                 "m_label": "Name:",
+                 "m_value": "m_searchCtrlFilter"
+                }, {
+                 "type": "multi-string",
+                 "m_label": "Tooltip:",
+                 "m_value": "Search the commit list\\nThe search is performed on all columns"
+                }, {
+                 "type": "colour",
+                 "m_label": "Bg Colour:",
+                 "colour": "<Default>"
+                }, {
+                 "type": "colour",
+                 "m_label": "Fg Colour:",
+                 "colour": "<Default>"
+                }, {
+                 "type": "font",
+                 "m_label": "Font:",
+                 "m_value": ""
+                }, {
+                 "type": "bool",
+                 "m_label": "Hidden",
+                 "m_value": false
+                }, {
+                 "type": "bool",
+                 "m_label": "Disabled",
+                 "m_value": false
+                }, {
+                 "type": "bool",
+                 "m_label": "Focused",
+                 "m_value": true
+                }, {
+                 "type": "string",
+                 "m_label": "Class Name:",
+                 "m_value": ""
+                }, {
+                 "type": "string",
+                 "m_label": "Include File:",
+                 "m_value": ""
+                }, {
+                 "type": "string",
+                 "m_label": "Style:",
+                 "m_value": ""
+                }, {
+                 "type": "string",
+                 "m_label": "Value:",
+                 "m_value": ""
+                }, {
+                 "type": "bool",
+                 "m_label": "Show Cancel Button",
+                 "m_value": false
+                }, {
+                 "type": "bool",
+                 "m_label": "Show Search Button",
+                 "m_value": true
+                }],
+               "m_events": [{
+                 "m_eventName": "wxEVT_COMMAND_TEXT_ENTER",
+                 "m_eventClass": "wxCommandEvent",
+                 "m_eventHandler": "wxCommandEventHandler",
+                 "m_functionNameAndSignature": "OnSearchCommitList(wxCommandEvent& event)",
+                 "m_description": "Respond to a wxEVT_COMMAND_TEXT_ENTER event, generated when enter is pressed in a text control\n(which must have wxTE_PROCESS_ENTER style for this event to be generated).",
+                 "m_noBody": false
+                }, {
+                 "m_eventName": "wxEVT_COMMAND_SEARCHCTRL_SEARCH_BTN",
+                 "m_eventClass": "wxCommandEvent",
+                 "m_eventHandler": "wxCommandEventHandler",
+                 "m_functionNameAndSignature": "OnSearchCommitList(wxCommandEvent& event)",
+                 "m_description": "Respond to a wxEVT_COMMAND_SEARCHCTRL_SEARCH_BTN event\ngenerated when the search button is clicked. Note that this does not initiate a search.",
+                 "m_noBody": false
+                }],
+               "m_children": []
               }, {
-               "m_eventName": "wxEVT_COMMAND_SEARCHCTRL_SEARCH_BTN",
-               "m_eventClass": "wxCommandEvent",
-               "m_eventHandler": "wxCommandEventHandler",
-               "m_functionNameAndSignature": "OnSearchCommitList(wxCommandEvent& event)",
-               "m_description": "Respond to a wxEVT_COMMAND_SEARCHCTRL_SEARCH_BTN event\ngenerated when the search button is clicked. Note that this does not initiate a search.",
-               "m_noBody": false
-              }],
-             "m_children": []
+               "m_type": 4400,
+               "proportion": 0,
+               "border": 2,
+               "gbSpan": "1,1",
+               "gbPosition": "0,0",
+               "m_styles": [],
+               "m_sizerFlags": ["wxALL", "wxLEFT", "wxRIGHT", "wxTOP", "wxBOTTOM"],
+               "m_properties": [{
+                 "type": "winid",
+                 "m_label": "ID:",
+                 "m_winid": "wxID_BACKWARD"
+                }, {
+                 "type": "string",
+                 "m_label": "Size:",
+                 "m_value": "-1,-1"
+                }, {
+                 "type": "string",
+                 "m_label": "Minimum Size:",
+                 "m_value": "-1,-1"
+                }, {
+                 "type": "string",
+                 "m_label": "Name:",
+                 "m_value": "m_button347"
+                }, {
+                 "type": "multi-string",
+                 "m_label": "Tooltip:",
+                 "m_value": "Show previous 100 commits"
+                }, {
+                 "type": "colour",
+                 "m_label": "Bg Colour:",
+                 "colour": "<Default>"
+                }, {
+                 "type": "colour",
+                 "m_label": "Fg Colour:",
+                 "colour": "<Default>"
+                }, {
+                 "type": "font",
+                 "m_label": "Font:",
+                 "m_value": ""
+                }, {
+                 "type": "bool",
+                 "m_label": "Hidden",
+                 "m_value": false
+                }, {
+                 "type": "bool",
+                 "m_label": "Disabled",
+                 "m_value": false
+                }, {
+                 "type": "bool",
+                 "m_label": "Focused",
+                 "m_value": false
+                }, {
+                 "type": "string",
+                 "m_label": "Class Name:",
+                 "m_value": ""
+                }, {
+                 "type": "string",
+                 "m_label": "Include File:",
+                 "m_value": ""
+                }, {
+                 "type": "string",
+                 "m_label": "Style:",
+                 "m_value": ""
+                }, {
+                 "type": "string",
+                 "m_label": "Label:",
+                 "m_value": "Previous"
+                }, {
+                 "type": "bool",
+                 "m_label": "Default Button",
+                 "m_value": false
+                }, {
+                 "type": "bitmapPicker",
+                 "m_label": "Bitmap File:",
+                 "m_path": ""
+                }, {
+                 "type": "choice",
+                 "m_label": "Direction",
+                 "m_selection": 0,
+                 "m_options": ["wxLEFT", "wxRIGHT", "wxTOP", "wxBOTTOM"]
+                }, {
+                 "type": "string",
+                 "m_label": "Margins:",
+                 "m_value": "2,2"
+                }],
+               "m_events": [{
+                 "m_eventName": "wxEVT_COMMAND_BUTTON_CLICKED",
+                 "m_eventClass": "wxCommandEvent",
+                 "m_eventHandler": "wxCommandEventHandler",
+                 "m_functionNameAndSignature": "OnPrevious(wxCommandEvent& event)",
+                 "m_description": "Process a wxEVT_COMMAND_BUTTON_CLICKED event, when the button is clicked.",
+                 "m_noBody": false
+                }, {
+                 "m_eventName": "wxEVT_UPDATE_UI",
+                 "m_eventClass": "wxUpdateUIEvent",
+                 "m_eventHandler": "wxUpdateUIEventHandler",
+                 "m_functionNameAndSignature": "OnPreviousUI(wxUpdateUIEvent& event)",
+                 "m_description": "Process a wxEVT_UPDATE_UI event",
+                 "m_noBody": false
+                }],
+               "m_children": []
+              }, {
+               "m_type": 4400,
+               "proportion": 0,
+               "border": 2,
+               "gbSpan": "1,1",
+               "gbPosition": "0,0",
+               "m_styles": [],
+               "m_sizerFlags": ["wxALL", "wxLEFT", "wxRIGHT", "wxTOP", "wxBOTTOM", "wxALIGN_CENTER_VERTICAL"],
+               "m_properties": [{
+                 "type": "winid",
+                 "m_label": "ID:",
+                 "m_winid": "wxID_FORWARD"
+                }, {
+                 "type": "string",
+                 "m_label": "Size:",
+                 "m_value": "-1,-1"
+                }, {
+                 "type": "string",
+                 "m_label": "Minimum Size:",
+                 "m_value": "-1,-1"
+                }, {
+                 "type": "string",
+                 "m_label": "Name:",
+                 "m_value": "m_buttonNext"
+                }, {
+                 "type": "multi-string",
+                 "m_label": "Tooltip:",
+                 "m_value": "Fetch the next 100 commits"
+                }, {
+                 "type": "colour",
+                 "m_label": "Bg Colour:",
+                 "colour": "<Default>"
+                }, {
+                 "type": "colour",
+                 "m_label": "Fg Colour:",
+                 "colour": "<Default>"
+                }, {
+                 "type": "font",
+                 "m_label": "Font:",
+                 "m_value": ""
+                }, {
+                 "type": "bool",
+                 "m_label": "Hidden",
+                 "m_value": false
+                }, {
+                 "type": "bool",
+                 "m_label": "Disabled",
+                 "m_value": false
+                }, {
+                 "type": "bool",
+                 "m_label": "Focused",
+                 "m_value": false
+                }, {
+                 "type": "string",
+                 "m_label": "Class Name:",
+                 "m_value": ""
+                }, {
+                 "type": "string",
+                 "m_label": "Include File:",
+                 "m_value": ""
+                }, {
+                 "type": "string",
+                 "m_label": "Style:",
+                 "m_value": ""
+                }, {
+                 "type": "string",
+                 "m_label": "Label:",
+                 "m_value": "Next"
+                }, {
+                 "type": "bool",
+                 "m_label": "Default Button",
+                 "m_value": false
+                }, {
+                 "type": "bitmapPicker",
+                 "m_label": "Bitmap File:",
+                 "m_path": ""
+                }, {
+                 "type": "choice",
+                 "m_label": "Direction",
+                 "m_selection": 0,
+                 "m_options": ["wxLEFT", "wxRIGHT", "wxTOP", "wxBOTTOM"]
+                }, {
+                 "type": "string",
+                 "m_label": "Margins:",
+                 "m_value": "2,2"
+                }],
+               "m_events": [{
+                 "m_eventName": "wxEVT_COMMAND_BUTTON_CLICKED",
+                 "m_eventClass": "wxCommandEvent",
+                 "m_eventHandler": "wxCommandEventHandler",
+                 "m_functionNameAndSignature": "OnNext(wxCommandEvent& event)",
+                 "m_description": "Process a wxEVT_COMMAND_BUTTON_CLICKED event, when the button is clicked.",
+                 "m_noBody": false
+                }],
+               "m_children": []
+              }]
             }, {
              "m_type": 4469,
              "proportion": 1,
              "border": 2,
              "gbSpan": "1,1",
              "gbPosition": "0,0",
-             "m_styles": ["wxDV_ROW_LINES", "wxDV_SINGLE"],
+             "m_styles": ["wxDV_VERT_RULES", "wxDV_ROW_LINES", "wxDV_SINGLE"],
              "m_sizerFlags": ["wxALL", "wxLEFT", "wxRIGHT", "wxTOP", "wxBOTTOM", "wxEXPAND"],
              "m_properties": [{
                "type": "winid",
@@ -4284,10 +4510,10 @@
            "m_children": [{
              "m_type": 4447,
              "proportion": 1,
-             "border": 5,
+             "border": 2,
              "gbSpan": "1,1",
              "gbPosition": "0,0",
-             "m_styles": ["wxSP_LIVE_UPDATE", "wxSP_NO_XP_THEME", "wxSP_3DSASH"],
+             "m_styles": ["wxSP_LIVE_UPDATE", "wxSP_3DSASH"],
              "m_sizerFlags": ["wxEXPAND"],
              "m_properties": [{
                "type": "winid",
@@ -4460,11 +4686,11 @@
                  "m_children": [{
                    "m_type": 4447,
                    "proportion": 1,
-                   "border": 5,
+                   "border": 2,
                    "gbSpan": "1,1",
                    "gbPosition": "0,0",
-                   "m_styles": ["wxSP_LIVE_UPDATE", "wxSP_NO_XP_THEME", "wxSP_3DSASH"],
-                   "m_sizerFlags": ["wxALL", "wxLEFT", "wxRIGHT", "wxTOP", "wxBOTTOM", "wxEXPAND"],
+                   "m_styles": ["wxSP_LIVE_UPDATE", "wxSP_3DSASH"],
+                   "m_sizerFlags": ["wxEXPAND"],
                    "m_properties": [{
                      "type": "winid",
                      "m_label": "ID:",
@@ -5377,108 +5603,6 @@
             }]
           }]
         }]
-      }, {
-       "m_type": 4467,
-       "proportion": 0,
-       "border": 5,
-       "gbSpan": "1,1",
-       "gbPosition": "0,0",
-       "m_styles": [],
-       "m_sizerFlags": ["wxALL", "wxLEFT", "wxRIGHT", "wxTOP", "wxBOTTOM", "wxALIGN_CENTER_HORIZONTAL"],
-       "m_properties": [{
-         "type": "winid",
-         "m_label": "ID:",
-         "m_winid": "wxID_ANY"
-        }, {
-         "type": "string",
-         "m_label": "Size:",
-         "m_value": "-1,-1"
-        }, {
-         "type": "string",
-         "m_label": "Minimum Size:",
-         "m_value": "-1,-1"
-        }, {
-         "type": "string",
-         "m_label": "Name:",
-         "m_value": "m_stdBtnSizer290"
-        }, {
-         "type": "multi-string",
-         "m_label": "Tooltip:",
-         "m_value": ""
-        }, {
-         "type": "colour",
-         "m_label": "Bg Colour:",
-         "colour": "<Default>"
-        }, {
-         "type": "colour",
-         "m_label": "Fg Colour:",
-         "colour": "<Default>"
-        }, {
-         "type": "font",
-         "m_label": "Font:",
-         "m_value": ""
-        }, {
-         "type": "bool",
-         "m_label": "Hidden",
-         "m_value": false
-        }, {
-         "type": "bool",
-         "m_label": "Disabled",
-         "m_value": false
-        }, {
-         "type": "bool",
-         "m_label": "Focused",
-         "m_value": false
-        }, {
-         "type": "string",
-         "m_label": "Class Name:",
-         "m_value": ""
-        }, {
-         "type": "string",
-         "m_label": "Include File:",
-         "m_value": ""
-        }, {
-         "type": "string",
-         "m_label": "Style:",
-         "m_value": ""
-        }],
-       "m_events": [],
-       "m_children": [{
-         "m_type": 4468,
-         "proportion": 0,
-         "border": 5,
-         "gbSpan": "1,1",
-         "gbPosition": "0,0",
-         "m_styles": [],
-         "m_sizerFlags": ["wxALL", "wxLEFT", "wxRIGHT", "wxTOP", "wxBOTTOM"],
-         "m_properties": [{
-           "type": "choice",
-           "m_label": "ID:",
-           "m_selection": 0,
-           "m_options": ["wxID_OK", "wxID_YES", "wxID_SAVE", "wxID_APPLY", "wxID_CLOSE", "wxID_NO", "wxID_CANCEL", "wxID_HELP", "wxID_CONTEXT_HELP"]
-          }, {
-           "type": "string",
-           "m_label": "Name:",
-           "m_value": "m_button292"
-          }, {
-           "type": "multi-string",
-           "m_label": "Tooltip:",
-           "m_value": ""
-          }, {
-           "type": "bool",
-           "m_label": "Default Button",
-           "m_value": true
-          }],
-         "m_events": [{
-           "m_eventName": "wxEVT_COMMAND_BUTTON_CLICKED",
-           "m_eventClass": "wxCommandEvent",
-           "m_eventHandler": "wxCommandEventHandler",
-           "m_functionNameAndSignature": "OnOK(wxCommandEvent& event)",
-           "m_description": "Process a wxEVT_COMMAND_BUTTON_CLICKED event, when the button is clicked.",
-           "m_noBody": false
-          }],
-         "m_children": []
-        }]
       }]
     }]
   }, {
@@ -5573,11 +5697,11 @@
     }, {
      "type": "bitmapPicker",
      "m_label": "Bitmap File (16x16)  :",
-     "m_path": "icons/png/git.png"
+     "m_path": "../bitmaps/16-git.png"
     }, {
      "type": "bitmapPicker",
      "m_label": "Bitmap File (32x32)  :",
-     "m_path": ""
+     "m_path": "../bitmaps/16-git@2x.png"
     }, {
      "type": "bitmapPicker",
      "m_label": "Bitmap File (64x64)  :",
@@ -6382,11 +6506,11 @@
     }, {
      "type": "bitmapPicker",
      "m_label": "Bitmap File (16x16)  :",
-     "m_path": "icons/png/git.png"
+     "m_path": "../bitmaps/16-git.png"
     }, {
      "type": "bitmapPicker",
      "m_label": "Bitmap File (32x32)  :",
-     "m_path": ""
+     "m_path": "../bitmaps/16-git@2x.png"
     }, {
      "type": "bitmapPicker",
      "m_label": "Bitmap File (64x64)  :",
@@ -7030,11 +7154,11 @@
     }, {
      "type": "bitmapPicker",
      "m_label": "Bitmap File (16x16)  :",
-     "m_path": "icons/png/git.png"
+     "m_path": "../bitmaps/16-git.png"
     }, {
      "type": "bitmapPicker",
      "m_label": "Bitmap File (32x32)  :",
-     "m_path": ""
+     "m_path": "../bitmaps/16-git@2x.png"
     }, {
      "type": "bitmapPicker",
      "m_label": "Bitmap File (64x64)  :",
@@ -7383,7 +7507,7 @@
       }, {
        "type": "filePicker",
        "m_label": "Bitmap File:",
-       "m_path": "icons/png/git-arrow-down.png"
+       "m_path": "../bitmaps/16-next.png"
       }],
      "m_events": [],
      "m_children": []
@@ -7402,7 +7526,7 @@
       }, {
        "type": "filePicker",
        "m_label": "Bitmap File:",
-       "m_path": "icons/png/arrow-up.png"
+       "m_path": "../bitmaps/16-up.png"
       }],
      "m_events": [],
      "m_children": []
@@ -7421,7 +7545,7 @@
       }, {
        "type": "filePicker",
        "m_label": "Bitmap File:",
-       "m_path": "icons/png/git-branch.png"
+       "m_path": "../bitmaps/16-split.png"
       }],
      "m_events": [],
      "m_children": []
@@ -7440,7 +7564,7 @@
       }, {
        "type": "filePicker",
        "m_label": "Bitmap File:",
-       "m_path": "icons/png/git-branch-remote.png"
+       "m_path": "../bitmaps/16-remote-folder.png"
       }],
      "m_events": [],
      "m_children": []
@@ -7459,7 +7583,7 @@
       }, {
        "type": "filePicker",
        "m_label": "Bitmap File:",
-       "m_path": "icons/png/git-branch-new.png"
+       "m_path": "../bitmaps/16-plus.png"
       }],
      "m_events": [],
      "m_children": []
@@ -7478,7 +7602,7 @@
       }, {
        "type": "filePicker",
        "m_label": "Bitmap File:",
-       "m_path": "icons/png/git-diffs.png"
+       "m_path": "../bitmaps/16-diff.png"
       }],
      "m_events": [],
      "m_children": []
@@ -7497,7 +7621,7 @@
       }, {
        "type": "filePicker",
        "m_label": "Bitmap File:",
-       "m_path": "icons/png/git-list-commits.png"
+       "m_path": "../bitmaps/16-tasks.png"
       }],
      "m_events": [],
      "m_children": []
@@ -7516,7 +7640,7 @@
       }, {
        "type": "filePicker",
        "m_label": "Bitmap File:",
-       "m_path": "icons/png/apply-patch.png"
+       "m_path": "../bitmaps/16-patch.png"
       }],
      "m_events": [],
      "m_children": []
@@ -7535,7 +7659,7 @@
       }, {
        "type": "filePicker",
        "m_label": "Bitmap File:",
-       "m_path": "icons/png/git-list-modified.png"
+       "m_path": "../bitmaps/16-find_and_replace.png"
       }],
      "m_events": [],
      "m_children": []
@@ -7554,7 +7678,7 @@
       }, {
        "type": "filePicker",
        "m_label": "Bitmap File:",
-       "m_path": "icons/png/git-pull.png"
+       "m_path": "../bitmaps/16-pull.png"
       }],
      "m_events": [],
      "m_children": []
@@ -7573,7 +7697,7 @@
       }, {
        "type": "filePicker",
        "m_label": "Bitmap File:",
-       "m_path": "icons/png/git-push.png"
+       "m_path": "../bitmaps/16-up.png"
       }],
      "m_events": [],
      "m_children": []
@@ -7592,7 +7716,7 @@
       }, {
        "type": "filePicker",
        "m_label": "Bitmap File:",
-       "m_path": "icons/png/git-reset.png"
+       "m_path": "../bitmaps/16-undo.png"
       }],
      "m_events": [],
      "m_children": []
@@ -7611,7 +7735,7 @@
       }, {
        "type": "filePicker",
        "m_label": "Bitmap File:",
-       "m_path": "icons/png/git-reset-repo.png"
+       "m_path": "../bitmaps/16-clean.png"
       }],
      "m_events": [],
      "m_children": []
@@ -7630,7 +7754,7 @@
       }, {
        "type": "filePicker",
        "m_label": "Bitmap File:",
-       "m_path": "icons/png/git-trash.png"
+       "m_path": "../bitmaps/16-clean.png"
       }],
      "m_events": [],
      "m_children": []
@@ -7649,7 +7773,7 @@
       }, {
        "type": "filePicker",
        "m_label": "Bitmap File:",
-       "m_path": "icons/png/git-refresh.png"
+       "m_path": "../bitmaps/16-debugger_restart.png"
       }],
      "m_events": [],
      "m_children": []
@@ -7668,7 +7792,7 @@
       }, {
        "type": "filePicker",
        "m_label": "Bitmap File:",
-       "m_path": "icons/png/git-start.png"
+       "m_path": "../bitmaps/16-debugger_start.png"
       }],
      "m_events": [],
      "m_children": []
@@ -7687,7 +7811,7 @@
       }, {
        "type": "filePicker",
        "m_label": "Bitmap File:",
-       "m_path": "icons/png/git-add-file.png"
+       "m_path": "../bitmaps/16-plus.png"
       }],
      "m_events": [],
      "m_children": []
@@ -7706,7 +7830,7 @@
       }, {
        "type": "filePicker",
        "m_label": "Bitmap File:",
-       "m_path": "icons/png/git-clone.png"
+       "m_path": "../bitmaps/16-copy.png"
       }],
      "m_events": [],
      "m_children": []
@@ -7725,7 +7849,7 @@
       }, {
        "type": "filePicker",
        "m_label": "Bitmap File:",
-       "m_path": "icons/png/git.png"
+       "m_path": "../bitmaps/16-git.png"
       }],
      "m_events": [],
      "m_children": []
@@ -7744,7 +7868,7 @@
       }, {
        "type": "filePicker",
        "m_label": "Bitmap File:",
-       "m_path": "../codelite-icons-fresh-farm/toolbars/16/standard/document-open.png"
+       "m_path": "../bitmaps/16-folder.png"
       }],
      "m_events": [],
      "m_children": []
@@ -7763,7 +7887,7 @@
       }, {
        "type": "filePicker",
        "m_label": "Bitmap File:",
-       "m_path": "icons/png/git-settings.png"
+       "m_path": "../bitmaps/16-cog.png"
       }],
      "m_events": [],
      "m_children": []
@@ -7782,7 +7906,7 @@
       }, {
        "type": "filePicker",
        "m_label": "Bitmap File:",
-       "m_path": "icons/png/git-rebase.png"
+       "m_path": "../bitmaps/16-merge.png"
       }],
      "m_events": [],
      "m_children": []
@@ -7801,7 +7925,7 @@
       }, {
        "type": "filePicker",
        "m_label": "Bitmap File:",
-       "m_path": "icons/png/msysgit.png"
+       "m_path": "../bitmaps/16-console.png"
       }],
      "m_events": [],
      "m_children": []
@@ -7820,7 +7944,7 @@
       }, {
        "type": "filePicker",
        "m_label": "Bitmap File:",
-       "m_path": "icons/png/gitStash.png"
+       "m_path": "../bitmaps/16-down.png"
       }],
      "m_events": [],
      "m_children": []
@@ -7839,7 +7963,7 @@
       }, {
        "type": "filePicker",
        "m_label": "Bitmap File:",
-       "m_path": "icons/png/gitStashPop.png"
+       "m_path": "../bitmaps/16-up.png"
       }],
      "m_events": [],
      "m_children": []
@@ -7936,11 +8060,11 @@
     }, {
      "type": "bitmapPicker",
      "m_label": "Bitmap File (16x16)  :",
-     "m_path": "icons/png/git.png"
+     "m_path": "../bitmaps/16-git.png"
     }, {
      "type": "bitmapPicker",
      "m_label": "Bitmap File (32x32)  :",
-     "m_path": ""
+     "m_path": "../bitmaps/16-git@2x.png"
     }, {
      "type": "bitmapPicker",
      "m_label": "Bitmap File (64x64)  :",
@@ -8724,7 +8848,7 @@
           }, {
            "type": "bitmapPicker",
            "m_label": "Bitmap File:",
-           "m_path": "../codelite-icons-fresh-farm/output-pane/16/clear.png"
+           "m_path": "../bitmaps/16-clear.png"
           }, {
            "type": "filePicker",
            "m_label": "Disabled-Bitmap File",
@@ -8786,7 +8910,7 @@
           }, {
            "type": "bitmapPicker",
            "m_label": "Bitmap File:",
-           "m_path": "../codelite-icons-fresh-farm/subversion/16/stop.png"
+           "m_path": "../bitmaps/16-stop.png"
           }, {
            "type": "filePicker",
            "m_label": "Disabled-Bitmap File",
@@ -8896,7 +9020,7 @@
           }, {
            "type": "bitmapPicker",
            "m_label": "Bitmap File:",
-           "m_path": "icons/png/git-add-file.png"
+           "m_path": "../bitmaps/16-plus.png"
           }, {
            "type": "filePicker",
            "m_label": "Disabled-Bitmap File",
@@ -8958,7 +9082,7 @@
           }, {
            "type": "bitmapPicker",
            "m_label": "Bitmap File:",
-           "m_path": "icons/png/git-reset.png"
+           "m_path": "../bitmaps/16-undo.png"
           }, {
            "type": "filePicker",
            "m_label": "Disabled-Bitmap File",

@@ -103,6 +103,7 @@ if(NOT APPLE)
 
     ## codelite icons
     install(FILES ${CL_SRC_ROOT}/Runtime/codelite-icons-fresh-farm.zip DESTINATION ${CL_PREFIX}/share/codelite)
+    install(FILES ${CL_SRC_ROOT}/Runtime/codelite-bitmaps.zip DESTINATION ${CL_PREFIX}/share/codelite)
     install(FILES ${CL_SRC_ROOT}/Runtime/codelite-icons-dark.zip DESTINATION ${CL_PREFIX}/share/codelite)
     install(FILES ${CL_SRC_ROOT}/Runtime/codelite-icons.zip DESTINATION ${CL_PREFIX}/share/codelite)
 
@@ -129,9 +130,42 @@ if(NOT APPLE)
     ## Create application launcher, copy application icon to standard location
     if ( UNIX AND NOT APPLE )
         install(FILES ${CL_SRC_ROOT}/Runtime/codelite.desktop DESTINATION ${CL_PREFIX}/share/applications)
-        install(FILES ${CL_SRC_ROOT}/Runtime/images/cubes.png 
+        ## Install icons
+        
+        ## 32x32
+        install(FILES ${CL_SRC_ROOT}/bitmaps/32-codelite-logo@2x.png
+                DESTINATION ${CL_PREFIX}/share/icons/hicolor/32x32@2x/apps
+                RENAME codelite.png)
+                
+        install(FILES ${CL_SRC_ROOT}/bitmaps/32-codelite-logo.png
                 DESTINATION ${CL_PREFIX}/share/icons/hicolor/32x32/apps
                 RENAME codelite.png)
+        ## 64x64
+        install(FILES ${CL_SRC_ROOT}/bitmaps/64-codelite-logo@2x.png
+                DESTINATION ${CL_PREFIX}/share/icons/hicolor/64x64@2x/apps
+                RENAME codelite.png)
+                
+        install(FILES ${CL_SRC_ROOT}/bitmaps/64-codelite-logo.png
+                DESTINATION ${CL_PREFIX}/share/icons/hicolor/64x64/apps
+                RENAME codelite.png)
+                
+        ## 128x128
+        install(FILES ${CL_SRC_ROOT}/bitmaps/128-codelite-logo@2x.png
+                DESTINATION ${CL_PREFIX}/share/icons/hicolor/128x128@2x/apps
+                RENAME codelite.png)
+                
+        install(FILES ${CL_SRC_ROOT}/bitmaps/128-codelite-logo.png
+                DESTINATION ${CL_PREFIX}/share/icons/hicolor/128x128/apps
+                RENAME codelite.png)
+        ## 256x256
+        install(FILES ${CL_SRC_ROOT}/bitmaps/256-codelite-logo@2x.png
+                DESTINATION ${CL_PREFIX}/share/icons/hicolor/256x256@2x/apps
+                RENAME codelite.png)
+                
+        install(FILES ${CL_SRC_ROOT}/bitmaps/256-codelite-logo.png
+                DESTINATION ${CL_PREFIX}/share/icons/hicolor/256x256/apps
+                RENAME codelite.png)
+
         # Clear the icon cache if exists
         install(CODE "execute_process(COMMAND rm -f \$ENV{DESTDIR}/${CL_PREFIX}/share/icons/hicolor/icon-theme.cache)")
     endif (  UNIX AND NOT APPLE )
@@ -164,7 +198,13 @@ if(NOT APPLE)
         if (${WX_LIBSOUTPUT} MATCHES "^-L.+") # In recent, multi-architecture, distro versions it'll start with -L/foo/bar
             string(REGEX REPLACE "^-L([^ ;]+).*" "\\1" WX_LIBS_DIR ${WX_LIBSOUTPUT})
         else()
-            set(WX_LIBS_DIR "/usr/lib") # ${WX_LIBS_DIR} will be empty for older, non multi-architecture, distro versions that still use /usr/lib
+			# In recent fedoras, which do things with wx-config that might politely be described as 'strange,  wx-config doesn't emit -L/usr/lib64
+			find_file( USRLIBSIXTYFOUR "libwx_baseu-3.1.so" "/usr/lib64" )
+			if ( NOT USRLIBSIXTYFOUR MATCHES ".*NOTFOUND" )
+				set(WX_LIBS_DIR "/usr/lib64")
+			else()
+				set(WX_LIBS_DIR "/usr/lib") # ${WX_LIBS_DIR} will be empty for older, non multi-architecture, distro versions that still use /usr/lib
+			endif()
         endif()
         message("-- wxlibsdir is: ${WX_LIBS_DIR}")
 

@@ -1,7 +1,7 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //
-// copyright            : (C) 2014 The CodeLite Team
+// copyright            : (C) 2014 Eran Ifrah
 // file name            : bitmap_loader.cpp
 //
 // -------------------------------------------------------------------------
@@ -32,6 +32,9 @@
 #include "optionsconfig.h"
 #include "cl_standard_paths.h"
 #include <algorithm>
+#include "clZipReader.h"
+#include <wx/dir.h>
+#include "file_logger.h"
 
 std::map<wxString, wxBitmap> BitmapLoader::m_toolbarsBitmaps;
 std::map<wxString, wxString> BitmapLoader::m_manifest;
@@ -44,13 +47,7 @@ BitmapLoader::BitmapLoader()
 {
     wxString zipname;
     wxFileName fn;
-
-// Set the defaul icon set
-#ifdef __WXOSX__
-    zipname = "codelite-icons-dark.zip";
-#else
     zipname = "codelite-icons.zip";
-#endif
 
     if(EditorConfigST::Get()->GetOptions()->GetOptions() & OptionsConfig::Opt_IconSet_FreshFarm) {
         zipname = wxT("codelite-icons-fresh-farm.zip");
@@ -82,12 +79,64 @@ BitmapLoader::BitmapLoader()
             doLoadBitmaps();
         }
     }
+
+    wxFileName fnNewZip(clStandardPaths::Get().GetDataDir(), "codelite-bitmaps.zip");
+    if(fnNewZip.FileExists()) {
+        clZipReader zip(fnNewZip);
+        wxFileName tmpFolder(clStandardPaths::Get().GetTempDir(), "");
+
+        // Make sure we append the user name to the temporary user folder
+        // this way, multiple CodeLite instances from different users can extract the
+        // bitmaps to /tmp
+        wxString bitmapFolder = "codelite-bitmaps";
+        bitmapFolder << "." << clGetUserName();
+
+        tmpFolder.AppendDir(bitmapFolder);
+        if(tmpFolder.DirExists()) {
+            tmpFolder.Rmdir(wxPATH_RMDIR_RECURSIVE);
+        }
+
+        tmpFolder.Mkdir(wxS_DIR_DEFAULT, wxPATH_MKDIR_FULL);
+
+        // Extract all images into this folder
+        zip.Extract("*", tmpFolder.GetPath());
+
+        // Load all the files into wxBitmap
+        wxArrayString files;
+        wxDir::GetAllFiles(tmpFolder.GetPath(), &files, "*.png");
+        for(size_t i = 0; i < files.size(); ++i) {
+            wxFileName pngFile(files.Item(i));
+            if(pngFile.GetFullName().Contains("@2x")) {
+                // No need to load the hi-res images manually,
+                // this is done by wxWidgets
+                continue;
+            }
+            wxBitmap bmp;
+            if(bmp.LoadFile(pngFile.GetFullPath(), wxBITMAP_TYPE_PNG)) {
+                CL_DEBUG("Adding new image: %s", pngFile.GetName());
+                m_toolbarsBitmaps.insert(std::make_pair(pngFile.GetName(), bmp));
+            }
+        }
+    }
 }
 
-const wxBitmap& BitmapLoader::LoadBitmap(const wxString& name)
+const wxBitmap& BitmapLoader::LoadBitmap(const wxString& name, int requestedSize)
 {
-    std::map<wxString, wxBitmap>::const_iterator iter = m_toolbarsBitmaps.find(name);
-    if(iter != m_toolbarsBitmaps.end()) return iter->second;
+    // try to load a new bitmap first
+    wxString newName;
+    newName << requestedSize << "-" << name.AfterLast('/');
+    std::map<wxString, wxBitmap>::const_iterator iter = m_toolbarsBitmaps.find(newName);
+    if(iter != m_toolbarsBitmaps.end()) {
+        const wxBitmap& b = iter->second;
+        CL_DEBUG("Loaded HiRes image: %s", newName);
+        CL_DEBUG("Image Size: (%d,%d)", b.GetWidth(), b.GetHeight());
+        return b;
+    }
+
+    iter = m_toolbarsBitmaps.find(name);
+    if(iter != m_toolbarsBitmaps.end()) {
+        return iter->second;
+    }
 
     return wxNullBitmap;
 }
@@ -189,7 +238,7 @@ int BitmapLoader::GetMimeImageId(const wxString& filename)
         wxImageList* il = MakeStandardMimeImageList();
         wxDELETE(il);
     }
-    
+
     FileExtManager::FileType type = FileExtManager::GetType(filename);
     std::map<FileExtManager::FileType, int>::const_iterator iter = m_fileIndexMap.find(type);
     if(iter == m_fileIndexMap.end()) {
@@ -203,36 +252,38 @@ wxImageList* BitmapLoader::MakeStandardMimeImageList()
     wxImageList* imageList = new wxImageList(16, 16);
 
     m_fileIndexMap.clear();
-    AddImage(imageList->Add(GetIcon(LoadBitmap(wxT("mime/16/exe")))), FileExtManager::TypeExe);
-    AddImage(imageList->Add(GetIcon(LoadBitmap(wxT("mime/16/html")))), FileExtManager::TypeHtml);
-    AddImage(imageList->Add(GetIcon(LoadBitmap(wxT("mime/16/zip")))), FileExtManager::TypeArchive);
-    AddImage(imageList->Add(GetIcon(LoadBitmap(wxT("mime/16/php")))), FileExtManager::TypePhp);
-    AddImage(imageList->Add(GetIcon(LoadBitmap(wxT("mime/16/dll")))), FileExtManager::TypeDll);
-    AddImage(imageList->Add(GetIcon(LoadBitmap(wxT("mime/16/wxfb")))), FileExtManager::TypeFormbuilder);
-    AddImage(imageList->Add(GetIcon(LoadBitmap(wxT("mime/16/cd")))), FileExtManager::TypeCodedesigner);
-    AddImage(imageList->Add(GetIcon(LoadBitmap(wxT("mime/16/bmp")))), FileExtManager::TypeBmp);
-    AddImage(imageList->Add(GetIcon(LoadBitmap(wxT("mime/16/makefile")))), FileExtManager::TypeMakefile);
-    AddImage(imageList->Add(GetIcon(LoadBitmap(wxT("mime/16/c")))), FileExtManager::TypeSourceC);
-    AddImage(imageList->Add(GetIcon(LoadBitmap(wxT("mime/16/cpp")))), FileExtManager::TypeSourceCpp);
-    AddImage(imageList->Add(GetIcon(LoadBitmap(wxT("mime/16/h")))), FileExtManager::TypeHeader);
-    AddImage(imageList->Add(GetIcon(LoadBitmap(wxT("mime/16/text")))), FileExtManager::TypeText);
-    AddImage(imageList->Add(GetIcon(LoadBitmap(wxT("mime/16/script")))), FileExtManager::TypeScript);
-    AddImage(imageList->Add(GetIcon(LoadBitmap(wxT("mime/16/xml")))), FileExtManager::TypeXml);
-    AddImage(imageList->Add(GetIcon(LoadBitmap(wxT("mime/16/erd")))), FileExtManager::TypeErd);
-    AddImage(imageList->Add(GetIcon(LoadBitmap(wxT("mime/16/python")))), FileExtManager::TypePython);
-    AddImage(imageList->Add(GetIcon(LoadBitmap(wxT("mime/16/css")))), FileExtManager::TypeCSS);
-    AddImage(imageList->Add(GetIcon(LoadBitmap(wxT("mime/16/javascript")))), FileExtManager::TypeJS);
-    AddImage(imageList->Add(GetIcon(LoadBitmap(wxT("workspace/16/workspace")))), FileExtManager::TypeWorkspace);
-    AddImage(imageList->Add(GetIcon(LoadBitmap(wxT("workspace/16/workspace_php")))), FileExtManager::TypeWorkspacePHP);
-    AddImage(imageList->Add(GetIcon(LoadBitmap(wxT("workspace/16/project")))), FileExtManager::TypeProject);
-    AddImage(imageList->Add(GetIcon(LoadBitmap(wxT("mime/16/wxcp")))), FileExtManager::TypeWxCrafter);
-    AddImage(imageList->Add(GetIcon(LoadBitmap(wxT("mime/16/xml")))), FileExtManager::TypeXRC);
-    AddImage(imageList->Add(GetIcon(LoadBitmap(wxT("mime/16/res")))), FileExtManager::TypeResource);
-    AddImage(imageList->Add(GetIcon(LoadBitmap(wxT("mime/16/sql")))), FileExtManager::TypeSQL);
-    AddImage(imageList->Add(GetIcon(LoadBitmap(wxT("mime/16/folder")))), FileExtManager::TypeFolder);
-    AddImage(imageList->Add(GetIcon(LoadBitmap(wxT("mime/16/asm")))), FileExtManager::TypeAsm);
-    AddImage(imageList->Add(GetIcon(LoadBitmap(wxT("mime/16/cmake")))), FileExtManager::TypeCMake);
-    AddImage(imageList->Add(GetIcon(LoadBitmap(wxT("mime/16/qmake")))), FileExtManager::TypeQMake);
+    AddImage(imageList->Add(LoadBitmap(wxT("mime/16/exe"))), FileExtManager::TypeExe);
+    AddImage(imageList->Add(LoadBitmap(wxT("mime/16/html"))), FileExtManager::TypeHtml);
+    AddImage(imageList->Add(LoadBitmap(wxT("mime/16/zip"))), FileExtManager::TypeArchive);
+    AddImage(imageList->Add(LoadBitmap(wxT("mime/16/php"))), FileExtManager::TypePhp);
+    AddImage(imageList->Add(LoadBitmap(wxT("mime/16/dll"))), FileExtManager::TypeDll);
+    AddImage(imageList->Add(LoadBitmap(wxT("mime/16/wxfb"))), FileExtManager::TypeFormbuilder);
+    AddImage(imageList->Add(LoadBitmap(wxT("mime/16/cd"))), FileExtManager::TypeCodedesigner);
+    AddImage(imageList->Add(LoadBitmap(wxT("mime/16/bmp"))), FileExtManager::TypeBmp);
+    AddImage(imageList->Add(LoadBitmap(wxT("mime/16/makefile"))), FileExtManager::TypeMakefile);
+    AddImage(imageList->Add(LoadBitmap(wxT("mime/16/c"))), FileExtManager::TypeSourceC);
+    AddImage(imageList->Add(LoadBitmap(wxT("mime/16/cpp"))), FileExtManager::TypeSourceCpp);
+    AddImage(imageList->Add(LoadBitmap(wxT("mime/16/h"))), FileExtManager::TypeHeader);
+    AddImage(imageList->Add(LoadBitmap(wxT("mime/16/text"))), FileExtManager::TypeText);
+    AddImage(imageList->Add(LoadBitmap(wxT("mime/16/script"))), FileExtManager::TypeScript);
+    AddImage(imageList->Add(LoadBitmap(wxT("mime/16/xml"))), FileExtManager::TypeXml);
+    AddImage(imageList->Add(LoadBitmap(wxT("mime/16/erd"))), FileExtManager::TypeErd);
+    AddImage(imageList->Add(LoadBitmap(wxT("mime/16/python"))), FileExtManager::TypePython);
+    AddImage(imageList->Add(LoadBitmap(wxT("mime/16/css"))), FileExtManager::TypeCSS);
+    AddImage(imageList->Add(LoadBitmap(wxT("mime/16/javascript"))), FileExtManager::TypeJS);
+    AddImage(imageList->Add(LoadBitmap(wxT("cxx-workspace"))), FileExtManager::TypeWorkspace);
+    AddImage(imageList->Add(LoadBitmap(wxT("php-workspace"))), FileExtManager::TypeWorkspacePHP);
+    AddImage(imageList->Add(LoadBitmap(wxT("nodejs-workspace"))), FileExtManager::TypeWorkspaceNodeJS);
+    AddImage(imageList->Add(LoadBitmap(wxT("project"))), FileExtManager::TypeProject);
+    AddImage(imageList->Add(LoadBitmap(wxT("blocks"))), FileExtManager::TypeWxCrafter);
+    AddImage(imageList->Add(LoadBitmap(wxT("mime/16/xml"))), FileExtManager::TypeXRC);
+    AddImage(imageList->Add(LoadBitmap(wxT("mime/16/res"))), FileExtManager::TypeResource);
+    AddImage(imageList->Add(LoadBitmap(wxT("mime/16/sql"))), FileExtManager::TypeSQL);
+    AddImage(imageList->Add(LoadBitmap(wxT("folder-yellow"))), FileExtManager::TypeFolder);
+    AddImage(imageList->Add(LoadBitmap(wxT("folder-yellow-opened"))), FileExtManager::TypeFolderExpanded);
+    AddImage(imageList->Add(LoadBitmap(wxT("mime/16/asm"))), FileExtManager::TypeAsm);
+    AddImage(imageList->Add(LoadBitmap(wxT("cmake"))), FileExtManager::TypeCMake);
+    AddImage(imageList->Add(LoadBitmap(wxT("qt"))), FileExtManager::TypeQMake);
 
     std::for_each(
         m_userBitmaps.begin(), m_userBitmaps.end(), [&](const std::pair<FileExtManager::FileType, wxBitmap>& p) {
@@ -270,15 +321,17 @@ BitmapLoader::BitmapMap_t BitmapLoader::MakeStandardMimeMap()
     images[FileExtManager::TypePython] = LoadBitmap(wxT("mime/16/python"));
     images[FileExtManager::TypeCSS] = LoadBitmap(wxT("mime/16/css"));
     images[FileExtManager::TypeJS] = LoadBitmap(wxT("mime/16/javascript"));
-    images[FileExtManager::TypeWorkspace] = LoadBitmap(wxT("workspace/16/workspace"));
-    images[FileExtManager::TypeWorkspacePHP] = LoadBitmap(wxT("workspace/16/workspace_php"));
-    images[FileExtManager::TypeProject] = LoadBitmap(wxT("workspace/16/project"));
+    images[FileExtManager::TypeWorkspace] = LoadBitmap("cxx-workspace");
+    images[FileExtManager::TypeWorkspacePHP] = LoadBitmap("php-workspace");
+    images[FileExtManager::TypeWorkspaceNodeJS] = LoadBitmap("nodejs-workspace");
+    images[FileExtManager::TypeProject] = LoadBitmap(wxT("project"));
     images[FileExtManager::TypeWxCrafter] = LoadBitmap(wxT("mime/16/wxcp"));
     images[FileExtManager::TypeXRC] = LoadBitmap(wxT("mime/16/xml"));
     images[FileExtManager::TypeResource] = LoadBitmap(wxT("mime/16/res"));
     images[FileExtManager::TypeSQL] = LoadBitmap(wxT("mime/16/sql"));
-    images[FileExtManager::TypeFolder] = LoadBitmap(wxT("mime/16/folder"));
-    images[FileExtManager::TypeProjectActive] = LoadBitmap(wxT("workspace/16/project_active"));
+    images[FileExtManager::TypeFolder] = LoadBitmap("folder-yellow");
+    images[FileExtManager::TypeFolderExpanded] = LoadBitmap("folder-yellow-opened");
+    images[FileExtManager::TypeProjectActive] = LoadBitmap(wxT("project"));
     images[FileExtManager::TypeAsm] = LoadBitmap(wxT("mime/16/asm"));
     images[FileExtManager::TypeCMake] = LoadBitmap(wxT("mime/16/cmake"));
     images[FileExtManager::TypeQMake] = LoadBitmap(wxT("mime/16/qmake"));

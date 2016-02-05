@@ -25,7 +25,9 @@ wxFlatButton* wxFlatButtonBar::AddButton(const wxString& label, const wxBitmap& 
 
 void wxFlatButtonBar::OnPaint(wxPaintEvent& event)
 {
-    wxBufferedPaintDC dc(this);
+    wxAutoBufferedPaintDC dc(this);
+    PrepareDC(dc);
+    
     dc.SetBrush(GetBgColour());
     dc.SetPen(GetBgColour());
     dc.DrawRectangle(GetClientRect());
@@ -39,7 +41,7 @@ void wxFlatButtonBar::OnSize(wxSizeEvent& event)
 
 wxWindow* wxFlatButtonBar::AddControl(wxWindow* window, int proportion, int flags)
 {
-    m_mainSizer->Add(window, proportion, flags, 1);
+    m_mainSizer->Add(window, proportion, flags, 2);
     return window;
 }
 

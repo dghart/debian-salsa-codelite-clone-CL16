@@ -92,10 +92,14 @@ _ImageExportDialog::_ImageExportDialog(wxWindow* parent, wxWindowID id, const wx
     
     SetName(wxT("_ImageExportDialog"));
     SetSizeHints(-1,-1);
-    if ( GetSizer() ) {
+    if (GetSizer()) {
          GetSizer()->Fit(this);
     }
-    CentreOnParent(wxBOTH);
+    if(GetParent()) {
+        CentreOnParent(wxBOTH);
+    } else {
+        CentreOnScreen(wxBOTH);
+    }
 #if wxVERSION_NUMBER >= 2900
     if(!wxPersistenceManager::Get().Find(this)) {
         wxPersistenceManager::Get().RegisterAndRestore(this);
@@ -133,10 +137,9 @@ _ThumbPane::_ThumbPane(wxWindow* parent, wxWindowID id, const wxPoint& pos, cons
     
     SetName(wxT("_ThumbPane"));
     SetSizeHints(500,300);
-    if ( GetSizer() ) {
+    if (GetSizer()) {
          GetSizer()->Fit(this);
     }
-    CentreOnParent(wxBOTH);
 }
 
 _ThumbPane::~_ThumbPane()
@@ -165,24 +168,30 @@ _SqlCommandPanel::_SqlCommandPanel(wxWindow* parent, wxWindowID id, const wxPoin
     
     fgSizer3->Add(m_auibar167, 0, wxEXPAND, 5);
     
-    m_auibar167->AddTool(wxID_ANY, _("Load..."), wxXmlResource::Get()->LoadBitmap(wxT("document-open")), wxNullBitmap, wxITEM_NORMAL, _("Load..."), _("Load..."), NULL);
+    m_auibar167->AddTool(wxID_ANY, _("Load..."), wxXmlResource::Get()->LoadBitmap(wxT("16-file_open")), wxNullBitmap, wxITEM_NORMAL, _("Load..."), _("Load..."), NULL);
     
-    m_auibar167->AddTool(XRCID("IDC_DBE_SQL_SAVE"), _("Save..."), wxXmlResource::Get()->LoadBitmap(wxT("document-save")), wxNullBitmap, wxITEM_NORMAL, _("Save..."), _("Save..."), NULL);
+    m_auibar167->AddTool(XRCID("IDC_DBE_SQL_SAVE"), _("Save..."), wxXmlResource::Get()->LoadBitmap(wxT("16-file_save")), wxNullBitmap, wxITEM_NORMAL, _("Save..."), _("Save..."), NULL);
     
-    m_auibar167->AddTool(XRCID("IDC_DBE_SQL_EXEC"), _("Execute SQL"), wxXmlResource::Get()->LoadBitmap(wxT("execute")), wxNullBitmap, wxITEM_NORMAL, _("Execute SQL"), wxT(""), NULL);
+    m_auibar167->AddTool(XRCID("IDC_DBE_SQL_EXEC"), _("Execute SQL"), wxXmlResource::Get()->LoadBitmap(wxT("16-executable")), wxNullBitmap, wxITEM_NORMAL, _("Execute SQL"), wxT(""), NULL);
     
     m_auibar167->AddSeparator();
     
-    m_auibar167->AddTool(ID_INSERT_TEMPLATE, _("Insert template"), wxXmlResource::Get()->LoadBitmap(wxT("add")), wxNullBitmap, wxITEM_NORMAL, _("Insert template"), _("Insert template"), NULL);
+    m_auibar167->AddTool(ID_INSERT_TEMPLATE, _("Insert template"), wxXmlResource::Get()->LoadBitmap(wxT("16-plus")), wxNullBitmap, wxITEM_NORMAL, _("Insert template"), _("Insert template"), NULL);
     wxAuiToolBarItem* m_toolbarItemTemplates = m_auibar167->FindToolByIndex(m_auibar167->GetToolCount()-1);
     if (m_toolbarItemTemplates) {
         m_toolbarItemTemplates->SetHasDropDown(true);
+        m_menu183 = new wxMenu;
+        
+        m_dropdownMenus.insert(std::make_pair( m_toolbarItemTemplates->GetId(), m_menu183) );
     }
     
-    m_auibar167->AddTool(ID_SQL_HISTORY, _("SQL History"), wxXmlResource::Get()->LoadBitmap(wxT("history")), wxNullBitmap, wxITEM_NORMAL, _("SQL History"), _("SQL History"), NULL);
+    m_auibar167->AddTool(ID_SQL_HISTORY, _("SQL History"), wxXmlResource::Get()->LoadBitmap(wxT("16-history")), wxNullBitmap, wxITEM_NORMAL, _("SQL History"), _("SQL History"), NULL);
     wxAuiToolBarItem* m_toolHistory = m_auibar167->FindToolByIndex(m_auibar167->GetToolCount()-1);
     if (m_toolHistory) {
         m_toolHistory->SetHasDropDown(true);
+        m_menu184 = new wxMenu;
+        
+        m_dropdownMenus.insert(std::make_pair( m_toolHistory->GetId(), m_menu184) );
     }
     m_auibar167->Realize();
     
@@ -262,10 +271,9 @@ _SqlCommandPanel::_SqlCommandPanel(wxWindow* parent, wxWindowID id, const wxPoin
     
     SetName(wxT("_SqlCommandPanel"));
     SetSizeHints(-1,-1);
-    if ( GetSizer() ) {
+    if (GetSizer()) {
          GetSizer()->Fit(this);
     }
-    CentreOnParent(wxBOTH);
     // Connect events
     this->Connect(wxID_ANY, wxEVT_COMMAND_TOOL_CLICKED, wxCommandEventHandler(_SqlCommandPanel::OnLoadClick), NULL, this);
     this->Connect(XRCID("IDC_DBE_SQL_SAVE"), wxEVT_COMMAND_TOOL_CLICKED, wxCommandEventHandler(_SqlCommandPanel::OnSaveClick), NULL, this);
@@ -328,44 +336,41 @@ _AdapterSelectDlg::_AdapterSelectDlg(wxWindow* parent, wxWindowID id, const wxSt
     wxBoxSizer* bSizer9 = new wxBoxSizer(wxVERTICAL);
     this->SetSizer(bSizer9);
     
-    m_btnMySql = new wxButton(this, wxID_ANY, _("MySql"), wxDefaultPosition, wxSize(175,-1), 0);
-    
-    bSizer9->Add(m_btnMySql, 0, wxALL|wxEXPAND, 5);
-    
     m_btnSqlite = new wxButton(this, wxID_ANY, _("SQLite"), wxDefaultPosition, wxSize(-1, -1), 0);
     m_btnSqlite->SetDefault();
     m_btnSqlite->SetFocus();
     
-    bSizer9->Add(m_btnSqlite, 0, wxALL|wxEXPAND, 5);
+    bSizer9->Add(m_btnSqlite, 1, wxALL|wxEXPAND, 5);
+    
+    m_btnMySql = new wxButton(this, wxID_ANY, _("MySql"), wxDefaultPosition, wxSize(175,-1), 0);
+    
+    bSizer9->Add(m_btnMySql, 1, wxALL|wxEXPAND, 5);
     
     m_button24 = new wxButton(this, wxID_ANY, _("PostgreSQL"), wxDefaultPosition, wxSize(-1, -1), 0);
     
-    bSizer9->Add(m_button24, 0, wxALL|wxEXPAND, 5);
+    bSizer9->Add(m_button24, 1, wxALL|wxEXPAND, 5);
     
     SetName(wxT("_AdapterSelectDlg"));
     SetSizeHints(-1,-1);
-    if ( GetSizer() ) {
+    if (GetSizer()) {
          GetSizer()->Fit(this);
     }
-    CentreOnParent(wxBOTH);
-#if wxVERSION_NUMBER >= 2900
-    if(!wxPersistenceManager::Get().Find(this)) {
-        wxPersistenceManager::Get().RegisterAndRestore(this);
+    if(GetParent()) {
+        CentreOnParent(wxBOTH);
     } else {
-        wxPersistenceManager::Get().Restore(this);
+        CentreOnScreen(wxBOTH);
     }
-#endif
     // Connect events
-    m_btnMySql->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(_AdapterSelectDlg::OnMysqlClick), NULL, this);
     m_btnSqlite->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(_AdapterSelectDlg::OnSqliteClick), NULL, this);
+    m_btnMySql->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(_AdapterSelectDlg::OnMysqlClick), NULL, this);
     m_button24->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(_AdapterSelectDlg::OnPostgresClick), NULL, this);
     
 }
 
 _AdapterSelectDlg::~_AdapterSelectDlg()
 {
-    m_btnMySql->Disconnect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(_AdapterSelectDlg::OnMysqlClick), NULL, this);
     m_btnSqlite->Disconnect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(_AdapterSelectDlg::OnSqliteClick), NULL, this);
+    m_btnMySql->Disconnect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(_AdapterSelectDlg::OnMysqlClick), NULL, this);
     m_button24->Disconnect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(_AdapterSelectDlg::OnPostgresClick), NULL, this);
     
 }
@@ -394,10 +399,9 @@ _DbViewerPanel::_DbViewerPanel(wxWindow* parent, wxWindowID id, const wxPoint& p
     
     SetName(wxT("_DbViewerPanel"));
     SetSizeHints(200,100);
-    if ( GetSizer() ) {
+    if (GetSizer()) {
          GetSizer()->Fit(this);
     }
-    CentreOnParent(wxBOTH);
     // Connect events
     m_treeDatabases->Connect(wxEVT_COMMAND_TREE_BEGIN_DRAG, wxTreeEventHandler(_DbViewerPanel::OnDnDStart), NULL, this);
     m_treeDatabases->Connect(wxEVT_COMMAND_TREE_ITEM_ACTIVATED, wxTreeEventHandler(_DbViewerPanel::OnItemActivate), NULL, this);
@@ -451,7 +455,7 @@ _DBSettingsDialog::_DBSettingsDialog(wxWindow* parent, wxWindowID id, const wxSt
     
     fgSizer41->Add(m_staticText11, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5);
     
-    m_filePickerSqlite = new wxFilePickerCtrl(m_Sqlite, wxID_ANY, wxEmptyString, _("Select a file"), wxT("All Files (*)|*|Database file (*.sqlite;*.tags;*.db)|*.sqlite;*.tags;*.db"), wxDefaultPosition, wxSize(-1,-1), wxFLP_USE_TEXTCTRL|wxFLP_OPEN);
+    m_filePickerSqlite = new wxFilePickerCtrl(m_Sqlite, wxID_ANY, wxEmptyString, _("Select a file"), wxT("All Files (*)|*|Database file (*.sqlite;*.tags;*.db)|*.sqlite;*.tags;*.db"), wxDefaultPosition, wxSize(-1,-1), wxFLP_USE_TEXTCTRL|wxFLP_SMALL|wxFLP_OPEN);
     m_filePickerSqlite->SetFocus();
     
     fgSizer41->Add(m_filePickerSqlite, 0, wxALL|wxEXPAND|wxALIGN_CENTER_VERTICAL, 5);
@@ -637,10 +641,14 @@ _DBSettingsDialog::_DBSettingsDialog(wxWindow* parent, wxWindowID id, const wxSt
     
     SetName(wxT("_DBSettingsDialog"));
     SetSizeHints(-1,-1);
-    if ( GetSizer() ) {
+    if (GetSizer()) {
          GetSizer()->Fit(this);
     }
-    CentreOnParent(wxBOTH);
+    if(GetParent()) {
+        CentreOnParent(wxBOTH);
+    } else {
+        CentreOnScreen(wxBOTH);
+    }
 #if wxVERSION_NUMBER >= 2900
     if(!wxPersistenceManager::Get().Find(this)) {
         wxPersistenceManager::Get().RegisterAndRestore(this);
@@ -691,31 +699,19 @@ _ErdPanel::_ErdPanel(wxWindow* parent, wxWindowID id, const wxPoint& pos, const 
         bBitmapLoaded = true;
     }
     
-    wxFlexGridSizer* fgSizer7 = new wxFlexGridSizer(0, 1, 0, 0);
-    fgSizer7->SetFlexibleDirection( wxBOTH );
-    fgSizer7->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_SPECIFIED );
-    fgSizer7->AddGrowableCol(0);
-    fgSizer7->AddGrowableRow(1);
-    this->SetSizer(fgSizer7);
+    wxBoxSizer* erdSizer = new wxBoxSizer(wxVERTICAL);
+    this->SetSizer(erdSizer);
     
-    m_toolBarErd = new wxAuiToolBar(this, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxAUI_TB_DEFAULT_STYLE);
+    m_toolBarErd = new wxAuiToolBar(this, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxAUI_TB_PLAIN_BACKGROUND|wxAUI_TB_DEFAULT_STYLE);
     m_toolBarErd->SetToolBitmapSize(wxSize(16,16));
     
-    fgSizer7->Add(m_toolBarErd, 0, wxEXPAND, 5);
-    
-    m_wxsfPanel = new wxPanel(this, wxID_ANY, wxDefaultPosition, wxSize(-1, -1), wxTAB_TRAVERSAL);
-    
-    fgSizer7->Add(m_wxsfPanel, 1, wxEXPAND|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5);
-    
-    wxBoxSizer* m_wxsfSizer = new wxBoxSizer(wxVERTICAL);
-    m_wxsfPanel->SetSizer(m_wxsfSizer);
+    erdSizer->Add(m_toolBarErd, 0, wxEXPAND, 5);
     
     SetName(wxT("_ErdPanel"));
     SetSizeHints(640,480);
-    if ( GetSizer() ) {
+    if (GetSizer()) {
          GetSizer()->Fit(this);
     }
-    CentreOnParent(wxBOTH);
     // Connect events
     this->Connect(wxEVT_MOUSEWHEEL, wxMouseEventHandler(_ErdPanel::OnMouseWheel), NULL, this);
     
@@ -844,10 +840,14 @@ _CreateForeignKey::_CreateForeignKey(wxWindow* parent, wxWindowID id, const wxSt
     
     SetName(wxT("_CreateForeignKey"));
     SetSizeHints(-1,-1);
-    if ( GetSizer() ) {
+    if (GetSizer()) {
          GetSizer()->Fit(this);
     }
-    CentreOnParent(wxBOTH);
+    if(GetParent()) {
+        CentreOnParent(wxBOTH);
+    } else {
+        CentreOnScreen(wxBOTH);
+    }
 #if wxVERSION_NUMBER >= 2900
     if(!wxPersistenceManager::Get().Find(this)) {
         wxPersistenceManager::Get().RegisterAndRestore(this);
@@ -905,12 +905,16 @@ _LogDialog::_LogDialog(wxWindow* parent, wxWindowID id, const wxString& title, c
     bSizer13->Add(m_button18, 0, wxLEFT|wxRIGHT|wxTOP|wxALIGN_RIGHT, 5);
     
     SetName(wxT("_LogDialog"));
-    SetMinSize( wxSize(640,460) );
+    SetMinSize(wxSize(640,460));
     SetSizeHints(640,460);
-    if ( GetSizer() ) {
+    if (GetSizer()) {
          GetSizer()->Fit(this);
     }
-    CentreOnParent(wxBOTH);
+    if(GetParent()) {
+        CentreOnParent(wxBOTH);
+    } else {
+        CentreOnScreen(wxBOTH);
+    }
 #if wxVERSION_NUMBER >= 2900
     if(!wxPersistenceManager::Get().Find(this)) {
         wxPersistenceManager::Get().RegisterAndRestore(this);
@@ -1019,12 +1023,16 @@ _ViewSettings::_ViewSettings(wxWindow* parent, wxWindowID id, const wxString& ti
     fgSizer14->Add(m_btnOK, 0, wxALL|wxALIGN_RIGHT, 5);
     
     SetName(wxT("_ViewSettings"));
-    SetMinSize( wxSize(650,450) );
+    SetMinSize(wxSize(650,450));
     SetSizeHints(650,450);
-    if ( GetSizer() ) {
+    if (GetSizer()) {
          GetSizer()->Fit(this);
     }
-    CentreOnParent(wxBOTH);
+    if(GetParent()) {
+        CentreOnParent(wxBOTH);
+    } else {
+        CentreOnScreen(wxBOTH);
+    }
 #if wxVERSION_NUMBER >= 2900
     if(!wxPersistenceManager::Get().Find(this)) {
         wxPersistenceManager::Get().RegisterAndRestore(this);
@@ -1152,10 +1160,14 @@ _ClassGenerateDialog::_ClassGenerateDialog(wxWindow* parent, wxWindowID id, cons
     
     SetName(wxT("_ClassGenerateDialog"));
     SetSizeHints(-1,-1);
-    if ( GetSizer() ) {
+    if (GetSizer()) {
          GetSizer()->Fit(this);
     }
-    CentreOnParent(wxBOTH);
+    if(GetParent()) {
+        CentreOnParent(wxBOTH);
+    } else {
+        CentreOnScreen(wxBOTH);
+    }
 #if wxVERSION_NUMBER >= 2900
     if(!wxPersistenceManager::Get().Find(this)) {
         wxPersistenceManager::Get().RegisterAndRestore(this);
@@ -1243,12 +1255,16 @@ _CodePreviewDialog::_CodePreviewDialog(wxWindow* parent, wxWindowID id, const wx
     boxSizer10->Add(m_button14, 0, wxALL|wxALIGN_RIGHT, 5);
     
     SetName(wxT("_CodePreviewDialog"));
-    SetMinSize( wxSize(500,470) );
+    SetMinSize(wxSize(500,470));
     SetSizeHints(500,470);
-    if ( GetSizer() ) {
+    if (GetSizer()) {
          GetSizer()->Fit(this);
     }
-    CentreOnParent(wxBOTH);
+    if(GetParent()) {
+        CentreOnParent(wxBOTH);
+    } else {
+        CentreOnScreen(wxBOTH);
+    }
 #if wxVERSION_NUMBER >= 2900
     if(!wxPersistenceManager::Get().Find(this)) {
         wxPersistenceManager::Get().RegisterAndRestore(this);
@@ -1315,20 +1331,20 @@ _TableSettings::_TableSettings(wxWindow* parent, wxWindowID id, const wxString& 
     
     boxSizer37->Add(m_staticText55, 0, wxLEFT|wxRIGHT|wxTOP, 5);
     
-    m_auibar39 = new wxAuiToolBar(m_splitterPage31, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxAUI_TB_DEFAULT_STYLE);
+    m_auibar39 = new wxAuiToolBar(m_splitterPage31, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxAUI_TB_PLAIN_BACKGROUND|wxAUI_TB_DEFAULT_STYLE);
     m_auibar39->SetToolBitmapSize(wxSize(16,16));
     
     boxSizer37->Add(m_auibar39, 0, wxLEFT|wxRIGHT|wxTOP|wxEXPAND, 5);
     
-    m_auibar39->AddTool(XRCID("IDT_DBE_TS_ADD_COLUMN"), _("Add column"), wxXmlResource::Get()->LoadBitmap(wxT("add")), wxNullBitmap, wxITEM_NORMAL, _("Add new column"), wxT(""), NULL);
+    m_auibar39->AddTool(XRCID("IDT_DBE_TS_ADD_COLUMN"), _("Add column"), wxXmlResource::Get()->LoadBitmap(wxT("16-plus")), wxNullBitmap, wxITEM_NORMAL, _("Add new column"), wxT(""), NULL);
     
-    m_auibar39->AddTool(XRCID("IDT_DBE_TS_REMOVE_COLUMN"), _("Remove column"), wxXmlResource::Get()->LoadBitmap(wxT("delete")), wxNullBitmap, wxITEM_NORMAL, _("Remove selected column"), wxT(""), NULL);
+    m_auibar39->AddTool(XRCID("IDT_DBE_TS_REMOVE_COLUMN"), _("Remove column"), wxXmlResource::Get()->LoadBitmap(wxT("16-minus")), wxNullBitmap, wxITEM_NORMAL, _("Remove selected column"), wxT(""), NULL);
     
     m_auibar39->AddSeparator();
     
-    m_auibar39->AddTool(XRCID("IDT_DBE_TS_MOVE_UP"), _("Move column up"), wxXmlResource::Get()->LoadBitmap(wxT("move-up")), wxNullBitmap, wxITEM_NORMAL, _("Move selected column up"), wxT(""), NULL);
+    m_auibar39->AddTool(XRCID("IDT_DBE_TS_MOVE_UP"), _("Move column up"), wxXmlResource::Get()->LoadBitmap(wxT("16-up")), wxNullBitmap, wxITEM_NORMAL, _("Move selected column up"), wxT(""), NULL);
     
-    m_auibar39->AddTool(XRCID("IDT_DBE_TS_MOVE_DOWN"), _("Move column down"), wxXmlResource::Get()->LoadBitmap(wxT("move-down")), wxNullBitmap, wxITEM_NORMAL, _("Move selected column down"), wxT(""), NULL);
+    m_auibar39->AddTool(XRCID("IDT_DBE_TS_MOVE_DOWN"), _("Move column down"), wxXmlResource::Get()->LoadBitmap(wxT("16-down")), wxNullBitmap, wxITEM_NORMAL, _("Move selected column down"), wxT(""), NULL);
     m_auibar39->Realize();
     
     m_dvColumns = new wxDataViewListCtrl(m_splitterPage31, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxDV_ROW_LINES|wxDV_SINGLE);
@@ -1351,14 +1367,14 @@ _TableSettings::_TableSettings(wxWindow* parent, wxWindowID id, const wxString& 
     
     boxSizer43->Add(m_staticText57, 0, wxLEFT|wxRIGHT|wxTOP, 5);
     
-    m_auibar45 = new wxAuiToolBar(m_splitterPage35, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxAUI_TB_DEFAULT_STYLE);
+    m_auibar45 = new wxAuiToolBar(m_splitterPage35, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxAUI_TB_PLAIN_BACKGROUND|wxAUI_TB_DEFAULT_STYLE);
     m_auibar45->SetToolBitmapSize(wxSize(16,16));
     
     boxSizer43->Add(m_auibar45, 0, wxLEFT|wxRIGHT|wxTOP|wxEXPAND, 5);
     
-    m_auibar45->AddTool(XRCID("IDT_DBE_TS_ADD_KEY"), _("Add foreign key"), wxXmlResource::Get()->LoadBitmap(wxT("add")), wxNullBitmap, wxITEM_NORMAL, _("Add new foreign key"), wxT(""), NULL);
+    m_auibar45->AddTool(XRCID("IDT_DBE_TS_ADD_KEY"), _("Add foreign key"), wxXmlResource::Get()->LoadBitmap(wxT("16-plus")), wxNullBitmap, wxITEM_NORMAL, _("Add new foreign key"), wxT(""), NULL);
     
-    m_auibar45->AddTool(XRCID("IDT_DBE_TS_REMOVE_KEY"), _("Remove foreign key"), wxXmlResource::Get()->LoadBitmap(wxT("delete")), wxNullBitmap, wxITEM_NORMAL, _("Remove selected foreign key"), wxT(""), NULL);
+    m_auibar45->AddTool(XRCID("IDT_DBE_TS_REMOVE_KEY"), _("Remove foreign key"), wxXmlResource::Get()->LoadBitmap(wxT("16-minus")), wxNullBitmap, wxITEM_NORMAL, _("Remove selected foreign key"), wxT(""), NULL);
     m_auibar45->Realize();
     
     wxFlexGridSizer* flexGridSizer143 = new wxFlexGridSizer(1, 4, 0, 0);
@@ -1432,10 +1448,6 @@ _TableSettings::_TableSettings(wxWindow* parent, wxWindowID id, const wxString& 
     
     boxSizer163->Add(m_radioOnDelete, 0, wxLEFT|wxRIGHT|wxTOP|wxEXPAND, 5);
     
-    m_staticLine149 = new wxStaticLine(this, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxLI_HORIZONTAL);
-    
-    boxSizer19->Add(m_staticLine149, 0, wxALL|wxEXPAND, 5);
-    
     wxBoxSizer* boxSizer49 = new wxBoxSizer(wxHORIZONTAL);
     
     boxSizer19->Add(boxSizer49, 0, wxALL|wxALIGN_CENTER_HORIZONTAL, 5);
@@ -1449,12 +1461,16 @@ _TableSettings::_TableSettings(wxWindow* parent, wxWindowID id, const wxString& 
     boxSizer49->Add(m_button53, 0, wxALL, 5);
     
     SetName(wxT("_TableSettings"));
-    SetMinSize( wxSize(600,-1) );
-    SetSizeHints(600,700);
-    if ( GetSizer() ) {
+    SetMinSize(wxSize(600,-1));
+    SetSizeHints(-1,-1);
+    if (GetSizer()) {
          GetSizer()->Fit(this);
     }
-    CentreOnParent(wxBOTH);
+    if(GetParent()) {
+        CentreOnParent(wxBOTH);
+    } else {
+        CentreOnScreen(wxBOTH);
+    }
 #if wxVERSION_NUMBER >= 2900
     if(!wxPersistenceManager::Get().Find(this)) {
         wxPersistenceManager::Get().RegisterAndRestore(this);

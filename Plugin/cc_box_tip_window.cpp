@@ -1,7 +1,7 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //
-// copyright            : (C) 2014 The CodeLite Team
+// copyright            : (C) 2014 Eran Ifrah
 // file name            : cc_box_tip_window.cpp
 //
 // -------------------------------------------------------------------------
@@ -93,6 +93,7 @@ CCBoxTipWindow::~CCBoxTipWindow() {}
 
 void CCBoxTipWindow::DoInitialize(const wxString& tip, size_t numOfTips, bool simpleTip)
 {
+    SetBackgroundStyle(wxBG_STYLE_PAINT);
     IEditor* editor = ::clGetManager()->GetActiveEditor();
     if(editor) {
         wxColour bgColour = editor->GetCtrl()->StyleGetBackground(0);
@@ -245,7 +246,8 @@ void CCBoxTipWindow::OnEraseBG(wxEraseEvent& e) { wxUnusedVar(e); }
 void CCBoxTipWindow::OnPaint(wxPaintEvent& e)
 {
     m_links.clear();
-    wxBufferedPaintDC dc(this);
+    wxAutoBufferedPaintDC dc(this);
+    PrepareDC(dc);
     size_t maxWidth(0);
     DoDrawTip(dc, maxWidth);
 }
