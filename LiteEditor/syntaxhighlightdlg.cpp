@@ -52,8 +52,25 @@
 #include "EclipseThemeImporterManager.h"
 #include <wx/busyinfo.h>
 #include <wx/utils.h>
+#include "cl_config.h"
 
 #define CXX_AND_JAVASCRIPT "c++"
+
+const wxString sampleText = "class Demo {\n"
+                            "private:\n"
+                            "    std::string m_str;\n"
+                            "    int m_integer;\n"
+                            "    \n"
+                            "public:\n"
+                            "    /**\n"
+                            "     * Creates a new demo.\n"
+                            "     * @param o The object\n"
+                            "     */\n"
+                            "    Demo(const Demo &other) {\n"
+                            "        m_str = other.m_str;\n"
+                            "        m_integer = other.m_integer;\n"
+                            "    }\n"
+                            "}";
 
 SyntaxHighlightDlg::SyntaxHighlightDlg(wxWindow* parent)
     : SyntaxHighlightBaseDlg(parent)
@@ -91,9 +108,35 @@ SyntaxHighlightDlg::SyntaxHighlightDlg(wxWindow* parent)
     m_choiceGlobalTheme->Append(ColoursAndFontsManager::Get().GetAvailableThemesForLexer("c++"));
     m_choiceGlobalTheme->SetStringSelection(ColoursAndFontsManager::Get().GetGlobalTheme());
 
+    // Set the current editor font to the default one
+    wxFont font = clConfig::Get().Read("GlobalThemeFont", wxNullFont);
+    if(font.IsOk()) {
+        m_fontPickerGlobal->SetSelectedFont(font);
+    }
+    
+    DoUpdatePreview();
+    
     m_isModified = false;
     SetName("SyntaxHighlightDlg");
     WindowAttrManager::Load(this);
+    CentreOnParent();
+}
+
+void SyntaxHighlightDlg::DoUpdatePreview()
+{
+    // Populate the preview
+    LexerConf::Ptr_t previewLexer =
+        ColoursAndFontsManager::Get().GetLexer("c++", m_choiceGlobalTheme->GetStringSelection());
+    if(previewLexer) {
+        previewLexer->Apply(m_stcPreview, true);
+    }
+    m_stcPreview->SetKeyWords(1, "Demo std string");
+    m_stcPreview->SetKeyWords(3, "other");
+    m_stcPreview->SetEditable(true);
+    m_stcPreview->SetText(sampleText);
+    m_stcPreview->HideSelection(true);
+    m_stcPreview->SetEditable(false);
+    ::clRecalculateSTCHScrollBar(m_stcPreview);
 }
 
 void SyntaxHighlightDlg::OnButtonOK(wxCommandEvent& event)
@@ -206,7 +249,14 @@ void SyntaxHighlightDlg::SaveChanges()
     m_isModified = false;
 }
 
-SyntaxHighlightDlg::~SyntaxHighlightDlg() {}
+SyntaxHighlightDlg::~SyntaxHighlightDlg()
+{
+    // Write the global font
+    wxFont font = m_fontPickerGlobal->GetSelectedFont();
+    if(font.IsOk()) {
+        clConfig::Get().Write("GlobalThemeFont", font);
+    }
+}
 
 void SyntaxHighlightDlg::OnColourChanged(wxColourPickerEvent& event)
 {
@@ -666,10 +716,12 @@ void SyntaxHighlightDlg::OnGlobalThemeSelected(wxCommandEvent& event)
 {
     m_globalThemeChanged = true;
     m_isModified = true;
+    DoUpdatePreview();
 }
 
 void SyntaxHighlightDlg::OnGlobalFontSelected(wxFontPickerEvent& event)
 {
     m_isModified = true;
     ColoursAndFontsManager::Get().SetGlobalFont(event.GetFont());
+    DoUpdatePreview();
 }

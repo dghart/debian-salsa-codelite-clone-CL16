@@ -129,6 +129,8 @@
       <File Name="EclipseScriptThemeImporter.cpp"/>
       <File Name="EclipseSQLThemeImporter.h"/>
       <File Name="EclipseSQLThemeImporter.cpp"/>
+      <File Name="EclipseSCSSThemeImporter.h"/>
+      <File Name="EclipseSCSSThemeImporter.cpp"/>
     </VirtualDirectory>
     <File Name="clNotebookTheme.h"/>
     <File Name="clNotebookTheme.cpp"/>
@@ -195,6 +197,8 @@
     <File Name="builder_gnumake.cpp"/>
     <File Name="builder_gnumake_onestep.h"/>
     <File Name="builder_gnumake_onestep.cpp"/>
+    <File Name="builder_NMake.h"/>
+    <File Name="builder_NMake.cpp"/>
   </VirtualDirectory>
   <VirtualDirectory Name="importer">
     <File Name="vcimporter.h"/>
@@ -313,6 +317,8 @@
       <File Name="clTreeCtrlPanelDefaultPage.cpp"/>
       <File Name="clResizableTooltip.h"/>
       <File Name="clResizableTooltip.cpp"/>
+      <File Name="clTreeKeyboardInput.h"/>
+      <File Name="clTreeKeyboardInput.cpp"/>
     </VirtualDirectory>
     <VirtualDirectory Name="Dialogs">
       <File Name="nameanddescdlg.h"/>
@@ -356,6 +362,12 @@
       <File Name="notebook_bitmaps.cpp"/>
       <File Name="NotebookNavigationDlg.h"/>
       <File Name="NotebookNavigationDlg.cpp"/>
+      <File Name="clTabRenderer.h"/>
+      <File Name="clTabRenderer.cpp"/>
+      <File Name="clTabRendererCurved.h"/>
+      <File Name="clTabRendererCurved.cpp"/>
+      <File Name="clTabRendererSquare.h"/>
+      <File Name="clTabRendererSquare.cpp"/>
     </VirtualDirectory>
     <VirtualDirectory Name="wxAUI">
       <File Name="cl_aui_dock_art.h"/>
@@ -370,6 +382,8 @@
       <File Name="clAuiCaptionEnabler.cpp"/>
       <File Name="clDockingManager.h"/>
       <File Name="clDockingManager.cpp"/>
+      <File Name="clTabTogglerHelper.h"/>
+      <File Name="clTabTogglerHelper.cpp"/>
     </VirtualDirectory>
     <File Name="cl_aui_tool_stickness.h"/>
     <File Name="cl_aui_tool_stickness.cpp"/>
@@ -381,6 +395,8 @@
     <File Name="clBootstrapWizard.cpp"/>
     <File Name="clWorkspaceView.h"/>
     <File Name="clWorkspaceView.cpp"/>
+    <File Name="clMouseCaptureLocker.h"/>
+    <File Name="clMouseCaptureLocker.cpp"/>
   </VirtualDirectory>
   <VirtualDirectory Name="JobQueue">
     <File Name="jobqueue.cpp"/>
@@ -525,6 +541,8 @@
     <File Name="CompilerLocatorMSVC9.cpp"/>
     <File Name="CompilerLocatorCygwin.h"/>
     <File Name="CompilerLocatorCygwin.cpp"/>
+    <File Name="CompilerLocatorMSVC14.h"/>
+    <File Name="CompilerLocatorMSVC14.cpp"/>
   </VirtualDirectory>
   <VirtualDirectory Name="Zip">
     <File Name="clZipReader.cpp"/>
@@ -823,4 +841,8 @@
       </Completion>
     </Configuration>
   </Settings>
+  <VirtualDirectory Name="NodeJS">
+    <File Name="NodeJSLocator.h"/>
+    <File Name="NodeJSLocator.cpp"/>
+  </VirtualDirectory>
 </CodeLite_Project>

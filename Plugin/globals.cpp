@@ -1165,7 +1165,7 @@ wxString wxShellExec(const wxString& cmd, const wxString& projectName)
     WrapInShell(theCommand);
 
     wxArrayString dummy;
-    EnvSetter es(NULL, NULL, projectName);
+    EnvSetter es(NULL, NULL, projectName, wxEmptyString);
     theCommand = EnvironmentConfig::Instance()->ExpandVariables(theCommand, false);
     ProcUtils::SafeExecuteCommand(theCommand, dummy);
 
@@ -1861,7 +1861,7 @@ wxStandardID PromptForYesNoDialogWithCheckbox(const wxString& message,
         d.ShowCheckBox(checkboxLabel);
         d.SetYesNoLabels(yesLabel, noLabel);
         res = d.ShowModal();
-        if(d.IsCheckBoxChecked()) {
+        if(d.IsCheckBoxChecked() && (res != wxID_CANCEL)) {
             // store the user result
             clConfig::Get().SetAnnoyingDlgAnswer(dlgId, res);
         }

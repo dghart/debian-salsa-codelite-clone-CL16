@@ -163,6 +163,9 @@ bool LEditor::m_ccInitialized = false;
 wxPrintData* g_printData = NULL;
 wxPageSetupDialogData* g_pageSetupData = NULL;
 
+//---------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------
+
 class clEditorDropTarget : public wxDropTarget
 {
     wxStyledTextCtrl* m_stc;
@@ -407,6 +410,13 @@ void LEditor::SetSyntaxHighlight(const wxString& lexerName)
     ClearDocumentStyle();
     m_context = ContextManager::Get()->NewContext(this, lexerName);
 
+    // Apply the lexer fonts and colours before we call
+    // "SetProperties". (SetProperties function needs the correct font for
+    // some of its settings)
+    LexerConf::Ptr_t lexer = ColoursAndFontsManager::Get().GetLexer(lexerName);
+    if(lexer) {
+        lexer->Apply(this);
+    }
     SetProperties();
 
     SetEOL();
@@ -514,6 +524,8 @@ void LEditor::SetProperties()
     }
 
     SetVirtualSpaceOptions(options->GetOptions() & OptionsConfig::Opt_AllowCaretAfterEndOfLine ? 2 : 1);
+    SetCaretStyle(options->GetOptions() & OptionsConfig::Opt_UseBlockCaret ? wxSTC_CARETSTYLE_BLOCK :
+                                                                             wxSTC_CARETSTYLE_LINE);
     SetWrapMode(options->GetWordWrap() ? wxSTC_WRAP_WORD : wxSTC_WRAP_NONE);
     SetViewWhiteSpace(options->GetShowWhitspaces());
     SetMouseDwellTime(500);
@@ -592,12 +604,8 @@ void LEditor::SetProperties()
     // allow everything except for the folding symbols
     SetMarginMask(SYMBOLS_MARGIN_ID, ~(wxSTC_MASK_FOLDERS));
 
-// Line number margin
-#ifdef __WXMSW__
+    // Line number margin
     int pixelWidth = 4 + 5 * TextWidth(wxSTC_STYLE_LINENUMBER, wxT("9"));
-#else
-    int pixelWidth = 4 + 5 * 8;
-#endif
 
     // Show number margin according to settings.
     SetMarginWidth(NUMBER_MARGIN_ID, options->GetDisplayLineNumbers() ? pixelWidth : 0);
@@ -620,7 +628,6 @@ void LEditor::SetProperties()
     // Determine the folding symbols colours
     wxColour foldFgColour = wxColor(0xff, 0xff, 0xff);
     wxColour foldBgColour = wxColor(0x80, 0x80, 0x80);
-
     LexerConf::Ptr_t lexer = ColoursAndFontsManager::Get().GetLexer(GetContext()->GetName());
     if(lexer && lexer->IsDark()) {
         const StyleProperty& defaultProperty = lexer->GetProperty(0);
@@ -687,8 +694,18 @@ void LEditor::SetProperties()
         MarkerSetForeground(bmt, options->GetBookmarkFgColour(bmt - smt_FIRST_BMK_TYPE));
     }
 
+    // Breakpoints
+    for(size_t bmt = smt_FIRST_BP_TYPE; bmt <= smt_LAST_BP_TYPE; ++bmt) {
+        MarkerSetBackground(smt_breakpoint, "RED");
+        MarkerSetAlpha(smt_breakpoint, 30);
+    }
+
     MarkerDefineBitmap(smt_breakpoint, wxBitmap(wxImage(stop_xpm)));
     MarkerDefineBitmap(smt_bp_disabled, wxBitmap(wxImage(BreakptDisabled)));
+    // Give disabled breakpoints a "grey" look
+    MarkerSetBackground(smt_bp_disabled, "GREY");
+    MarkerSetAlpha(smt_bp_disabled, 30);
+
     MarkerDefineBitmap(smt_bp_cmdlist, wxBitmap(wxImage(BreakptCommandList)));
     MarkerDefineBitmap(smt_bp_cmdlist_disabled, wxBitmap(wxImage(BreakptCommandListDisabled)));
     MarkerDefineBitmap(smt_bp_ignored, wxBitmap(wxImage(BreakptIgnore)));
@@ -776,7 +793,15 @@ void LEditor::SetProperties()
     if(alpha != wxNOT_FOUND) {
         IndicatorSetAlpha(MARKER_WORD_HIGHLIGHT, alpha);
     }
-
+    
+    IndicatorSetUnder(MARKER_FIND_BAR_WORD_HIGHLIGHT, true);
+    IndicatorSetStyle(MARKER_FIND_BAR_WORD_HIGHLIGHT, wxSTC_INDIC_BOX);
+    bool isDarkTheme = (lexer && lexer->IsDark());
+    IndicatorSetForeground(MARKER_FIND_BAR_WORD_HIGHLIGHT, isDarkTheme ? "WHITE" : "BLACK");
+    if(alpha != wxNOT_FOUND) {
+        IndicatorSetAlpha(MARKER_FIND_BAR_WORD_HIGHLIGHT, alpha);
+    }
+    
     IndicatorSetStyle(HYPERLINK_INDICATOR, wxSTC_INDIC_PLAIN);
     IndicatorSetStyle(MATCH_INDICATOR, wxSTC_INDIC_BOX);
     IndicatorSetForeground(MATCH_INDICATOR, wxT("GREY"));
@@ -2552,16 +2577,19 @@ void LEditor::DelMarker()
 {
     int nPos = GetCurrentPos();
     int nLine = LineFromPosition(nPos);
-    MarkerDelete(nLine, GetActiveBookmarkType());
+    for(int i = smt_FIRST_BMK_TYPE; i < smt_LAST_BMK_TYPE; ++i) {
+        MarkerDelete(nLine, i);
+    }
 }
 
 void LEditor::ToggleMarker()
 {
     // Add/Remove marker
-    if(!LineIsMarked(GetActiveBookmarkMask()))
+    if(!LineIsMarked(mmt_standard_bookmarks)) {
         AddMarker();
-    else
+    } else {
         DelMarker();
+    }
 }
 
 bool LEditor::LineIsMarked(enum marker_mask_type mask)
@@ -2609,6 +2637,9 @@ void LEditor::DelAllMarkers(int which_type)
     IndicatorClearRange(0, GetLength());
 
     SetIndicatorCurrent(DEBUGGER_INDICATOR);
+    IndicatorClearRange(0, GetLength());
+    
+    SetIndicatorCurrent(MARKER_FIND_BAR_WORD_HIGHLIGHT);
     IndicatorClearRange(0, GetLength());
 }
 
@@ -3272,7 +3303,7 @@ void LEditor::DoBreakptContextMenu(wxPoint pt)
 
     // First, add/del bookmark
     menu.Append(XRCID("toggle_bookmark"),
-                LineIsMarked(GetActiveBookmarkMask()) ? wxString(_("Remove Bookmark")) : wxString(_("Add Bookmark")));
+                LineIsMarked(mmt_standard_bookmarks) ? wxString(_("Remove Bookmark")) : wxString(_("Add Bookmark")));
     menu.Append(XRCID("removeall_bookmarks"), _("Remove All Bookmarks"));
 
     BookmarkManager::Get().CreateBookmarksSubmenu(&menu);
@@ -3659,6 +3690,9 @@ void LEditor::OnDbgCustomWatch(wxCommandEvent& event)
 
 void LEditor::UpdateColours()
 {
+    SetKeywordClasses("");
+    SetKeywordLocals("");
+
     if(TagsManagerST::Get()->GetCtagsOptions().GetFlags() & CC_COLOUR_VARS ||
        TagsManagerST::Get()->GetCtagsOptions().GetFlags() & CC_COLOUR_WORKSPACE_TAGS ||
        TagsManagerST::Get()->GetCtagsOptions().GetFlags() & CC_COLOUR_MACRO_BLOCKS) {
@@ -3666,9 +3700,9 @@ void LEditor::UpdateColours()
 
     } else {
         if(m_context->GetName() == wxT("C++")) {
-            SetKeyWords(1, wxEmptyString);
+            SetKeyWords(1, wxEmptyString); // Classes
             SetKeyWords(2, wxEmptyString);
-            SetKeyWords(3, wxEmptyString);
+            SetKeyWords(3, wxEmptyString); // Locals
             SetKeyWords(4, GetPreProcessorsWords());
         }
     }
@@ -5197,7 +5231,13 @@ void LEditor::CommentBlockSelection(const wxString& commentBlockStart, const wxS
 
 void LEditor::QuickAddNext()
 {
-    if(!HasSelection()) return;
+    if(!HasSelection()) {
+        int start = WordStartPos(GetCurrentPos(), true);
+        int end = WordEndPos(GetCurrentPos(), true);
+        SetSelection(start, end);
+        return;
+    }
+
     int count = GetSelections();
     int start = GetSelectionNStart(count - 1);
     int end = GetSelectionNEnd(count - 1);
@@ -5208,7 +5248,7 @@ void LEditor::QuickAddNext()
     }
 
     wxString findWhat = GetTextRange(start, end);
-    int where = this->FindText(end, GetLength(), findWhat, wxSTC_FIND_MATCHCASE | wxSTC_FIND_WHOLEWORD);
+    int where = this->FindText(end, GetLength(), findWhat, wxSTC_FIND_MATCHCASE);
     if(where != wxNOT_FOUND) {
         AddSelection(where, where + findWhat.length());
         CenterLineIfNeeded(LineFromPos(where));
@@ -5232,7 +5272,8 @@ void LEditor::QuickFindAll()
 
     int matches(0);
     int firstMatch(wxNOT_FOUND);
-    int where = this->FindText(0, GetLength(), findWhat, wxSTC_FIND_MATCHCASE | wxSTC_FIND_WHOLEWORD);
+    // clWordCharslocker wcl(this);
+    int where = this->FindText(0, GetLength(), findWhat, wxSTC_FIND_MATCHCASE);
     while(where != wxNOT_FOUND) {
         if(matches == 0) {
             firstMatch = where;
@@ -5244,8 +5285,7 @@ void LEditor::QuickFindAll()
             AddSelection(where, where + findWhat.length());
         }
         ++matches;
-        where = this->FindText(
-            where + findWhat.length(), GetLength(), findWhat, wxSTC_FIND_MATCHCASE | wxSTC_FIND_WHOLEWORD);
+        where = this->FindText(where + findWhat.length(), GetLength(), findWhat, wxSTC_FIND_MATCHCASE);
     }
     wxString message;
     message << _("Found and selected ") << GetSelections() << _(" matches");

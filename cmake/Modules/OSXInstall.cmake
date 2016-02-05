@@ -190,7 +190,7 @@ macro(OSX_MAKE_BUNDLE_DIRECTORY)
             DESTINATION 
             ${CMAKE_BINARY_DIR}/codelite.app/Contents/MacOS/codelite-terminal.app/Contents/Resources)
 
-        file(COPY ${CL_SRC_ROOT}/Runtime/icon.icns 
+        file(COPY ${CL_SRC_ROOT}/bitmaps/osx/icon.icns 
             DESTINATION 
             ${CMAKE_BINARY_DIR}/codelite.app/Contents/Resources)
             
@@ -218,7 +218,7 @@ macro(OSX_MAKE_BUNDLE_DIRECTORY)
              ${CMAKE_BINARY_DIR}/codelite.app/Contents/MacOS)
         
         ## Copy and fix libclang.dylib / liblldb
-        file(COPY ${CL_SRC_ROOT}/sdk/clang/lib/libclang.dylib 
+        file(COPY ${CL_SRC_ROOT}/sdk/clang/lib/libclang.3.7.dylib 
              DESTINATION 
              ${CMAKE_BINARY_DIR}/codelite.app/Contents/MacOS/)
 

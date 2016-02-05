@@ -1,7 +1,7 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //
-// copyright            : (C) 2014 The CodeLite Team
+// copyright            : (C) 2014 Eran Ifrah
 // file name            : qmakeplugin.cpp
 //
 // -------------------------------------------------------------------------
@@ -54,7 +54,7 @@
 static QMakePlugin* thePlugin = NULL;
 
 // Define the plugin entry point
-extern "C" EXPORT IPlugin* CreatePlugin(IManager* manager)
+CL_PLUGIN_API IPlugin* CreatePlugin(IManager* manager)
 {
     if(thePlugin == 0) {
         thePlugin = new QMakePlugin(manager);
@@ -62,17 +62,17 @@ extern "C" EXPORT IPlugin* CreatePlugin(IManager* manager)
     return thePlugin;
 }
 
-extern "C" EXPORT PluginInfo GetPluginInfo()
+CL_PLUGIN_API PluginInfo* GetPluginInfo()
 {
-    PluginInfo info;
+    static PluginInfo info;
     info.SetAuthor(wxT("Eran Ifrah"));
     info.SetName(wxT("QMakePlugin"));
     info.SetDescription(_("Qt's QMake integration with CodeLite"));
     info.SetVersion(wxT("v1.0"));
-    return info;
+    return &info;
 }
 
-extern "C" EXPORT int GetPluginInterfaceVersion() { return PLUGIN_INTERFACE_VERSION; }
+CL_PLUGIN_API int GetPluginInterfaceVersion() { return PLUGIN_INTERFACE_VERSION; }
 
 QMakePlugin::QMakePlugin(IManager* manager)
     : IPlugin(manager)
@@ -109,42 +109,25 @@ clToolBar* QMakePlugin::CreateToolBar(wxWindow* parent)
     // You can use the below code a snippet:
     // First, check that CodeLite allows plugin to register plugins
     if(m_mgr->AllowToolbar()) {
+
         // Support both toolbars icon size
         int size = m_mgr->GetToolbarIconSize();
 
         // Allocate new toolbar, which will be freed later by CodeLite
-        tb = new clToolBar(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, clTB_DEFAULT_STYLE);
+        tb = new clToolBar(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, clTB_DEFAULT_STYLE_PLUGIN);
 
         // Set the toolbar size
         tb->SetToolBitmapSize(wxSize(size, size));
-
-        // Add tools to the plugins toolbar. You must provide 2 sets of icons: 24x24 and 16x16
-        if(size == 24) {
-            tb->AddTool(XRCID("qmake_settings"),
-                        _("Configure qmake"),
-                        LoadBitmapFile(wxT("qt24_preferences.png")),
-                        _("Configure qmake"));
-            tb->AddTool(XRCID("new_qmake_project"),
-                        _("Create new qmake based project"),
-                        LoadBitmapFile(wxT("qt24_new.png")),
-                        _("Create new qmake based project"));
-        } else {
-            tb->AddTool(XRCID("qmake_settings"),
-                        _("Configure qmake"),
-                        LoadBitmapFile(wxT("qt16_preferences.png")),
-                        _("Configure qmake"));
-            tb->AddTool(XRCID("new_qmake_project"),
-                        _("Create new qmake based project"),
-                        LoadBitmapFile(wxT("qt16_new.png")),
-                        _("Create new qmake based project"));
-        }
+        tb->AddTool(XRCID("new_qmake_project"),
+                    _("Create new qmake based project"),
+                    m_mgr->GetStdIcons()->LoadBitmap("qt", size),
+                    _("Create new qmake based project"));
         // And finally, we must call 'Realize()'
         tb->Realize();
     }
 
     // return the toolbar, it can be NULL if CodeLite does not allow plugins to register toolbars
     // or in case the plugin simply does not require toolbar
-
     return tb;
 }
 
@@ -597,7 +580,7 @@ void QMakePlugin::OnExportMakefile(wxCommandEvent& event)
                            << generator.GetProFileName();
             wxStringMap_t om;
             om.insert(std::make_pair("QTDIR", qtdir));
-            EnvSetter envGuard(NULL, &om, project);
+            EnvSetter envGuard(NULL, &om, project, config);
             m_mgr->ClearOutputTab(kOutputTab_Build);
             m_mgr->AppendOutputTabText(kOutputTab_Build, wxString() << "-- " << qmake_exe_line << "\n");
             m_qmakeProcess =

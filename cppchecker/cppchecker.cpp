@@ -1,7 +1,7 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //
-// copyright            : (C) 2014 The CodeLite Team
+// copyright            : (C) 2014 Eran Ifrah
 // file name            : cppchecker.cpp
 //
 // -------------------------------------------------------------------------
@@ -56,7 +56,7 @@
 static CppCheckPlugin* thePlugin = NULL;
 
 // Define the plugin entry point
-extern "C" EXPORT IPlugin* CreatePlugin(IManager* manager)
+CL_PLUGIN_API IPlugin* CreatePlugin(IManager* manager)
 {
     if(thePlugin == 0) {
         thePlugin = new CppCheckPlugin(manager);
@@ -64,17 +64,17 @@ extern "C" EXPORT IPlugin* CreatePlugin(IManager* manager)
     return thePlugin;
 }
 
-extern "C" EXPORT PluginInfo GetPluginInfo()
+CL_PLUGIN_API PluginInfo* GetPluginInfo()
 {
-    PluginInfo info;
+    static PluginInfo info;
     info.SetAuthor(wxT("Eran Ifrah & Jérémie (jfouche)"));
     info.SetName(wxT("CppChecker"));
     info.SetDescription(_("CppChecker integration for CodeLite IDE"));
     info.SetVersion(wxT("v1.0"));
-    return info;
+    return &info;
 }
 
-extern "C" EXPORT int GetPluginInterfaceVersion() { return PLUGIN_INTERFACE_VERSION; }
+CL_PLUGIN_API int GetPluginInterfaceVersion() { return PLUGIN_INTERFACE_VERSION; }
 
 CppCheckPlugin::CppCheckPlugin(IManager* manager)
     : IPlugin(manager)
@@ -142,7 +142,9 @@ CppCheckPlugin::CppCheckPlugin(IManager* manager)
     m_view = new CppCheckReportPage(m_mgr->GetOutputPaneNotebook(), m_mgr, this);
 
     //	wxBookCtrlBase *book = m_mgr->GetOutputPaneNotebook();
-    m_mgr->GetOutputPaneNotebook()->AddPage(m_view, _("CppCheck"), false, LoadBitmapFile(wxT("cppcheck.png")));
+    m_mgr->GetOutputPaneNotebook()->AddPage(m_view, _("CppCheck"), false, m_mgr->GetStdIcons()->LoadBitmap("checkbox"));
+    m_tabHelper.reset(new clTabTogglerHelper(_("CppCheck"), m_view, "", NULL));
+    m_tabHelper->SetOutputTabBmp(m_mgr->GetStdIcons()->LoadBitmap("checkbox"));
 }
 
 CppCheckPlugin::~CppCheckPlugin() {}
@@ -187,6 +189,7 @@ void CppCheckPlugin::HookPopupMenu(wxMenu* menu, MenuType type)
 
 void CppCheckPlugin::UnPlug()
 {
+    m_tabHelper.reset(NULL);
     Unbind(wxEVT_ASYNC_PROCESS_OUTPUT, &CppCheckPlugin::OnCppCheckReadData, this);
     Unbind(wxEVT_ASYNC_PROCESS_TERMINATED, &CppCheckPlugin::OnCppCheckTerminated, this);
 
@@ -229,17 +232,13 @@ void CppCheckPlugin::UnPlug()
     for(size_t i = 0; i < m_mgr->GetOutputPaneNotebook()->GetPageCount(); i++) {
         if(m_view == m_mgr->GetOutputPaneNotebook()->GetPage(i)) {
             m_mgr->GetOutputPaneNotebook()->RemovePage(i);
-            m_view->Destroy();
             break;
         }
     }
+    m_view->Destroy();
 
     // terminate the cppcheck daemon
-    if(m_cppcheckProcess) {
-        wxLogMessage(_("CppCheckPlugin: Terminating cppcheck daemon..."));
-        delete m_cppcheckProcess;
-        m_cppcheckProcess = NULL;
-    }
+    wxDELETE(m_cppcheckProcess);
 }
 
 wxMenu* CppCheckPlugin::CreateFileExplorerPopMenu()
@@ -500,12 +499,17 @@ void CppCheckPlugin::DoProcess(ProjectPtr proj)
     wxString command = DoGetCommand(proj);
     m_view->AppendLine(wxString::Format(_("Starting cppcheck: %s\n"), command.c_str()));
 
-#ifdef __WXMSW__
+#if defined(__WXMSW__)
     // Under Windows, we set the working directory to the binary folder
     // so the configurtion files can be found
     CL_DEBUG("CppCheck: Working directory: %s", clStandardPaths::Get().GetBinFolder());
     CL_DEBUG("CppCheck: Command: %s", command);
     m_cppcheckProcess = CreateAsyncProcess(this, command, IProcessCreateDefault, clStandardPaths::Get().GetBinFolder());
+#elif defined(__WXOSX__)
+    CL_DEBUG("CppCheck: Working directory: %s", clStandardPaths::Get().GetDataDir());
+    CL_DEBUG("CppCheck: Command: %s", command);
+    m_cppcheckProcess = CreateAsyncProcess(this, command, IProcessCreateDefault, clStandardPaths::Get().GetDataDir());
+
 #else
     m_cppcheckProcess = CreateAsyncProcess(this, command);
 #endif

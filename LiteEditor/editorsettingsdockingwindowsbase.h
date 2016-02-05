@@ -17,10 +17,10 @@
 #include <wx/imaglist.h>
 #include <wx/radiobox.h>
 #include <wx/statbox.h>
-#include <wx/checkbox.h>
 #include <wx/stattext.h>
 #include <wx/choice.h>
 #include <wx/arrstr.h>
+#include <wx/checkbox.h>
 #if wxVERSION_NUMBER >= 2900
 #include <wx/persist.h>
 #include <wx/persist/toplevel.h>
@@ -34,12 +34,14 @@ protected:
     wxNotebook* m_notebook10;
     wxPanel* m_panel12;
     wxRadioBox* m_radioBoxHint;
-    wxCheckBox* m_checkBoxShowXButton;
-    wxCheckBox* m_checkBoxEditorTabsFollowsTheme;
+    wxStaticText* m_staticText46;
+    wxChoice* m_choiceTabStyle;
     wxStaticText* m_staticText38;
     wxChoice* m_choiceWorkspaceTabsOrientation;
     wxStaticText* m_staticText42;
     wxChoice* m_choiceOutputTabsOrientation;
+    wxCheckBox* m_checkBoxShowXButton;
+    wxCheckBox* m_checkBoxEditorTabsFollowsTheme;
     wxCheckBox* m_checkBoxHideCaptions;
     wxCheckBox* m_checkBoxEnsureCaptionsVisible;
     wxPanel* m_panel14;
@@ -70,12 +72,14 @@ protected:
 
 public:
     wxRadioBox* GetRadioBoxHint() { return m_radioBoxHint; }
-    wxCheckBox* GetCheckBoxShowXButton() { return m_checkBoxShowXButton; }
-    wxCheckBox* GetCheckBoxEditorTabsFollowsTheme() { return m_checkBoxEditorTabsFollowsTheme; }
+    wxStaticText* GetStaticText46() { return m_staticText46; }
+    wxChoice* GetChoiceTabStyle() { return m_choiceTabStyle; }
     wxStaticText* GetStaticText38() { return m_staticText38; }
     wxChoice* GetChoiceWorkspaceTabsOrientation() { return m_choiceWorkspaceTabsOrientation; }
     wxStaticText* GetStaticText42() { return m_staticText42; }
     wxChoice* GetChoiceOutputTabsOrientation() { return m_choiceOutputTabsOrientation; }
+    wxCheckBox* GetCheckBoxShowXButton() { return m_checkBoxShowXButton; }
+    wxCheckBox* GetCheckBoxEditorTabsFollowsTheme() { return m_checkBoxEditorTabsFollowsTheme; }
     wxCheckBox* GetCheckBoxHideCaptions() { return m_checkBoxHideCaptions; }
     wxCheckBox* GetCheckBoxEnsureCaptionsVisible() { return m_checkBoxEnsureCaptionsVisible; }
     wxPanel* GetPanel12() { return m_panel12; }

@@ -37,7 +37,6 @@
 #include "frame.h"
 #include "FileExplorerTab.h"
 #include "file_logger.h"
-#include "FileExplorerTabToolBar.h"
 #include "cl_config.h"
 #include "OpenFolderDlg.h"
 #include "globals.h"
@@ -52,6 +51,8 @@ FileExplorer::FileExplorer(wxWindow* parent, const wxString& caption)
     , m_caption(caption)
 {
     CreateGUIControls();
+    m_keyboardHelper.reset(new clTreeKeyboardInput(m_view->GetTreeCtrl()));
+    
     m_themeHelper = new ThemeHandlerHelper(this);
     SetDropTarget(new clFileOrFolderDropTarget(this));
     Bind(wxEVT_DND_FOLDER_DROPPED, &FileExplorer::OnFolderDropped, this);
@@ -59,6 +60,7 @@ FileExplorer::FileExplorer(wxWindow* parent, const wxString& caption)
 
 FileExplorer::~FileExplorer()
 {
+    m_keyboardHelper.reset(NULL);
     wxDELETE(m_themeHelper);
     Unbind(wxEVT_DND_FOLDER_DROPPED, &FileExplorer::OnFolderDropped, this);
 }

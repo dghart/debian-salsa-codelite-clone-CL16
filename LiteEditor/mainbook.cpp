@@ -71,11 +71,12 @@ void MainBook::CreateGuiControls()
 
     m_navBar = new NavBar(this);
     sz->Add(m_navBar, 0, wxEXPAND);
-    long style = kNotebook_AllowDnD |                  // Allow tabs to move
-                 kNotebook_MouseMiddleClickClosesTab | // Handle mouse middle button when clicked on a tab
-                 kNotebook_MouseMiddleClickFireEvent | // instead of closing the tab, fire an event
-                 kNotebook_ShowFileListButton |        // show drop down list of all open tabs
-                 kNotebook_EnableNavigationEvent;      // Notify when user hit Ctrl-TAB or Ctrl-PGDN/UP
+    long style = kNotebook_AllowDnD |         // Allow tabs to move
+        kNotebook_MouseMiddleClickClosesTab | // Handle mouse middle button when clicked on a tab
+        kNotebook_MouseMiddleClickFireEvent | // instead of closing the tab, fire an event
+        kNotebook_ShowFileListButton |        // show drop down list of all open tabs
+        kNotebook_EnableNavigationEvent |     // Notify when user hit Ctrl-TAB or Ctrl-PGDN/UP
+        kNotebook_UnderlineActiveTab;         // Mark active tab with dedicated coloured line
 
     if(EditorConfigST::Get()->GetOptions()->IsTabHasXButton()) {
         style |= (kNotebook_CloseButtonOnActiveTabFireEvent | kNotebook_CloseButtonOnActiveTab);
@@ -83,9 +84,6 @@ void MainBook::CreateGuiControls()
 
     // load the notebook style from the configuration settings
     m_book = new Notebook(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, style);
-
-    wxMenu* contextMenu = wxXmlResource::Get()->LoadMenu(wxT("editor_tab_right_click"));
-    m_book->SetMenu(contextMenu);
     sz->Add(m_book, 1, wxEXPAND);
 
     m_quickFindBar = new QuickFindBar(this);
@@ -103,6 +101,7 @@ void MainBook::ConnectEvents()
     m_book->Bind(wxEVT_BOOK_NAVIGATING, &MainBook::OnNavigating, this);
     m_book->Bind(wxEVT_BOOK_TABAREA_DCLICKED, &MainBook::OnMouseDClick, this);
     m_book->Bind(wxEVT_BOOK_TAB_DCLICKED, &MainBook::OnTabDClicked, this);
+    m_book->Bind(wxEVT_BOOK_TAB_CONTEXT_MENU, &MainBook::OnTabLabelContextMenu, this);
 
     EventNotifier::Get()->Connect(
         wxEVT_WORKSPACE_LOADED, wxCommandEventHandler(MainBook::OnWorkspaceLoaded), NULL, this);
@@ -131,6 +130,7 @@ MainBook::~MainBook()
     m_book->Unbind(wxEVT_BOOK_NAVIGATING, &MainBook::OnNavigating, this);
     m_book->Unbind(wxEVT_BOOK_TABAREA_DCLICKED, &MainBook::OnMouseDClick, this);
     m_book->Unbind(wxEVT_BOOK_TAB_DCLICKED, &MainBook::OnTabDClicked, this);
+    m_book->Unbind(wxEVT_BOOK_TAB_CONTEXT_MENU, &MainBook::OnTabLabelContextMenu, this);
 
     EventNotifier::Get()->Unbind(wxEVT_CL_THEME_CHANGED, &MainBook::OnThemeChanged, this);
 
@@ -272,10 +272,7 @@ void MainBook::ClearFileHistory()
     clConfig::Get().ClearRecentFiles();
 }
 
-void MainBook::GetRecentlyOpenedFiles(wxArrayString& files)
-{
-    files = clConfig::Get().GetRecentFiles();
-}
+void MainBook::GetRecentlyOpenedFiles(wxArrayString& files) { files = clConfig::Get().GetRecentFiles(); }
 
 void MainBook::UpdateNavBar(LEditor* editor)
 {
@@ -352,18 +349,15 @@ void MainBook::GetAllTabs(clTab::Vec_t& tabs)
         t.bitmap = tabInfo->GetBitmap();
         t.text = tabInfo->GetLabel();
         t.window = tabInfo->GetWindow();
+
+        LEditor* editor = dynamic_cast<LEditor*>(t.window);
+        if(editor) {
+            t.isFile = true;
+            t.isModified = editor->IsModified();
+            t.filename = editor->GetFileName();
+        }
         tabs.push_back(t);
     });
-
-    // Go over the tabs, and for each tab that represents a file
-    // populate the filename member
-    for(size_t i = 0; i < tabs.size(); ++i) {
-        LEditor* editor = dynamic_cast<LEditor*>(tabs.at(i).window);
-        if(editor) {
-            tabs.at(i).isFile = true;
-            tabs.at(i).filename = editor->GetFileName();
-        }
-    }
 }
 
 void MainBook::GetAllEditors(LEditor::Vec_t& editors, size_t flags)
@@ -419,11 +413,11 @@ LEditor* MainBook::FindEditor(const wxString& fileName)
 #ifndef __WXMSW__
             // On Unix files are case sensitive
             if(nativeFile.Cmp(fileName) == 0 || unixStyleFile.Cmp(fileName) == 0 ||
-               unixStyleFile.Cmp(fileNameDest) == 0)
+                unixStyleFile.Cmp(fileNameDest) == 0)
 #else
             // Compare in no case sensitive manner
             if(nativeFile.CmpNoCase(fileName) == 0 || unixStyleFile.CmpNoCase(fileName) == 0 ||
-               unixStyleFile.CmpNoCase(fileNameDest) == 0)
+                unixStyleFile.CmpNoCase(fileNameDest) == 0)
 #endif
             {
                 return editor;
@@ -504,11 +498,11 @@ static bool IsFileExists(const wxFileName& filename)
 }
 
 LEditor* MainBook::OpenFile(const wxString& file_name,
-                            const wxString& projectName,
-                            int lineno,
-                            long position,
-                            OF_extra extra /*=OF_AddJump*/,
-                            bool preserveSelection /*=true*/)
+    const wxString& projectName,
+    int lineno,
+    long position,
+    OF_extra extra /*=OF_AddJump*/,
+    bool preserveSelection /*=true*/)
 {
     wxFileName fileName(file_name);
     fileName.MakeAbsolute();
@@ -530,13 +524,13 @@ LEditor* MainBook::OpenFile(const wxString& file_name,
         wxLogMessage(wxT("Failed to open: %s: No such file or directory"), fileName.GetFullPath().c_str());
         return NULL;
     }
-    
+
     if(FileExtManager::GetType(fileName.GetFullName()) == FileExtManager::TypeBmp) {
         // a bitmap file, open it using an image viewer
         DoOpenImageViewer(fileName);
         return NULL;
     }
-    
+
     wxString projName = projectName;
     if(projName.IsEmpty()) {
         // try to match a project name to the file. otherwise, CC may not work
@@ -637,11 +631,11 @@ LEditor* MainBook::OpenFile(const wxString& file_name,
 }
 
 bool MainBook::AddPage(wxWindow* win,
-                       const wxString& text,
-                       const wxString& tooltip,
-                       const wxBitmap& bmp,
-                       bool selected,
-                       int insert_at_index /*=wxNOT_FOUND*/)
+    const wxString& text,
+    const wxString& tooltip,
+    const wxBitmap& bmp,
+    bool selected,
+    int insert_at_index /*=wxNOT_FOUND*/)
 {
     if(m_book->GetPageIndex(win) != wxNOT_FOUND) return false;
 
@@ -689,10 +683,8 @@ bool MainBook::SelectPage(wxWindow* win)
     return DoSelectPage(win);
 }
 
-bool MainBook::UserSelectFiles(std::vector<std::pair<wxFileName, bool> >& files,
-                               const wxString& title,
-                               const wxString& caption,
-                               bool cancellable)
+bool MainBook::UserSelectFiles(
+    std::vector<std::pair<wxFileName, bool> >& files, const wxString& title, const wxString& caption, bool cancellable)
 {
     if(files.empty()) return true;
 
@@ -724,9 +716,8 @@ bool MainBook::SaveAll(bool askUser, bool includeUntitled)
     }
     editors.resize(n);
 
-    bool res = !askUser || UserSelectFiles(files,
-                                           _("Save Modified Files"),
-                                           _("Some files are modified.\nChoose the files you would like to save."));
+    bool res = !askUser || UserSelectFiles(files, _("Save Modified Files"),
+                               _("Some files are modified.\nChoose the files you would like to save."));
     if(res) {
         for(size_t i = 0; i < files.size(); i++) {
             if(files[i].second) {
@@ -801,11 +792,8 @@ void MainBook::ReloadExternallyModified(bool prompt)
         }
 
         if(res == FilesModifiedDlg::kID_BUTTON_CHOOSE) {
-            UserSelectFiles(
-                files,
-                _("Reload Modified Files"),
-                _("Files have been modified outside the editor.\nChoose which files you would like to reload."),
-                false);
+            UserSelectFiles(files, _("Reload Modified Files"),
+                _("Files have been modified outside the editor.\nChoose which files you would like to reload."), false);
         }
     }
 
@@ -896,10 +884,8 @@ bool MainBook::CloseAll(bool cancellable)
     }
     editors.resize(n);
 
-    if(!UserSelectFiles(files,
-                        _("Save Modified Files"),
-                        _("Some files are modified.\nChoose the files you would like to save."),
-                        cancellable))
+    if(!UserSelectFiles(files, _("Save Modified Files"),
+           _("Some files are modified.\nChoose the files you would like to save."), cancellable))
         return false;
 
     for(size_t i = 0; i < files.size(); i++) {
@@ -1057,10 +1043,8 @@ void MainBook::MarkEditorReadOnly(LEditor* editor)
     if(readOnly && editor->GetModify()) {
         // an attempt to mark a modified file as read-only
         // ask the user to save his changes before
-        ::wxMessageBox(_("Please save your changes before marking the file as read only"),
-                       "CodeLite",
-                       wxOK | wxCENTER | wxICON_WARNING,
-                       this);
+        ::wxMessageBox(_("Please save your changes before marking the file as read only"), "CodeLite",
+            wxOK | wxCENTER | wxICON_WARNING, this);
         return;
     }
 #if !CL_USE_NATIVEBOOK
@@ -1110,12 +1094,12 @@ bool MainBook::DoSelectPage(wxWindow* win)
 }
 
 void MainBook::ShowMessage(const wxString& message,
-                           bool showHideButton,
-                           const wxBitmap& bmp,
-                           const ButtonDetails& btn1,
-                           const ButtonDetails& btn2,
-                           const ButtonDetails& btn3,
-                           const CheckboxDetails& cb)
+    bool showHideButton,
+    const wxBitmap& bmp,
+    const ButtonDetails& btn1,
+    const ButtonDetails& btn2,
+    const ButtonDetails& btn3,
+    const CheckboxDetails& cb)
 {
     m_messagePane->ShowMessage(message, showHideButton, bmp, btn1, btn2, btn3, cb);
     clMainFrame::Get()->SendSizeEvent();
@@ -1415,8 +1399,28 @@ void MainBook::OnTabDClicked(wxBookCtrlEvent& e)
 
 void MainBook::DoOpenImageViewer(const wxFileName& filename)
 {
-    clImageViewer *imageViewer = new clImageViewer(m_book, filename);
+    clImageViewer* imageViewer = new clImageViewer(m_book, filename);
     size_t pos = m_book->GetPageCount();
     m_book->AddPage(imageViewer, filename.GetFullName(), true);
     m_book->SetPageToolTip(pos, filename.GetFullPath());
+}
+
+void MainBook::OnTabLabelContextMenu(wxBookCtrlEvent& e)
+{
+    e.Skip();
+    wxWindow* tabCtrl = static_cast<wxWindow*>(e.GetEventObject());
+    if((e.GetSelection() == m_book->GetSelection()) && (tabCtrl->GetParent() == m_book)) {
+        // we only show context menu for the active tab
+        e.Skip(false);
+        wxMenu* contextMenu = wxXmlResource::Get()->LoadMenu(wxT("editor_tab_right_click"));
+
+        // Notify the plugins about the tab label context menu
+        clContextMenuEvent event(wxEVT_CONTEXT_MENU_TAB_LABEL);
+        event.SetMenu(contextMenu);
+        EventNotifier::Get()->ProcessEvent(event);
+
+        contextMenu = event.GetMenu();
+        tabCtrl->PopupMenu(contextMenu);
+        wxDELETE(contextMenu);
+    }
 }

@@ -25,9 +25,17 @@ NodeJSHandle NodeJSOuptutParser::ParseRef(const JSONElement& ref, std::map<int, 
     } else if(h.type == "null") {
         h.value = "null";
     } else if(h.type == "object") {
+
+        if(ref.hasNamedObject("protoObject")) {
+            h.properties.push_back(
+                std::make_pair(ref.namedObject("protoObject").namedObject("ref").toInt(), "prototype"));
+        }
+
         if(ref.hasNamedObject("className") && ref.namedObject("className").toString() == "Array") {
-            h.type = "Array"; 
+            h.type = "Array";
             h.value = "[]";
+        } else if(ref.hasNamedObject("text")) {
+            h.value = ref.namedObject("text").toString();
         } else {
             h.value = "{...}";
         }
@@ -41,9 +49,9 @@ NodeJSHandle NodeJSOuptutParser::ParseRef(const JSONElement& ref, std::map<int, 
             } else if(prop.namedObject("name").isNumber()) {
                 propName << "[" << prop.namedObject("name").toInt() << "]";
             }
-            
+
             int propId = prop.namedObject("ref").toInt();
-            h.properties.insert(std::make_pair(propId, propName));
+            h.properties.push_back(std::make_pair(propId, propName));
         }
     }
     handles.insert(std::make_pair(handleId, h));

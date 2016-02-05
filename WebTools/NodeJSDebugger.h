@@ -1,3 +1,28 @@
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+//
+// Copyright            : (C) 2015 Eran Ifrah
+// File name            : NodeJSDebugger.h
+//
+// -------------------------------------------------------------------------
+// A
+//              _____           _      _     _ _
+//             /  __ \         | |    | |   (_) |
+//             | /  \/ ___   __| | ___| |    _| |_ ___
+//             | |    / _ \ / _  |/ _ \ |   | | __/ _ )
+//             | \__/\ (_) | (_| |  __/ |___| | ||  __/
+//              \____/\___/ \__,_|\___\_____/_|\__\___|
+//
+//                                                  F i l e
+//
+//    This program is free software; you can redistribute it and/or modify
+//    it under the terms of the GNU General Public License as published by
+//    the Free Software Foundation; either version 2 of the License, or
+//    (at your option) any later version.
+//
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+
 #ifndef NODEJSDEBUGGER_H
 #define NODEJSDEBUGGER_H
 
@@ -10,6 +35,20 @@
 #include "NodeJS.h"
 
 class NodeJSDebuggerTooltip;
+struct NodeJSDebuggerException
+{
+    wxString message;
+    wxString script;
+    int line;
+    int column;
+
+    NodeJSDebuggerException()
+        : line(wxNOT_FOUND)
+        , column(wxNOT_FOUND)
+    {
+    }
+};
+
 class NodeJSDebugger : public wxEvtHandler
 {
     NodeJSSocket::Ptr_t m_socket;
@@ -52,13 +91,13 @@ protected:
     void OnDestroyTip(clCommandEvent& event);
 
 protected:
-    bool IsConnected();
     void DoHighlightLine(const wxString& filename, int lineNo);
     void DoDeleteTempFiles(const wxStringSet_t& files);
 
 public:
     NodeJSDebugger();
     virtual ~NodeJSDebugger();
+    bool IsConnected();
     void ShowTooltip(const wxString& expression, const wxString& jsonOutput);
 
     void AddTempFile(const wxString& filename) { m_tempFiles.insert(filename); }
@@ -72,6 +111,10 @@ public:
     //--------------------------------------------------
     // API
     //--------------------------------------------------
+    /**
+     * @brief start the debugger using the given command
+     */
+    void StartDebugger(const wxString& command, const wxString& workingDirectory);
 
     /**
      * @brief delete breakpoint from NodeJS. This function does not updat the breakpoint manager
@@ -151,7 +194,7 @@ public:
     /**
      * @brief the execution in the VM has stopped due to an exception
      */
-    void ExceptionThrown();
+    void ExceptionThrown(const NodeJSDebuggerException& exc);
 };
 
 #endif // NODEJSDEBUGGER_H

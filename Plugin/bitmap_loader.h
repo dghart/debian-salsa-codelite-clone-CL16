@@ -46,7 +46,8 @@ protected:
     std::map<FileExtManager::FileType, int> m_fileIndexMap;
     bool m_bMapPopulated;
     static BitmapMap_t m_userBitmaps;
-
+    size_t m_toolbarIconSize;
+    
 protected:
     void AddImage(int index, FileExtManager::FileType type);
     wxIcon GetIcon(const wxBitmap& bmp) const;
@@ -54,7 +55,7 @@ protected:
 public:
     BitmapLoader();
     ~BitmapLoader();
-    
+
     /**
      * @brief register a user defined image to a given file type
      */
@@ -85,7 +86,7 @@ protected:
     wxBitmap doLoadBitmap(const wxString& filepath);
 
 public:
-    const wxBitmap& LoadBitmap(const wxString& name);
+    const wxBitmap& LoadBitmap(const wxString& name, int requestedSize = 16);
 };
 
 #endif // BITMAP_LOADER_H

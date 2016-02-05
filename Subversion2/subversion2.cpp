@@ -1,7 +1,7 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //
-// copyright            : (C) 2014 The CodeLite Team
+// copyright            : (C) 2014 Eran Ifrah
 // file name            : subversion2.cpp
 //
 // -------------------------------------------------------------------------
@@ -121,7 +121,7 @@ static void ConvertToUnixEOL(wxString& str)
 }
 
 // Define the plugin entry point
-extern "C" EXPORT IPlugin* CreatePlugin(IManager* manager)
+CL_PLUGIN_API IPlugin* CreatePlugin(IManager* manager)
 {
     if(thePlugin == 0) {
         thePlugin = new Subversion2(manager);
@@ -129,17 +129,17 @@ extern "C" EXPORT IPlugin* CreatePlugin(IManager* manager)
     return thePlugin;
 }
 
-extern "C" EXPORT PluginInfo GetPluginInfo()
+CL_PLUGIN_API PluginInfo* GetPluginInfo()
 {
-    PluginInfo info;
+    static PluginInfo info;
     info.SetAuthor(wxT("Eran Ifrah"));
     info.SetName(wxT("Subversion"));
     info.SetDescription(_("Subversion plugin for codelite2.0 based on the svn command line tool"));
     info.SetVersion(wxT("v2.0"));
-    return info;
+    return &info;
 }
 
-extern "C" EXPORT int GetPluginInterfaceVersion() { return PLUGIN_INTERFACE_VERSION; }
+CL_PLUGIN_API int GetPluginInterfaceVersion() { return PLUGIN_INTERFACE_VERSION; }
 
 Subversion2::Subversion2(IManager* manager)
     : IPlugin(manager)
@@ -364,6 +364,7 @@ void Subversion2::UnPlug()
 {
     EventNotifier::Get()->Unbind(wxEVT_CONTEXT_MENU_FOLDER, &Subversion2::OnFolderContextMenu, this);
     EventNotifier::Get()->Unbind(wxEVT_CONTEXT_MENU_FILE, &Subversion2::OnFileContextMenu, this);
+    m_tabToggler.reset(NULL);
     GetManager()->GetTheApp()->Disconnect(XRCID("subversion2_settings"),
                                           wxEVT_COMMAND_MENU_SELECTED,
                                           wxCommandEventHandler(Subversion2::OnSettings),
@@ -466,7 +467,7 @@ void Subversion2::EnsureVisible()
 
 void Subversion2::DoInitialize()
 {
-    m_svnBitmap = GetManager()->GetStdIcons()->LoadBitmap(wxT("subversion/16/svn"));
+    m_svnBitmap = GetManager()->GetStdIcons()->LoadBitmap(wxT("subversion"));
 
     // create tab (possibly detached)
     Notebook* book = m_mgr->GetOutputPaneNotebook();
@@ -480,6 +481,8 @@ void Subversion2::DoInitialize()
         m_subversionView = new SubversionView(book, this);
         book->AddPage(m_subversionView, svnCONSOLE_TEXT, false, m_svnBitmap);
     }
+    m_tabToggler.reset(new clTabTogglerHelper(svnCONSOLE_TEXT, m_subversionView, "", NULL));
+    m_tabToggler->SetOutputTabBmp(m_svnBitmap);
 
     DoSetSSH();
     // We need to perform a dummy call to svn so it will create all the default

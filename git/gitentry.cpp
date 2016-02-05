@@ -1,7 +1,7 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //
-// copyright            : (C) 2014 The CodeLite Team
+// copyright            : (C) 2014 Eran Ifrah
 // file name            : gitentry.cpp
 //
 // -------------------------------------------------------------------------
@@ -307,6 +307,13 @@ void GitEntry::AddRecentCommit(const wxString& commitMessage)
     
     if(m_recentCommits.size() > 20) {
         m_recentCommits.RemoveAt(m_recentCommits.size() -1); // Remove the last commit
+    }
+}
+
+void GitEntry::DeleteEntry(const wxString& workspace)
+{
+    if(m_entries.count(workspace)) {
+        m_entries.erase(workspace);
     }
 }
 

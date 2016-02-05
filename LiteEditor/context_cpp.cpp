@@ -661,16 +661,15 @@ void ContextCpp::OnAddIncludeFile(wxCommandEvent& e)
     }
 
     // check to see if this file is a workspace file
-    AddIncludeFileDlg* dlg = new AddIncludeFileDlg(clMainFrame::Get(), choice, rCtrl.GetText(), FindLineToAddInclude());
-    if(dlg->ShowModal() == wxID_OK) {
+    AddIncludeFileDlg dlg(clMainFrame::Get(), choice, rCtrl.GetText(), FindLineToAddInclude());
+    if(dlg.ShowModal() == wxID_OK) {
         // add the line to the current document
-        wxString lineToAdd = dlg->GetLineToAdd();
-        int line = dlg->GetLine();
+        wxString lineToAdd = dlg.GetLineToAdd();
+        int line = dlg.GetLine();
 
         long pos = rCtrl.PositionFromLine(line);
         rCtrl.InsertText(pos, lineToAdd + rCtrl.GetEolString());
     }
-    dlg->Destroy();
 }
 
 bool ContextCpp::IsIncludeStatement(const wxString& line, wxString* fileName, wxString* fileNameUpToCaret)
@@ -874,14 +873,14 @@ TagEntryPtr ContextCpp::GetTagAtCaret(bool scoped, bool impl)
         e.bmp = wxCodeCompletionBox::GetBitmap(tag);
         e.name = tag->GetFullDisplayName();
         e.clientData = new ContextCpp_ClientData(tag);
-        
+
         wxString helpString;
         wxFileName fn(tag->GetFile());
         helpString << fn.GetFullName() << ":" << tag->GetLine();
         e.help = helpString;
         entries.push_back(e);
     });
-    
+
     clSelectSymbolDialog dlg(EventNotifier::Get()->TopFrame(), entries);
     if(dlg.ShowModal() != wxID_OK) {
         return NULL;
@@ -911,45 +910,16 @@ void ContextCpp::GotoDefinition()
 void ContextCpp::SwapFiles(const wxFileName& fileName)
 {
     CHECK_JS_RETURN_VOID();
-    wxFileName otherFile(fileName);
-    wxString ext = fileName.GetExt();
-    wxArrayString exts;
 
-    // replace the file extension
-    if(IsSource(ext)) {
-        // try to find a header file
-        exts.Add(wxT("h"));
-        exts.Add(wxT("hpp"));
-        exts.Add(wxT("hxx"));
-        exts.Add(wxT("hh"));
-        exts.Add(wxT("h++"));
-
-    } else {
-        // try to find a implementation file
-        exts.Add("cpp");
-        exts.Add("cxx");
-        exts.Add("c++");
-        exts.Add("cc");
-        exts.Add("c");
-        exts.Add("ipp");
-    }
-
-    // search in current directory first
-    wxArrayString file_options;
-    for(size_t i = 0; i < exts.GetCount(); i++) {
-        otherFile.SetExt(exts.Item(i));
-
-        if(otherFile.Exists()) {
-            file_options.Add(otherFile.GetFullPath());
-        }
-    }
+    wxStringSet_t file_options;
+    FindSwappedFile(fileName, file_options);
     wxString file_to_open;
-    if(file_options.GetCount() > 1) {
+    if(file_options.size() > 1) {
         // More than one option
-        file_to_open = ::wxGetSingleChoice(_("Multiple candidates found. Select a file to open:"),
-                                           _("Swap Header/Source Implementation"),
-                                           file_options,
-                                           0);
+        wxArrayString fileArr;
+        std::for_each(file_options.begin(), file_options.end(), [&](const wxString& s) { fileArr.Add(s); });
+        file_to_open = ::wxGetSingleChoice(
+            _("Multiple candidates found. Select a file to open:"), _("Swap Header/Source Implementation"), fileArr, 0);
 
         if(file_to_open.IsEmpty())
             // Cancel clicked
@@ -958,20 +928,19 @@ void ContextCpp::SwapFiles(const wxFileName& fileName)
         TryOpenFile(file_to_open, false);
         return;
 
-    } else {
-        if(TryOpenFile(file_to_open, false)) return;
-    }
+    } else if(!file_options.empty()) {
 
-    // if that failed, now look in entire workspace
-    for(size_t i = 0; i < exts.GetCount(); i++) {
-        otherFile.SetExt(exts.Item(i));
-
-        if(TryOpenFile(otherFile, true)) return;
+        file_to_open = *file_options.begin();
+        if(TryOpenFile(file_to_open, false)) {
+            return;
+        }
     }
 
     // We failed to locate matched file, offer the user to create one
     // check to see if user already provided an answer
-    otherFile.SetExt(exts.Item(0));
+    wxFileName otherFile = fileName;
+    otherFile.SetExt(FileExtManager::GetType(fileName.GetFullName()) == FileExtManager::TypeHeader ? "cpp" : "h");
+
     wxStandardID res = ::PromptForYesNoDialogWithCheckbox(_("No matched file was found, would you like to create one?"),
                                                           "CreateSwappedFile",
                                                           _("Create"),
@@ -983,25 +952,83 @@ void ContextCpp::SwapFiles(const wxFileName& fileName)
     }
 }
 
+bool ContextCpp::FindSwappedFile(const wxFileName& rhs, wxStringSet_t& others)
+{
+    CHECK_JS_RETURN_FALSE();
+
+    others.clear();
+    wxString ext = rhs.GetExt();
+    wxStringSet_t exts;
+
+    // replace the file extension
+    if(FileExtManager::GetType(rhs.GetFullName()) == FileExtManager::TypeSourceC ||
+       FileExtManager::GetType(rhs.GetFullName()) == FileExtManager::TypeSourceCpp) {
+        // try to find a header file
+        exts.insert("h");
+        exts.insert("hpp");
+        exts.insert("hxx");
+        exts.insert("h++");
+        exts.insert("hh");
+
+    } else {
+        // try to find a implementation file
+        exts.insert("cpp");
+        exts.insert("cxx");
+        exts.insert("cc");
+        exts.insert("c++");
+        exts.insert("c");
+        exts.insert("ipp");
+    }
+
+    // Try to locate a file in the same folder first
+    std::for_each(exts.begin(), exts.end(), [&](const wxString& ext) {
+        wxFileName otherFile = rhs;
+        otherFile.SetExt(ext);
+        if(otherFile.FileExists()) {
+            others.insert(otherFile.GetFullPath());
+        }
+    });
+
+    // if we found a match on the same folder, don't bother continue searching
+    if(others.empty()) {
+
+        // Get a list of workspace files
+        std::vector<wxFileName> files;
+        ManagerST::Get()->GetWorkspaceFiles(files, true);
+
+        for(size_t i = 0; i < files.size(); ++i) {
+            const wxFileName& workspaceFile = files.at(i);
+            if((workspaceFile.GetName() == rhs.GetName()) && exts.count(workspaceFile.GetExt().Lower())) {
+                others.insert(workspaceFile.GetFullPath());
+            }
+        }
+    }
+    return !others.empty();
+}
+
 bool ContextCpp::FindSwappedFile(const wxFileName& rhs, wxString& lhs)
 {
     CHECK_JS_RETURN_FALSE();
     wxFileName otherFile(rhs);
+
     wxString ext = rhs.GetExt();
     wxArrayString exts;
 
     // replace the file extension
     if(IsSource(ext)) {
         // try to find a header file
-        exts.Add(wxT("h"));
-        exts.Add(wxT("hpp"));
-        exts.Add(wxT("hxx"));
+        exts.Add("h");
+        exts.Add("hpp");
+        exts.Add("hxx");
+        exts.Add("h++");
+
     } else {
         // try to find a implementation file
-        exts.Add(wxT("cpp"));
-        exts.Add(wxT("cxx"));
-        exts.Add(wxT("cc"));
-        exts.Add(wxT("c"));
+        exts.Add("cpp");
+        exts.Add("cxx");
+        exts.Add("cc");
+        exts.Add("c++");
+        exts.Add("c");
     }
 
     std::vector<wxFileName> files;
@@ -1009,6 +1036,7 @@ bool ContextCpp::FindSwappedFile(const wxFileName& rhs, wxString& lhs)
 
     for(size_t j = 0; j < exts.GetCount(); j++) {
         otherFile.SetExt(exts.Item(j));
+
         if(otherFile.FileExists()) {
             // we got a match
             lhs = otherFile.GetFullPath();
@@ -1798,12 +1826,10 @@ void ContextCpp::OnAddMultiImpl(wxCommandEvent& e)
     for(; iter != protos.end(); ++iter) {
         tags.push_back(iter->second);
     }
-    
+
     // Sort the functions according to their line number (asc)
-    std::sort(tags.begin(), tags.end(), [&](TagEntryPtr a, TagEntryPtr b) {
-        return (a->GetLine() < b->GetLine());
-    });
-    
+    std::sort(tags.begin(), tags.end(), [&](TagEntryPtr a, TagEntryPtr b) { return (a->GetLine() < b->GetLine()); });
+
     wxString targetFile;
     FindSwappedFile(rCtrl.GetFileName(), targetFile);
 
@@ -2465,12 +2491,13 @@ void ContextCpp::MakeCppKeywordsTags(const wxString& word, std::vector<TagEntryP
         cppWords = lexPtr->GetKeyWords(1);
 
     } else {
-        cppWords = "abstract boolean break byte case catch char class "
-                   "const continue debugger default delete do double else enum export extends "
-                   "final finally float for function goto if implements import in instanceof "
-                   "int interface long native new package private protected public "
-                   "return short static super switch synchronized this throw throws "
-                   "transient try typeof var void volatile while with";
+        cppWords =
+            "abstract boolean break byte case catch char class "
+            "const continue debugger default delete do double else enum export extends "
+            "final finally float for function goto if implements import in instanceof "
+            "int interface long native new package private protected public "
+            "return short static super switch synchronized this throw throws "
+            "transient try typeof var void volatile while with";
     }
 
     wxString s1(word);
@@ -3160,32 +3187,35 @@ void ContextCpp::ColourContextTokens(const wxArrayString& workspaceTokens)
 {
     LEditor& ctrl = GetCtrl();
     size_t cc_flags = TagsManagerST::Get()->GetCtagsOptions().GetFlags();
+
+    //------------------------------------------
+    // Classes
+    //------------------------------------------
+    wxString flatStrClasses, flatStrLocals;
     if(cc_flags & CC_COLOUR_WORKSPACE_TAGS) {
-        wxString flatStr;
         for(size_t i = 0; i < workspaceTokens.GetCount(); i++) {
             // add only entries that does not appear in the variable list
             // if (varList.Index(projectTags.Item(i)) == wxNOT_FOUND) {
-            flatStr << workspaceTokens.Item(i) << wxT(" ");
+            flatStrClasses << workspaceTokens.Item(i) << wxT(" ");
         }
-        ctrl.SetKeyWords(1, flatStr);
-    } else {
-        ctrl.SetKeyWords(1, wxEmptyString);
     }
-    ctrl.SetKeyWords(3, wxEmptyString);
+    ctrl.SetKeyWords(1, flatStrClasses);
+    ctrl.SetKeywordClasses(flatStrClasses);
 
+    //------------------------------------------
+    // Local variables
+    //------------------------------------------
     wxArrayString localTokens;
     TagsManagerST::Get()->GetVariables(ctrl.GetFileName(), localTokens);
 
     if(cc_flags & CC_COLOUR_VARS) {
         // convert it to space delimited string
-        wxString varFlatStr;
         for(size_t i = 0; i < localTokens.GetCount(); i++) {
-            varFlatStr << localTokens.Item(i) << wxT(" ");
+            flatStrLocals << localTokens.Item(i) << wxT(" ");
         }
-        ctrl.SetKeyWords(3, varFlatStr);
-    } else {
-        ctrl.SetKeyWords(3, wxEmptyString);
     }
+    ctrl.SetKeyWords(3, flatStrLocals);
+    ctrl.SetKeywordLocals(flatStrLocals);
 }
 
 wxMenu* ContextCpp::GetMenu()

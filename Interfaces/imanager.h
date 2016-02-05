@@ -81,9 +81,11 @@ struct clTab {
     wxBitmap bitmap;
     bool isFile;
     wxFileName filename;
+    bool isModified;
     clTab()
         : window(NULL)
         , isFile(false)
+        , isModified(false)
     {
     }
 };
@@ -112,30 +114,32 @@ public:
      * @brief return a list of all possible output tabs registered by the user
      */
     const wxArrayString& GetOutputTabs() const { return m_outputTabs; }
-    
+
     /**
      * @brief return a list of all possible workspace tabs
      */
     const wxArrayString& GetWorkspaceTabs() const { return m_workspaceTabs; }
-    
+
     /**
      * @brief register a workspace tab
      */
-    void AddWorkspaceTab(const wxString& tabLabel) {
+    void AddWorkspaceTab(const wxString& tabLabel)
+    {
         if(m_workspaceTabs.Index(tabLabel) == wxNOT_FOUND) {
             m_workspaceTabs.Add(tabLabel);
         }
     }
-    
+
     /**
      * @brief register output pane tab
      */
-    void AddOutputTab(const wxString& tabLabel) {
+    void AddOutputTab(const wxString& tabLabel)
+    {
         if(m_outputTabs.Index(tabLabel) == wxNOT_FOUND) {
             m_outputTabs.Add(tabLabel);
         }
     }
-    
+
     /**
      * @brief show the output pane and if provided, select 'selectedWindow'
      * @param selectWindow tab within the 'Output Pane' to select, if empty don't change
@@ -406,7 +410,7 @@ public:
      * @param col the statusbar pane to use
      * @param seconds_to_live how many seconds to display it for; 0 == forever; -1 == use the default
      */
-    virtual void SetStatusMessage(const wxString& msg, int col, int seconds_to_live = wxID_ANY) = 0;
+    virtual void SetStatusMessage(const wxString& msg, int seconds_to_live = wxID_ANY) = 0;
 
     /**
      * @brief start processing commands from the queue
@@ -462,8 +466,6 @@ public:
      * @brief return the singleton object of the navigation manager
      */
     virtual NavMgr* GetNavigationMgr() = 0;
-
-    void SetStatusMessage(const wxString& msg) { SetStatusMessage(msg, 0); }
 
     /**
      * @brief close the named page in the mainbook

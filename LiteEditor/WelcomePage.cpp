@@ -1,7 +1,7 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //
-// copyright            : (C) 2014 The CodeLite Team
+// copyright            : (C) 2014 Eran Ifrah
 // file name            : WelcomePage.cpp
 //
 // -------------------------------------------------------------------------
@@ -34,6 +34,7 @@
 #include "event_notifier.h"
 #include "plugin.h"
 #include "editor_config.h"
+#include "pluginmanager.h"
 
 WelcomePage::WelcomePage(wxWindow* parent)
     : WelcomePageBase(parent)
@@ -63,7 +64,7 @@ void WelcomePage::OnOpenWiki(wxCommandEvent& event)
 void WelcomePage::OnSize(wxSizeEvent& event)
 {
     event.Skip();
-    m_staticBitmap161->Refresh();
+    m_staticBitmap->Refresh();
 }
 
 void WelcomePage::OnShowFileseMenu(wxCommandEvent& event)
@@ -107,8 +108,7 @@ void WelcomePage::OnShowWorkspaceMenu(wxCommandEvent& event)
 int
 WelcomePage::DoGetPopupMenuSelection(wxCommandLinkButton* btn, const wxArrayString& strings, const wxString& menuTitle)
 {
-    BitmapLoader bl;
-    BitmapLoader::BitmapMap_t bmps = bl.MakeStandardMimeMap();
+    BitmapLoader::BitmapMap_t bmps = PluginManager::Get()->GetStdIcons()->MakeStandardMimeMap();
 
     m_idToName.clear();
     wxUnusedVar(menuTitle);

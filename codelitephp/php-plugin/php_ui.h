@@ -14,9 +14,9 @@
 #include <wx/iconbndl.h>
 #include <wx/artprov.h>
 #include <wx/sizer.h>
-#include <wx/textctrl.h>
 #include "php_file_layout_tree.h"
 #include <wx/stattext.h>
+#include <wx/textctrl.h>
 #include <wx/button.h>
 #include <wx/checkbox.h>
 #include <wx/filepicker.h>
@@ -61,18 +61,13 @@
 class QuickOutlineDlgBase : public wxDialog
 {
 protected:
-    wxTextCtrl* m_textCtrl;
     PHPFileLayoutTree* m_treeCtrlLayout;
 
 protected:
-    virtual void OnKeyDown(wxKeyEvent& event) { event.Skip(); }
-    virtual void OnTextEntered(wxCommandEvent& event) { event.Skip(); }
-    virtual void OnEnter(wxCommandEvent& event) { event.Skip(); }
 
 public:
-    wxTextCtrl* GetTextCtrl() { return m_textCtrl; }
     PHPFileLayoutTree* GetTreeCtrlLayout() { return m_treeCtrlLayout; }
-    QuickOutlineDlgBase(wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = wxT(""), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize(400,400), long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER|wxBORDER_SUNKEN);
+    QuickOutlineDlgBase(wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = wxT(""), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize(400,300), long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER|wxBORDER_SUNKEN);
     virtual ~QuickOutlineDlgBase();
 };
 
@@ -154,7 +149,7 @@ public:
     wxStaticText* GetStaticText9() { return m_staticText9; }
     wxTextCtrl* GetTextCtrlFilter() { return m_textCtrlFilter; }
     wxDataViewListCtrl* GetDvListCtrl() { return m_dvListCtrl; }
-    OpenResourceDlgBase(wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Open resource..."), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize(-1,-1), long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER);
+    OpenResourceDlgBase(wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Open resource..."), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize(400,300), long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER);
     virtual ~OpenResourceDlgBase();
 };
 
@@ -218,7 +213,7 @@ public:
     wxTreebook* GetTreebook9() { return m_treebook9; }
     wxButton* GetButton9() { return m_button9; }
     wxButton* GetButton10() { return m_button10; }
-    PHPSettingsBaseDlg(wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("PHP General Settings"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize(-1, -1), long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER);
+    PHPSettingsBaseDlg(wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("PHP General Settings"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize(500,300), long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER);
     virtual ~PHPSettingsBaseDlg();
 };
 
@@ -321,7 +316,7 @@ public:
     wxButton* GetButton12() { return m_button12; }
     wxButton* GetButton13() { return m_button13; }
     wxButton* GetButton14() { return m_button14; }
-    PHPProjectSettingsBase(wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Project Settings"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize(-1, -1), long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER);
+    PHPProjectSettingsBase(wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Project Settings"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize(-1,-1), long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER);
     virtual ~PHPProjectSettingsBase();
 };
 
@@ -345,7 +340,7 @@ public:
     wxDirPickerCtrl* GetDirPickerSource() { return m_dirPickerSource; }
     wxStaticText* GetStaticText123() { return m_staticText123; }
     wxTextCtrl* GetTextCtrlRemote() { return m_textCtrlRemote; }
-    FileMappingDlgBase(wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("File Mapping"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize(-1,-1), long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER);
+    FileMappingDlgBase(wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("File Mapping"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize(400,200), long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER);
     virtual ~FileMappingDlgBase();
 };
 
@@ -402,6 +397,7 @@ protected:
 
 protected:
     virtual void OnCallStackItemActivated(wxDataViewEvent& event) { event.Skip(); }
+    virtual void OnCallStackMenu(wxDataViewEvent& event) { event.Skip(); }
     virtual void OnBreakpointItemActivated(wxDataViewEvent& event) { event.Skip(); }
     virtual void OnDeleteBreakpoint(wxCommandEvent& event) { event.Skip(); }
     virtual void OnDeleteBreakpointUI(wxUpdateUIEvent& event) { event.Skip(); }
@@ -431,6 +427,7 @@ protected:
     virtual void OnLocalCollapsed(wxDataViewEvent& event) { event.Skip(); }
     virtual void OnLocalExpanded(wxDataViewEvent& event) { event.Skip(); }
     virtual void OnLocalExpanding(wxDataViewEvent& event) { event.Skip(); }
+    virtual void OnLocalsMenu(wxDataViewEvent& event) { event.Skip(); }
 
 public:
     wxDataViewCtrl* GetDataview() { return m_dataview; }

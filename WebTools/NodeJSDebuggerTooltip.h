@@ -1,3 +1,28 @@
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+//
+// Copyright            : (C) 2015 Eran Ifrah
+// File name            : NodeJSDebuggerTooltip.h
+//
+// -------------------------------------------------------------------------
+// A
+//              _____           _      _     _ _
+//             /  __ \         | |    | |   (_) |
+//             | /  \/ ___   __| | ___| |    _| |_ ___
+//             | |    / _ \ / _  |/ _ \ |   | | __/ _ )
+//             | \__/\ (_) | (_| |  __/ |___| | ||  __/
+//              \____/\___/ \__,_|\___\_____/_|\__\___|
+//
+//                                                  F i l e
+//
+//    This program is free software; you can redistribute it and/or modify
+//    it under the terms of the GNU General Public License as published by
+//    the Free Software Foundation; either version 2 of the License, or
+//    (at your option) any later version.
+//
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+
 #ifndef NODEJSDEBUGGERTOOLTIP_H
 #define NODEJSDEBUGGERTOOLTIP_H
 
@@ -30,8 +55,8 @@ protected:
     };
 
 protected:
-    void DoAddKnownRefs(const std::map<int, wxString>& refs, const wxTreeItemId& parent);
-    void DoAddUnKnownRefs(const std::map<int, wxString>& refs, const wxTreeItemId& parent);
+    void DoAddKnownRefs(const std::vector<std::pair<int, wxString> >& refs, const wxTreeItemId& parent);
+    void DoAddUnKnownRefs(const std::vector<std::pair<int, wxString> >& refs, const wxTreeItemId& parent);
     wxTreeItemId AddLocal(const wxTreeItemId& parent, const wxString& name, int refId);
 
 public:

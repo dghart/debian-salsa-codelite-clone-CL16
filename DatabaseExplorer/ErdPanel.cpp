@@ -1,7 +1,7 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //
-// copyright            : (C) 2014 The CodeLite Team
+// copyright            : (C) 2014 Eran Ifrah
 // file name            : ErdPanel.cpp
 //
 // -------------------------------------------------------------------------
@@ -88,11 +88,16 @@ EVT_UPDATE_UI(XRCID("IDT_ERD_TABLE"), ErdPanel::OnToolUpdate)
 EVT_UPDATE_UI(XRCID("IDT_ERD_LINE"), ErdPanel::OnToolUpdate)
 EVT_UPDATE_UI(XRCID("IDT_ERD_VIEW"), ErdPanel::OnToolUpdate)
 
+EVT_UPDATE_UI(XRCID("IDT_ERD_COMMIT"), ErdPanel::OnCommitUpdate)
+
 END_EVENT_TABLE()
 
 ErdPanel::ErdPanel()
     : _ErdPanel(NULL)
 {
+    m_pErdTable = NULL;
+    m_pDbAdapter = NULL;
+    m_pConnections = NULL;
 }
 
 ErdPanel::ErdPanel(wxWindow* parent, IDbAdapter* dbAdapter, xsSerializable* pConnections)
@@ -159,9 +164,8 @@ void ErdPanel::Init(wxWindow* parent, IDbAdapter* dbAdapter)
     pInfo->SetAdapterType(m_pDbAdapter->GetAdapterType());
     m_diagramManager.SetRootItem(pInfo);
 
-    m_pFrameCanvas = new FrameCanvas(&m_diagramManager, dbAdapter, m_wxsfPanel, this, wxID_ANY);
-    m_wxsfPanel->GetSizer()->Add(m_pFrameCanvas, 1, wxEXPAND, 2);
-    m_wxsfPanel->Layout();
+    m_pFrameCanvas = new FrameCanvas(&m_diagramManager, dbAdapter, this, wxID_ANY);
+    GetSizer()->Add( m_pFrameCanvas, 1, wxEXPAND, 5 );
 
     m_nToolMode = modeDESIGN;
 
@@ -249,6 +253,10 @@ void ErdPanel::Init(wxWindow* parent, IDbAdapter* dbAdapter)
     entries[3].Set(wxACCEL_CTRL, (int)'A', XRCID("IDT_SELECTALL"));
     wxAcceleratorTable accel(4, entries);
     SetAcceleratorTable(accel);
+    
+    if (GetSizer()) {
+         GetSizer()->Fit(this);
+    }
 }
 
 void ErdPanel::OnTool(wxCommandEvent& event)
@@ -474,4 +482,12 @@ bool ErdPanel::SaveERD(const wxString& path)
         return false;
 }
 
-void ErdPanel::OnSelectAll(wxCommandEvent& evt) { m_pFrameCanvas->SelectAll(); }
+void ErdPanel::OnSelectAll(wxCommandEvent& evt)
+{
+    m_pFrameCanvas->SelectAll();
+}
+
+void ErdPanel::OnCommitUpdate(wxUpdateUIEvent& event)
+{
+    event.Enable( (m_pDbAdapter != NULL) && m_pDbAdapter->IsConnected() );
+}

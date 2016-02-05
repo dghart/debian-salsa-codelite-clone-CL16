@@ -63,7 +63,7 @@ EclipseCSSThemeImporter::EclipseCSSThemeImporter()
                  "column-count column-rule column-gap column-rule-color column-rule-style column-rule-width       "
                  "resize opacity word-wrap ");
     SetKeywords4("first-letter first-line before after selection");
-    SetFileExtensions("*.css;*.scss"); // Include css and scss files
+    SetFileExtensions("*.css");
 }
 
 EclipseCSSThemeImporter::~EclipseCSSThemeImporter() {}

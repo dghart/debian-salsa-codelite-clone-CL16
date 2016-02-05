@@ -93,14 +93,6 @@ void PluginManager::UnLoad()
         delete plugin;
     }
 
-#if wxVERSION_NUMBER < 2900
-    std::list<clDynamicLibrary*>::iterator iter = m_dl.begin();
-    for(; iter != m_dl.end(); iter++) {
-        (*iter)->Detach();
-        delete (*iter);
-    }
-#endif
-
     m_dl.clear();
     m_plugins.clear();
 }
@@ -192,12 +184,14 @@ void PluginManager::Load()
                 if(!dl->GetError().IsEmpty()) {
                     CL_ERROR(dl->GetError());
                 }
+                wxDELETE(dl);
                 continue;
             }
 
             bool success(false);
             GET_PLUGIN_INFO_FUNC pfnGetPluginInfo = (GET_PLUGIN_INFO_FUNC)dl->GetSymbol(wxT("GetPluginInfo"), &success);
             if(!success) {
+                wxDELETE(dl);
                 continue;
             }
 
@@ -218,31 +212,41 @@ void PluginManager::Load()
             if(interface_version != PLUGIN_INTERFACE_VERSION) {
                 CL_WARNING(wxString::Format(wxT("Version interface mismatch error for plugin '%s'. Plugin's interface "
                                                 "version is '%d', CodeLite interface version is '%d'"),
-                                            fileName.c_str(),
-                                            interface_version,
-                                            PLUGIN_INTERFACE_VERSION));
+                    fileName.c_str(), interface_version, PLUGIN_INTERFACE_VERSION));
+                wxDELETE(dl);
                 continue;
             }
 
             // Check if this dll can be loaded
-            PluginInfo pluginInfo = pfnGetPluginInfo();
+            PluginInfo* pluginInfo = pfnGetPluginInfo();
 
-            wxString pname = pluginInfo.GetName();
+            wxString pname = pluginInfo->GetName();
             pname.MakeLower().Trim().Trim(false);
 
             // Check the policy
             if(pp == CodeLiteApp::PP_FromList && allowedPlugins.Index(pname) == wxNOT_FOUND) {
                 // Policy is set to 'from list' and this plugin does not match any plugins from
                 // the list, don't allow it to be loaded
+                wxDELETE(dl);
                 continue;
             }
 
+            // If the plugin does not exist in the m_pluginsData, assume its the first time we see it
+            bool firstTimeLoading = (m_pluginsData.GetPlugins().count(pluginInfo->GetName()) == 0);
+
             // Add the plugin information
-            m_pluginsData.AddPlugin(pluginInfo);
+            m_pluginsData.AddPlugin((*pluginInfo));
+
+            if(firstTimeLoading && pluginInfo->HasFlag(PluginInfo::kDisabledByDefault)) {
+                m_pluginsData.DisablePlugin(pluginInfo->GetName());
+                wxDELETE(dl);
+                continue;
+            }
 
             // Can we load it?
-            if(!m_pluginsData.CanLoad(pluginInfo.GetName())) {
-                CL_WARNING(wxT("Plugin ") + pluginInfo.GetName() + wxT(" is not enabled"));
+            if(!m_pluginsData.CanLoad(*pluginInfo)) {
+                CL_WARNING(wxT("Plugin ") + pluginInfo->GetName() + wxT(" is not enabled"));
+                wxDELETE(dl);
                 continue;
             }
 
@@ -254,7 +258,7 @@ void PluginManager::Load()
                     CL_WARNING(dl->GetError());
                 }
 
-                m_pluginsData.DisablePlugin(pluginInfo.GetName());
+                m_pluginsData.DisablePlugin(pluginInfo->GetName());
                 continue;
             }
 
@@ -264,21 +268,18 @@ void PluginManager::Load()
             m_plugins[plugin->GetShortName()] = plugin;
 
             // Load the toolbar
-            clToolBar* tb = plugin->CreateToolBar((wxWindow*)clMainFrame::Get());
+            clToolBar* tb = plugin->CreateToolBar(clMainFrame::Get()->GetDockingManager().GetManagedWindow());
             if(tb) {
-#if USE_AUI_TOOLBAR
                 // When using AUI toolbars, use our own custom art-provider
                 tb->SetArtProvider(new CLMainAuiTBArt());
-#endif
-                clMainFrame::Get()->GetDockingManager().AddPane(tb,
-                                                                wxAuiPaneInfo()
-                                                                    .Name(plugin->GetShortName())
-                                                                    .LeftDockable(true)
-                                                                    .RightDockable(true)
-                                                                    .Caption(plugin->GetShortName())
-                                                                    .ToolbarPane()
-                                                                    .Top()
-                                                                    .Row(0));
+                clMainFrame::Get()->GetDockingManager().AddPane(tb, wxAuiPaneInfo()
+                                                                        .Name(plugin->GetShortName())
+                                                                        .LeftDockable(true)
+                                                                        .RightDockable(true)
+                                                                        .Caption(plugin->GetShortName())
+                                                                        .ToolbarPane()
+                                                                        .Bottom()
+                                                                        .Row(0));
 
                 // Add menu entry at the 'View->Toolbars' menu for this toolbar
                 wxMenuItem* item = clMainFrame::Get()->GetMenuBar()->FindItem(XRCID("toolbars_menu"));
@@ -289,7 +290,6 @@ void PluginManager::Load()
 
                     int id = wxNewId();
                     wxString text(plugin->GetShortName());
-                    text << _(" ToolBar");
                     wxMenuItem* newItem = new wxMenuItem(submenu, id, text, wxEmptyString, wxITEM_CHECK);
                     submenu->Append(newItem);
                     clMainFrame::Get()->RegisterToolbar(id, plugin->GetShortName());
@@ -432,8 +432,8 @@ bool PluginManager::AddFilesToVirtualFolder(const wxString& vdFullPath, wxArrayS
 
 bool PluginManager::AddFilesToVirtualFolderIntelligently(const wxString& vdFullPath, wxArrayString& paths)
 {
-    return clMainFrame::Get()->GetWorkspaceTab()->GetFileView()->AddFilesToVirtualFolderIntelligently(vdFullPath,
-                                                                                                      paths);
+    return clMainFrame::Get()->GetWorkspaceTab()->GetFileView()->AddFilesToVirtualFolderIntelligently(
+        vdFullPath, paths);
 }
 
 void PluginManager::RedefineProjFiles(ProjectPtr proj, const wxString& path, std::vector<wxString>& files)
@@ -537,11 +537,9 @@ void PluginManager::EnableToolbars()
     }
 }
 
-void PluginManager::SetStatusMessage(const wxString& msg, int col, int seconds_to_live)
+void PluginManager::SetStatusMessage(const wxString& msg, int seconds_to_live)
 {
-    wxUnusedVar(col);
-    wxUnusedVar(seconds_to_live);
-    GetStatusBar()->SetMessage(msg);
+    GetStatusBar()->SetMessage(msg, seconds_to_live);
 }
 
 void PluginManager::ProcessCommandQueue() { ManagerST::Get()->ProcessCommandQueue(); }
@@ -573,8 +571,8 @@ bool PluginManager::ClosePage(const wxFileName& filename)
 
 wxWindow* PluginManager::FindPage(const wxString& text) { return clMainFrame::Get()->GetMainBook()->FindPage(text); }
 
-bool
-PluginManager::AddPage(wxWindow* win, const wxString& text, const wxString& tooltip, const wxBitmap& bmp, bool selected)
+bool PluginManager::AddPage(
+    wxWindow* win, const wxString& text, const wxString& tooltip, const wxBitmap& bmp, bool selected)
 {
     return clMainFrame::Get()->GetMainBook()->AddPage(win, text, tooltip, bmp, selected);
 }
@@ -585,8 +583,8 @@ IEditor* PluginManager::OpenFile(const BrowseRecord& rec) { return clMainFrame::
 
 NavMgr* PluginManager::GetNavigationMgr() { return NavMgr::Get(); }
 
-void
-PluginManager::HookProjectSettingsTab(wxBookCtrlBase* book, const wxString& projectName, const wxString& configName)
+void PluginManager::HookProjectSettingsTab(
+    wxBookCtrlBase* book, const wxString& projectName, const wxString& configName)
 {
     std::map<wxString, IPlugin*>::iterator iter = m_plugins.begin();
     for(; iter != m_plugins.end(); iter++) {
@@ -594,8 +592,8 @@ PluginManager::HookProjectSettingsTab(wxBookCtrlBase* book, const wxString& proj
     }
 }
 
-void
-PluginManager::UnHookProjectSettingsTab(wxBookCtrlBase* book, const wxString& projectName, const wxString& configName)
+void PluginManager::UnHookProjectSettingsTab(
+    wxBookCtrlBase* book, const wxString& projectName, const wxString& configName)
 {
     std::map<wxString, IPlugin*>::iterator iter = m_plugins.begin();
     for(; iter != m_plugins.end(); iter++) {
@@ -665,7 +663,7 @@ wxArrayString PluginManager::GetProjectCompileFlags(const wxString& projectName,
                     // Expand the backticks into their value
                     wxArrayString outArr;
                     // Apply the environment before executing the command
-                    EnvSetter setter(EnvironmentConfig::Instance(), NULL, projectName);
+                    EnvSetter setter(EnvironmentConfig::Instance(), NULL, projectName, dependProjbldConf->GetName());
                     ProcUtils::SafeExecuteCommand(cmpOption, outArr);
                     wxString expandedValue;
                     for(size_t j = 0; j < outArr.size(); j++) {
@@ -894,9 +892,9 @@ void PluginManager::ShowToolBar(bool show)
 }
 bool PluginManager::IsToolBarShown() const
 {
-    if(clMainFrame::Get()->GetToolBar()) {
+    if(clMainFrame::Get()->GetMainToolBar()) {
         // we have native toolbar
-        return clMainFrame::Get()->GetToolBar()->IsShown();
+        return clMainFrame::Get()->GetMainToolBar()->IsShown();
     }
     return false;
 }

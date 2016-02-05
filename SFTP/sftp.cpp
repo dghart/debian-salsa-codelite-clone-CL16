@@ -1,7 +1,7 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //
-// copyright            : (C) 2014 The CodeLite Team
+// copyright            : (C) 2014 Eran Ifrah
 // file name            : sftp.cpp
 //
 // -------------------------------------------------------------------------
@@ -62,7 +62,7 @@ const wxEventType wxEVT_SFTP_DISABLE_WORKSPACE_MIRRORING = ::wxNewEventType();
 //  }
 
 // Define the plugin entry point
-extern "C" EXPORT IPlugin* CreatePlugin(IManager* manager)
+CL_PLUGIN_API IPlugin* CreatePlugin(IManager* manager)
 {
     if(thePlugin == 0) {
         thePlugin = new SFTP(manager);
@@ -70,17 +70,17 @@ extern "C" EXPORT IPlugin* CreatePlugin(IManager* manager)
     return thePlugin;
 }
 
-extern "C" EXPORT PluginInfo GetPluginInfo()
+CL_PLUGIN_API PluginInfo* GetPluginInfo()
 {
-    PluginInfo info;
+    static PluginInfo info;
     info.SetAuthor(wxT("Eran Ifrah"));
     info.SetName(wxT("SFTP"));
     info.SetDescription(_("SFTP plugin for codelite IDE"));
     info.SetVersion(wxT("v1.0"));
-    return info;
+    return &info;
 }
 
-extern "C" EXPORT int GetPluginInterfaceVersion() { return PLUGIN_INTERFACE_VERSION; }
+CL_PLUGIN_API int GetPluginInterfaceVersion() { return PLUGIN_INTERFACE_VERSION; }
 
 SFTP::SFTP(IManager* manager)
     : IPlugin(manager)
@@ -115,46 +115,24 @@ SFTP::SFTP(IManager* manager)
 
     // API support
     EventNotifier::Get()->Bind(wxEVT_SFTP_SAVE_FILE, &SFTP::OnSaveFile, this);
-    EventNotifier::Get()->Bind(wxEVT_SHOW_WORKSPACE_TAB, &SFTP::OnToggleTab, this);
     
     SFTPImages images;
     m_outputPane = new SFTPStatusPage(m_mgr->GetOutputPaneNotebook(), this);
-    m_mgr->GetOutputPaneNotebook()->AddPage(m_outputPane, _("SFTP"), false, images.Bitmap("sftp_tab"));
-
+    m_mgr->GetOutputPaneNotebook()->AddPage(m_outputPane, _("SFTP"), false, m_mgr->GetStdIcons()->LoadBitmap("remote-folder"));
+    
     m_treeView = new SFTPTreeView(m_mgr->GetWorkspacePaneNotebook(), this);
     m_mgr->GetWorkspacePaneNotebook()->AddPage(m_treeView, _("SFTP"), false);
-    m_mgr->AddWorkspaceTab(_("SFTP"));
+    
+    // Create the helper for adding our tabs in the "more" menu
+    m_tabToggler.reset(new clTabTogglerHelper(_("SFTP"), m_outputPane, _("SFTP"), m_treeView));
+    m_tabToggler->SetOutputTabBmp(m_mgr->GetStdIcons()->LoadBitmap("remote-folder"));
     
     SFTPWorkerThread::Instance()->SetNotifyWindow(m_outputPane);
     SFTPWorkerThread::Instance()->SetSftpPlugin(this);
     SFTPWorkerThread::Instance()->Start();
-
-// Establish connection to "warm up" the sftp library
-#if 0
-    CallAfter(&SFTP::MSWInitiateConnection);
-#endif
 }
 
 SFTP::~SFTP() {}
-
-void SFTP::OnToggleTab(clCommandEvent& event)
-{
-    if(event.GetString() != _("SFTP")) {
-        event.Skip();
-        return;
-    }
-
-    if(event.IsSelected()) {
-        // show it
-        m_mgr->GetWorkspacePaneNotebook()->InsertPage(0, m_treeView, _("SFTP"), true);
-    } else {
-        int where = m_mgr->GetWorkspacePaneNotebook()->GetPageIndex(_("SFTP"));
-        if(where != wxNOT_FOUND) {
-            m_mgr->GetWorkspacePaneNotebook()->RemovePage(where);
-        }
-    }
-}
-
 
 clToolBar* SFTP::CreateToolBar(wxWindow* parent)
 {
@@ -226,7 +204,7 @@ void SFTP::UnPlug()
         }
     }
     m_treeView->Destroy();
-    
+
     SFTPWorkerThread::Release();
     wxTheApp->Disconnect(
         wxEVT_SFTP_OPEN_SSH_ACCOUNT_MANAGER, wxEVT_MENU, wxCommandEventHandler(SFTP::OnAccountManager), NULL, this);
@@ -256,7 +234,7 @@ void SFTP::UnPlug()
 
     EventNotifier::Get()->Unbind(wxEVT_SFTP_SAVE_FILE, &SFTP::OnSaveFile, this);
     EventNotifier::Get()->Unbind(wxEVT_FILES_MODIFIED_REPLACE_IN_FILES, &SFTP::OnReplaceInFiles, this);
-    EventNotifier::Get()->Unbind(wxEVT_SHOW_WORKSPACE_TAB, &SFTP::OnToggleTab, this);
+    m_tabToggler.reset(NULL);
 }
 
 void SFTP::OnAccountManager(wxCommandEvent& e)

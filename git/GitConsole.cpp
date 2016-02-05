@@ -1,7 +1,7 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //
-// copyright            : (C) 2014 The CodeLite Team
+// copyright            : (C) 2014 Eran Ifrah
 // file name            : GitConsole.cpp
 //
 // -------------------------------------------------------------------------
@@ -182,14 +182,14 @@ GitConsole::GitConsole(wxWindow* parent, GitPlugin* git)
     if(lexCpp) {
         lexCpp->Apply(m_stcLog);
     }
-    m_bitmapLoader = new BitmapLoader();
+    m_bitmapLoader = clGetManager()->GetStdIcons();
     GitImages m_images;
     m_bitmaps = m_bitmapLoader->MakeStandardMimeMap();
-    m_modifiedBmp = m_bitmapLoader->LoadBitmap("subversion/16/modified");
-    m_untrackedBmp = m_bitmapLoader->LoadBitmap("subversion/16/unversioned");
-    m_folderBmp = m_bitmapLoader->LoadBitmap("mime/16/folder");
-    m_newBmp = m_images.Bitmap("gitFileAdd");
-    m_deleteBmp = m_bitmapLoader->LoadBitmap("subversion/16/deleted");
+    m_modifiedBmp = m_bitmapLoader->LoadBitmap("warning");
+    m_untrackedBmp = m_bitmapLoader->LoadBitmap("info");
+    m_folderBmp = m_bitmapLoader->LoadBitmap("folder");
+    m_newBmp = m_bitmapLoader->LoadBitmap("plus");
+    m_deleteBmp = m_bitmapLoader->LoadBitmap("minus");
 
     EventNotifier::Get()->Connect(
         wxEVT_GIT_CONFIG_CHANGED, wxCommandEventHandler(GitConsole::OnConfigurationChanged), NULL, this);
@@ -255,7 +255,6 @@ GitConsole::~GitConsole()
     data.SetGitConsoleSashPos(m_splitter->GetSashPosition());
     conf.WriteItem(&data);
 
-    wxDELETE(m_bitmapLoader);
     EventNotifier::Get()->Disconnect(
         wxEVT_GIT_CONFIG_CHANGED, wxCommandEventHandler(GitConsole::OnConfigurationChanged), NULL, this);
     EventNotifier::Get()->Disconnect(
@@ -269,10 +268,7 @@ GitConsole::~GitConsole()
            XRCID("git_pull"));
 }
 
-void GitConsole::OnClearGitLog(wxCommandEvent& event)
-{
-    m_stcLog->ClearAll();
-}
+void GitConsole::OnClearGitLog(wxCommandEvent& event) { m_stcLog->ClearAll(); }
 
 void GitConsole::OnStopGitProcess(wxCommandEvent& event)
 {
@@ -436,11 +432,11 @@ void GitConsole::OnContextMenu(wxDataViewEvent& event)
     menu.AppendSeparator();
     menu.Append(XRCID("git_console_add_file"), _("Add file"));
     menu.Append(XRCID("git_console_reset_file"), _("Reset file"));
-    menu.Connect(XRCID("git_console_open_file"),
-                 wxEVT_COMMAND_MENU_SELECTED,
-                 wxCommandEventHandler(GitConsole::OnOpenFile),
-                 NULL,
-                 this);
+    menu.AppendSeparator();
+    menu.Append(XRCID("git_console_close_view"), _("Close View"));
+
+    menu.Bind(wxEVT_MENU, &GitConsole::OnOpenFile, this, XRCID("git_console_open_file"));
+    menu.Bind(wxEVT_MENU, &GitConsole::OnCloseView, this, XRCID("git_console_close_view"));
     m_dvFiles->PopupMenu(&menu);
 }
 
@@ -664,7 +660,7 @@ void GitConsole::UpdateProgress(unsigned long current, const wxString& message)
 {
     wxString trimmedMessage = message;
     m_gauge->SetValue(current);
-    //m_staticTextGauge->SetLabel(trimmedMessage.Trim().Trim(false));
+    // m_staticTextGauge->SetLabel(trimmedMessage.Trim().Trim(false));
 }
 
 bool GitConsole::IsProgressShown() const { return m_gauge->IsShown(); }
@@ -683,4 +679,23 @@ void GitConsole::OnStclogStcChange(wxStyledTextEvent& event)
 {
     event.Skip();
     ::clRecalculateSTCHScrollBar(m_stcLog);
+}
+
+void GitConsole::OnCloseView(wxCommandEvent& e)
+{
+    e.Skip();
+
+    // Write down that we don't want to set this git repo once this workspace
+    // is re-loaded
+    if(m_git->IsWorkspaceOpened()) {
+        clConfig conf("git.conf");
+        GitEntry entry;
+        if(conf.ReadItem(&entry)) {
+            entry.DeleteEntry(m_git->GetWorkspaceFileName().GetName());
+            conf.WriteItem(&entry);
+        }
+    }
+    // Close the git view
+    m_git->WorkspaceClosed();
+    OnWorkspaceClosed(e);
 }

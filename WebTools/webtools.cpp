@@ -26,7 +26,7 @@
 static WebTools* thePlugin = NULL;
 
 // Define the plugin entry point
-extern "C" EXPORT IPlugin* CreatePlugin(IManager* manager)
+CL_PLUGIN_API IPlugin* CreatePlugin(IManager* manager)
 {
     if(thePlugin == 0) {
         thePlugin = new WebTools(manager);
@@ -34,17 +34,17 @@ extern "C" EXPORT IPlugin* CreatePlugin(IManager* manager)
     return thePlugin;
 }
 
-extern "C" EXPORT PluginInfo GetPluginInfo()
+CL_PLUGIN_API PluginInfo* GetPluginInfo()
 {
-    PluginInfo info;
+    static PluginInfo info;
     info.SetAuthor(wxT("eran"));
     info.SetName(wxT("WebTools"));
-    info.SetDescription(_("Support for JavScript, HTML and other web development tools"));
+    info.SetDescription(_("Support for JavaScript, CSS/SCSS, HTML, XML and other web development tools"));
     info.SetVersion(wxT("v1.0"));
-    return info;
+    return &info;
 }
 
-extern "C" EXPORT int GetPluginInterfaceVersion() { return PLUGIN_INTERFACE_VERSION; }
+CL_PLUGIN_API int GetPluginInterfaceVersion() { return PLUGIN_INTERFACE_VERSION; }
 
 WebTools::WebTools(IManager* manager)
     : IPlugin(manager)
@@ -53,7 +53,7 @@ WebTools::WebTools(IManager* manager)
     , m_nodejsDebuggerPane(NULL)
     , m_hideToolBarOnDebugStop(false)
 {
-    m_longName = _("Support for JavScript, XML, HTML, CSS and other web development tools");
+    m_longName = _("Support for JavaScript, CSS/SCSS, HTML, XML and other web development tools");
     m_shortName = wxT("WebTools");
 
     // Register our new workspace type
@@ -61,7 +61,7 @@ WebTools::WebTools(IManager* manager)
     clWorkspaceManager::Get().RegisterWorkspace(new NodeJSWorkspace(true));
 
     WebToolsImages images;
-    BitmapLoader::RegisterImage(FileExtManager::TypeWorkspaceNodeJS, images.Bitmap("m_bmpNodeJS"));
+    // BitmapLoader::RegisterImage(FileExtManager::TypeWorkspaceNodeJS, images.Bitmap("m_bmpNodeJS"));
 
     // Create the syntax highligher worker thread
     m_jsColourThread = new JavaScriptSyntaxColourThread(this);
@@ -108,7 +108,6 @@ WebTools::WebTools(IManager* manager)
 
 WebTools::~WebTools() { NodeJSWorkspace::Free(); }
 
-
 clToolBar* WebTools::CreateToolBar(wxWindow* parent)
 {
     // Create the toolbar to be used by the plugin
@@ -141,7 +140,7 @@ void WebTools::UnPlug()
     EventNotifier::Get()->Unbind(wxEVT_NODEJS_DEBUGGER_STARTED, &WebTools::OnNodeJSDebuggerStarted, this);
     EventNotifier::Get()->Unbind(wxEVT_NODEJS_DEBUGGER_STOPPED, &WebTools::OnNodeJSDebuggerStopped, this);
     EventNotifier::Get()->Unbind(wxEVT_DBG_IS_PLUGIN_DEBUGGER, &WebTools::OnIsDebugger, this);
-    
+
     wxTheApp->Unbind(wxEVT_MENU, &WebTools::OnCommentLine, this, XRCID("comment_line"));
     wxTheApp->Unbind(wxEVT_MENU, &WebTools::OnCommentSelection, this, XRCID("comment_selection"));
 
@@ -245,15 +244,14 @@ void WebTools::OnEditorChanged(wxCommandEvent& event)
 void WebTools::OnSettings(wxCommandEvent& event)
 {
     WebToolsSettings settings(m_mgr->GetTheApp()->GetTopWindow());
-    if(settings.ShowModal() == wxID_OK) {
-        if(m_jsCodeComplete) {
-            m_jsCodeComplete->Reload();
-            m_jsCodeComplete->ClearFatalError();
-        }
-        if(m_xmlCodeComplete) {
-            m_xmlCodeComplete->Reload();
-            m_jsCodeComplete->ClearFatalError();
-        }
+    settings.ShowModal();
+    if(m_jsCodeComplete) {
+        m_jsCodeComplete->Reload();
+        m_jsCodeComplete->ClearFatalError();
+    }
+    if(m_xmlCodeComplete) {
+        m_xmlCodeComplete->Reload();
+        m_jsCodeComplete->ClearFatalError();
     }
 }
 
@@ -298,13 +296,13 @@ bool WebTools::InsideJSComment(IEditor* editor)
     if(FileExtManager::IsJavascriptFile(editor->GetFileName())) {
         // Use the Cxx macros
         return styleAtCurPos == wxSTC_C_COMMENT || styleAtCurPos == wxSTC_C_COMMENTLINE ||
-               styleAtCurPos == wxSTC_C_COMMENTDOC || styleAtCurPos == wxSTC_C_COMMENTLINEDOC ||
-               styleAtCurPos == wxSTC_C_COMMENTDOCKEYWORD || styleAtCurPos == wxSTC_C_COMMENTDOCKEYWORDERROR ||
-               styleAtCurPos == wxSTC_C_PREPROCESSORCOMMENT;
+            styleAtCurPos == wxSTC_C_COMMENTDOC || styleAtCurPos == wxSTC_C_COMMENTLINEDOC ||
+            styleAtCurPos == wxSTC_C_COMMENTDOCKEYWORD || styleAtCurPos == wxSTC_C_COMMENTDOCKEYWORDERROR ||
+            styleAtCurPos == wxSTC_C_PREPROCESSORCOMMENT;
     } else if(FileExtManager::IsPHPFile(editor->GetFileName())) {
         if(styleAtCurPos >= wxSTC_HJ_START && styleAtCurPos <= wxSTC_HJA_REGEX) {
             return styleAtCurPos == wxSTC_HJ_COMMENT || styleAtCurPos == wxSTC_HJ_COMMENTLINE ||
-                   styleAtCurPos == wxSTC_HJ_COMMENTDOC;
+                styleAtCurPos == wxSTC_HJ_COMMENTDOC;
         }
     }
     return false;
@@ -317,12 +315,12 @@ bool WebTools::InsideJSString(IEditor* editor)
     if(FileExtManager::IsJavascriptFile(editor->GetFileName())) {
         // Use the Cxx macros
         return styleAtCurPos == wxSTC_C_STRING || styleAtCurPos == wxSTC_C_CHARACTER ||
-               styleAtCurPos == wxSTC_C_STRINGEOL || styleAtCurPos == wxSTC_C_STRINGRAW ||
-               styleAtCurPos == wxSTC_C_HASHQUOTEDSTRING;
+            styleAtCurPos == wxSTC_C_STRINGEOL || styleAtCurPos == wxSTC_C_STRINGRAW ||
+            styleAtCurPos == wxSTC_C_HASHQUOTEDSTRING;
     } else if(FileExtManager::IsPHPFile(editor->GetFileName())) {
         if(styleAtCurPos >= wxSTC_HJ_START && styleAtCurPos <= wxSTC_HJA_REGEX) {
             return styleAtCurPos == wxSTC_HJ_DOUBLESTRING || styleAtCurPos == wxSTC_HJ_SINGLESTRING ||
-                   styleAtCurPos == wxSTC_HJ_STRINGEOL;
+                styleAtCurPos == wxSTC_HJ_STRINGEOL;
         }
     }
     return false;
@@ -373,18 +371,18 @@ void WebTools::OnNodeJSDebuggerStarted(clDebugEvent& event)
     event.Skip();
     m_savePerspective = clGetManager()->GetDockingManager()->SavePerspective();
 
+    wxWindow* parent = m_mgr->GetDockingManager()->GetManagedWindow();
     // Show the debugger pane
     if(!m_nodejsDebuggerPane) {
-        m_nodejsDebuggerPane = new NodeJSDebuggerPane(EventNotifier::Get()->TopFrame());
-        clGetManager()->GetDockingManager()->AddPane(m_nodejsDebuggerPane,
-                                                     wxAuiPaneInfo()
-                                                         .Layer(5)
-                                                         .Name("nodejs_debugger")
-                                                         .Caption("Node.js Debugger")
-                                                         .CloseButton(false)
-                                                         .MaximizeButton()
-                                                         .Bottom()
-                                                         .Position(0));
+        m_nodejsDebuggerPane = new NodeJSDebuggerPane(parent);
+        clGetManager()->GetDockingManager()->AddPane(m_nodejsDebuggerPane, wxAuiPaneInfo()
+                                                                               .Layer(5)
+                                                                               .Name("nodejs_debugger")
+                                                                               .Caption("Node.js Debugger")
+                                                                               .CloseButton(false)
+                                                                               .MaximizeButton()
+                                                                               .Bottom()
+                                                                               .Position(0));
     }
 
     wxString layout;
@@ -473,7 +471,7 @@ void WebTools::OnFileSaved(clCommandEvent& event)
     DoRefreshColours(event.GetFileName());
     IEditor* editor = m_mgr->GetActiveEditor();
     if(editor && m_jsCodeComplete && IsJavaScriptFile(editor) && !InsideJSComment(editor)) {
-        //m_jsCodeComplete->ReparseFile(editor);
+        // m_jsCodeComplete->ReparseFile(editor);
         m_jsCodeComplete->ResetTern();
     }
 }
@@ -490,5 +488,5 @@ void WebTools::OnEditorContextMenu(clContextMenuEvent& event)
 void WebTools::OnIsDebugger(clDebugEvent& event)
 {
     event.Skip(); // always call skip
-    //event.GetStrings().Add("NodeJS Debugger");
+    // event.GetStrings().Add("NodeJS Debugger");
 }

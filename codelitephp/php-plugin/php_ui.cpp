@@ -26,19 +26,13 @@ QuickOutlineDlgBase::QuickOutlineDlgBase(wxWindow* parent, wxWindowID id, const 
     wxBoxSizer* bSizer1 = new wxBoxSizer(wxVERTICAL);
     this->SetSizer(bSizer1);
     
-    m_textCtrl = new wxTextCtrl(this, wxID_ANY, wxT(""), wxDefaultPosition, wxSize(-1, -1), wxTE_PROCESS_ENTER);
-    m_textCtrl->SetFocus();
-    #if wxVERSION_NUMBER >= 3000
-    m_textCtrl->SetHint(wxT(""));
-    #endif
-    
-    bSizer1->Add(m_textCtrl, 0, wxALL|wxEXPAND, 5);
-    
     m_treeCtrlLayout = new PHPFileLayoutTree(this);
-    bSizer1->Add(m_treeCtrlLayout, 1, wxALL|wxEXPAND, 5);
+    bSizer1->Add(m_treeCtrlLayout, 1, wxALL|wxEXPAND, 2);
+    m_treeCtrlLayout->SetMinSize(wxSize(400,300));
     
     SetName(wxT("QuickOutlineDlgBase"));
-    SetSizeHints(400,400);
+    SetMinClientSize(wxSize(400,300));
+    SetSize(400,300);
     if (GetSizer()) {
          GetSizer()->Fit(this);
     }
@@ -54,19 +48,10 @@ QuickOutlineDlgBase::QuickOutlineDlgBase(wxWindow* parent, wxWindowID id, const 
         wxPersistenceManager::Get().Restore(this);
     }
 #endif
-    // Connect events
-    m_textCtrl->Connect(wxEVT_KEY_DOWN, wxKeyEventHandler(QuickOutlineDlgBase::OnKeyDown), NULL, this);
-    m_textCtrl->Connect(wxEVT_COMMAND_TEXT_UPDATED, wxCommandEventHandler(QuickOutlineDlgBase::OnTextEntered), NULL, this);
-    m_textCtrl->Connect(wxEVT_COMMAND_TEXT_ENTER, wxCommandEventHandler(QuickOutlineDlgBase::OnEnter), NULL, this);
-    
 }
 
 QuickOutlineDlgBase::~QuickOutlineDlgBase()
 {
-    m_textCtrl->Disconnect(wxEVT_KEY_DOWN, wxKeyEventHandler(QuickOutlineDlgBase::OnKeyDown), NULL, this);
-    m_textCtrl->Disconnect(wxEVT_COMMAND_TEXT_UPDATED, wxCommandEventHandler(QuickOutlineDlgBase::OnTextEntered), NULL, this);
-    m_textCtrl->Disconnect(wxEVT_COMMAND_TEXT_ENTER, wxCommandEventHandler(QuickOutlineDlgBase::OnEnter), NULL, this);
-    
 }
 
 NewPHPWorkspaceBaseDlg::NewPHPWorkspaceBaseDlg(wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style)
@@ -161,7 +146,8 @@ NewPHPWorkspaceBaseDlg::NewPHPWorkspaceBaseDlg(wxWindow* parent, wxWindowID id, 
     m_stdBtnSizer685->Realize();
     
     SetName(wxT("NewPHPWorkspaceBaseDlg"));
-    SetSizeHints(-1,-1);
+    SetMinClientSize(wxSize(500,300));
+    SetSize(-1,-1);
     if (GetSizer()) {
          GetSizer()->Fit(this);
     }
@@ -251,7 +237,7 @@ NewFileDlgBase::NewFileDlgBase(wxWindow* parent, wxWindowID id, const wxString& 
     bSizer7->Add(m_button6, 0, wxALL, 5);
     
     SetName(wxT("NewFileDlgBase"));
-    SetSizeHints(-1,-1);
+    SetSize(-1,-1);
     if (GetSizer()) {
          GetSizer()->Fit(this);
     }
@@ -307,7 +293,8 @@ OpenResourceDlgBase::OpenResourceDlgBase(wxWindow* parent, wxWindowID id, const 
     m_dvListCtrl->AppendTextColumn(_("File"), wxDATAVIEW_CELL_INERT, 250, wxALIGN_LEFT);
     
     SetName(wxT("OpenResourceDlgBase"));
-    SetSizeHints(-1,-1);
+    SetMinClientSize(wxSize(400,300));
+    SetSize(400,300);
     if (GetSizer()) {
          GetSizer()->Fit(this);
     }
@@ -375,7 +362,7 @@ PHPSettingsBaseDlg::PHPSettingsBaseDlg(wxWindow* parent, wxWindowID id, const wx
     
     fgSizer4->Add(m_staticText9, 0, wxRIGHT|wxTOP|wxBOTTOM|wxALIGN_RIGHT|wxALIGN_CENTER_VERTICAL, 5);
     
-    m_filePickerPHPPath = new wxFilePickerCtrl(m_panel11, wxID_ANY, wxEmptyString, _("Select a file"), wxT("All Files (*)|*"), wxDefaultPosition, wxSize(-1, -1), wxFLP_DEFAULT_STYLE|wxFLP_USE_TEXTCTRL|wxFLP_FILE_MUST_EXIST);
+    m_filePickerPHPPath = new wxFilePickerCtrl(m_panel11, wxID_ANY, wxEmptyString, _("Select a file"), wxT("All Files (*)|*"), wxDefaultPosition, wxSize(-1, -1), wxFLP_DEFAULT_STYLE|wxFLP_USE_TEXTCTRL|wxFLP_SMALL|wxFLP_FILE_MUST_EXIST);
     m_filePickerPHPPath->SetToolTip(_("Select the PHP executable to use when debugging / running command line scripts"));
     m_filePickerPHPPath->SetFocus();
     
@@ -541,7 +528,8 @@ PHPSettingsBaseDlg::PHPSettingsBaseDlg(wxWindow* parent, wxWindowID id, const wx
     m_treebook9->ExpandNode( 3, true );
     
     SetName(wxT("PHPSettingsBaseDlg"));
-    SetSizeHints(-1,-1);
+    SetMinClientSize(wxSize(500,300));
+    SetSize(500,300);
     if (GetSizer()) {
          GetSizer()->Fit(this);
     }
@@ -628,7 +616,7 @@ PHPProjectSettingsBase::PHPProjectSettingsBase(wxWindow* parent, wxWindowID id, 
     
     fgSizer6->Add(m_staticText19, 0, wxALL|wxALIGN_RIGHT|wxALIGN_CENTER_VERTICAL, 5);
     
-    m_filePickerPHPExe = new wxFilePickerCtrl(m_panel5, wxID_ANY, wxEmptyString, _("Select a file"), wxT("All files(*)|*"), wxDefaultPosition, wxSize(-1, -1), wxFLP_DEFAULT_STYLE|wxFLP_USE_TEXTCTRL);
+    m_filePickerPHPExe = new wxFilePickerCtrl(m_panel5, wxID_ANY, wxEmptyString, _("Select a file"), wxT("All files(*)|*"), wxDefaultPosition, wxSize(-1, -1), wxFLP_DEFAULT_STYLE|wxFLP_USE_TEXTCTRL|wxFLP_SMALL);
     m_filePickerPHPExe->SetToolTip(_("Select the PHP interperter to use for running this project"));
     m_filePickerPHPExe->SetFocus();
     
@@ -639,7 +627,7 @@ PHPProjectSettingsBase::PHPProjectSettingsBase(wxWindow* parent, wxWindowID id, 
     
     fgSizer6->Add(m_staticText75, 0, wxALL|wxALIGN_RIGHT|wxALIGN_CENTER_VERTICAL, 5);
     
-    m_filePickerPhpIni = new wxFilePickerCtrl(m_panel5, wxID_ANY, wxEmptyString, _("Select a file"), wxT("All files(*)|*"), wxDefaultPosition, wxSize(-1,-1), wxFLP_DEFAULT_STYLE|wxFLP_USE_TEXTCTRL);
+    m_filePickerPhpIni = new wxFilePickerCtrl(m_panel5, wxID_ANY, wxEmptyString, _("Select a file"), wxT("All files(*)|*"), wxDefaultPosition, wxSize(-1,-1), wxFLP_DEFAULT_STYLE|wxFLP_USE_TEXTCTRL|wxFLP_SMALL);
     m_filePickerPhpIni->SetToolTip(_("Select the PHP INI file to use with PHP (leave empty for default)"));
     
     fgSizer6->Add(m_filePickerPhpIni, 0, wxALL|wxEXPAND, 5);
@@ -648,7 +636,7 @@ PHPProjectSettingsBase::PHPProjectSettingsBase(wxWindow* parent, wxWindowID id, 
     
     fgSizer6->Add(m_staticText15, 0, wxALL|wxALIGN_RIGHT|wxALIGN_CENTER_VERTICAL, 5);
     
-    m_filePickerIndex = new wxFilePickerCtrl(m_panel5, wxID_ANY, wxEmptyString, _("Select a file"), wxT("PHP Files (*.php)|*.php|All files(*)|*"), wxDefaultPosition, wxSize(-1, -1), wxFLP_DEFAULT_STYLE|wxFLP_USE_TEXTCTRL);
+    m_filePickerIndex = new wxFilePickerCtrl(m_panel5, wxID_ANY, wxEmptyString, _("Select a file"), wxT("PHP Files (*.php)|*.php|All files(*)|*"), wxDefaultPosition, wxSize(-1, -1), wxFLP_DEFAULT_STYLE|wxFLP_USE_TEXTCTRL|wxFLP_SMALL);
     m_filePickerIndex->SetToolTip(_("Select the project index file"));
     
     fgSizer6->Add(m_filePickerIndex, 0, wxALL|wxEXPAND, 5);
@@ -657,7 +645,7 @@ PHPProjectSettingsBase::PHPProjectSettingsBase(wxWindow* parent, wxWindowID id, 
     
     fgSizer6->Add(m_staticText18, 0, wxALL|wxALIGN_RIGHT|wxALIGN_CENTER_VERTICAL, 5);
     
-    m_dirPickerWorkingDirectory = new wxDirPickerCtrl(m_panel5, wxID_ANY, wxEmptyString, _("Select a folder"), wxDefaultPosition, wxSize(-1, -1), wxDIRP_DEFAULT_STYLE|wxDIRP_USE_TEXTCTRL);
+    m_dirPickerWorkingDirectory = new wxDirPickerCtrl(m_panel5, wxID_ANY, wxEmptyString, _("Select a folder"), wxDefaultPosition, wxSize(-1, -1), wxDIRP_SMALL|wxDIRP_DEFAULT_STYLE|wxDIRP_USE_TEXTCTRL|wxDIRP_DIR_MUST_EXIST);
     
     fgSizer6->Add(m_dirPickerWorkingDirectory, 0, wxALL|wxEXPAND, 5);
     
@@ -877,7 +865,8 @@ PHPProjectSettingsBase::PHPProjectSettingsBase(wxWindow* parent, wxWindowID id, 
     m_treebook41->ExpandNode( 4, true );
     
     SetName(wxT("PHPProjectSettingsBase"));
-    SetSizeHints(-1,-1);
+    SetMinClientSize(wxSize(600,500));
+    SetSize(-1,-1);
     if (GetSizer()) {
          GetSizer()->Fit(this);
     }
@@ -964,7 +953,7 @@ FileMappingDlgBase::FileMappingDlgBase(wxWindow* parent, wxWindowID id, const wx
     
     flexGridSizer117->Add(m_staticText119, 0, wxALL|wxALIGN_RIGHT|wxALIGN_CENTER_VERTICAL, 5);
     
-    m_dirPickerSource = new wxDirPickerCtrl(this, wxID_ANY, wxEmptyString, _("Select a folder"), wxDefaultPosition, wxSize(-1,-1), wxDIRP_DEFAULT_STYLE|wxDIRP_USE_TEXTCTRL);
+    m_dirPickerSource = new wxDirPickerCtrl(this, wxID_ANY, wxEmptyString, _("Select a folder"), wxDefaultPosition, wxSize(-1,-1), wxDIRP_SMALL|wxDIRP_DEFAULT_STYLE|wxDIRP_USE_TEXTCTRL);
     m_dirPickerSource->SetToolTip(_("The source folder usually points to the location where you develop your code"));
     m_dirPickerSource->SetFocus();
     
@@ -994,7 +983,8 @@ FileMappingDlgBase::FileMappingDlgBase(wxWindow* parent, wxWindowID id, const wx
     m_stdBtnSizer111->Realize();
     
     SetName(wxT("FileMappingDlgBase"));
-    SetSizeHints(-1,-1);
+    SetMinClientSize(wxSize(400,200));
+    SetSize(400,200);
     if (GetSizer()) {
          GetSizer()->Fit(this);
     }
@@ -1039,15 +1029,15 @@ PHPWorkspaceViewBase::PHPWorkspaceViewBase(wxWindow* parent, wxWindowID id, cons
     
     bSizer5->Add(m_auibar29, 0, wxEXPAND, 2);
     
-    m_auibar29->AddTool(ID_PHP_PROJECT_SETTINGS, _("Open Active Project Settings..."), wxXmlResource::Get()->LoadBitmap(wxT("php-project-settings")), wxNullBitmap, wxITEM_NORMAL, _("Open Active Project Settings..."), _("Open Active Project Settings..."), NULL);
+    m_auibar29->AddTool(ID_PHP_PROJECT_SETTINGS, _("Open Active Project Settings..."), wxXmlResource::Get()->LoadBitmap(wxT("16-cog")), wxNullBitmap, wxITEM_NORMAL, _("Open Active Project Settings..."), _("Open Active Project Settings..."), NULL);
     
-    m_auibar29->AddTool(ID_UPLOAD_CLOUD, _("Setup automatic upload"), wxXmlResource::Get()->LoadBitmap(wxT("cloud-copy")), wxNullBitmap, wxITEM_NORMAL, _("Setup automatic upload to a remote site"), _("Setup automatic upload to a remote site"), NULL);
+    m_auibar29->AddTool(ID_UPLOAD_CLOUD, _("Setup automatic upload"), wxXmlResource::Get()->LoadBitmap(wxT("16-remote-folder")), wxNullBitmap, wxITEM_NORMAL, _("Setup automatic upload to a remote site"), _("Setup automatic upload to a remote site"), NULL);
     wxAuiToolBarItem* m_toolbarItemRemoteSave = m_auibar29->FindToolByIndex(m_auibar29->GetToolCount()-1);
     if (m_toolbarItemRemoteSave) {
         m_toolbarItemRemoteSave->SetHasDropDown(true);
     }
     
-    m_auibar29->AddTool(ID_TOOL_COLLAPSE, _("Collapse"), wxXmlResource::Get()->LoadBitmap(wxT("collapse")), wxNullBitmap, wxITEM_NORMAL, _("Collapse All"), _("Collapse All"), NULL);
+    m_auibar29->AddTool(ID_TOOL_COLLAPSE, _("Collapse"), wxXmlResource::Get()->LoadBitmap(wxT("16-fold")), wxNullBitmap, wxITEM_NORMAL, _("Collapse All"), _("Collapse All"), NULL);
     m_auibar29->Realize();
     
     m_gaugeParseProgress = new wxGauge(this, wxID_ANY, 100, wxDefaultPosition, wxSize(-1,8), wxGA_HORIZONTAL);
@@ -1061,7 +1051,7 @@ PHPWorkspaceViewBase::PHPWorkspaceViewBase(wxWindow* parent, wxWindowID id, cons
     bSizer5->Add(m_treeCtrlView, 1, wxALL|wxEXPAND, 2);
     
     SetName(wxT("PHPWorkspaceViewBase"));
-    SetSizeHints(-1,-1);
+    SetSize(-1,-1);
     if (GetSizer()) {
          GetSizer()->Fit(this);
     }
@@ -1161,15 +1151,6 @@ PHPDebugPaneBase::PHPDebugPaneBase(wxWindow* parent, wxWindowID id, const wxPoin
     boxSizer156->Add(boxSizer204, 1, wxEXPAND, 5);
     
     m_dvListCtrlBreakpoints = new wxDataViewListCtrl(m_panel142, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxDV_ROW_LINES|wxDV_MULTIPLE|wxDV_SINGLE);
-    #ifdef __WXMSW__
-    // To get the newer version of the font on MSW, we use font wxSYS_DEFAULT_GUI_FONT with family set to wxFONTFAMILY_TELETYPE
-    wxFont m_dvListCtrlBreakpointsFont = wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT);
-    m_dvListCtrlBreakpointsFont.SetFamily(wxFONTFAMILY_TELETYPE);
-    #else
-    wxFont m_dvListCtrlBreakpointsFont = wxSystemSettings::GetFont(wxSYS_ANSI_FIXED_FONT);
-    m_dvListCtrlBreakpointsFont.SetFamily(wxFONTFAMILY_TELETYPE);
-    #endif
-    m_dvListCtrlBreakpoints->SetFont(m_dvListCtrlBreakpointsFont);
     
     boxSizer204->Add(m_dvListCtrlBreakpoints, 1, wxALL|wxEXPAND, 2);
     
@@ -1192,12 +1173,13 @@ PHPDebugPaneBase::PHPDebugPaneBase(wxWindow* parent, wxWindowID id, const wxPoin
     m_auiBook->SetMinSize(wxSize(300,300));
     
     SetName(wxT("PHPDebugPaneBase"));
-    SetSizeHints(300,300);
+    SetSize(300,300);
     if (GetSizer()) {
          GetSizer()->Fit(this);
     }
     // Connect events
     m_dvListCtrlStackTrace->Connect(wxEVT_COMMAND_DATAVIEW_ITEM_ACTIVATED, wxDataViewEventHandler(PHPDebugPaneBase::OnCallStackItemActivated), NULL, this);
+    m_dvListCtrlStackTrace->Connect(wxEVT_COMMAND_DATAVIEW_ITEM_CONTEXT_MENU, wxDataViewEventHandler(PHPDebugPaneBase::OnCallStackMenu), NULL, this);
     m_dvListCtrlBreakpoints->Connect(wxEVT_COMMAND_DATAVIEW_ITEM_ACTIVATED, wxDataViewEventHandler(PHPDebugPaneBase::OnBreakpointItemActivated), NULL, this);
     this->Connect(ID_DELETE_BREAKPOINTS, wxEVT_COMMAND_TOOL_CLICKED, wxCommandEventHandler(PHPDebugPaneBase::OnDeleteBreakpoint), NULL, this);
     this->Connect(ID_DELETE_BREAKPOINTS, wxEVT_UPDATE_UI, wxUpdateUIEventHandler(PHPDebugPaneBase::OnDeleteBreakpointUI), NULL, this);
@@ -1209,6 +1191,7 @@ PHPDebugPaneBase::PHPDebugPaneBase(wxWindow* parent, wxWindowID id, const wxPoin
 PHPDebugPaneBase::~PHPDebugPaneBase()
 {
     m_dvListCtrlStackTrace->Disconnect(wxEVT_COMMAND_DATAVIEW_ITEM_ACTIVATED, wxDataViewEventHandler(PHPDebugPaneBase::OnCallStackItemActivated), NULL, this);
+    m_dvListCtrlStackTrace->Disconnect(wxEVT_COMMAND_DATAVIEW_ITEM_CONTEXT_MENU, wxDataViewEventHandler(PHPDebugPaneBase::OnCallStackMenu), NULL, this);
     m_dvListCtrlBreakpoints->Disconnect(wxEVT_COMMAND_DATAVIEW_ITEM_ACTIVATED, wxDataViewEventHandler(PHPDebugPaneBase::OnBreakpointItemActivated), NULL, this);
     this->Disconnect(ID_DELETE_BREAKPOINTS, wxEVT_COMMAND_TOOL_CLICKED, wxCommandEventHandler(PHPDebugPaneBase::OnDeleteBreakpoint), NULL, this);
     this->Disconnect(ID_DELETE_BREAKPOINTS, wxEVT_UPDATE_UI, wxUpdateUIEventHandler(PHPDebugPaneBase::OnDeleteBreakpointUI), NULL, this);
@@ -1230,7 +1213,7 @@ LocalsViewBase::LocalsViewBase(wxWindow* parent, wxWindowID id, const wxPoint& p
     wxBoxSizer* boxSizer236 = new wxBoxSizer(wxVERTICAL);
     this->SetSizer(boxSizer236);
     
-    m_dataview = new wxDataViewCtrl(this, wxID_ANY, wxDefaultPosition, wxSize(300,150), wxDV_VERT_RULES|wxDV_ROW_LINES|wxDV_SINGLE);
+    m_dataview = new wxDataViewCtrl(this, wxID_ANY, wxDefaultPosition, wxSize(300,150), wxDV_VERT_RULES|wxDV_ROW_LINES|wxDV_MULTIPLE);
     
     m_dataviewModel = new XDebugLocalsViewModel;
     m_dataviewModel->SetColCount( 4 );
@@ -1244,7 +1227,7 @@ LocalsViewBase::LocalsViewBase(wxWindow* parent, wxWindowID id, const wxPoint& p
     m_dataview->AppendTextColumn(_("Value"), m_dataview->GetColumnCount(), wxDATAVIEW_CELL_INERT, -2, wxALIGN_LEFT);
     
     SetName(wxT("LocalsViewBase"));
-    SetSizeHints(-1,-1);
+    SetSize(-1,-1);
     if (GetSizer()) {
          GetSizer()->Fit(this);
     }
@@ -1252,6 +1235,7 @@ LocalsViewBase::LocalsViewBase(wxWindow* parent, wxWindowID id, const wxPoint& p
     m_dataview->Connect(wxEVT_COMMAND_DATAVIEW_ITEM_COLLAPSED, wxDataViewEventHandler(LocalsViewBase::OnLocalCollapsed), NULL, this);
     m_dataview->Connect(wxEVT_COMMAND_DATAVIEW_ITEM_EXPANDED, wxDataViewEventHandler(LocalsViewBase::OnLocalExpanded), NULL, this);
     m_dataview->Connect(wxEVT_COMMAND_DATAVIEW_ITEM_EXPANDING, wxDataViewEventHandler(LocalsViewBase::OnLocalExpanding), NULL, this);
+    m_dataview->Connect(wxEVT_COMMAND_DATAVIEW_ITEM_CONTEXT_MENU, wxDataViewEventHandler(LocalsViewBase::OnLocalsMenu), NULL, this);
     
 }
 
@@ -1260,6 +1244,7 @@ LocalsViewBase::~LocalsViewBase()
     m_dataview->Disconnect(wxEVT_COMMAND_DATAVIEW_ITEM_COLLAPSED, wxDataViewEventHandler(LocalsViewBase::OnLocalCollapsed), NULL, this);
     m_dataview->Disconnect(wxEVT_COMMAND_DATAVIEW_ITEM_EXPANDED, wxDataViewEventHandler(LocalsViewBase::OnLocalExpanded), NULL, this);
     m_dataview->Disconnect(wxEVT_COMMAND_DATAVIEW_ITEM_EXPANDING, wxDataViewEventHandler(LocalsViewBase::OnLocalExpanding), NULL, this);
+    m_dataview->Disconnect(wxEVT_COMMAND_DATAVIEW_ITEM_CONTEXT_MENU, wxDataViewEventHandler(LocalsViewBase::OnLocalsMenu), NULL, this);
     
 }
 
@@ -1280,15 +1265,6 @@ PHPImages::PHPImages()
         icn.CopyFromBitmap( bmp );
         this->Add( icn );
         m_bitmaps.insert( std::make_pair(wxT("m_bmpArrowActive"), bmp ) );
-    }
-    
-    {
-        wxBitmap bmp;
-        wxIcon icn;
-        bmp = wxXmlResource::Get()->LoadBitmap(wxT("m_bmpArrowDisabled"));
-        icn.CopyFromBitmap( bmp );
-        this->Add( icn );
-        m_bitmaps.insert( std::make_pair(wxT("m_bmpArrowDisabled"), bmp ) );
     }
     
     {
@@ -1512,7 +1488,7 @@ EvalPaneBase::EvalPaneBase(wxWindow* parent, wxWindowID id, const wxPoint& pos, 
     boxSizer2472->Add(m_buttonSendXdebug, 0, wxALL|wxALIGN_CENTER_VERTICAL, 2);
     
     SetName(wxT("EvalPaneBase"));
-    SetSizeHints(500,300);
+    SetSize(500,300);
     if (GetSizer()) {
          GetSizer()->Fit(this);
     }
@@ -1655,7 +1631,8 @@ PHPDebugStartDlgBase::PHPDebugStartDlgBase(wxWindow* parent, wxWindowID id, cons
     #endif
     
     SetName(wxT("PHPDebugStartDlgBase"));
-    SetSizeHints(-1,-1);
+    SetMinClientSize(wxSize(400,200));
+    SetSize(-1,-1);
     if (GetSizer()) {
          GetSizer()->Fit(this);
     }
@@ -1883,7 +1860,8 @@ NewPHPProjectWizardBase::NewPHPProjectWizardBase(wxWindow* parent, wxWindowID id
     boxSizer645->Add(m_textCtrlCCPaths, 1, wxALL|wxEXPAND, 5);
     
     SetName(wxT("NewPHPProjectWizardBase"));
-    SetSizeHints(-1,-1);
+    SetMinClientSize(wxSize(500,300));
+    SetSize(-1,-1);
     if (GetSizer()) {
          GetSizer()->Fit(this);
     }
@@ -2068,7 +2046,8 @@ PHPXDebugSetupWizardBase::PHPXDebugSetupWizardBase(wxWindow* parent, wxWindowID 
     boxSizer6019->Add(m_textCtrlPHPIni, 1, wxALL|wxEXPAND, 5);
     
     SetName(wxT("PHPXDebugSetupWizardBase"));
-    SetSizeHints(500,300);
+    SetMinClientSize(wxSize(500,300));
+    SetSize(-1,-1);
     if (GetSizer()) {
          GetSizer()->Fit(this);
     }
@@ -2153,7 +2132,8 @@ PHPSettersGettersDialogBase::PHPSettersGettersDialogBase(wxWindow* parent, wxWin
     m_stdBtnSizer659->Realize();
     
     SetName(wxT("PHPSettersGettersDialogBase"));
-    SetSizeHints(-1,-1);
+    SetMinClientSize(wxSize(500,300));
+    SetSize(-1,-1);
     if (GetSizer()) {
          GetSizer()->Fit(this);
     }

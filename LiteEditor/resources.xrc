@@ -1,4 +1,5 @@
 <!-- wxrc /c /v /o resources.cpp resources.xrc -->
+<!-- wxrc -c -v -o resources.cpp resources.xrc -->
 <resource>
     <object class="wxBitmap" name="fold_airplane">res/outbox.png</object>
     <object class="wxBitmap" name="read_only">res/lock.png</object>
@@ -35,6 +36,11 @@
     <object class="wxBitmap" name="aui-more">res/aui-more.png</object>
     <object class="wxBitmap" name="aui-expand">res/aui-expand.png</object>
     <object class="wxBitmap" name="aui-minimize">res/aui-minimize.png</object>
+    
+    <object class="wxBitmap" name="aui-close@2x">res/aui-close@2x.png</object>
+    <object class="wxBitmap" name="aui-more@2x">res/aui-more@2x.png</object>
+    <object class="wxBitmap" name="aui-expand@2x">res/aui-expand@2x.png</object>
+    <object class="wxBitmap" name="aui-minimize@2x">res/aui-minimize@2x.png</object>
     
     <!--
         Toolbar bitmaps (24x24)
