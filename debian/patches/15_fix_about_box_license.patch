@@ -7,7 +7,7 @@ Forwarded: not-needed
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- a/LiteEditor/aboutdlg.cpp
 +++ b/LiteEditor/aboutdlg.cpp
-@@ -33,31 +33,65 @@
+@@ -33,32 +33,66 @@
  #include "windowattrmanager.h"
  #include "manager.h"
  
@@ -63,7 +63,8 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
      m_buttonOk->SetFocus();
 -    wxFileName license(ManagerST::Get()->GetInstallDir() + wxFileName::GetPathSeparator() + wxT("LICENSE"));
 -    wxString licenseFullname = license.GetFullPath();
--
+-    
+     GetSizer()->Fit(this);
 -    if(license.FileExists()) {
 -        wxFFile fp(licenseFullname);
 -        if(fp.IsOpened()) {
@@ -83,5 +84,5 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 -    }
 +
      CentreOnParent();
-     GetSizer()->Fit(this);
  }
+ 

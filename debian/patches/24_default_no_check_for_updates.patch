@@ -20,7 +20,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
      m_choice4->SetStringSelection(
 --- a/LiteEditor/frame.cpp
 +++ b/LiteEditor/frame.cpp
-@@ -3250,7 +3250,7 @@ void clMainFrame::OnTimer(wxTimerEvent&
+@@ -2941,7 +2941,7 @@ void clMainFrame::OnTimer(wxTimerEvent&
          wxLogMessage("Running under Cygwin environment");
      }
  
