@@ -7,3 +7,4 @@
 15_fix_about_box_license.patch
 24_default_no_check_for_updates.patch
 25_shlibs-adjustments.patch
+26_do-not-trash-cxxflags.patch
