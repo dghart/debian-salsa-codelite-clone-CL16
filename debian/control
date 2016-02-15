@@ -15,7 +15,7 @@ Build-Depends:
  libwxsqlite3-3.0-dev,
  llvm-3.6 [amd64 arm64 armel armhf i386 mips mipsel powerpc ppc64el s390x hurd-i386 kfreebsd-amd64 kfreebsd-i386],
  pkg-config
-Standards-Version: 3.9.6
+Standards-Version: 3.9.7
 Homepage: http://www.codelite.org
 Vcs-Git: https://anonscm.debian.org/git/collab-maint/codelite.git
 Vcs-Browser: https://anonscm.debian.org/cgit/collab-maint/codelite.git
