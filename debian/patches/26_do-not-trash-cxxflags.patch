@@ -1,8 +1,14 @@
-Description: Prevent our CXXFLAGS being trashed
-Author: James Cowgill <james410@cowgill.org.uk>
-Forwarded: no
+From f62ecde21fd88d536c1ff351ae16ddb87898925b Mon Sep 17 00:00:00 2001
+From: James Cowgill <james410@cowgill.org.uk>
+Date: Sun, 7 Feb 2016 12:42:29 +0000
+Subject: [PATCH] Prevent initial value of CMAKE_CXX_FLAGS being clobbered
+
+This allows distributions (or anyone else) to add additional flags by setting
+the CXXFLAGS environment variable.
 ---
-This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+ CMakeLists.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -63,7 +63,7 @@ set( BUILD_WXC 0 )
