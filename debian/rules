@@ -14,21 +14,14 @@ CONFIG_EXTRA := \
     -DLIBCLANG_INCLUDE_T=/usr/lib/llvm-$(LLVM_VERSION)/include/ \
     -DLIBLLDB_T=/usr/lib/$(DEB_HOST_MULTIARCH)/liblldb-$(LLVM_VERSION).so \
     -DLIBCLANG_INCLUDE_T=/usr/lib/llvm-$(LLVM_VERSION)/include/
-INSTALL_EXTRA :=
 
 # Disable clang / lldb on arches where they're not available (yet)
 #  Remember to update debian/control when changing these
 ARCH_LLDB := amd64 armel armhf i386 mips mipsel powerpc s390x kfreebsd-amd64 kfreebsd-i386
 ARCH_CLANG := amd64 arm64 armel armhf i386 mips mipsel powerpc ppc64el s390x hurd-i386 kfreebsd-amd64 kfreebsd-i386
 
-ifeq (,$(filter $(DEB_HOST_ARCH),$(ARCH_CLANG)))
-	CONFIG_EXTRA += -DENABLE_CLANG=0
-endif
-
-ifeq (,$(filter $(DEB_HOST_ARCH),$(ARCH_LLDB)))
-	CONFIG_EXTRA += -DENABLE_LLDB=0
-	INSTALL_EXTRA += -Xcodelite-lldb -XLLDBDebugger.so
-endif
+CONFIG_EXTRA += $(if $(filter $(DEB_HOST_ARCH),$(ARCH_CLANG)),,-DENABLE_CLANG=0)
+CONFIG_EXTRA += $(if $(filter $(DEB_HOST_ARCH),$(ARCH_LLDB)),,-DENABLE_LLDB=0)
 
 %:
 	dh $@ --parallel
@@ -37,7 +30,11 @@ override_dh_auto_configure:
 	dh_auto_configure -- $(CONFIG_EXTRA)
 
 override_dh_install:
-	dh_install $(INSTALL_EXTRA)
+	dh_install
+ifneq (,$(filter $(DEB_HOST_ARCH),$(ARCH_LLDB)))
+	dh_install -pcodelite-plugins usr/bin/codelite-lldb usr/lib/codelite
+	dh_install -pcodelite-plugins usr/lib/codelite/LLDBDebugger.so
+endif
 
 override_dh_makeshlibs:
 
