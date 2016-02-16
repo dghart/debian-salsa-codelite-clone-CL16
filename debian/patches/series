@@ -9,3 +9,4 @@
 25_shlibs-adjustments.patch
 26_do-not-trash-cxxflags.patch
 27_spelling-fixes.patch
+28_fix-non-x64-build.patch
