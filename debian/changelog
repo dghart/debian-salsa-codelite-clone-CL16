@@ -1,8 +1,24 @@
-codelite (9.1+dfsg-1) UNRELEASED; urgency=medium
+codelite (9.1+dfsg-1) unstable; urgency=medium
 
-  *
+  * New upstream release.
 
- -- James Cowgill <james410@cowgill.org.uk>  Fri, 05 Feb 2016 21:17:00 +0000
+  * debian/README.Debian:
+    - Fix spelling mistake.
+  * debian/codelite.install:
+    - Install manpages through dh_install instead of dh_installman.
+  * debian/control:
+    - Use secure Vcs-* URLs.
+    - Bump standards version to 3.9.7.
+  * debian/copyright:
+    - Fix misspelling of LGPL.
+  * debian/patches:
+    - Add patch to prevent our CXXFLAGS being trashed.
+    - Add patch to fix numerous spelling mistakes.
+    - Add patch to fix build on non-x64 arches.
+  * debian/rules:
+    - Remove get-orig-source target (use uscan directly instead).
+
+ -- James Cowgill <james410@cowgill.org.uk>  Tue, 16 Feb 2016 00:08:01 +0000
 
 codelite (9.0+dfsg-1) unstable; urgency=medium
 
