@@ -1,8 +1,10 @@
-codelite (9.1+dfsg2-1) UNRELEASED; urgency=medium
+codelite (9.1+dfsg2-1) unstable; urgency=medium
 
-  *
+  * Remove unused icons/ directory. (Closes: #821258)
+  * Use my debian.org email address.
+  * Bump standards to 3.9.8.
 
- -- James Cowgill <jcowgill@debian.org>  Sat, 14 May 2016 18:06:50 +0100
+ -- James Cowgill <jcowgill@debian.org>  Sat, 14 May 2016 18:54:24 +0100
 
 codelite (9.1+dfsg-2) unstable; urgency=medium
 
