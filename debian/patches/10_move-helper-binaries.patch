@@ -1,5 +1,5 @@
 Description: Move most helper binaries to /usr/lib/codelite
-Author: James Cowgill <james410@cowgill.org.uk>
+Author: James Cowgill <jcowgill@debian.org>
 ---
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- a/LiteEditor/manager.cpp

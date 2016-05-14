@@ -242,7 +242,7 @@ License: CodeLite
 Files: debian/*
 Copyright: 2009 Chow Loong Jin <hyperair@ubuntu.com>
            2010 Alessio Treglia <quadrispro@ubuntu.com>
-           2014-2015 James Cowgill <james410@cowgill.org.uk>
+           2014-2016 James Cowgill <jcowgill@debian.org>
 License: GPL-2+
 
 License: BSL-1.0

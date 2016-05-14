@@ -1,7 +1,7 @@
 Source: codelite
 Section: devel
 Priority: optional
-Maintainer: James Cowgill <james410@cowgill.org.uk>
+Maintainer: James Cowgill <jcowgill@debian.org>
 Build-Depends:
  debhelper (>= 9),
  cmake,

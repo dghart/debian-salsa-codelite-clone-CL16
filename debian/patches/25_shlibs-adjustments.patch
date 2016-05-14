@@ -5,7 +5,7 @@ Description: Workarounds for dpkg-shlibdeps warnings
  .
  Converting the other libraries to static libs is ok since they are only used
  by one library. It also reduces the final size and fixes some more warnings.
-Author: James Cowgill <james410@cowgill.org.uk>
+Author: James Cowgill <jcowgill@debian.org>
 Forwarded: not-needed
 ---
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/

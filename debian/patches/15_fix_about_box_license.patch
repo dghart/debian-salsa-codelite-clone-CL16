@@ -1,7 +1,7 @@
 Description: Fix license text in about dialog
  Since /usr/share/codelite/LICENSE isn't shipped, I have hard-coded the
  "short" GPL license text into the about dialog box.
-Author: James Cowgill <james410@cowgill.org.uk>
+Author: James Cowgill <jcowgill@debian.org>
 Forwarded: not-needed
 ---
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/

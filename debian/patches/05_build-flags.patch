@@ -1,7 +1,7 @@
 Description: Remove build options not nessesary for Debian
  Do not duplicate all the Debian build flags.
  Stripping is done by dh_strip separately.
-Author: James Cowgill <james410@cowgill.org.uk>
+Author: James Cowgill <jcowgill@debian.org>
 Forwarded: not-needed
 ---
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/

@@ -3,7 +3,7 @@ Description: Do not check for updates by default
  application itself at runtime. It's also a privacy breach if the user doesn't
  know about it. This patch doesn't remove anything, it just changes the
  default setting.
-Author: James Cowgill <james410@cowgill.org.uk>
+Author: James Cowgill <jcowgill@debian.org>
 Forwarded: not-needed
 ---
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
