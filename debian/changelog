@@ -1,3 +1,9 @@
+codelite (9.1+dfsg2-1) UNRELEASED; urgency=medium
+
+  *
+
+ -- James Cowgill <jcowgill@debian.org>  Sat, 14 May 2016 18:06:50 +0100
+
 codelite (9.1+dfsg-2) unstable; urgency=medium
 
   * Workaround bug #814856 in debhelper by manually installing LLDB
