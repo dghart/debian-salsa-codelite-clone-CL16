@@ -6,6 +6,7 @@ Files-Excluded:
  *.exe
  *.dll
  codelitephp/bin
+ icons
  patches
  sdk/astyle
  sdk/clang
