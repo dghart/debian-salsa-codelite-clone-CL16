@@ -1,8 +1,14 @@
-codelite (9.2+dfsg-1) UNRELEASED; urgency=medium
+codelite (9.2+dfsg-1) unstable; urgency=medium
 
-  *
+  * New upstream release.
+    - Fixes crash when attempting to build an empty workspace. (LP: #1577401)
 
- -- James Cowgill <jcowgill@debian.org>  Sat, 23 Jul 2016 14:37:26 +0100
+  * debian/patches:
+    - Refresh patches.
+    - Drop 26_do-not-trash-cxxflags.patch, 27_spelling-fixes.patch,
+      and 28_fix-non-x64-build.patch. All applied upstream.
+
+ -- James Cowgill <jcowgill@debian.org>  Sat, 23 Jul 2016 15:39:34 +0100
 
 codelite (9.1+dfsg2-1) unstable; urgency=medium
 
