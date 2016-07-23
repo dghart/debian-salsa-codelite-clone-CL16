@@ -53,7 +53,7 @@ private:
     bool m_isWorkspaceReloading;
     bool m_reloadingDoRaise; // Prevents multiple Raises() during RestoreSession()
     FilesModifiedDlg* m_filesModifiedDlg;
-    
+
 public:
     enum {
         kGetAll_Default = 0x00000000,         // booked editors only
@@ -68,7 +68,7 @@ private:
     void ConnectEvents();
     void DoUpdateNotebookTheme();
     void DoOpenImageViewer(const wxFileName& filename);
-    
+
     void OnMouseDClick(wxBookCtrlEvent& e);
     void OnTabDClicked(wxBookCtrlEvent& e);
     void OnTabLabelContextMenu(wxBookCtrlEvent& e);
@@ -105,17 +105,12 @@ public:
     void GetRecentlyOpenedFiles(wxArrayString& files);
     FileHistory& GetRecentlyOpenedFilesClass() { return m_recentFiles; }
     void ShowQuickBarForPlugins() { m_quickFindBar->ShowForPlugins(); }
-    void ShowQuickBar(bool s = true) { m_quickFindBar->Show(s); }
-    void ShowQuickBar(const wxString& findWhat) { m_quickFindBar->Show(findWhat); }
+    void ShowQuickBar(bool s, bool replaceBar = false) { m_quickFindBar->Show(s, replaceBar); }
+    void ShowQuickBar(const wxString& findWhat, bool replaceBar = false) { m_quickFindBar->Show(findWhat, replaceBar); }
     void ShowQuickReplaceBar(bool show) { m_quickFindBar->ShowReplacebar(show); }
-    void ToggleQuickReplaceBar() { m_quickFindBar->ToggleReplacebar(); }
-    void ShowMessage(const wxString& message,
-                     bool showHideButton = true,
-                     const wxBitmap& bmp = wxNullBitmap,
-                     const ButtonDetails& btn1 = ButtonDetails(),
-                     const ButtonDetails& btn2 = ButtonDetails(),
-                     const ButtonDetails& btn3 = ButtonDetails(),
-                     const CheckboxDetails& cb = CheckboxDetails());
+    void ShowMessage(const wxString& message, bool showHideButton = true, const wxBitmap& bmp = wxNullBitmap,
+        const ButtonDetails& btn1 = ButtonDetails(), const ButtonDetails& btn2 = ButtonDetails(),
+        const ButtonDetails& btn3 = ButtonDetails(), const CheckboxDetails& cb = CheckboxDetails());
 
     void ShowTabBar(bool b);
     void ShowNavBar(bool s = true);
@@ -141,39 +136,36 @@ public:
      * @param tabs [output]
      */
     void GetAllTabs(clTab::Vec_t& tabs);
+    
+    /**
+     * @brief return a list of the detached tabs
+     */
+    void GetDetachedTabs(clTab::Vec_t& tabs);
+    
     LEditor* FindEditor(const wxString& fileName);
     bool CloseEditor(const wxString& fileName) { return ClosePage(FindEditor(fileName)); }
 
     wxWindow* GetCurrentPage();
+    int GetCurrentPageIndex();
     wxWindow* GetPage(size_t page);
     size_t GetPageCount() const;
     wxWindow* FindPage(const wxString& text);
 
     LEditor* NewEditor();
 
-    LEditor* OpenFile(const wxString& file_name,
-                      const wxString& projectName = wxEmptyString,
-                      int lineno = wxNOT_FOUND,
-                      long position = wxNOT_FOUND,
-                      OF_extra extra = OF_AddJump,
-                      bool preserveSelection = true);
+    LEditor* OpenFile(const wxString& file_name, const wxString& projectName = wxEmptyString, int lineno = wxNOT_FOUND,
+        long position = wxNOT_FOUND, OF_extra extra = OF_AddJump, bool preserveSelection = true);
     LEditor* OpenFile(const BrowseRecord& rec)
     {
         return OpenFile(rec.filename, rec.project, rec.lineno, rec.position, OF_None, false);
     }
 
-    bool AddPage(wxWindow* win,
-                 const wxString& text,
-                 const wxString& tooltip = wxEmptyString,
-                 const wxBitmap& bmp = wxNullBitmap,
-                 bool selected = false,
-                 int insert_at_index = wxNOT_FOUND);
+    bool AddPage(wxWindow* win, const wxString& text, const wxString& tooltip = wxEmptyString,
+        const wxBitmap& bmp = wxNullBitmap, bool selected = false, int insert_at_index = wxNOT_FOUND);
     bool SelectPage(wxWindow* win);
 
-    bool UserSelectFiles(std::vector<std::pair<wxFileName, bool> >& files,
-                         const wxString& title,
-                         const wxString& caption,
-                         bool cancellable = true);
+    bool UserSelectFiles(std::vector<std::pair<wxFileName, bool> >& files, const wxString& title,
+        const wxString& caption, bool cancellable = true);
 
     bool SaveAll(bool askUser, bool includeUntitled);
 
@@ -182,6 +174,7 @@ public:
     bool ClosePage(const wxString& text);
 
     bool ClosePage(wxWindow* win);
+    bool ClosePage(IEditor* editor, bool prompt);
     bool CloseAllButThis(wxWindow* win);
     bool CloseAll(bool cancellable);
 

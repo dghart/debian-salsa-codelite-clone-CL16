@@ -44,6 +44,7 @@ void FileExtManager::Init()
         m_map[wxT("cpp")] = TypeSourceCpp;
         m_map[wxT("cxx")] = TypeSourceCpp;
         m_map[wxT("c++")] = TypeSourceCpp;
+        m_map[wxT("as")] = TypeSourceCpp; // AngelScript files are handled as C++ source files in CodeLite
         m_map[wxT("c")] = TypeSourceC;
 
         m_map[wxT("h")] = TypeHeader;
@@ -69,6 +70,7 @@ void FileExtManager::Init()
         m_map[wxT("erd")] = TypeErd;
 
         m_map[wxT("php")] = TypePhp;
+        m_map[wxT("php5")] = TypePhp;
         m_map[wxT("inc")] = TypePhp;
         m_map[wxT("phtml")] = TypePhp;
 
@@ -144,6 +146,10 @@ void FileExtManager::Init()
         // #ifndef WORD
         m_matchers.push_back(Matcher::Ptr_t(new Matcher("#ifndef[ \t]+[a-zA-Z0-9_]+", TypeSourceCpp)));
 
+        // vim modlines
+        m_matchers.push_back(Matcher::Ptr_t(new Matcher("/\\* \\-\\*\\- Mode:[ \t]+c\\+\\+", TypeSourceCpp)));
+        m_matchers.push_back(Matcher::Ptr_t(new Matcher("# \\-\\*\\- Mode:[ \t]+python", TypePython)));
+
         // #include <
         m_matchers.push_back(Matcher::Ptr_t(new Matcher("#include[ \t]+[\\<\"]", TypeSourceCpp)));
     }
@@ -182,10 +188,11 @@ FileExtManager::FileType FileExtManager::GetType(const wxString& filename, FileE
             } else {
                 JSONRoot root(content);
                 if(!root.isOk()) return TypeWorkspace;
-                if(root.toElement().hasNamedObject("NodeJS"))
+                if(root.toElement().hasNamedObject("NodeJS")) {
                     return TypeWorkspaceNodeJS;
-                else
+                } else {
                     return TypeWorkspacePHP;
+                }
             }
         } else {
             return TypeWorkspace;
@@ -197,18 +204,36 @@ FileExtManager::FileType FileExtManager::GetType(const wxString& filename, FileE
 bool FileExtManager::IsCxxFile(const wxString& filename)
 {
     FileType ft = GetType(filename);
+    if(ft == TypeOther) {
+        // failed to detect the type
+        if(!AutoDetectByContent(filename, ft)) {
+            return false;
+        }
+    }
     return ft == TypeSourceC || ft == TypeSourceCpp || ft == TypeHeader;
 }
 
 bool FileExtManager::IsJavascriptFile(const wxString& filename)
 {
     FileType ft = GetType(filename);
+    if(ft == TypeOther) {
+        // failed to detect the type
+        if(!AutoDetectByContent(filename, ft)) {
+            return false;
+        }
+    }
     return ft == TypeJS;
 }
 
 bool FileExtManager::IsPHPFile(const wxString& filename)
 {
     FileType ft = GetType(filename);
+    if(ft == TypeOther) {
+        // failed to detect the type
+        if(!AutoDetectByContent(filename, ft)) {
+            return false;
+        }
+    }
     return ft == TypePhp;
 }
 
@@ -234,5 +259,11 @@ bool FileExtManager::AutoDetectByContent(const wxString& filename, FileExtManage
 bool FileExtManager::IsJavaFile(const wxString& filename)
 {
     FileType ft = GetType(filename);
+    if(ft == TypeOther) {
+        // failed to detect the type
+        if(!AutoDetectByContent(filename, ft)) {
+            return false;
+        }
+    }
     return ft == TypeJava;
 }

@@ -14,12 +14,34 @@
 #include <algorithm>
 #include "globals.h"
 #include <wx/menu.h>
+#include "bitmap_loader.h"
 
-#define STATUSBAR_LINE_COL_IDX 0
-#define STATUSBAR_ANIMATION_COL_IDX 1
-#define STATUSBAR_WHITESPACE_INFO_IDX 2
-#define STATUSBAR_LANG_COL_IDX 3
-#define STATUSBAR_ICON_COL_IDX 4
+#define STATUSBAR_SCM_IDX 0
+#define STATUSBAR_LINE_COL_IDX 1
+#define STATUSBAR_ANIMATION_COL_IDX 2
+#define STATUSBAR_WHITESPACE_INFO_IDX 3
+#define STATUSBAR_EOL_COL_IDX 4
+#define STATUSBAR_LANG_COL_IDX 5
+#define STATUSBAR_ICON_COL_IDX 6
+
+static void GetWhitespaceInfo(wxStyledTextCtrl* ctrl, wxString& whitespace, wxString& eol)
+{
+    whitespace << (ctrl->GetUseTabs() ? "tabs" : "spaces");
+    int eolMode = ctrl->GetEOLMode();
+    switch(eolMode) {
+    case wxSTC_EOL_CR:
+        eol << "CR";
+        break;
+    case wxSTC_EOL_CRLF:
+        eol << "CRLF";
+        break;
+    case wxSTC_EOL_LF:
+        eol << "LF";
+        break;
+    default:
+        break;
+    }
+}
 
 class WXDLLIMPEXP_SDK clStatusBarArtNormal : public wxCustomStatusBarArt
 {
@@ -51,6 +73,9 @@ clStatusBar::clStatusBar(wxWindow* parent, IManager* mgr)
     EventNotifier::Get()->Bind(wxEVT_WORKSPACE_CLOSED, &clStatusBar::OnWorkspaceClosed, this);
     Bind(wxEVT_STATUSBAR_CLICKED, &clStatusBar::OnFieldClicked, this);
 
+    wxCustomStatusBarField::Ptr_t sourceControl(new wxCustomStatusBarBitmapField(this, 30));
+    AddField(sourceControl);
+
     wxCustomStatusBarField::Ptr_t lineCol(new wxCustomStatusBarFieldText(this, 250));
     AddField(lineCol);
 
@@ -61,15 +86,18 @@ clStatusBar::clStatusBar(wxWindow* parent, IManager* mgr)
     wxCustomStatusBarField::Ptr_t whitespace(new wxCustomStatusBarFieldText(this, 80));
     AddField(whitespace);
 
+    wxCustomStatusBarField::Ptr_t eol(new wxCustomStatusBarFieldText(this, 50));
+    AddField(eol);
+
     wxCustomStatusBarField::Ptr_t language(new wxCustomStatusBarFieldText(this, 100));
     AddField(language);
 
     wxCustomStatusBarField::Ptr_t buildStatus(new wxCustomStatusBarBitmapField(this, 30));
     AddField(buildStatus);
 
-    m_bmpBuildError = wxXmlResource::Get()->LoadBitmap("build-error");
-    m_bmpBuildWarnings = wxXmlResource::Get()->LoadBitmap("build-warning");
-    m_bmpBuild = wxXmlResource::Get()->LoadBitmap("build-building");
+    BitmapLoader* bl = clGetManager()->GetStdIcons();
+    m_bmpBuildError = bl->LoadBitmap("error");
+    m_bmpBuildWarnings = bl->LoadBitmap("warning");
 }
 
 clStatusBar::~clStatusBar()
@@ -91,19 +119,18 @@ void clStatusBar::OnPageChanged(wxCommandEvent& event)
     event.Skip();
     DoUpdateColour();
 
-    // Update the file name
-    IEditor* editor = m_mgr->GetActiveEditor();
-    // update the language
+    // Update the language
     wxString language = "TEXT";
+    IEditor* editor = clGetManager()->GetActiveEditor();
     if(editor) {
         LexerConf::Ptr_t lexer = ColoursAndFontsManager::Get().GetLexerForFile(editor->GetFileName().GetFullPath());
         if(lexer) {
             language = lexer->GetName().Upper();
         }
-        // Set the "TABS/SPACES" field
-        SetWhitespaceInfo(editor->GetCtrl()->GetUseTabs() ? "tabs" : "spaces");
     }
+
     SetLanguage(language);
+    SetWhitespaceInfo();
 }
 
 void clStatusBar::OnThemeChanged(wxCommandEvent& event)
@@ -169,7 +196,7 @@ void clStatusBar::Clear()
     SetBuildBitmap(wxNullBitmap, "");
     StopAnimation();
     SetLanguage("");
-    SetWhitespaceInfo("");
+    ClearWhitespaceInfo();
 }
 
 void clStatusBar::OnBuildEnded(clBuildEvent& event)
@@ -177,9 +204,9 @@ void clStatusBar::OnBuildEnded(clBuildEvent& event)
     event.Skip();
     StopAnimation();
     if(event.GetErrorCount()) {
-        SetBuildBitmap(m_bmpBuildError, _("Build ended with errors. Click to view"));
+        SetBuildBitmap(m_bmpBuildError, _("Build ended with errors\nClick to view"));
     } else if(event.GetWarningCount()) {
-        SetBuildBitmap(m_bmpBuildWarnings, _("Build ended with warnings. Click to view"));
+        SetBuildBitmap(m_bmpBuildWarnings, _("Build ended with warnings\nClick to view"));
     } else {
         SetBuildBitmap(wxNullBitmap, "");
     }
@@ -226,7 +253,15 @@ void clStatusBar::StopAnimation()
 
 void clStatusBar::OnFieldClicked(clCommandEvent& event)
 {
-    if(event.GetInt() == STATUSBAR_ICON_COL_IDX) {
+    if(event.GetInt() == STATUSBAR_SCM_IDX) {
+        if(m_sourceControlTabName.IsEmpty()) return;
+        wxCustomStatusBarField::Ptr_t field = GetField(STATUSBAR_SCM_IDX);
+        CHECK_PTR_RET(field);
+        // Open the output view only if the bitmap is valid
+        if(field->Cast<wxCustomStatusBarBitmapField>()->GetBitmap().IsOk()) {
+            m_mgr->ToggleOutputPane(m_sourceControlTabName);
+        }
+    } else if(event.GetInt() == STATUSBAR_ICON_COL_IDX) {
         wxCustomStatusBarField::Ptr_t field = GetField(STATUSBAR_ICON_COL_IDX);
         CHECK_PTR_RET(field);
         // Open the output view only if the bitmap is valid
@@ -282,7 +317,7 @@ void clStatusBar::OnFieldClicked(clCommandEvent& event)
                     IEditor::List_t editors;
                     clGetManager()->GetAllEditors(editors);
                     std::for_each(editors.begin(), editors.end(), [&](IEditor* e) {
-                        // get the lexer associated with this editor 
+                        // get the lexer associated with this editor
                         // and re-apply the syntax highlight
                         LexerConf::Ptr_t editorLexer =
                             ColoursAndFontsManager::Get().GetLexerForFile(e->GetFileName().GetFullPath());
@@ -320,13 +355,6 @@ void clStatusBar::OnFieldClicked(clCommandEvent& event)
             // Check the proper tabs vs spaces option
             menu.Check(idUseSpaces->GetId(), !stc->GetUseTabs());
             menu.Check(idUseTabs->GetId(), stc->GetUseTabs());
-
-            // wxPoint pt = field->GetRect().GetTopLeft();
-            // int menuHeight = 20;
-            // menuHeight *= 5;
-            //
-            // pt.y -= menuHeight;
-
             int selectedId = GetPopupMenuSelectionFromUser(menu);
             if(selectedId == wxID_NONE) return;
 
@@ -352,17 +380,113 @@ void clStatusBar::OnFieldClicked(clCommandEvent& event)
                 options->SetIndentUsesTabs(true);
                 EditorConfigST::Get()->SetOptions(options);
             }
-            SetWhitespaceInfo(stc->GetUseTabs() ? "tabs" : "spaces");
+            SetWhitespaceInfo();
+        }
+    } else if(event.GetInt() == STATUSBAR_EOL_COL_IDX) {
+        if(m_mgr->GetActiveEditor()) {
+            // show a popup menu
+            wxCustomStatusBarField::Ptr_t field = GetField(STATUSBAR_EOL_COL_IDX);
+            CHECK_PTR_RET(field);
+
+            wxStyledTextCtrl* stc = m_mgr->GetActiveEditor()->GetCtrl();
+            wxMenu menu;
+
+            wxMenuItem* idDisplayEOL = menu.Append(wxID_ANY, _("Display EOL"), "", wxITEM_CHECK);
+            menu.AppendSeparator();
+
+            wxMenuItem* idUseLf = menu.Append(wxID_ANY, _("Use Linux Format (LF)"), "", wxITEM_CHECK);
+            wxMenuItem* idUseCrLf = menu.Append(wxID_ANY, _("Use Windows Format (CRLF)"), "", wxITEM_CHECK);
+            menu.AppendSeparator();
+
+            wxMenuItem* idConvertToCrLF = menu.Append(wxID_ANY, _("Convert to Windows Format"));
+            wxMenuItem* idConvertToLf = menu.Append(wxID_ANY, _("Convert to Linux Format"));
+
+            // Check the proper tabs vs spaces option
+            menu.Check(idUseLf->GetId(), stc->GetEOLMode() == wxSTC_EOL_LF);
+            menu.Check(idUseCrLf->GetId(), stc->GetEOLMode() == wxSTC_EOL_CRLF);
+            menu.Check(idDisplayEOL->GetId(), stc->GetViewEOL());
+
+            int selectedId = GetPopupMenuSelectionFromUser(menu);
+            if(selectedId == wxID_NONE) return;
+
+            if(selectedId == idConvertToCrLF->GetId()) {
+                // This will also change the EOL mode to CRLF
+                wxCommandEvent evt(wxEVT_MENU, XRCID("convert_eol_win"));
+                wxTheApp->GetTopWindow()->GetEventHandler()->AddPendingEvent(evt);
+            } else if(selectedId == idConvertToLf->GetId()) {
+                // This will also change the EOL mode to LF
+                wxCommandEvent evt(wxEVT_MENU, XRCID("convert_eol_unix"));
+                wxTheApp->GetTopWindow()->GetEventHandler()->AddPendingEvent(evt);
+            } else if(selectedId == idUseLf->GetId()) {
+                stc->SetEOLMode(wxSTC_EOL_LF);
+            } else if(selectedId == idUseCrLf->GetId()) {
+                stc->SetEOLMode(wxSTC_EOL_CRLF);
+            } else if(selectedId == idDisplayEOL->GetId()) {
+                wxCommandEvent evt(wxEVT_MENU, XRCID("display_eol"));
+                evt.SetInt(stc->GetViewEOL() ? 0 : 1);
+                wxTheApp->GetTopWindow()->GetEventHandler()->AddPendingEvent(evt);
+            }
+
+            // Update the whitespace info
+            CallAfter(&clStatusBar::SetWhitespaceInfo);
         }
     }
 }
 
-void clStatusBar::SetWhitespaceInfo(const wxString& whitespaceInfo)
+void clStatusBar::SetWhitespaceInfo()
 {
-    wxCustomStatusBarField::Ptr_t field = GetField(STATUSBAR_WHITESPACE_INFO_IDX);
+    IEditor* activeEditor = clGetManager()->GetActiveEditor();
+    CHECK_PTR_RET(activeEditor);
+
+    wxString whitespaceInfo, eolMode;
+    GetWhitespaceInfo(activeEditor->GetCtrl(), whitespaceInfo, eolMode);
+
+    {
+        wxCustomStatusBarField::Ptr_t field = GetField(STATUSBAR_WHITESPACE_INFO_IDX);
+        CHECK_PTR_RET(field);
+
+        wxString ws = whitespaceInfo.Upper();
+        field->Cast<wxCustomStatusBarFieldText>()->SetText(ws);
+        field->SetTooltip(ws);
+    }
+
+    {
+        wxCustomStatusBarField::Ptr_t field = GetField(STATUSBAR_EOL_COL_IDX);
+        CHECK_PTR_RET(field);
+
+        wxString ws = eolMode.Upper();
+        field->Cast<wxCustomStatusBarFieldText>()->SetText(ws);
+        field->SetTooltip(ws);
+    }
+}
+
+void clStatusBar::SetSourceControlBitmap(const wxBitmap& bmp, const wxString& outputTabName, const wxString& tooltip)
+{
+    m_sourceControlTabName = outputTabName;
+    m_bmpSourceControl = bmp;
+
+    wxCustomStatusBarField::Ptr_t field = GetField(STATUSBAR_SCM_IDX);
     CHECK_PTR_RET(field);
 
-    wxString ws = whitespaceInfo.Upper();
-    field->Cast<wxCustomStatusBarFieldText>()->SetText(ws);
-    field->SetTooltip(ws);
+    field->Cast<wxCustomStatusBarBitmapField>()->SetBitmap(m_bmpSourceControl);
+    field->Cast<wxCustomStatusBarBitmapField>()->SetTooltip(tooltip);
+}
+
+void clStatusBar::ClearWhitespaceInfo()
+{
+    {
+        wxCustomStatusBarField::Ptr_t field = GetField(STATUSBAR_WHITESPACE_INFO_IDX);
+        CHECK_PTR_RET(field);
+
+        field->Cast<wxCustomStatusBarFieldText>()->SetText(wxEmptyString);
+        field->SetTooltip(wxEmptyString);
+    }
+
+    {
+        wxCustomStatusBarField::Ptr_t field = GetField(STATUSBAR_EOL_COL_IDX);
+        CHECK_PTR_RET(field);
+
+        field->Cast<wxCustomStatusBarFieldText>()->SetText(wxEmptyString);
+        field->SetTooltip(wxEmptyString);
+    }
 }

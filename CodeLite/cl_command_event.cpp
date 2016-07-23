@@ -44,7 +44,9 @@ clCommandEvent& clCommandEvent::operator=(const clCommandEvent& src)
 {
     m_strings.clear();
     m_ptr = src.m_ptr;
-    m_strings.insert(m_strings.end(), src.m_strings.begin(), src.m_strings.end());
+    for(size_t i=0; i<src.m_strings.size(); ++i) {
+        m_strings.Add(src.m_strings.Item(i).c_str());
+    }
     m_fileName = src.m_fileName;
     m_answer = src.m_answer;
     m_allowed = src.m_allowed;
@@ -180,6 +182,7 @@ clBuildEvent& clBuildEvent::operator=(const clBuildEvent& src)
 // ------------------------------------------------------------------
 clDebugEvent::clDebugEvent(wxEventType commandType, int winid)
     : clCommandEvent(commandType, winid)
+    , m_features(kAllFeatures)
 {
 }
 
@@ -190,6 +193,7 @@ clDebugEvent::clDebugEvent(const clDebugEvent& event) { *this = event; }
 clDebugEvent& clDebugEvent::operator=(const clDebugEvent& other)
 {
     clCommandEvent::operator=(other);
+    m_features = other.m_features;
     m_debuggerName = other.m_debuggerName;
     m_projectName = other.m_projectName;
     m_configurationName = other.m_configurationName;

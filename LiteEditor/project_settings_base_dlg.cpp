@@ -81,11 +81,15 @@ ProjectSettingsBaseDlg::ProjectSettingsBaseDlg(wxWindow* parent, wxWindowID id, 
     #endif
     
     SetName(wxT("ProjectSettingsBaseDlg"));
-    SetSizeHints(-1,-1);
-    if ( GetSizer() ) {
+    SetSize(-1,-1);
+    if (GetSizer()) {
          GetSizer()->Fit(this);
     }
-    CentreOnParent(wxBOTH);
+    if(GetParent()) {
+        CentreOnParent(wxBOTH);
+    } else {
+        CentreOnScreen(wxBOTH);
+    }
 #if wxVERSION_NUMBER >= 2900
     if(!wxPersistenceManager::Get().Find(this)) {
         wxPersistenceManager::Get().RegisterAndRestore(this);
@@ -143,7 +147,7 @@ PSGeneralPageBase::PSGeneralPageBase(wxWindow* parent, wxWindowID id, const wxPo
     
     bSizer35->Add(m_pgMgr136, 1, wxALL|wxEXPAND, 5);
     
-    CATEGORY_GENERAL = m_pgMgr136->Append(  new wxPropertyCategory( _("General Project Settings") ) );
+    CATEGORY_GENERAL = m_pgMgr136->Append(  new wxPropertyCategory( _("General") ) );
     CATEGORY_GENERAL->SetHelpString(wxT(""));
     
     m_pgMgr136Arr.Clear();
@@ -154,22 +158,34 @@ PSGeneralPageBase::PSGeneralPageBase(wxWindow* parent, wxWindowID id, const wxPo
     m_pgPropProjectType = m_pgMgr136->AppendIn( CATEGORY_GENERAL,  new wxEnumProperty( _("Project Type"), wxPG_LABEL, m_pgMgr136Arr, m_pgMgr136IntArr, 0) );
     m_pgPropProjectType->SetHelpString(_("Sets the type of the project"));
     
+    CATEGORY_BUILD = m_pgMgr136->Append(  new wxPropertyCategory( _("Build") ) );
+    CATEGORY_BUILD->SetHelpString(wxT(""));
+    
     m_pgMgr136Arr.Clear();
     m_pgMgr136IntArr.Clear();
-    m_pgPropCompiler = m_pgMgr136->AppendIn( CATEGORY_GENERAL,  new wxEnumProperty( _("Compiler"), wxPG_LABEL, m_pgMgr136Arr, m_pgMgr136IntArr, 0) );
+    m_pgPropMakeGenerator = m_pgMgr136->AppendIn( CATEGORY_BUILD,  new wxEnumProperty( _("Makefile Generator"), wxPG_LABEL, m_pgMgr136Arr, m_pgMgr136IntArr, 0) );
+    m_pgPropMakeGenerator->SetHelpString(_("Select the Makefile generator to use. By default, CodeLite uses its builtin Makefile generator"));
+    
+    m_pgPropMakeGeneratorArgs = m_pgMgr136->AppendIn( m_pgPropMakeGenerator,  new wxLongStringProperty( _("Arguments"), wxPG_LABEL, wxT("")) );
+    m_pgPropMakeGeneratorArgs->SetHelpString(_("Set the Makefile generator arguments"));
+    m_pgPropMakeGeneratorArgs->SetEditor( wxT("TextCtrlAndButton") );
+    
+    m_pgMgr136Arr.Clear();
+    m_pgMgr136IntArr.Clear();
+    m_pgPropCompiler = m_pgMgr136->AppendIn( CATEGORY_BUILD,  new wxEnumProperty( _("Compiler"), wxPG_LABEL, m_pgMgr136Arr, m_pgMgr136IntArr, 0) );
     m_pgPropCompiler->SetHelpString(_("Select the compiler to use. The compiler controls two aspects of the project:\n- If the project is _not_ a custom build, then this compiler is used for compilation\n- CodeLite uses the compiler definition for parsing the output"));
     
-    m_pgPropIntermediateFolder = m_pgMgr136->AppendIn( CATEGORY_GENERAL,  new wxStringProperty( _("Intermediate Folder"), wxPG_LABEL, wxT("")) );
+    m_pgPropIntermediateFolder = m_pgMgr136->AppendIn( CATEGORY_BUILD,  new wxStringProperty( _("Intermediate Folder"), wxPG_LABEL, wxT("")) );
     m_pgPropIntermediateFolder->SetHelpString(_("The name of the folder used for the generated objects during compilation"));
     
-    m_pgPropOutputFile = m_pgMgr136->AppendIn( CATEGORY_GENERAL,  new wxStringProperty( _("Output File"), wxPG_LABEL, wxT("")) );
+    m_pgPropOutputFile = m_pgMgr136->AppendIn( CATEGORY_BUILD,  new wxStringProperty( _("Output File"), wxPG_LABEL, wxT("")) );
     m_pgPropOutputFile->SetHelpString(_("The name of the output file (e.g. the executable file name)"));
-    
-    m_pgPropPause = m_pgMgr136->AppendIn( CATEGORY_GENERAL,  new wxBoolProperty( _("Pause when execution ends"), wxPG_LABEL, 1) );
-    m_pgPropPause->SetHelpString(_("After the execution of the program ends, show a console with the message \"Hit any key to continue...\"\nThis is useful when you wish to view the output printed to stdout before the console terminates"));
     
     CATEGORY_EXECUTION = m_pgMgr136->Append(  new wxPropertyCategory( _("Execution") ) );
     CATEGORY_EXECUTION->SetHelpString(wxT(""));
+    
+    m_pgPropPause = m_pgMgr136->AppendIn( CATEGORY_EXECUTION,  new wxBoolProperty( _("Pause when execution ends"), wxPG_LABEL, 1) );
+    m_pgPropPause->SetHelpString(_("After the execution of the program ends, show a console with the message \"Hit any key to continue...\"\nThis is useful when you wish to view the output printed to stdout before the console terminates"));
     
     m_pgPropGUIApp = m_pgMgr136->AppendIn( CATEGORY_EXECUTION,  new wxBoolProperty( _("This program is a GUI application"), wxPG_LABEL, 0) );
     m_pgPropGUIApp->SetHelpString(_("By marking the project as a GUI project, CodeLite will launch the program without any console terminal wrapping the process execution"));
@@ -182,7 +198,7 @@ PSGeneralPageBase::PSGeneralPageBase(wxWindow* parent, wxWindowID id, const wxPo
     m_pgPropWorkingDirectory->SetHelpString(_("The working directory to set before executing or debugging the program"));
     m_pgPropWorkingDirectory->SetEditor( wxT("TextCtrlAndButton") );
     
-    m_pgPropArgs = m_pgMgr136->AppendIn( CATEGORY_EXECUTION,  new wxStringProperty( _("Program Arguments"), wxPG_LABEL, wxT("")) );
+    m_pgPropArgs = m_pgMgr136->AppendIn( CATEGORY_EXECUTION,  new wxLongStringProperty( _("Program Arguments"), wxPG_LABEL, wxT("")) );
     m_pgPropArgs->SetHelpString(_("The command line arguments to pass to the program when executing or debugging it"));
     
     CATEGORY_DEBUGGER = m_pgMgr136->Append(  new wxPropertyCategory( _("Debugging") ) );
@@ -196,15 +212,14 @@ PSGeneralPageBase::PSGeneralPageBase(wxWindow* parent, wxWindowID id, const wxPo
     m_pgPropUseSeparateDebuggerArgs = m_pgMgr136->AppendIn( CATEGORY_DEBUGGER,  new wxBoolProperty( _("Use separate debugger args"), wxPG_LABEL, 1) );
     m_pgPropUseSeparateDebuggerArgs->SetHelpString(_("When enabled (.e.g. set to True) codelite will pass the arguments set in 'Debug Program Arguments'"));
     
-    m_pgPropDebugArgs = m_pgMgr136->AppendIn( CATEGORY_DEBUGGER,  new wxStringProperty( _("Debug Program Arguments"), wxPG_LABEL, wxT("")) );
+    m_pgPropDebugArgs = m_pgMgr136->AppendIn( CATEGORY_DEBUGGER,  new wxLongStringProperty( _("Debug Program Arguments"), wxPG_LABEL, wxT("")) );
     m_pgPropDebugArgs->SetHelpString(_("Arguments to pass to the debugger"));
     
     SetName(wxT("PSGeneralPageBase"));
-    SetSizeHints(-1,-1);
-    if ( GetSizer() ) {
+    SetSize(-1,-1);
+    if (GetSizer()) {
          GetSizer()->Fit(this);
     }
-    CentreOnParent(wxBOTH);
     // Connect events
     m_checkBoxEnabled->Connect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(PSGeneralPageBase::OnProjectEnabled), NULL, this);
     m_pgMgr136->Connect(wxEVT_PG_CHANGED, wxPropertyGridEventHandler(PSGeneralPageBase::OnValueChanged), NULL, this);
@@ -301,11 +316,10 @@ PSCompilerPageBase::PSCompilerPageBase(wxWindow* parent, wxWindowID id, const wx
     m_pgPropPCHPolicy->SetHelpString(_("Set the PCH flags policy to:\n* Append - this means that the flags set in the 'PCH Compile Flags' field will be appended to default flags\n* Replace - the 'PCH Compile Flags' will replace any other flags"));
     
     SetName(wxT("PSCompilerPageBase"));
-    SetSizeHints(-1,-1);
-    if ( GetSizer() ) {
+    SetSize(-1,-1);
+    if (GetSizer()) {
          GetSizer()->Fit(this);
     }
-    CentreOnParent(wxBOTH);
     // Connect events
     this->Connect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(PSCompilerPageBase::OnProjectEnabledUI), NULL, this);
     m_checkCompilerNeeded->Connect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(PSCompilerPageBase::OnCompilerNeeded), NULL, this);
@@ -372,11 +386,10 @@ PSLinkPageBase::PSLinkPageBase(wxWindow* parent, wxWindowID id, const wxPoint& p
     m_pgPropLibraries->SetEditor( wxT("TextCtrlAndButton") );
     
     SetName(wxT("PSLinkPageBase"));
-    SetSizeHints(-1,-1);
-    if ( GetSizer() ) {
+    SetSize(-1,-1);
+    if (GetSizer()) {
          GetSizer()->Fit(this);
     }
-    CentreOnParent(wxBOTH);
     // Connect events
     this->Connect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(PSLinkPageBase::OnProjectEnabledUI), NULL, this);
     m_checkLinkerNeeded->Connect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(PSLinkPageBase::OnCheckLinkerNeeded), NULL, this);
@@ -476,7 +489,7 @@ PSDebuggerPageBase::PSDebuggerPageBase(wxWindow* parent, wxWindowID id, const wx
     
     boxSizer76->Add(m_staticText301, 0, wxALL, 5);
     
-    m_textCtrlDbgCmds = new wxTextCtrl(m_panel71, wxID_ANY, wxT(""), wxDefaultPosition, wxSize(-1, -1), wxTE_RICH2|wxTE_MULTILINE|wxTE_DONTWRAP);
+    m_textCtrlDbgCmds = new wxTextCtrl(m_panel71, wxID_ANY, wxT(""), wxDefaultPosition, wxSize(-1, -1), wxTE_RICH2|wxTE_PROCESS_TAB|wxTE_MULTILINE|wxTE_DONTWRAP);
     wxFont m_textCtrlDbgCmdsFont(12, wxFONTFAMILY_SWISS, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL, false, wxT("Arial"));
     m_textCtrlDbgCmds->SetFont(m_textCtrlDbgCmdsFont);
     
@@ -492,7 +505,7 @@ PSDebuggerPageBase::PSDebuggerPageBase(wxWindow* parent, wxWindowID id, const wx
     
     boxSizer78->Add(m_staticText311, 0, wxALL|wxEXPAND, 5);
     
-    m_textCtrlDbgPostConnectCmds = new wxTextCtrl(m_panel74, wxID_ANY, wxT(""), wxDefaultPosition, wxSize(-1, -1), wxTE_RICH2|wxTE_MULTILINE|wxTE_DONTWRAP);
+    m_textCtrlDbgPostConnectCmds = new wxTextCtrl(m_panel74, wxID_ANY, wxT(""), wxDefaultPosition, wxSize(-1, -1), wxTE_RICH2|wxTE_PROCESS_TAB|wxTE_MULTILINE|wxTE_DONTWRAP);
     wxFont m_textCtrlDbgPostConnectCmdsFont(12, wxFONTFAMILY_SWISS, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL, false, wxT("Arial"));
     m_textCtrlDbgPostConnectCmds->SetFont(m_textCtrlDbgPostConnectCmdsFont);
     
@@ -539,11 +552,10 @@ PSDebuggerPageBase::PSDebuggerPageBase(wxWindow* parent, wxWindowID id, const wx
     fgSizer61->Add(m_checkBoxDbgRemoteExt, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5);
     
     SetName(wxT("PSDebuggerPageBase"));
-    SetSizeHints(-1,-1);
-    if ( GetSizer() ) {
+    SetSize(-1,-1);
+    if (GetSizer()) {
          GetSizer()->Fit(this);
     }
-    CentreOnParent(wxBOTH);
     // Connect events
     this->Connect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(PSDebuggerPageBase::OnProjectEnabledUI), NULL, this);
     m_button39->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(PSDebuggerPageBase::OnBrowseForDebuggerPath), NULL, this);
@@ -625,11 +637,10 @@ PSResourcesPageBase::PSResourcesPageBase(wxWindow* parent, wxWindowID id, const 
     m_pgPropResCmpSearchPath->SetEditor( wxT("TextCtrlAndButton") );
     
     SetName(wxT("PSResourcesPageBase"));
-    SetSizeHints(-1,-1);
-    if ( GetSizer() ) {
+    SetSize(-1,-1);
+    if (GetSizer()) {
          GetSizer()->Fit(this);
     }
-    CentreOnParent(wxBOTH);
     // Connect events
     this->Connect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(PSResourcesPageBase::OnProjectEnabledUI), NULL, this);
     m_pgMgr->Connect(wxEVT_PG_CHANGED, wxPropertyGridEventHandler(PSResourcesPageBase::OnValueChanged), NULL, this);
@@ -700,16 +711,15 @@ PSEnvironmentBasePage::PSEnvironmentBasePage(wxWindow* parent, wxWindowID id, co
     
     bSizer34->Add(m_staticText47, 0, wxALL, 5);
     
-    m_textCtrlEnvvars = new wxTextCtrl(m_panelEnv, wxID_ANY, wxT(""), wxDefaultPosition, wxSize(-1, -1), wxTE_RICH2|wxTE_PROCESS_TAB|wxTE_PROCESS_ENTER|wxTE_MULTILINE);
+    m_textCtrlEnvvars = new wxTextCtrl(m_panelEnv, wxID_ANY, wxT(""), wxDefaultPosition, wxSize(-1, -1), wxTE_RICH2|wxTE_PROCESS_TAB|wxTE_MULTILINE);
     
     bSizer34->Add(m_textCtrlEnvvars, 1, wxALL|wxEXPAND, 5);
     
     SetName(wxT("PSEnvironmentBasePage"));
-    SetSizeHints(-1,-1);
-    if ( GetSizer() ) {
+    SetSize(-1,-1);
+    if (GetSizer()) {
          GetSizer()->Fit(this);
     }
-    CentreOnParent(wxBOTH);
     // Connect events
     this->Connect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(PSEnvironmentBasePage::OnProjectEnabledUI), NULL, this);
     m_choiceEnv->Connect(wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler(PSEnvironmentBasePage::OnCmdEvtVModified), NULL, this);
@@ -755,7 +765,7 @@ PSBuildEventsBasePage::PSBuildEventsBasePage(wxWindow* parent, wxWindowID id, co
     
     bSizer8->Add(bSizer9, 1, wxEXPAND, 5);
     
-    m_textCtrlBuildEvents = new wxTextCtrl(m_preBuildPage, wxID_ANY, wxT(""), wxDefaultPosition, wxSize(-1, -1), wxTE_RICH2|wxTE_PROCESS_TAB|wxTE_PROCESS_ENTER|wxTE_MULTILINE);
+    m_textCtrlBuildEvents = new wxTextCtrl(m_preBuildPage, wxID_ANY, wxT(""), wxDefaultPosition, wxSize(-1, -1), wxTE_RICH2|wxTE_PROCESS_TAB|wxTE_MULTILINE);
     #ifdef __WXMSW__
     // To get the newer version of the font on MSW, we use font wxSYS_DEFAULT_GUI_FONT with family set to wxFONTFAMILY_TELETYPE
     wxFont m_textCtrlBuildEventsFont = wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT);
@@ -769,11 +779,10 @@ PSBuildEventsBasePage::PSBuildEventsBasePage(wxWindow* parent, wxWindowID id, co
     bSizer9->Add(m_textCtrlBuildEvents, 1, wxALL|wxEXPAND, 5);
     
     SetName(wxT("PSBuildEventsBasePage"));
-    SetSizeHints(-1,-1);
-    if ( GetSizer() ) {
+    SetSize(-1,-1);
+    if (GetSizer()) {
          GetSizer()->Fit(this);
     }
-    CentreOnParent(wxBOTH);
     // Connect events
     this->Connect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(PSBuildEventsBasePage::OnProjectEnabledUI), NULL, this);
     
@@ -856,11 +865,10 @@ PSCustomBuildBasePage::PSCustomBuildBasePage(wxWindow* parent, wxWindowID id, co
     bSizer221->Add(m_buttonDeleteCustomTarget, 0, wxALL, 5);
     
     SetName(wxT("PSCustomBuildBasePage"));
-    SetSizeHints(-1,-1);
-    if ( GetSizer() ) {
+    SetSize(-1,-1);
+    if (GetSizer()) {
          GetSizer()->Fit(this);
     }
-    CentreOnParent(wxBOTH);
     // Connect events
     this->Connect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(PSCustomBuildBasePage::OnProjectEnabledUI), NULL, this);
     m_checkEnableCustomBuild->Connect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(PSCustomBuildBasePage::OnCustomBuildEnabled), NULL, this);
@@ -969,11 +977,10 @@ GlobalSettingsBasePanel::GlobalSettingsBasePanel(wxWindow* parent, wxWindowID id
     m_pgPropResCmpSearchPath->SetEditor( wxT("TextCtrlAndButton") );
     
     SetName(wxT("GlobalSettingsBasePanel"));
-    SetSizeHints(-1,-1);
-    if ( GetSizer() ) {
+    SetSize(-1,-1);
+    if (GetSizer()) {
          GetSizer()->Fit(this);
     }
-    CentreOnParent(wxBOTH);
     // Connect events
     m_pgMgr->Connect(wxEVT_PG_CHANGED, wxPropertyGridEventHandler(GlobalSettingsBasePanel::OnValueChanged), NULL, this);
     m_pgMgr->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(GlobalSettingsBasePanel::OnCustomEditorClicked), NULL, this);
@@ -1039,7 +1046,7 @@ PSCustomMakefileBasePage::PSCustomMakefileBasePage(wxWindow* parent, wxWindowID 
     
     fgSizer5->Add(m_staticText26, 0, wxALL|wxALIGN_RIGHT, 5);
     
-    m_textPreBuildRule = new wxTextCtrl(m_customMakefileStep, wxID_ANY, wxT(""), wxDefaultPosition, wxSize(-1, -1), wxTE_RICH2|wxTE_PROCESS_TAB|wxTE_PROCESS_ENTER|wxTE_MULTILINE|wxTE_DONTWRAP);
+    m_textPreBuildRule = new wxTextCtrl(m_customMakefileStep, wxID_ANY, wxT(""), wxDefaultPosition, wxSize(-1, -1), wxTE_RICH2|wxTE_PROCESS_TAB|wxTE_MULTILINE|wxTE_DONTWRAP);
     #ifdef __WXMSW__
     // To get the newer version of the font on MSW, we use font wxSYS_DEFAULT_GUI_FONT with family set to wxFONTFAMILY_TELETYPE
     wxFont m_textPreBuildRuleFont = wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT);
@@ -1061,11 +1068,10 @@ PSCustomMakefileBasePage::PSCustomMakefileBasePage(wxWindow* parent, wxWindowID 
     sbSizer2->Add(m_staticText24, 0, wxALL, 5);
     
     SetName(wxT("PSCustomMakefileBasePage"));
-    SetSizeHints(-1,-1);
-    if ( GetSizer() ) {
+    SetSize(-1,-1);
+    if (GetSizer()) {
          GetSizer()->Fit(this);
     }
-    CentreOnParent(wxBOTH);
     // Connect events
     this->Connect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(PSCustomMakefileBasePage::OnProjectEnabledUI), NULL, this);
     m_staticText25->Connect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(PSCustomMakefileBasePage::OnProjectCustumBuildUI), NULL, this);
@@ -1119,7 +1125,7 @@ PSCompletionBase::PSCompletionBase(wxWindow* parent, wxWindowID id, const wxPoin
     
     bSizer35->Add(m_staticText47, 0, wxALL, 5);
     
-    m_textCtrlSearchPaths = new wxTextCtrl(m_panel14, wxID_ANY, wxT(""), wxDefaultPosition, wxSize(-1, -1), wxTE_RICH2|wxTE_PROCESS_ENTER|wxTE_MULTILINE);
+    m_textCtrlSearchPaths = new wxTextCtrl(m_panel14, wxID_ANY, wxT(""), wxDefaultPosition, wxSize(-1, -1), wxTE_RICH2|wxTE_PROCESS_TAB|wxTE_MULTILINE);
     #ifdef __WXMSW__
     // To get the newer version of the font on MSW, we use font wxSYS_DEFAULT_GUI_FONT with family set to wxFONTFAMILY_TELETYPE
     wxFont m_textCtrlSearchPathsFont = wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT);
@@ -1129,6 +1135,7 @@ PSCompletionBase::PSCompletionBase(wxWindow* parent, wxWindowID id, const wxPoin
     m_textCtrlSearchPathsFont.SetFamily(wxFONTFAMILY_TELETYPE);
     #endif
     m_textCtrlSearchPaths->SetFont(m_textCtrlSearchPathsFont);
+    m_textCtrlSearchPaths->SetFocus();
     
     bSizer35->Add(m_textCtrlSearchPaths, 1, wxALL|wxEXPAND, 5);
     
@@ -1142,7 +1149,7 @@ PSCompletionBase::PSCompletionBase(wxWindow* parent, wxWindowID id, const wxPoin
     
     bSizer36->Add(m_staticText49, 0, wxALL, 5);
     
-    m_textCtrlMacros = new wxTextCtrl(m_panel15, wxID_ANY, wxT(""), wxDefaultPosition, wxSize(-1, -1), wxTE_RICH2|wxTE_MULTILINE);
+    m_textCtrlMacros = new wxTextCtrl(m_panel15, wxID_ANY, wxT(""), wxDefaultPosition, wxSize(-1, -1), wxTE_RICH2|wxTE_PROCESS_TAB|wxTE_MULTILINE);
     #ifdef __WXMSW__
     // To get the newer version of the font on MSW, we use font wxSYS_DEFAULT_GUI_FONT with family set to wxFONTFAMILY_TELETYPE
     wxFont m_textCtrlMacrosFont = wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT);
@@ -1172,11 +1179,10 @@ PSCompletionBase::PSCompletionBase(wxWindow* parent, wxWindowID id, const wxPoin
     bSizer40->Add(m_checkBoxC14, 0, wxALL, 5);
     
     SetName(wxT("PSCompletionBase"));
-    SetSizeHints(-1,-1);
-    if ( GetSizer() ) {
+    SetSize(-1,-1);
+    if (GetSizer()) {
          GetSizer()->Fit(this);
     }
-    CentreOnParent(wxBOTH);
     // Connect events
     this->Connect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(PSCompletionBase::OnProjectEnabledUI), NULL, this);
     m_textCtrlSearchPaths->Connect(wxEVT_COMMAND_TEXT_UPDATED, wxCommandEventHandler(PSCompletionBase::OnCmdEvtVModified), NULL, this);
@@ -1250,11 +1256,15 @@ ProjectCustomBuildTragetDlgBase::ProjectCustomBuildTragetDlgBase(wxWindow* paren
     m_stdBtnSizer120->Realize();
     
     SetName(wxT("ProjectCustomBuildTragetDlgBase"));
-    SetSizeHints(-1,-1);
-    if ( GetSizer() ) {
+    SetSize(-1,-1);
+    if (GetSizer()) {
          GetSizer()->Fit(this);
     }
-    CentreOnParent(wxBOTH);
+    if(GetParent()) {
+        CentreOnParent(wxBOTH);
+    } else {
+        CentreOnScreen(wxBOTH);
+    }
 #if wxVERSION_NUMBER >= 2900
     if(!wxPersistenceManager::Get().Find(this)) {
         wxPersistenceManager::Get().RegisterAndRestore(this);

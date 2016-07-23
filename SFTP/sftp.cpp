@@ -42,6 +42,8 @@
 #include "sftp_settings.h"
 #include "SFTPSettingsDialog.h"
 #include "fileutils.h"
+#include "dockablepane.h"
+#include "detachedpanesinfo.h"
 
 static SFTP* thePlugin = NULL;
 const wxEventType wxEVT_SFTP_OPEN_SSH_ACCOUNT_MANAGER = ::wxNewEventType();
@@ -115,18 +117,41 @@ SFTP::SFTP(IManager* manager)
 
     // API support
     EventNotifier::Get()->Bind(wxEVT_SFTP_SAVE_FILE, &SFTP::OnSaveFile, this);
-    
+
     SFTPImages images;
-    m_outputPane = new SFTPStatusPage(m_mgr->GetOutputPaneNotebook(), this);
-    m_mgr->GetOutputPaneNotebook()->AddPage(m_outputPane, _("SFTP"), false, m_mgr->GetStdIcons()->LoadBitmap("remote-folder"));
-    
-    m_treeView = new SFTPTreeView(m_mgr->GetWorkspacePaneNotebook(), this);
-    m_mgr->GetWorkspacePaneNotebook()->AddPage(m_treeView, _("SFTP"), false);
-    
+
+    // Add the "SFTP" page to the workspace pane
+    Notebook* book = m_mgr->GetWorkspacePaneNotebook();
+    if(IsPaneDetached(_("SFTP"))) {
+        // Make the window child of the main panel (which is the grand parent of the notebook)
+        DockablePane* cp =
+            new DockablePane(book->GetParent()->GetParent(), book, _("SFTP"), false, wxNullBitmap, wxSize(200, 200));
+        m_treeView = new SFTPTreeView(cp, this);
+        cp->SetChildNoReparent(m_treeView);
+
+    } else {
+        m_treeView = new SFTPTreeView(book, this);
+        book->AddPage(m_treeView, _("SFTP"), false);
+    }
+
+    // Add the "SFTP Log" page to the output pane
+    book = m_mgr->GetOutputPaneNotebook();
+    if(IsPaneDetached(_("SFTP Log"))) {
+        // Make the window child of the main panel (which is the grand parent of the notebook)
+        DockablePane* cp = new DockablePane(
+            book->GetParent()->GetParent(), book, _("SFTP Log"), false, images.Bitmap("sftp_tab"), wxSize(200, 200));
+        m_outputPane = new SFTPStatusPage(cp, this);
+        cp->SetChildNoReparent(m_outputPane);
+
+    } else {
+        m_outputPane = new SFTPStatusPage(book, this);
+        book->AddPage(m_outputPane, _("SFTP Log"), false, images.Bitmap("sftp_tab"));
+    }
+
     // Create the helper for adding our tabs in the "more" menu
-    m_tabToggler.reset(new clTabTogglerHelper(_("SFTP"), m_outputPane, _("SFTP"), m_treeView));
+    m_tabToggler.reset(new clTabTogglerHelper(_("SFTP Log"), m_outputPane, _("SFTP"), m_treeView));
     m_tabToggler->SetOutputTabBmp(m_mgr->GetStdIcons()->LoadBitmap("remote-folder"));
-    
+
     SFTPWorkerThread::Instance()->SetNotifyWindow(m_outputPane);
     SFTPWorkerThread::Instance()->SetSftpPlugin(this);
     SFTPWorkerThread::Instance()->Start();
@@ -177,6 +202,14 @@ void SFTP::HookPopupMenu(wxMenu* menu, MenuType type)
         menu->Prepend(item);
         menu->Prepend(wxID_ANY, _("Workspace Mirroring"), sftpMenu);
     }
+}
+
+bool SFTP::IsPaneDetached(const wxString& name) const
+{
+    DetachedPanesInfo dpi;
+    m_mgr->GetConfigTool()->ReadObject(wxT("DetachedPanesList"), &dpi);
+    const wxArrayString& detachedPanes = dpi.GetPanes();
+    return detachedPanes.Index(name) != wxNOT_FOUND;
 }
 
 void SFTP::UnHookPopupMenu(wxMenu* menu, MenuType type)

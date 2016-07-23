@@ -10,8 +10,7 @@
 #include "bitmap_loader.h"
 #include "file_logger.h"
 
-struct TabData
-{
+struct TabData {
     wxString label;
     wxBitmap bmp;
     wxFileName filename;
@@ -125,18 +124,20 @@ NotebookNavigationDlg::NotebookNavigationDlg(wxWindow* parent, Notebook* book)
 
     wxTheApp->Bind(wxEVT_KEY_DOWN, &NotebookNavigationDlg::OnKeyDown, this);
     wxTheApp->Bind(wxEVT_KEY_UP, &NotebookNavigationDlg::OnKeyUp, this);
+    m_dvListCtrl->SetFocus();
 }
 
 NotebookNavigationDlg::~NotebookNavigationDlg()
 {
+    wxTheApp->Unbind(wxEVT_KEY_DOWN, &NotebookNavigationDlg::OnKeyDown, this);
+    wxTheApp->Unbind(wxEVT_KEY_UP, &NotebookNavigationDlg::OnKeyUp, this);
+
     CL_DEBUG("NotebookNavigationDlg::~NotebookNavigationDlg");
     for(int i = 0; i < m_dvListCtrl->GetItemCount(); ++i) {
         TabData* d = (TabData*)m_dvListCtrl->GetItemData(m_dvListCtrl->RowToItem(i));
         wxDELETE(d);
     }
     m_dvListCtrl->DeleteAllItems();
-    wxTheApp->Unbind(wxEVT_KEY_DOWN, &NotebookNavigationDlg::OnKeyDown, this);
-    wxTheApp->Unbind(wxEVT_KEY_UP, &NotebookNavigationDlg::OnKeyUp, this);
 }
 
 void NotebookNavigationDlg::CloseDialog()
@@ -152,14 +153,14 @@ void NotebookNavigationDlg::CloseDialog()
 
 void NotebookNavigationDlg::OnKeyDown(wxKeyEvent& event)
 {
-    if((event.GetUnicodeKey() == WXK_TAB) && (
 #ifdef __WXOSX__
-                                                 event.AltDown()
+    if(event.GetUnicodeKey() == WXK_ESCAPE) {
+        CallAfter(&NotebookNavigationDlg::CloseDialog);
+    } else {
+        event.Skip();
+    }
 #else
-                                                 event.CmdDown()
-#endif
-                                                 &&
-                                                 event.ShiftDown())) {
+    if((event.GetUnicodeKey() == WXK_TAB) && (event.CmdDown() && event.ShiftDown())) {
         // Navigate Up
         wxDataViewItem item = m_dvListCtrl->GetSelection();
         if(item.IsOk()) {
@@ -178,13 +179,7 @@ void NotebookNavigationDlg::OnKeyDown(wxKeyEvent& event)
                 m_dvListCtrl->EnsureVisible(item);
             }
         }
-    } else if((event.GetUnicodeKey() == WXK_TAB) &&
-#ifdef __WXOSX__
-              event.AltDown()
-#else
-              event.CmdDown()
-#endif
-              ) {
+    } else if((event.GetUnicodeKey() == WXK_TAB) && event.CmdDown()) {
         // Navigate Down
         wxDataViewItem item = m_dvListCtrl->GetSelection();
         if(item.IsOk()) {
@@ -205,17 +200,14 @@ void NotebookNavigationDlg::OnKeyDown(wxKeyEvent& event)
     } else {
         event.Skip();
     }
+#endif
 }
 
 void NotebookNavigationDlg::OnKeyUp(wxKeyEvent& event)
 {
     CL_DEBUG("NotebookNavigationDlg::OnKeyUp");
 #ifdef __WXOSX__
-    if(event.GetKeyCode() == WXK_ALT) {
-        CloseDialog();
-    } else {
-        event.Skip();
-    }
+    event.Skip();
 #else
     if(event.GetKeyCode() == WXK_CONTROL) {
         CloseDialog();
@@ -224,6 +216,7 @@ void NotebookNavigationDlg::OnKeyUp(wxKeyEvent& event)
     }
 #endif
 }
+
 void NotebookNavigationDlg::OnItemActivated(wxDataViewEvent& event)
 {
     event.Skip();

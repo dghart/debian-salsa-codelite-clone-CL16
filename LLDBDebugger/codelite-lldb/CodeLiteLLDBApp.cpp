@@ -23,8 +23,6 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 
-#ifndef __WXMSW__
-
 #include "CodeLiteLLDBApp.h"
 #include <iostream>
 #include <wx/sckaddr.h>
@@ -49,6 +47,7 @@
 #include <lldb/API/SBTypeCategory.h>
 #include <wx/filename.h>
 #include "LLDBProtocol/LLDBRemoteHandshakePacket.h"
+#include <lldb/API/SBThread.h>
 
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
@@ -69,7 +68,7 @@ static void print_c_array(const char** arr)
 
 static char** _wxArrayStringToCharPtrPtr(const wxArrayString& arr)
 {
-    char** argv = new char* [arr.size() + 1]; // for the NULL
+    char** argv = new char*[arr.size() + 1]; // for the NULL
     for(size_t i = 0; i < arr.size(); ++i) {
         argv[i] = strdup(arr.Item(i).mb_str(wxConvUTF8).data());
     }
@@ -163,9 +162,8 @@ bool CodeLiteLLDBApp::OnInit()
 
         } else {
             wxPrintf("codelite-lldb: caught exception: %s\n", e.what());
-            wxPrintf("codelite-lldb: failed to create server on %s. %s\n",
-                     (wxString() << m_ip << ":" << m_port),
-                     strerror(errno));
+            wxPrintf("codelite-lldb: failed to create server on %s. %s\n", (wxString() << m_ip << ":" << m_port),
+                strerror(errno));
         }
         return false;
     }
@@ -189,8 +187,9 @@ bool CodeLiteLLDBApp::InitializeLLDB(const LLDBCommand& command)
     // we ensure that it exists by checking the environment variable LLDB_DEBUGSERVER_PATH
     wxString lldbDebugServer;
     if(!::wxGetEnv("LLDB_DEBUGSERVER_PATH", &lldbDebugServer) || !wxFileName::Exists(lldbDebugServer)) {
-        wxPrintf("codelite-lldb: LLDB_DEBUGSERVER_PATH environment does not exist or contains a path to a non existent "
-                 "file\n");
+        wxPrintf(
+            "codelite-lldb: LLDB_DEBUGSERVER_PATH environment does not exist or contains a path to a non existent "
+            "file\n");
         NotifyExited();
         return false;
     }
@@ -202,9 +201,8 @@ bool CodeLiteLLDBApp::InitializeLLDB(const LLDBCommand& command)
     lldb::SBError lldbError;
     m_target = m_debugger.CreateTarget(command.GetExecutable().mb_str().data(), NULL, NULL, true, lldbError);
     if(!m_target.IsValid()) {
-        wxPrintf("codelite-lldb: could not create target for file %s. %s\n",
-                 command.GetExecutable(),
-                 lldbError.GetCString());
+        wxPrintf("codelite-lldb: could not create target for file %s. %s\n", command.GetExecutable(),
+            lldbError.GetCString());
         NotifyExited();
         return false;
     }
@@ -499,18 +497,22 @@ void CodeLiteLLDBApp::RunDebugger(const LLDBCommand& command)
 
         lldb::SBError lldbError;
         lldb::SBListener listener = m_debugger.GetListener();
-        lldb::SBProcess process =
-            m_target.Launch(listener,
-                            argv,
-                            (const char**)penv,
-                            ptty,
-                            ptty,
-                            ptty,
-                            pwd,
-                            lldb::eLaunchFlagLaunchInSeparateProcessGroup | lldb::eLaunchFlagStopAtEntry,
-                            true,
-                            lldbError);
+        size_t launchFlags = lldb::eLaunchFlagStopAtEntry;
 
+#ifdef LLDB_ON_WINDOWS
+        lldb::SBLaunchInfo li(argv);
+        li.SetShell("C:\\Windows\\system32\\cmd.exe");
+        li.SetEnvironmentEntries((const char**)penv, true);
+        launchFlags |= lldb::eLaunchFlagLaunchInShell;
+        launchFlags |= lldb::eLaunchFlagDisableASLR;
+        launchFlags |= lldb::eLaunchFlagDebug;
+        li.SetLaunchFlags(launchFlags);
+        lldb::SBProcess process = m_target.Launch(li, lldbError);
+#else
+        launchFlags |= lldb::eLaunchFlagLaunchInSeparateProcessGroup;
+        lldb::SBProcess process =
+            m_target.Launch(listener, argv, (const char**)penv, ptty, ptty, ptty, pwd, launchFlags, true, lldbError);
+#endif
         // bool isOk = m_target.LaunchSimple(argv, envp, wd).IsValid();
         DELETE_CHAR_PTR_PTR(const_cast<char**>(argv));
         DELETE_CHAR_PTR_PTR(penv);
@@ -571,11 +573,10 @@ void CodeLiteLLDBApp::ApplyBreakpoints(const LLDBCommand& command)
                     break;
                 }
                 case LLDBBreakpoint::kFileLine: {
-                    wxPrintf("codelite-lldb: creating breakpoint by location: %s,%d\n",
-                             breakPoint->GetFilename(),
-                             breakPoint->GetLineNumber());
-                    m_target.BreakpointCreateByLocation(breakPoint->GetFilename().mb_str().data(),
-                                                        breakPoint->GetLineNumber());
+                    wxPrintf("codelite-lldb: creating breakpoint by location: %s,%d\n", breakPoint->GetFilename(),
+                        breakPoint->GetLineNumber());
+                    m_target.BreakpointCreateByLocation(
+                        breakPoint->GetFilename().mb_str().data(), breakPoint->GetLineNumber());
                     break;
                 }
                 }
@@ -715,7 +716,7 @@ void CodeLiteLLDBApp::AcceptNewConnection() throw(clSocketException)
         m_networkThread->Start();
 
     } catch(clSocketException& e) {
-        wxPrintf("codelite-lldb: an error occured while waiting for connection. %s\n", e.what().c_str());
+        wxPrintf("codelite-lldb: an error occurred while waiting for connection. %s\n", e.what().c_str());
         Cleanup();
 
         // exit
@@ -751,7 +752,7 @@ void CodeLiteLLDBApp::LocalVariables(const LLDBCommand& command)
 
     // next, add the watches
     for(size_t i = 0; i < m_watches.GetCount(); ++i) {
-        lldb::SBValue value = frame.EvaluateExpression(m_watches.Item(i).mb_str(wxConvUTF8).data());
+        lldb::SBValue value = frame.GetValueForVariablePath(m_watches.Item(i).mb_str(wxConvUTF8).data());
         if(value.IsValid()) {
             LLDBVariable::Ptr_t var(new LLDBVariable(value));
             var->SetIsWatch(true);
@@ -870,7 +871,7 @@ void CodeLiteLLDBApp::MainLoop()
 
     } catch(clSocketException& e) {
         wxPrintf(
-            "codelite-lldb: an error occured during MainLoop(). %s. strerror=%s\n", e.what().c_str(), strerror(errno));
+            "codelite-lldb: an error occurred during MainLoop(). %s. strerror=%s\n", e.what().c_str(), strerror(errno));
         // exit now
         exit(0);
     }
@@ -904,8 +905,11 @@ void CodeLiteLLDBApp::EvalExpression(const LLDBCommand& command)
     wxPrintf("codelite-lldb: evaluating expression '%s'\n", command.GetExpression());
 
     if(CanInteract()) {
-        lldb::SBExpressionOptions options;
-        lldb::SBValue value = m_target.EvaluateExpression(command.GetExpression().mb_str(wxConvUTF8).data(), options);
+        // Evaluate the expression based on the current frame
+        wxString expression = command.GetExpression();
+        expression.Trim().Trim(false);
+        lldb::SBValue value = m_target.GetProcess().GetSelectedThread().GetSelectedFrame().GetValueForVariablePath(
+            expression.mb_str(wxConvUTF8).data());
         if(value.IsValid()) {
 
             LLDBReply reply;
@@ -1063,12 +1067,12 @@ void CodeLiteLLDBApp::DeleteWatch(const LLDBCommand& command)
 
 void CodeLiteLLDBApp::ExecuteInterperterCommand(const LLDBCommand& command)
 {
-    
+
     lldb::SBCommandReturnObject ret;
     std::string c_command = command.GetExpression().mb_str(wxConvUTF8).data();
     wxPrintf("codelite-lldb: ExecuteInterperterCommand: '%s'\n", c_command.c_str());
     m_debugger.GetCommandInterpreter().HandleCommand(c_command.c_str(), ret);
-    
+
     if(ret.GetOutput()) {
         LLDBReply reply;
         reply.SetText(ret.GetOutput());
@@ -1081,5 +1085,3 @@ void CodeLiteLLDBApp::ExecuteInterperterCommand(const LLDBCommand& command)
         SendReply(reply);
     }
 }
-
-#endif

@@ -58,6 +58,7 @@
 #include "clKeyboardManager.h"
 #include "sessionmanager.h"
 #include "event_notifier.h"
+#include "detachedpanesinfo.h"
 
 PluginManager* PluginManager::Get()
 {
@@ -278,8 +279,8 @@ void PluginManager::Load()
                                                                         .RightDockable(true)
                                                                         .Caption(plugin->GetShortName())
                                                                         .ToolbarPane()
-                                                                        .Bottom()
-                                                                        .Row(0));
+                                                                        .Top()
+                                                                        .Position(999));
 
                 // Add menu entry at the 'View->Toolbars' menu for this toolbar
                 wxMenuItem* item = clMainFrame::Get()->GetMenuBar()->FindItem(XRCID("toolbars_menu"));
@@ -323,12 +324,19 @@ void PluginManager::Load()
     if(DefaultArray.IsEmpty()) {
         DefaultArray.Add("NOT-FOUND");
     }
+
+    DetachedPanesInfo dpi;
+    GetConfigTool()->ReadObject(wxT("DetachedPanesList"), &dpi);
+    const wxArrayString& detachedPanes = dpi.GetPanes();
+
     {
+        // Hide workspace tabs
         const wxArrayString& tabs = GetWorkspaceTabs();
         wxArrayString visibleTabs = clConfig::Get().Read("VisibleWorkspaceTabs", DefaultArray);
         if(!((visibleTabs.size() == 1) && (visibleTabs.Item(0) == "NOT-FOUND"))) {
             for(size_t i = 0; i < tabs.size(); ++i) {
-                if(visibleTabs.Index(tabs.Item(i)) == wxNOT_FOUND) {
+                if((visibleTabs.Index(tabs.Item(i)) == wxNOT_FOUND) &&
+                    (detachedPanes.Index(tabs.Item(i)) == wxNOT_FOUND)) {
                     // hidden tab - post an event
                     clCommandEvent eventHide(wxEVT_SHOW_WORKSPACE_TAB);
                     eventHide.SetSelected(false).SetString(tabs.Item(i));
@@ -339,11 +347,13 @@ void PluginManager::Load()
     }
 
     {
+        // Hide output tabs
         const wxArrayString& tabs = GetOutputTabs();
         wxArrayString visibleTabs = clConfig::Get().Read("VisibleOutputTabs", DefaultArray);
         if(!((visibleTabs.size() == 1) && (visibleTabs.Item(0) == "NOT-FOUND"))) {
             for(size_t i = 0; i < tabs.size(); ++i) {
-                if(visibleTabs.Index(tabs.Item(i)) == wxNOT_FOUND) {
+                if((visibleTabs.Index(tabs.Item(i)) == wxNOT_FOUND) &&
+                    (detachedPanes.Index(tabs.Item(i)) == wxNOT_FOUND)) {
                     // hidden tab - post an event
                     clCommandEvent eventHide(wxEVT_SHOW_OUTPUT_TAB);
                     eventHide.SetSelected(false).SetString(tabs.Item(i));
@@ -451,7 +461,7 @@ int PluginManager::GetToolbarIconSize()
     return 24;
 }
 
-wxAuiManager* PluginManager::GetDockingManager() { return &clMainFrame::Get()->GetDockingManager(); }
+wxAuiManager* PluginManager::GetDockingManager() { return m_dockingManager; }
 
 EnvironmentConfig* PluginManager::GetEnv() { return EnvironmentConfig::Instance(); }
 
@@ -608,7 +618,7 @@ bool PluginManager::IsShutdownInProgress() const { return ManagerST::Get()->IsSh
 BitmapLoader* PluginManager::GetStdIcons()
 {
     if(!m_bmpLoader) {
-        m_bmpLoader = new BitmapLoader();
+        m_bmpLoader = BitmapLoader::Create();
     }
     return m_bmpLoader;
 }
@@ -875,8 +885,28 @@ clStatusBar* PluginManager::GetStatusBar()
 void PluginManager::ToggleOutputPane(const wxString& selectedWindow)
 {
     if(ManagerST::Get()->IsPaneVisible(wxT("Output View"))) {
-        ManagerST::Get()->HidePane("Output View");
+        if(!selectedWindow.IsEmpty()) {
+            wxString selectedTabName;
+            Notebook* book = clMainFrame::Get()->GetOutputPane()->GetNotebook();
+            int where = book->GetSelection();
+            if(where != wxNOT_FOUND) {
+                selectedTabName = book->GetPageText(where);
+            }
+            if(selectedTabName == selectedWindow) {
+                // The requested tab is already selected, just hide the pane
+                ManagerST::Get()->HidePane("Output View");
+            } else {
+                // The output pane is visible, but the selected tab is not the one we wanted
+                // Select it
+                ManagerST::Get()->ShowOutputPane(selectedWindow);
+            }
+        } else {
+            // The output pane is visible and the selected tab is the one we requested
+            // So just hide it
+            ManagerST::Get()->HidePane("Output View");
+        }
     } else {
+        // The output pane is hidden, show it and select the requested tab
         ManagerST::Get()->ShowOutputPane(selectedWindow);
     }
 }
@@ -890,6 +920,7 @@ void PluginManager::ShowToolBar(bool show)
     event.SetEventObject(clMainFrame::Get());
     clMainFrame::Get()->GetEventHandler()->AddPendingEvent(event);
 }
+
 bool PluginManager::IsToolBarShown() const
 {
     if(clMainFrame::Get()->GetMainToolBar()) {
@@ -897,4 +928,9 @@ bool PluginManager::IsToolBarShown() const
         return clMainFrame::Get()->GetMainToolBar()->IsShown();
     }
     return false;
+}
+
+bool PluginManager::CloseEditor(IEditor* editor, bool prompt)
+{
+    return clMainFrame::Get()->GetMainBook()->ClosePage(editor, prompt);
 }

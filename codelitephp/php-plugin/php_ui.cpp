@@ -284,11 +284,11 @@ OpenResourceDlgBase::OpenResourceDlgBase(wxWindow* parent, wxWindowID id, const 
     
     bSizer10->Add(m_textCtrlFilter, 0, wxALL|wxEXPAND, 5);
     
-    m_dvListCtrl = new wxDataViewListCtrl(this, wxID_ANY, wxDefaultPosition, wxSize(-1,200), wxDV_ROW_LINES|wxDV_SINGLE);
+    m_dvListCtrl = new wxDataViewListCtrl(this, wxID_ANY, wxDefaultPosition, wxSize(-1,200), wxDV_VERT_RULES|wxDV_ROW_LINES|wxDV_SINGLE);
     
     bSizer10->Add(m_dvListCtrl, 1, wxALL|wxEXPAND, 5);
     
-    m_dvListCtrl->AppendIconTextColumn(_("Name"), wxDATAVIEW_CELL_INERT, 150, wxALIGN_LEFT);
+    m_dvListCtrl->AppendIconTextColumn(_("Name"), wxDATAVIEW_CELL_INERT, -2, wxALIGN_LEFT);
     m_dvListCtrl->AppendTextColumn(_("Kind"), wxDATAVIEW_CELL_INERT, 80, wxALIGN_LEFT);
     m_dvListCtrl->AppendTextColumn(_("File"), wxDATAVIEW_CELL_INERT, 250, wxALIGN_LEFT);
     
@@ -803,7 +803,7 @@ PHPProjectSettingsBase::PHPProjectSettingsBase(wxWindow* parent, wxWindowID id, 
     wxFont m_staticText13Font = wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT);
     m_staticText13->SetFont(m_staticText13Font);
     
-    bSizer23->Add(m_staticText13, 0, wxALL|wxALIGN_RIGHT|wxALIGN_CENTER_VERTICAL, 5);
+    bSizer23->Add(m_staticText13, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5);
     
     m_button15 = new wxButton(m_panel47, wxID_ANY, _("Browse"), wxDefaultPosition, wxSize(-1, -1), 0);
     m_button15->SetDefault();

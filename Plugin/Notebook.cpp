@@ -130,7 +130,7 @@ wxWindow* Notebook::GetCurrentPage() const
 int Notebook::FindPage(wxWindow* page) const { return m_tabCtrl->FindPage(page); }
 
 bool Notebook::RemovePage(size_t page, bool notify) { return m_tabCtrl->RemovePage(page, notify, false); }
-bool Notebook::DeletePage(size_t page) { return m_tabCtrl->RemovePage(page, true, true); }
+bool Notebook::DeletePage(size_t page, bool notify) { return m_tabCtrl->RemovePage(page, notify, true); }
 bool Notebook::DeleteAllPages() { return m_tabCtrl->DeleteAllPages(); }
 
 void Notebook::EnableStyle(NotebookStyle style, bool enable)
@@ -404,7 +404,10 @@ void clTabCtrl::OnPaint(wxPaintEvent& e)
     // Draw background
     dc.SetPen(tabAreaBgCol);
     dc.SetBrush(tabAreaBgCol);
-    dc.DrawRectangle(GetClientRect());
+#ifdef __WXOSX__
+    clientRect.Inflate(1, 1);
+#endif
+    dc.DrawRectangle(clientRect);
 
     for(size_t i = 0; i < m_tabs.size(); ++i) {
         m_tabs.at(i)->CalculateOffsets(GetStyle());

@@ -87,13 +87,13 @@
 // fix bug in wxscintilla.h
 #ifdef EVT_STC_CALLTIP_CLICK
 #undef EVT_STC_CALLTIP_CLICK
-#define EVT_STC_CALLTIP_CLICK(id, fn)                                                              \
-    DECLARE_EVENT_TABLE_ENTRY(                                                                     \
-        wxEVT_STC_CALLTIP_CLICK,                                                                   \
-        id,                                                                                        \
-        wxID_ANY,                                                                                  \
-        (wxObjectEventFunction)(wxEventFunction)wxStaticCastEvent(wxStyledTextEventFunction, &fn), \
-        (wxObject*)NULL),
+#define EVT_STC_CALLTIP_CLICK(id, fn)                                            \
+    DECLARE_EVENT_TABLE_ENTRY(wxEVT_STC_CALLTIP_CLICK,                           \
+                              id,                                                \
+                              wxID_ANY,                                          \
+                              (wxObjectEventFunction)(wxEventFunction)           \
+                              wxStaticCastEvent(wxStyledTextEventFunction, &fn), \
+                              (wxObject*)NULL),
 #endif
 
 #define NUMBER_MARGIN_ID 0
@@ -762,9 +762,7 @@ void LEditor::SetProperties()
     // Should we use spaces or tabs for indenting?
     // Usually we will ask the configuration, however
     // when using Makefile we _must_ use the TABS
-    wxString contextName = GetContext()->GetName();
-    contextName.MakeLower();
-    SetUseTabs((contextName == "makefile") ? true : options->GetIndentUsesTabs());
+    SetUseTabs((GetContext()->GetName().Lower() == "makefile") ? true : options->GetIndentUsesTabs());
 
     SetTabWidth(options->GetTabWidth());
     SetIndent(options->GetIndentWidth());
@@ -793,7 +791,7 @@ void LEditor::SetProperties()
     if(alpha != wxNOT_FOUND) {
         IndicatorSetAlpha(MARKER_WORD_HIGHLIGHT, alpha);
     }
-    
+
     IndicatorSetUnder(MARKER_FIND_BAR_WORD_HIGHLIGHT, true);
     IndicatorSetStyle(MARKER_FIND_BAR_WORD_HIGHLIGHT, wxSTC_INDIC_BOX);
     bool isDarkTheme = (lexer && lexer->IsDark());
@@ -801,7 +799,14 @@ void LEditor::SetProperties()
     if(alpha != wxNOT_FOUND) {
         IndicatorSetAlpha(MARKER_FIND_BAR_WORD_HIGHLIGHT, alpha);
     }
-    
+
+    IndicatorSetUnder(MARKER_CONTEXT_WORD_HIGHLIGHT, true);
+    IndicatorSetStyle(MARKER_CONTEXT_WORD_HIGHLIGHT, wxSTC_INDIC_BOX);
+    IndicatorSetForeground(MARKER_CONTEXT_WORD_HIGHLIGHT, isDarkTheme ? "WHITE" : "BLACK");
+    if(alpha != wxNOT_FOUND) {
+        IndicatorSetAlpha(MARKER_CONTEXT_WORD_HIGHLIGHT, alpha);
+    }
+
     IndicatorSetStyle(HYPERLINK_INDICATOR, wxSTC_INDIC_PLAIN);
     IndicatorSetStyle(MATCH_INDICATOR, wxSTC_INDIC_BOX);
     IndicatorSetForeground(MATCH_INDICATOR, wxT("GREY"));
@@ -1369,14 +1374,14 @@ bool LEditor::SaveFile()
     return true;
 }
 
-bool LEditor::SaveFileAs()
+bool LEditor::SaveFileAs(const wxString& newname, const wxString& savePath)
 {
     // Prompt the user for a new file name
     const wxString ALL(wxT("All Files (*)|*"));
     wxFileDialog dlg(this,
                      _("Save As"),
-                     m_fileName.GetPath(),
-                     m_fileName.GetFullName(),
+                     savePath.IsEmpty() ? m_fileName.GetPath() : savePath,
+                     newname.IsEmpty() ? m_fileName.GetFullName() : newname,
                      ALL,
                      wxFD_SAVE | wxFD_OVERWRITE_PROMPT,
                      wxDefaultPosition);
@@ -1529,12 +1534,16 @@ bool LEditor::SaveToFile(const wxFileName& fileName)
     if(buf.length() == 0 && !theText.IsEmpty()) {
         // something went wrong in the conversion process
         wxString errmsg;
-        errmsg << _("File text conversion failed!\nCheck your file font encoding from\nSettings | Global Editor "
-                    "Prefernces | Misc | Locale");
+        errmsg << _(
+            "File text conversion failed!\nCheck your file font encoding from\nSettings | Preferences | Misc | Locale");
         wxMessageBox(errmsg, "CodeLite", wxOK | wxICON_ERROR | wxCENTER, wxTheApp->GetTopWindow());
         return false;
     }
-
+    
+    if(!m_fileBom.IsEmpty()) {
+        // restore the BOM
+        file.Write(m_fileBom.GetData(), m_fileBom.Len());
+    }
     file.Write(buf.data(), strlen(buf.data()));
     file.Close();
 
@@ -2638,7 +2647,7 @@ void LEditor::DelAllMarkers(int which_type)
 
     SetIndicatorCurrent(DEBUGGER_INDICATOR);
     IndicatorClearRange(0, GetLength());
-    
+
     SetIndicatorCurrent(MARKER_FIND_BAR_WORD_HIGHLIGHT);
     IndicatorClearRange(0, GetLength());
 }
@@ -3252,6 +3261,10 @@ void LEditor::OnLeftDown(wxMouseEvent& event)
     HighlightWord(false);
     wxDELETE(m_richTooltip);
 
+    // Clear context word highlight
+    SetIndicatorCurrent(MARKER_CONTEXT_WORD_HIGHLIGHT);
+    IndicatorClearRange(0, GetLength());
+
     // hide completion box
     DoCancelCalltip();
     GetFunctionTip()->Deactivate();
@@ -3298,7 +3311,6 @@ void LEditor::DoBreakptContextMenu(wxPoint pt)
     // calltips from firing while our menu is popped
     m_popupIsOn = true;
 
-    int ToHereId = 0;
     wxMenu menu;
 
     // First, add/del bookmark
@@ -3338,25 +3350,12 @@ void LEditor::DoBreakptContextMenu(wxPoint pt)
         menu.Append(XRCID("edit_breakpoint"), wxString(_("Edit Breakpoint")));
     }
 
-    if(ManagerST::Get()->DbgCanInteract()) {
-        menu.AppendSeparator();
-        ToHereId = wxNewId();
-        menu.Append(ToHereId, _("Run to here"));
-        menu.Connect(
-            ToHereId, wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(LEditor::OnDbgRunToCursor), NULL, this);
-    }
-
     clContextMenuEvent event(wxEVT_CONTEXT_MENU_EDITOR_MARGIN);
     event.SetMenu(&menu);
     if(EventNotifier::Get()->ProcessEvent(event)) return;
 
     PopupMenu(&menu, pt.x, pt.y);
     m_popupIsOn = false;
-
-    if(ToHereId) {
-        menu.Disconnect(
-            ToHereId, wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(LEditor::OnDbgRunToCursor), NULL, this);
-    }
 }
 
 void LEditor::AddOtherBreakpointType(wxCommandEvent& event)
@@ -3398,9 +3397,8 @@ void LEditor::AddBreakpoint(int lineno /*= -1*/,
     }
 
     ManagerST::Get()->GetBreakpointsMgr()->SetExpectingControl(true);
-    if(!ManagerST::Get()
-            ->GetBreakpointsMgr()
-            ->AddBreakpointByLineno(GetFileName().GetFullPath(), lineno, conditions, is_temp, is_disabled)) {
+    if(!ManagerST::Get()->GetBreakpointsMgr()->AddBreakpointByLineno(
+           GetFileName().GetFullPath(), lineno, conditions, is_temp, is_disabled)) {
         wxMessageBox(_("Failed to insert breakpoint"));
 
     } else {
@@ -3608,16 +3606,8 @@ void LEditor::AddDebuggerContextMenu(wxMenu* menu)
     m_dynItems.push_back(item);
 
     menuItemText.Clear();
-    item = new wxMenuItem(menu, wxNewId(), _("Run to cursor"));
-    menu->Prepend(item);
-    menu->Connect(
-        item->GetId(), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(LEditor::OnDbgRunToCursor), NULL, this);
-    m_dynItems.push_back(item);
-
-    item = new wxMenuItem(menu, wxNewId(), _("Jump to cursor"));
-    menu->Prepend(item);
-    menu->Connect(
-        item->GetId(), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(LEditor::OnDbgJumpToCursor), NULL, this);
+    menu->Prepend(XRCID("dbg_run_to_cursor"), _("Run to Caret Line"), _("Run to Caret Line"));
+    menu->Prepend(XRCID("dbg_jump_cursor"), _("Jump to Caret Line"), _("Jump to Caret Line"));
     m_dynItems.push_back(item);
 }
 
@@ -4146,29 +4136,6 @@ wxString LEditor::GetEolString()
     return eol;
 }
 
-void LEditor::OnDbgRunToCursor(wxCommandEvent& event)
-{
-    IDebugger* dbgr = DebuggerMgr::Get().GetActiveDebugger();
-
-    if(dbgr && dbgr->IsRunning() && ManagerST::Get()->DbgCanInteract()) {
-        BreakpointInfo bp;
-        bp.Create(
-            GetFileName().GetFullPath(), GetCurrentLine() + 1, ManagerST::Get()->GetBreakpointsMgr()->GetNextID());
-        bp.bp_type = BP_type_tempbreak;
-        dbgr->Break(bp);
-        dbgr->Continue();
-    }
-}
-
-void LEditor::OnDbgJumpToCursor(wxCommandEvent& event)
-{
-    IDebugger* dbgr = DebuggerMgr::Get().GetActiveDebugger();
-
-    if(dbgr && dbgr->IsRunning() && ManagerST::Get()->DbgCanInteract()) {
-        dbgr->Jump(GetFileName().GetFullPath(), GetCurrentLine() + 1);
-    }
-}
-
 void LEditor::DoShowCalltip(int pos, const wxString& title, const wxString& tip)
 {
     DoCancelCalltip();
@@ -4453,7 +4420,6 @@ bool LEditor::DoFindAndSelect(const wxString& _pattern, const wxString& what, in
     do {
         again = false;
         flags = wxSD_MATCHCASE | wxSD_MATCHWHOLEWORD;
-        ;
 
         if(StringFindReplacer::Search(GetText().wc_str(), offset, pattern.wc_str(), flags, pos, match_len)) {
 
@@ -4515,8 +4481,6 @@ bool LEditor::DoFindAndSelect(const wxString& _pattern, const wxString& what, in
             }
 
         } else {
-            wxLogMessage(wxT("Failed to find[") + pattern + wxT("]"));
-
             // match failed, restore the caret
             SetCurrentPos(curr_pos);
             SetSelectionStart(curr_pos);
@@ -4974,7 +4938,6 @@ void LEditor::DoWrapPrevSelectionWithChars(wxChar first, wxChar last)
 void LEditor::OnTimer(wxTimerEvent& event)
 {
     event.Skip();
-
     m_timerHighlightMarkers->Start(100, true);
     if(!HasFocus()) return;
 
@@ -5017,6 +4980,7 @@ void LEditor::OnTimer(wxTimerEvent& event)
             CL_DEBUG1("highlight_word is OFF");
         }
     }
+    GetContext()->ProcessIdleActions();
 }
 
 void LEditor::SplitSelection()
@@ -5153,9 +5117,21 @@ int LEditor::GetFirstSingleLineCommentPos(int from, int commentStyle)
 {
     int lineNu = LineFromPos(from);
     int lastPos = from + LineLength(lineNu);
-    for(int i = from; from < lastPos; ++i) {
+    for(int i = from; i < lastPos; ++i) {
         if(GetStyleAt(i) == commentStyle) {
             return i;
+        }
+    }
+    return wxNOT_FOUND;
+}
+
+int LEditor::GetNumberFirstSpacesInLine(int line)
+{
+    int start = PositionFromLine(line);
+    int lastPos = start + LineLength(line);
+    for(int i = start; i < lastPos; ++i) {
+        if(!isspace(GetCharAt(i))) {
+            return i - start;
         }
     }
     return wxNOT_FOUND;
@@ -5180,16 +5156,50 @@ void LEditor::ToggleLineComment(const wxString& commentSymbol, int commentStyle)
                                        // the same style as the char before it
     }
 
-    bool doingComment = (GetStyleAt(start) != commentStyle);
-
     int lineStart = LineFromPosition(start);
     int lineEnd = LineFromPosition(end);
+
+    bool indentedComments = GetOptions()->GetIndentedComments();
+
+    bool doingComment;
+    int indent = 0;
+    if(indentedComments) {
+        // Check if there is a comment in the line 'lineStart'
+        int startCommentPos = GetFirstSingleLineCommentPos(PositionFromLine(lineStart), commentStyle);
+        doingComment = (startCommentPos == wxNOT_FOUND);
+        if(doingComment) {
+            // Find the minimum indent (in whitespace characters) among all the selected lines
+            // The comments will be indented with the found number of characters
+            indent = 100000;
+            bool indentFound = false;
+            for(int i = lineStart; i <= lineEnd; i++) {
+                int indentThisLine = GetNumberFirstSpacesInLine(i);
+                if((indentThisLine != wxNOT_FOUND) && (indentThisLine < indent)) {
+                    indent = indentThisLine;
+                    indentFound = true;
+                }
+            }
+            if(!indentFound) {
+                // Set the indent to zero in case of selection of empty lines
+                indent = 0;
+            }
+        }
+    } else {
+        doingComment = (GetStyleAt(start) != commentStyle);
+    }
 
     BeginUndoAction();
     for(; lineStart <= lineEnd; lineStart++) {
         start = PositionFromLine(lineStart);
         if(doingComment) {
-            InsertText(start, commentSymbol);
+            if(indentedComments) {
+                if(indent < LineLength(lineStart)) {
+                    // Shift the position of the comment by the 'indent' number of characters
+                    InsertText(start + indent, commentSymbol);
+                }
+            } else {
+                InsertText(start, commentSymbol);
+            }
 
         } else {
             int firstCommentPos = GetFirstSingleLineCommentPos(start, commentStyle);
@@ -5373,7 +5383,8 @@ void LEditor::ClearCCAnnotations()
 // ----------------------------------
 // SelectionInfo
 // ----------------------------------
-struct SelectorSorter {
+struct SelectorSorter
+{
     bool operator()(const std::pair<int, int>& a, const std::pair<int, int>& b) { return a.first < b.first; }
 };
 

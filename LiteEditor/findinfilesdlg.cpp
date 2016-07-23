@@ -36,6 +36,7 @@
 #include "windowattrmanager.h"
 #include <algorithm>
 #include "clWorkspaceManager.h"
+#include "FindInFilesLocationsDlg.h"
 
 FindInFilesDialog::FindInFilesDialog(
     wxWindow* parent, const wxString& dataName, const wxArrayString& additionalSearchPaths)
@@ -43,9 +44,6 @@ FindInFilesDialog::FindInFilesDialog(
 {
     m_data.SetName(dataName);
     m_nonPersistentSearchPaths.insert(additionalSearchPaths.begin(), additionalSearchPaths.end());
-
-    GetSizer()->Fit(this);
-    SetMinClientSize(GetClientSize());
 
     // Store the find-in-files data
     clConfig::Get().ReadItem(&m_data);
@@ -106,7 +104,11 @@ FindInFilesDialog::FindInFilesDialog(
     // Set the file mask
     DoSetFileMask();
     SetName("FindInFilesDialog");
-
+    
+    // Fit the initial size and set it as the default minimum size
+    GetSizer()->Fit(this);
+    SetMinSize(GetSize());
+    
     // Load the last size and position, but not on GTK
     WindowAttrManager::Load(this);
     CentreOnParent();
@@ -330,6 +332,15 @@ void FindInFilesDialog::OnClose(wxCloseEvent& e) { Destroy(); }
 
 void FindInFilesDialog::OnAddPath(wxCommandEvent& event)
 {
+#ifdef __WXOSX__
+    // There is a bug in OSX that prevents popup menu from being displayed from dialogs
+    // so we use an alternative way
+    FindInFilesLocationsDlg dlg(this, m_listPaths->GetStrings());
+    if(dlg.ShowModal() == wxID_OK) {
+        m_listPaths->Clear();
+        m_listPaths->Append(dlg.GetLocations());
+    }
+#else
     // Show a popup menu
     wxMenu menu;
     int firstItem = 8994;
@@ -347,12 +358,12 @@ void FindInFilesDialog::OnAddPath(wxCommandEvent& event)
     options.insert(std::make_pair(firstItem + 2, SEARCH_IN_CURR_FILE_PROJECT));
     options.insert(std::make_pair(firstItem + 3, SEARCH_IN_CURRENT_FILE));
     options.insert(std::make_pair(firstItem + 4, SEARCH_IN_OPEN_FILES));
-
-    wxPoint pt = m_btnAddPath->GetRect().GetBottomLeft();
-    pt.x += 1;
-    pt.y += 1;
-
-    int selection = GetPopupMenuSelectionFromUser(menu, pt);
+    
+    // Menu will be shown in client coordinates
+    wxRect size = m_btnAddPath->GetSize();
+    wxPoint menuPos(0, size.GetHeight());
+    int selection = m_btnAddPath->GetPopupMenuSelectionFromUser(menu, menuPos);
+    
     if(selection == wxID_NONE) return;
     if(selection == (firstItem + 5)) {
         wxString folder = ::wxDirSelector();
@@ -362,6 +373,7 @@ void FindInFilesDialog::OnAddPath(wxCommandEvent& event)
     } else if(options.count(selection)) {
         DoAddSearchPath(options.find(selection)->second);
     }
+#endif
 }
 
 int FindInFilesDialog::ShowDialog()
@@ -447,11 +459,11 @@ void FindInFilesDialog::OnClearSelectedPath(wxCommandEvent& event)
 {
     wxArrayInt selections;
     m_listPaths->GetSelections(selections);
-    while(!selections.IsEmpty()) {
-        m_listPaths->Delete(selections.Item(0));
-
-        selections.Clear();
-        m_listPaths->GetSelections(selections);
+    int selectionsCount = selections.GetCount();
+    if(!selections.IsEmpty()) {
+        for(int i = (selectionsCount - 1); i >= 0; --i) {
+            m_listPaths->Delete(selections.Item(i));
+        }
     }
 }
 
@@ -478,6 +490,5 @@ void FindInFilesDialog::DoAddSearchPaths(const wxArrayString& paths)
 }
 void FindInFilesDialog::OnReplaceUI(wxUpdateUIEvent& event)
 {
-    event.Enable(
-        !m_findString->GetValue().IsEmpty() && !m_listPaths->IsEmpty() && !m_replaceString->GetValue().IsEmpty());
+    event.Enable(!m_findString->GetValue().IsEmpty() && !m_listPaths->IsEmpty());
 }

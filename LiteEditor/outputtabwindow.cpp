@@ -63,6 +63,7 @@ OutputTabWindow::OutputTabWindow(wxWindow* parent, wxWindowID id, const wxString
     , m_autoAppearErrors(false)
     , m_errorsFirstLine(false)
 {
+    m_styler.Reset(new clFindResultsStyler());
     CreateGUIControls();
     wxTheApp->Connect(
         wxID_COPY, wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(OutputTabWindow::OnEdit), NULL, this);
@@ -77,6 +78,7 @@ OutputTabWindow::OutputTabWindow(wxWindow* parent, wxWindowID id, const wxString
 
 OutputTabWindow::~OutputTabWindow()
 {
+    m_styler.Reset(NULL);
     wxDELETE(m_themeHelper);
     EventNotifier::Get()->Disconnect(
         wxEVT_CL_THEME_CHANGED, wxCommandEventHandler(OutputTabWindow::OnThemeChanged), NULL, this);
@@ -249,9 +251,14 @@ void OutputTabWindow::AppendText(const wxString& text)
             m_sci->SetCurrentPos(m_sci->GetLength());
             m_sci->EnsureCaretVisible();
         }
-
+        
+        
+        // Strip any terminal escape chars from the buffer
+        wxString modText;
+        ::clStripTerminalColouring(text, modText);
+        
         // add the text
-        m_sci->InsertText(m_sci->GetLength(), text);
+        m_sci->InsertText(m_sci->GetLength(), modText);
 
         if(m_outputScrolls) {
             // the next 4 lines make sure that the caret is at last line

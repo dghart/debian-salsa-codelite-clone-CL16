@@ -66,6 +66,15 @@ protected:
     void PrependMenuItem(wxMenu* menu, const wxString &text, wxObjectEventFunction func, int eventId = -1);
     void PrependMenuItem(wxMenu* menu, const wxString &text, int id);
     void PrependMenuItemSeparator(wxMenu* menu);
+    
+    /**
+     * @brief search for the next 'what' in the editor
+     */
+    int FindNext(const wxString& what, int &pos, bool wholePage = false);
+    /**
+     * @brief search for the next 'what' in the editor
+     */
+    int FindPrev(const wxString& what, int &pos, bool wholePage = false);
 
 public:
     
@@ -188,6 +197,11 @@ public:
     virtual void ColourContextTokens( const wxArrayString& workspaceTokens ) {
         wxUnusedVar(workspaceTokens);
     }
+    
+    /**
+     * @brief process any idle actions by the context
+     */
+    virtual void ProcessIdleActions() {}
 };
 
 typedef SmartPtr<ContextBase> ContextBasePtr;

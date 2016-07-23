@@ -41,11 +41,13 @@
 #include "plugin.h"
 #include "cl_command_event.h"
 #include "ICompilerLocator.h"
+#include <wx/regex.h>
+#include "macromanager.h"
+#include "globals.h"
+#include <wx/msgdlg.h>
 
-CompileRequest::CompileRequest(const QueueCommand& buildInfo,
-                               const wxString& fileName,
-                               bool runPremakeOnly,
-                               bool preprocessOnly)
+CompileRequest::CompileRequest(
+    const QueueCommand& buildInfo, const wxString& fileName, bool runPremakeOnly, bool preprocessOnly)
     : ShellCommand(buildInfo)
     , m_fileName(fileName)
     , m_premakeOnly(runPremakeOnly)
@@ -66,7 +68,6 @@ void CompileRequest::Process(IManager* manager)
     wxStringMap_t om;
 
     BuildSettingsConfig* bsc(manager ? manager->GetBuildSettingsConfigManager() : BuildSettingsConfigST::Get());
-    BuildManager* bm(manager ? manager->GetBuildManager() : BuildManagerST::Get());
     clCxxWorkspace* w(manager ? manager->GetWorkspace() : clCxxWorkspaceST::Get());
     EnvironmentConfig* env(manager ? manager->GetEnv() : EnvironmentConfig::Instance());
 
@@ -77,27 +78,22 @@ void CompileRequest::Process(IManager* manager)
     }
 
     wxString pname(proj->GetName());
-    // BuilderPtr builder = bm->GetBuilder(wxT("GNU makefile for g++/gcc"));
-    BuilderPtr builder = bm->GetSelectedBuilder();
-    if(m_fileName.IsEmpty() == false) {
-        // we got a complie request of a single file
-        cmd = m_preprocessOnly ?
-                  builder->GetPreprocessFileCmd(m_info.GetProject(), m_info.GetConfiguration(), m_fileName, errMsg) :
-                  builder->GetSingleFileCmd(m_info.GetProject(), m_info.GetConfiguration(), m_fileName);
-    } else if(m_info.GetProjectOnly()) {
-
-        switch(m_info.GetKind()) {
-        case QueueCommand::kRebuild:
-            cmd = builder->GetPORebuildCommand(m_info.GetProject(), m_info.GetConfiguration());
-            break;
-        default:
-        case QueueCommand::kBuild:
-            cmd = builder->GetPOBuildCommand(m_info.GetProject(), m_info.GetConfiguration());
-            break;
+    wxArrayString unresolvedVars;
+    proj->GetUnresolvedMacros(m_info.GetConfiguration(), unresolvedVars);
+    if(!unresolvedVars.IsEmpty()) {
+        // We can't continue
+        wxString msg;
+        msg << _("The following environment variables are used in the project, but are not defined:\n");
+        for(size_t i = 0; i < unresolvedVars.size(); ++i) {
+            msg << unresolvedVars.Item(i) << "\n";
         }
-
-    } else {
-        cmd = builder->GetBuildCommand(m_info.GetProject(), m_info.GetConfiguration());
+        msg << _("Build anyway?");
+        wxStandardID res = ::PromptForYesNoDialogWithCheckbox(msg, "UnresolvedMacros", _("Yes"), _("No"),
+            _("Remember my answer and don't ask me again"), wxYES_NO | wxICON_WARNING | wxYES_DEFAULT);
+        if(res != wxID_YES) {
+            ::wxMessageBox(_("Build Cancelled!"), "CodeLite", wxICON_ERROR | wxOK | wxCENTER);
+            return;
+        }
     }
 
     // Notify plugins that a compile process is going to start
@@ -119,14 +115,32 @@ void CompileRequest::Process(IManager* manager)
     // if we require to run the makefile generation command only, replace the 'cmd' with the
     // generation command line
     BuildConfigPtr bldConf = w->GetProjBuildConf(m_info.GetProject(), m_info.GetConfiguration());
-    if(m_premakeOnly && bldConf) {
-        BuildConfigPtr bldConf = w->GetProjBuildConf(m_info.GetProject(), m_info.GetConfiguration());
-        if(bldConf) {
-            cmd = bldConf->GetMakeGenerationCommand();
-        }
-    }
-
     if(bldConf) {
+        // BuilderPtr builder = bm->GetBuilder("Default");
+        BuilderPtr builder = bldConf->GetBuilder();
+        wxString args = bldConf->GetBuildSystemArguments();
+        if(m_fileName.IsEmpty() == false) {
+            // we got a complie request of a single file
+            cmd = m_preprocessOnly ?
+                builder->GetPreprocessFileCmd(
+                    m_info.GetProject(), m_info.GetConfiguration(), args, m_fileName, errMsg) :
+                builder->GetSingleFileCmd(m_info.GetProject(), m_info.GetConfiguration(), args, m_fileName);
+        } else if(m_info.GetProjectOnly()) {
+
+            switch(m_info.GetKind()) {
+            case QueueCommand::kRebuild:
+                cmd = builder->GetPORebuildCommand(m_info.GetProject(), m_info.GetConfiguration(), args);
+                break;
+            default:
+            case QueueCommand::kBuild:
+                cmd = builder->GetPOBuildCommand(m_info.GetProject(), m_info.GetConfiguration(), args);
+                break;
+            }
+
+        } else {
+            cmd = builder->GetBuildCommand(m_info.GetProject(), m_info.GetConfiguration(), args);
+        }
+
         wxString cmpType = bldConf->GetCompilerType();
         CompilerPtr cmp = bsc->GetCompiler(cmpType);
         if(cmp) {
@@ -139,7 +153,7 @@ void CompileRequest::Process(IManager* manager)
             wxFileName cxx(scxx);
             wxString pathvar;
             pathvar << cxx.GetPath() << clPATH_SEPARATOR;
-            
+
             // If we have an additional path, add it as well
             if(!cmp->GetPathVariable().IsEmpty()) {
                 pathvar << cmp->GetPathVariable() << clPATH_SEPARATOR;
@@ -192,10 +206,10 @@ void CompileRequest::Process(IManager* manager)
         }
         AppendLine(text);
     }
-    
+
     // Avoid Unicode chars coming from the compiler by setting LC_ALL to "C"
     om["LC_ALL"] = "C";
-    
+
     EnvSetter envir(env, &om, proj->GetName(), m_info.GetConfiguration());
     m_proc = CreateAsyncProcess(this, cmd);
     if(!m_proc) {

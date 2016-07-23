@@ -7,9 +7,10 @@
   "m_bitmapsFile": "syntaxhighlightbasedlg_liteeditor_bitmaps.cpp",
   "m_GenerateCodeTypes": 4984201,
   "m_outputFileName": "syntaxhighlightbasedlg",
-  "m_firstWindowId": 1000,
+  "m_firstWindowId": 10000,
   "m_useEnum": true,
   "m_useUnderscoreMacro": true,
+  "m_addHandlers": true,
   "m_templateClasses": []
  },
  "windows": [{
@@ -27,7 +28,7 @@
     }, {
      "type": "string",
      "m_label": "Minimum Size:",
-     "m_value": "-1,500"
+     "m_value": "-1,-1"
     }, {
      "type": "string",
      "m_label": "Name:",
@@ -156,7 +157,7 @@
        "border": 5,
        "gbSpan": "1,1",
        "gbPosition": "0,0",
-       "m_styles": ["wxAUI_TB_PLAIN_BACKGROUND", "wxAUI_TB_DEFAULT_STYLE"],
+       "m_styles": ["wxAUI_TB_DEFAULT_STYLE"],
        "m_sizerFlags": ["wxEXPAND"],
        "m_properties": [{
          "type": "winid",
@@ -195,7 +196,7 @@
          "m_properties": [{
            "type": "winid",
            "m_label": "ID:",
-           "m_winid": "wxID_NEW"
+           "m_winid": "XRCID(\"ID_TOOL_NEW_THEME\")"
           }, {
            "type": "string",
            "m_label": "Name:",
@@ -250,7 +251,7 @@
          "m_properties": [{
            "type": "winid",
            "m_label": "ID:",
-           "m_winid": "wxID_SAVE"
+           "m_winid": "XRCID(\"ID_TOOL_SAVE\")"
           }, {
            "type": "string",
            "m_label": "Name:",
@@ -322,7 +323,7 @@
              "m_properties": [{
                "type": "winid",
                "m_label": "ID:",
-               "m_winid": "ID_EXPORT_ALL"
+               "m_winid": "XRCID(\"ID_EXPORT_ALL\")"
               }, {
                "type": "string",
                "m_label": "Name:",
@@ -373,7 +374,7 @@
              "m_properties": [{
                "type": "winid",
                "m_label": "ID:",
-               "m_winid": "ID_EXPORT_SELECTIVE"
+               "m_winid": "XRCID(\"ID_EXPORT_SELECTIVE\")"
               }, {
                "type": "string",
                "m_label": "Name:",
@@ -426,7 +427,7 @@
          "m_properties": [{
            "type": "winid",
            "m_label": "ID:",
-           "m_winid": "wxID_OPEN"
+           "m_winid": "XRCID(\"ID_TOOL_OPEN\")"
           }, {
            "type": "string",
            "m_label": "Name:",
@@ -481,7 +482,7 @@
          "m_properties": [{
            "type": "winid",
            "m_label": "ID:",
-           "m_winid": "wxID_REVERT"
+           "m_winid": "XRCID(\"ID_TOOL_REVERT\")"
           }, {
            "type": "string",
            "m_label": "Name:",
@@ -536,7 +537,7 @@
          "m_properties": [{
            "type": "winid",
            "m_label": "ID:",
-           "m_winid": "ID_TOOL_IMPORT_ECLIPSE_THEME"
+           "m_winid": "XRCID(\"ID_TOOL_IMPORT_ECLIPSE_THEME\")"
           }, {
            "type": "string",
            "m_label": "Name:",
@@ -608,7 +609,7 @@
              "m_properties": [{
                "type": "winid",
                "m_label": "ID:",
-               "m_winid": "ID_MENU_ECLIPSE_WEBSITE"
+               "m_winid": "XRCID(\"ID_MENU_ECLIPSE_WEBSITE\")"
               }, {
                "type": "string",
                "m_label": "Name:",

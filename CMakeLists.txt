@@ -34,15 +34,15 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 ## Defaults
 #############################################
 project( "CodeLite" )
+if(APPLE)
+  execute_process(COMMAND make type=release os=osx clean WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/PCH)
+  execute_process(COMMAND make type=release os=osx WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/PCH)
+endif()
 
 ## Generate compile_commands.json file for code completion
 set( CMAKE_EXPORT_COMPILE_COMMANDS 1 )
-
-if( UNIX AND NOT APPLE)
-    set( CMAKE_LIBRARY_ARCHITECTURE x86_64-linux-gnu ) # add search path needed by (at least) libssh and gtk2 libraries
-endif()
-
 set( CL_PREFIX "/usr" )
+
 if (CMAKE_CURRENT_LIST_DIR) # since cmake 2.8.3
     set( CL_SRC_ROOT ${CMAKE_CURRENT_LIST_DIR})
 else()
@@ -63,7 +63,16 @@ set( BUILD_WXC 0 )
 set( CL_COPY_WX_LIBS 0 )
 set( WITH_SFTP 1 )
 
-set (CMAKE_CXX_FLAGS -Wno-deprecated-declarations) # Avoid very multiple warnings spam due to deprecated wx methods
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-declarations") # Avoid very multiple warnings spam due to deprecated wx methods
+
+if ( UNIX )
+	# Configure CCache if available
+	find_program(CCACHE_FOUND ccache)
+	if (CCACHE_FOUND)
+		set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
+		set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
+	endif(CCACHE_FOUND)
+endif(UNIX)
 
 if ( UNIX )
     execute_process(COMMAND pwd OUTPUT_VARIABLE BUILD_DIRECTORY OUTPUT_STRIP_TRAILING_WHITESPACE)
@@ -349,6 +358,7 @@ unset(PREVENT_WX_ASSERTS CACHE)
 
 set(ARCH 32)
 set(ARCH_NAME i386)
+set(OS_CODENAME "unknown")
 
 if ( UNIX AND NOT APPLE )
     execute_process(COMMAND /bin/sh -c "lsb_release -a|grep -i Codename | cut -d: -f2"    OUTPUT_VARIABLE OS_CODENAME OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
@@ -360,9 +370,16 @@ if ( UNIX AND NOT APPLE )
     string(REPLACE "\t" "" DISTRO_CODENAME "${DISTRO_CODENAME}")
     string(TOLOWER ${DISTRO_CODENAME} DISTRO_CODENAME)
 
+    string(REPLACE " " "" OS_CODENAME "${OS_CODENAME}")
+    string(REPLACE "\t" "" OS_CODENAME "${OS_CODENAME}")
+    if(NOT "${OS_CODENAME}" STREQUAL "") # It'll be empty if lsb_release isn't installed, which causes cmake to error out on the next line
+        string(TOLOWER ${OS_CODENAME} OS_CODENAME)
+    endif()
+
     set(CPACK_SYSTEM_NAME "${DISTRO_CODENAME}")
     message("-- CPACK_SYSTEM_NAME ${CPACK_SYSTEM_NAME}")
 endif ( UNIX AND NOT APPLE )
+message("-- OS_CODENAME is set to ${OS_CODENAME}")
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
   set(ARCH 64)
@@ -387,17 +404,26 @@ if ( MAKE_DEB )
 
     set(CPACK_GENERATOR                   "DEB")
     set(CPACK_PACKAGE_NAME                "CodeLite")
-    set(CPACK_PACKAGE_VERSION             "9.1.0")
+    set(CPACK_PACKAGE_VERSION             "9.2.0")
     set(CPACK_DEBIAN_PACKAGE_MAINTAINER   "Eran Ifrah <eran.ifrah@gmail.com>")
     set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "C/C++/PHP and Node.js IDE (Integrated Development Environment)")
     set(CPACK_DEBIAN_PACKAGE_SECTION      "devel")
     set(CPACK_DEBIAN_PACKAGE_PRIORITY     "optional")
     set(CPACK_DEBIAN_PACKAGE_RECOMMENDS   "build-essential, git, subversion, gdb, xterm, gcc, g++")
-    set(CPACK_DEBIAN_PACKAGE_DEPENDS      "libc6, libgtk2.0-dev, libsqlite3-dev, libssh-dev, libedit-dev, libhunspell-dev, libclang-3.5-dev, clang-format-3.5, liblldb-3.5-dev")
+    if(OS_CODENAME STREQUAL "xenial")
+        message("-- CPack deps for Ubuntu-Xenial")
+        set(CPACK_DEBIAN_PACKAGE_DEPENDS      
+            "libc6, libgtk2.0-dev, libsqlite3-dev, libssh-dev, libedit-dev, libhunspell-dev, libclang-3.8-dev, clang-format-3.8, liblldb-3.8-dev")
+    else()
+        message("-- CPack deps for Ubuntu-Trusty/Debian-Jessie")
+        set(CPACK_DEBIAN_PACKAGE_DEPENDS
+            "libc6, libgtk2.0-dev, libsqlite3-dev, libssh-dev, libedit-dev, libhunspell-dev, libclang-3.5-dev, clang-format-3.5, liblldb-3.5-dev")
+    endif()
     set(CPACK_PACKAGE_DESCRIPTION_FILE    "${CL_SRC_ROOT}/DESC")
     set(CPACK_STRIP_FILES TRUE)
     INCLUDE(CPack)
 endif( MAKE_DEB )
+
 
 ############################################
 ## Clang support

@@ -59,7 +59,6 @@ void CleanRequest::Process(IManager* manager)
     wxStringMap_t om;
 
     BuildSettingsConfig* bsc(manager ? manager->GetBuildSettingsConfigManager() : BuildSettingsConfigST::Get());
-    BuildManager* bm(manager ? manager->GetBuildManager() : BuildManagerST::Get());
     clCxxWorkspace* w(manager ? manager->GetWorkspace() : clCxxWorkspaceST::Get());
 
     ProjectPtr proj = w->FindProjectByName(m_info.GetProject(), errMsg);
@@ -68,22 +67,22 @@ void CleanRequest::Process(IManager* manager)
         return;
     }
     wxString pname(proj->GetName());
-
-    // BuilderPtr builder = bm->GetBuilder(wxT("GNU makefile for g++/gcc"));
-    BuilderPtr builder = bm->GetSelectedBuilder();
-    if(m_info.GetProjectOnly()) {
-        cmd = builder->GetPOCleanCommand(m_info.GetProject(), m_info.GetConfiguration());
-    } else {
-        cmd = builder->GetCleanCommand(m_info.GetProject(), m_info.GetConfiguration());
-    }
-
-    if(cmd.IsEmpty()) {
-        AppendLine(_("Sorry, there is no 'Clean' command available\n"));
-        return;
-    }
-
     BuildConfigPtr bldConf = w->GetProjBuildConf(m_info.GetProject(), m_info.GetConfiguration());
     if(bldConf) {
+        // BuilderPtr builder = bm->GetBuilder("Default");
+        BuilderPtr builder = bldConf->GetBuilder();
+        wxString args = bldConf->GetBuildSystemArguments();
+        if(m_info.GetProjectOnly()) {
+            cmd = builder->GetPOCleanCommand(m_info.GetProject(), m_info.GetConfiguration(), args);
+        } else {
+            cmd = builder->GetCleanCommand(m_info.GetProject(), m_info.GetConfiguration(), args);
+        }
+
+        if(cmd.IsEmpty()) {
+            AppendLine(_("Sorry, there is no 'Clean' command available\n"));
+            return;
+        }
+
         wxString cmpType = bldConf->GetCompilerType();
         if(bldConf) {
             wxString cmpType = bldConf->GetCompilerType();

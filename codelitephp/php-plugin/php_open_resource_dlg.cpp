@@ -10,6 +10,7 @@
 #include "PHPLookupTable.h"
 #include <wx/tokenzr.h>
 #include "FilesCollector.h"
+#include "fileutils.h"
 
 static int TIMER_ID = 5647;
 static wxBitmap CLASS_IMG_ID = wxNullBitmap;
@@ -54,9 +55,9 @@ OpenResourceDlg::OpenResourceDlg(wxWindow* parent, IManager* manager)
         wxFileName fn((*iter));
         if(fn.GetFullName() == FOLDER_MARKER) {
             // fake item
-            continue; 
+            continue;
         }
-        
+
         ResourceItem fileItem;
         fileItem.displayName = fn.GetFullName();
         fileItem.filename = fn;
@@ -140,6 +141,31 @@ void OpenResourceDlg::OnTimer(wxTimerEvent& event)
 
         allVec.insert(allVec.end(), filesVec.begin(), filesVec.end());
         allVec.insert(allVec.end(), m_resources.begin(), m_resources.end());
+
+        // and sort the results
+        wxString lcFilter = m_lastFilter.Lower();
+        ResourceVector_t v1, v2, v3, v4, v5;
+        std::for_each(allVec.begin(), allVec.end(), [&](const ResourceItem& a) {
+            if(a.displayName == m_lastFilter) {
+                v1.push_back(a); // Exact match
+            } else if(a.displayName.Lower() == lcFilter) {
+                v2.push_back(a); // case insenstive exact match
+            } else if(a.displayName.StartsWith(m_lastFilter)) {
+                v3.push_back(a); // starts with
+            } else if(a.displayName.Lower().StartsWith(lcFilter)) {
+                v4.push_back(a); // case insenstive starts with
+            } else {
+                // other
+                v5.push_back(a);
+            }
+        });
+
+        allVec.clear();
+        allVec.insert(allVec.end(), v1.begin(), v1.end());
+        allVec.insert(allVec.end(), v2.begin(), v2.end());
+        allVec.insert(allVec.end(), v3.begin(), v3.end());
+        allVec.insert(allVec.end(), v4.begin(), v4.end());
+        allVec.insert(allVec.end(), v5.begin(), v5.end());
         DoPopulateListCtrl(allVec);
     }
     m_timer->Start(50, true);
@@ -177,7 +203,7 @@ void OpenResourceDlg::DoGetResources(const wxString& filter)
     m_resources.reserve(matches.size());
     for(; iter != matches.end(); ++iter) {
         PHPEntityBase::Ptr_t match = *iter;
-        if(IsMatchesFilter(filter, match->GetFullName())) {
+        if(FileUtils::FuzzyMatch(filter, match->GetFullName())) {
             ResourceItem resource;
             resource.displayName = match->GetDisplayName();
             resource.filename = match->GetFilename();
@@ -197,7 +223,7 @@ ResourceVector_t OpenResourceDlg::DoGetFiles(const wxString& filter)
 
     for(size_t i = 0; i < m_allFiles.size(); i++) {
         wxString filename = m_allFiles.at(i).filename.GetFullPath().Lower();
-        if(IsMatchesFilter(filter, filename)) {
+        if(FileUtils::FuzzyMatch(filter, filename)) {
             resources.push_back(m_allFiles.at(i));
             // Don't return too many matches...
             if(resources.size() == 300) break;

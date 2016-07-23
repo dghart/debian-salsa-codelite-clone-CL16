@@ -45,6 +45,8 @@
 #include "compiler_command_line_parser.h"
 #include <algorithm>
 #include "wxArrayStringAppender.h"
+#include <wx/regex.h>
+#include "macromanager.h"
 
 const wxString Project::STATIC_LIBRARY = wxT("Static Library");
 const wxString Project::DYNAMIC_LIBRARY = wxT("Dynamic Library");
@@ -76,11 +78,11 @@ Project::~Project()
 bool Project::Create(const wxString& name, const wxString& description, const wxString& path, const wxString& projType)
 {
     m_vdCache.clear();
-    
+
     m_fileName = wxFileName(path, name);
     m_fileName.SetExt("project");
     m_fileName.MakeAbsolute();
-    
+
     // Ensure that the target folder exists
     m_fileName.Mkdir(wxS_DIR_DEFAULT, wxPATH_MKDIR_FULL);
     m_projectPath = m_fileName.GetPath();
@@ -94,7 +96,7 @@ bool Project::Create(const wxString& name, const wxString& description, const wx
     m_doc.GetRoot()->AddChild(descNode);
 
     // Create the default virtual directories
-    wxXmlNode* srcNode = NULL, * headNode = NULL;
+    wxXmlNode *srcNode = NULL, *headNode = NULL;
 
     srcNode = new wxXmlNode(NULL, wxXML_ELEMENT_NODE, wxT("VirtualDirectory"));
     srcNode->AddProperty(wxT("Name"), wxT("src"));
@@ -436,8 +438,7 @@ wxString Project::GetFiles(bool absPath)
     GetFiles(files, absPath);
 
     wxString temp;
-    for(size_t i = 0; i < files.size(); i++)
-        temp << wxT("\"") << files.at(i).GetFullPath() << wxT("\" ");
+    for(size_t i = 0; i < files.size(); i++) temp << wxT("\"") << files.at(i).GetFullPath() << wxT("\" ");
 
     if(temp.IsEmpty() == false) temp.RemoveLast();
 
@@ -931,8 +932,8 @@ void Project::DoGetVirtualDirectories(wxXmlNode* parent, TreeNode<wxString, Visu
     }
 }
 
-TreeNode<wxString, VisualWorkspaceNode>*
-Project::GetVirtualDirectories(TreeNode<wxString, VisualWorkspaceNode>* workspace)
+TreeNode<wxString, VisualWorkspaceNode>* Project::GetVirtualDirectories(
+    TreeNode<wxString, VisualWorkspaceNode>* workspace)
 {
     VisualWorkspaceNode data;
     data.name = GetName();
@@ -1192,8 +1193,8 @@ wxArrayString Project::GetIncludePaths(bool clearCache)
     // for non custom projects, take the settings from the build configuration
     if(buildConf) {
         // Apply the environment
-        EnvSetter es(NULL, NULL, GetName(), buildConf->GetName());
-
+        EnvSetter es(this);
+        
         if(clearCache) {
             s_backticks.clear();
         }
@@ -1211,7 +1212,9 @@ wxArrayString Project::GetIncludePaths(bool clearCache)
                 fn = wxFileName(GetFileName().GetPath(), wxT(""));
 
             } else {
-                fn = projectIncludePathsArr.Item(i);
+                wxString includePath = projectIncludePathsArr.Item(i);
+                includePath = MacroManager::Instance()->Expand(includePath, NULL, GetName(), buildConf->GetName());
+                fn = includePath;
                 if(fn.IsRelative()) {
                     fn.MakeAbsolute(GetFileName().GetPath());
                 }
@@ -1297,11 +1300,8 @@ void Project::ClearAllVirtDirs()
 
 wxString Project::GetProjectIconName() const { return m_doc.GetRoot()->GetPropVal(wxT("IconIndex"), "gear16"); }
 
-void Project::GetReconciliationData(wxString& toplevelDir,
-                                    wxString& extensions,
-                                    wxArrayString& ignoreFiles,
-                                    wxArrayString& excludePaths,
-                                    wxArrayString& regexes)
+void Project::GetReconciliationData(wxString& toplevelDir, wxString& extensions, wxArrayString& ignoreFiles,
+    wxArrayString& excludePaths, wxArrayString& regexes)
 {
     if(!m_doc.IsOk()) {
         return;
@@ -1339,11 +1339,8 @@ void Project::GetReconciliationData(wxString& toplevelDir,
     }
 }
 
-void Project::SetReconciliationData(const wxString& toplevelDir,
-                                    const wxString& extensions,
-                                    const wxArrayString& ignoreFiles,
-                                    const wxArrayString& excludePaths,
-                                    wxArrayString& regexes)
+void Project::SetReconciliationData(const wxString& toplevelDir, const wxString& extensions,
+    const wxArrayString& ignoreFiles, const wxArrayString& excludePaths, wxArrayString& regexes)
 {
     if(!m_doc.IsOk()) {
         return;
@@ -1532,8 +1529,8 @@ wxArrayString Project::GetExcludeConfigForFile(const wxString& filename, const w
     return configs;
 }
 
-void
-Project::SetExcludeConfigForFile(const wxString& filename, const wxString& virtualDirPath, const wxArrayString& configs)
+void Project::SetExcludeConfigForFile(
+    const wxString& filename, const wxString& virtualDirPath, const wxArrayString& configs)
 {
     wxXmlNode* vdNode = GetVirtualDir(virtualDirPath);
     if(!vdNode) {
@@ -1699,7 +1696,7 @@ void Project::CreateCompileCommandsJSON(JSONElement& compile_commands)
     }
 }
 
-BuildConfigPtr Project::GetBuildConfiguration(const wxString& configName)
+BuildConfigPtr Project::GetBuildConfiguration(const wxString& configName) const
 {
     BuildMatrixPtr matrix = GetWorkspace()->GetBuildMatrix();
     if(!matrix) {
@@ -1892,14 +1889,56 @@ void Project::ProjectRenamed(const wxString& oldname, const wxString& newname)
         }
         node = node->GetNext();
     }
-    
+
     if(GetName() == oldname) {
         // Update the name
         XmlUtils::UpdateProperty(m_doc.GetRoot(), "Name", newname);
     }
 }
 
-void Project::ClearBacktickCache()
+void Project::ClearBacktickCache() { s_backticks.clear(); }
+
+void Project::GetUnresolvedMacros(const wxString& configName, wxArrayString& vars) const
 {
-    s_backticks.clear();
+    vars.clear();
+    BuildConfigPtr buildConfig = GetBuildConfiguration(configName);
+    if(buildConfig) {
+        // Check for environment variables
+        // Environment variable has the format of $(VAR_NAME)
+        static wxRegEx reEnvironmentVar("\\$\\(([a-z0-9_]+)\\)", wxRE_ICASE | wxRE_ADVANCED);
+
+        wxString includePaths = buildConfig->GetIncludePath();
+        wxString libPaths = buildConfig->GetLibPath();
+        if(reEnvironmentVar.IsValid()) {
+            // Check the include paths
+            includePaths = MacroManager::Instance()->Expand(includePaths, clGetManager(), GetName(), configName);
+            while(true) {
+                if(reEnvironmentVar.Matches(includePaths)) {
+                    size_t start, len;
+                    if(reEnvironmentVar.GetMatch(&start, &len, 1)) {
+                        wxString envVarName = includePaths.Mid(start, len);
+                        includePaths = includePaths.Mid(start + len);
+                        vars.Add(envVarName);
+                        continue;
+                    }
+                }
+                break;
+            }
+
+            // Check the include lib paths
+            libPaths = MacroManager::Instance()->Expand(libPaths, clGetManager(), GetName(), configName);
+            while(true) {
+                if(reEnvironmentVar.Matches(libPaths)) {
+                    size_t start, len;
+                    if(reEnvironmentVar.GetMatch(&start, &len, 1)) {
+                        wxString envVarName = libPaths.Mid(start, len);
+                        libPaths = includePaths.Mid(start + len);
+                        vars.Add(envVarName);
+                        continue;
+                    }
+                }
+                break;
+            }
+        }
+    }
 }

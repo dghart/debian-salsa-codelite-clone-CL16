@@ -54,6 +54,7 @@
 #define USER_INDICATOR 3
 #define HYPERLINK_INDICATOR 4
 #define MARKER_FIND_BAR_WORD_HIGHLIGHT 5
+#define MARKER_CONTEXT_WORD_HIGHLIGHT 6
 
 class wxRichToolTip;
 class CCBoxTipWindow;
@@ -280,7 +281,7 @@ public:
 
     // Save content of the editor to a given file (Save As...)
     // this function prompts the user for selecting file name
-    bool SaveFileAs();
+    bool SaveFileAs(const wxString& newname = wxEmptyString, const wxString& savePath = wxEmptyString);
 
     /**
      * @brief print the editor content using the printing framework
@@ -524,12 +525,11 @@ public:
      * Toggles *all* folds within the selection, not just the outer one of each function
      */
     void ToggleAllFoldsInSelection();
-    void DoRecursivelyExpandFolds(bool expand,
-                                  int startline,
-                                  int endline); // Helper function for ToggleAllFoldsInSelection()
-                                                /**
-                                                 *  Find the topmost fold level within the selection, and toggle all selected folds of that level
-                                                 */
+    void DoRecursivelyExpandFolds(bool expand, int startline,
+        int endline); // Helper function for ToggleAllFoldsInSelection()
+                      /**
+                       *  Find the topmost fold level within the selection, and toggle all selected folds of that level
+                       */
     void ToggleTopmostFoldsInSelection();
     /**
      * Load collapsed folds from a vector
@@ -562,10 +562,8 @@ public:
     bool FindAndSelect();
     bool FindAndSelect(const FindReplaceData& data);
     bool FindAndSelect(const wxString& pattern, const wxString& name);
-    void FindAndSelectV(const wxString& pattern,
-                        const wxString& name,
-                        int pos = 0,
-                        NavMgr* unused = NULL); // The same but returns void, so usable with CallAfter()
+    void FindAndSelectV(const wxString& pattern, const wxString& name, int pos = 0,
+        NavMgr* unused = NULL); // The same but returns void, so usable with CallAfter()
     void DoFindAndSelectV(const wxArrayString& strings, int pos); // Called with CallAfter()
 
     bool Replace();
@@ -650,10 +648,8 @@ public:
      * Add a breakpoint at the current line & file
      * Optionally make it temporary, disabled or conditional
      */
-    void AddBreakpoint(int lineno = -1,
-                       const wxString& conditions = wxT(""),
-                       const bool is_temp = false,
-                       const bool is_disabled = false);
+    void AddBreakpoint(int lineno = -1, const wxString& conditions = wxT(""), const bool is_temp = false,
+        const bool is_disabled = false);
 
     /**
      * Delete the breakpoint at the current line & file, or lineno if from ToggleBreakpoint()
@@ -681,8 +677,8 @@ public:
     //--------------------------------
     // breakpoint visualisation
     //--------------------------------
-    virtual void
-    SetBreakpointMarker(int lineno, BreakpointType bptype, bool is_disabled, const std::vector<BreakpointInfo>& li);
+    virtual void SetBreakpointMarker(
+        int lineno, BreakpointType bptype, bool is_disabled, const std::vector<BreakpointInfo>& li);
     virtual void DelAllBreakpointMarkers();
 
     virtual void HighlightLine(int lineno);
@@ -784,7 +780,11 @@ public:
     virtual void InsertText(int pos, const wxString& text) { wxStyledTextCtrl::InsertText(pos, text); }
     virtual int GetLength() { return wxStyledTextCtrl::GetLength(); }
     virtual bool IsModified() { return wxStyledTextCtrl::GetModify(); }
-    virtual void Save() { SaveFile(); }
+    virtual bool Save() { return SaveFile(); }
+    virtual bool SaveAs(const wxString& defaultName = wxEmptyString, const wxString& savePath = wxEmptyString)
+    {
+        return SaveFileAs(defaultName, savePath);
+    }
     virtual int GetEOL() { return wxStyledTextCtrl::GetEOLMode(); }
     virtual int GetCurrentLine();
     virtual void ReplaceSelection(const wxString& text);
@@ -914,6 +914,10 @@ private:
     void DoWrapPrevSelectionWithChars(wxChar first, wxChar last);
     void DoUpdateOptions();
     int GetFirstSingleLineCommentPos(int from, int commentStyle);
+    /**
+     * @brief return number of whitespace characters in the beginning of the line
+     */
+    int GetNumberFirstSpacesInLine(int line);
 
     void FillBPtoMarkerArray();
     BPtoMarker GetMarkerForBreakpt(enum BreakpointType bp_type);
@@ -967,8 +971,6 @@ private:
     void OnLeftDClick(wxStyledTextEvent& event);
     void OnPopupMenuUpdateUI(wxUpdateUIEvent& event);
     void OnDbgAddWatch(wxCommandEvent& event);
-    void OnDbgRunToCursor(wxCommandEvent& event);
-    void OnDbgJumpToCursor(wxCommandEvent& event);
     void OnDbgCustomWatch(wxCommandEvent& event);
     void OnDragStart(wxStyledTextEvent& e);
     void OnDragEnd(wxStyledTextEvent& e);

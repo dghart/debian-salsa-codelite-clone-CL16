@@ -2664,12 +2664,14 @@ int ContextCpp::GetHyperlinkRange(int pos, int& start, int& end)
 
 void ContextCpp::GoHyperlink(int start, int end, int type, bool alt)
 {
+    (void) alt;
+
     if(type == XRCID("open_include_file")) {
         m_selectedWord = GetCtrl().GetTextRange(start, end);
         DoOpenWorkspaceFile();
     } else {
         if(type == XRCID("find_tag")) {
-            wxCommandEvent e(wxEVT_COMMAND_MENU_SELECTED, alt ? XRCID("find_impl") : XRCID("find_decl"));
+            wxCommandEvent e(wxEVT_COMMAND_MENU_SELECTED, XRCID("find_impl"));
             clMainFrame::Get()->GetEventHandler()->AddPendingEvent(e);
         }
     }
@@ -2716,10 +2718,19 @@ void ContextCpp::DoOpenWorkspaceFile()
     wxString fileToOpen;
     if(files2.size() > 1) {
         wxArrayString choices;
+        wxStringSet_t uniqueFileSet;
         for(size_t i = 0; i < files2.size(); i++) {
-            choices.Add(files2.at(i).GetFullPath());
+            wxString fullPath = files2.at(i).GetFullPath();
+            wxString fullPathLc = (wxGetOsVersion() & wxOS_WINDOWS) ? fullPath.Lower() : fullPath;
+            
+            // Dont add duplicate entries.
+            // On Windows, we have a non case sensitive file system
+            if(uniqueFileSet.count(fullPathLc) == 0) {
+                uniqueFileSet.insert(fullPathLc);
+                choices.Add(fullPath);
+            }
         }
-
+        
         fileToOpen = wxGetSingleChoice(_("Select file to open:"), _("Select file"), choices, &GetCtrl());
     } else if(files2.size() == 1) {
         fileToOpen = files2.at(0).GetFullPath();
@@ -2933,9 +2944,14 @@ wxString ContextCpp::GetExpression(long pos, bool onlyWord, LEditor* editor, boo
             }
             break;
         case wxT('{'):
+            prevGt = false;
+            cont = false;
+            break;
         case wxT('='):
             prevGt = false;
             cont = false;
+            // dont include this token
+            at = ctrl->PositionAfter(at);
             break;
         case wxT('('):
         case wxT('['):
