@@ -52,6 +52,7 @@
 #include "clStatusBar.h"
 #include <wx/cmndata.h>
 #include "clDockingManager.h"
+#include "clMainFrameHelper.h"
 
 // forward decls
 class clSingleInstanceThread;
@@ -122,6 +123,7 @@ class clMainFrame : public wxFrame
     // Printing
     wxPrintDialogData m_printDlgData;
     wxToolBar* m_mainToolBar;
+    clMainFrameHelper::Ptr_t m_frameHelper;
 
 public:
     static bool m_initCompleted;
@@ -129,9 +131,9 @@ public:
 protected:
     bool IsEditorEvent(wxEvent& event);
     void DoCreateBuildDropDownMenu(wxMenu* menu);
-    void DoShowToolbars(bool show);
+    void DoShowToolbars(bool show, bool update = true);
     void InitializeLogo();
-    
+
 public:
     static clMainFrame* Get();
     static void Initialize(bool loadLastSession);
@@ -291,11 +293,7 @@ public:
 
 private:
     // make our frame's constructor private
-    clMainFrame(wxWindow* pParent,
-        wxWindowID id,
-        const wxString& title,
-        const wxPoint& pos,
-        const wxSize& size,
+    clMainFrame(wxWindow* pParent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size,
         long style = wxMINIMIZE_BOX | wxMAXIMIZE_BOX | wxCLOSE_BOX | wxCAPTION | wxSYSTEM_MENU | wxRESIZE_BORDER |
             wxCLIP_CHILDREN);
     wxString CreateWorkspaceTable();
@@ -346,6 +344,8 @@ private:
      */
     bool StartSetupWizard();
 
+    void DoShowCaptions(bool show);
+
 public:
     void ViewPane(const wxString& paneName, bool checked);
     void ShowOrHideCaptions();
@@ -365,13 +365,13 @@ protected:
     void OnClose(wxCloseEvent& event);
 
     void OnSave(wxCommandEvent& event);
+    void OnDuplicateTab(wxCommandEvent& event);
     void OnFileSaveUI(wxUpdateUIEvent& event);
     void OnSaveAs(wxCommandEvent& event);
     void OnFileReload(wxCommandEvent& event);
     void OnFileLoadTabGroup(wxCommandEvent& event);
     void OnNativeTBUnRedoDropdown(wxCommandEvent& event);
     void OnTBUnRedo(wxAuiToolBarEvent& event);
-    void OnTBSave(wxAuiToolBarEvent& event);
     void OnCompleteWord(wxCommandEvent& event);
     void OnCompleteWordRefreshList(wxCommandEvent& event);
     void OnFunctionCalltip(wxCommandEvent& event);
@@ -403,6 +403,8 @@ protected:
     void OnToggleMainTBars(wxCommandEvent& event);
     void OnTogglePluginTBars(wxCommandEvent& event);
     void OnTogglePanes(wxCommandEvent& event);
+    void OnToggleMinimalView(wxCommandEvent& event);
+    void OnToggleMinimalViewUI(wxUpdateUIEvent& event);
     void OnShowStatusBar(wxCommandEvent& event);
     void OnShowStatusBarUI(wxUpdateUIEvent& event);
     void OnShowToolbar(wxCommandEvent& event);
@@ -499,6 +501,17 @@ protected:
     void OnToggleReverseDebuggingUI(wxUpdateUIEvent& e);
     void OnToggleReverseDebuggingRecordingUI(wxUpdateUIEvent& e);
     void OnDebugCmdUI(wxUpdateUIEvent& e);
+    
+    void OnDebugRunToCursor(wxCommandEvent &e);
+    void OnDebugJumpToCursor(wxCommandEvent &e);
+    
+    // Special UI handlers for debugger events
+    void OnDebugStepInstUI(wxUpdateUIEvent& e);
+    void OnDebugJumpToCursorUI(wxUpdateUIEvent& e);
+    void OnDebugRunToCursorUI(wxUpdateUIEvent& e);
+    void OnDebugInterruptUI(wxUpdateUIEvent& e);
+    void OnDebugShowCursorUI(wxUpdateUIEvent& e);
+
     void OnDebuggerSettings(wxCommandEvent& e);
     void OnLinkClicked(wxHtmlLinkEvent& e);
     void OnLoadSession(wxCommandEvent& e);
@@ -559,6 +572,9 @@ protected:
     void OnSyntaxHighlight(wxCommandEvent& e);
     void OnShowWhitespaceUI(wxUpdateUIEvent& e);
     void OnShowWhitespace(wxCommandEvent& e);
+    void OnNextTab(wxCommandEvent& e);
+    void OnPrevTab(wxCommandEvent& e);
+    void OnNextPrevTab_UI(wxUpdateUIEvent& e);
     void OnShowFullScreen(wxCommandEvent& e);
     void OnFindResourceXXX(wxCommandEvent& e);
     void OnShowActiveProjectSettings(wxCommandEvent& e);
@@ -584,6 +600,7 @@ protected:
     void OnSettingsChanged(wxCommandEvent& e);
     void OnEditMenuOpened(wxMenuEvent& e);
     void OnProjectRenamed(clCommandEvent& event);
+
     DECLARE_EVENT_TABLE()
 };
 

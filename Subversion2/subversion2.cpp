@@ -473,8 +473,8 @@ void Subversion2::DoInitialize()
     Notebook* book = m_mgr->GetOutputPaneNotebook();
     if(IsSubversionViewDetached()) {
         // Make the window child of the main panel (which is the grand parent of the notebook)
-        DockablePane* cp =
-            new DockablePane(book->GetParent()->GetParent(), book, svnCONSOLE_TEXT, wxNullBitmap, wxSize(200, 200));
+        DockablePane* cp = new DockablePane(
+            book->GetParent()->GetParent(), book, svnCONSOLE_TEXT, false, wxNullBitmap, wxSize(200, 200));
         m_subversionView = new SubversionView(cp, this);
         cp->SetChildNoReparent(m_subversionView);
     } else {
@@ -607,6 +607,12 @@ void Subversion2::OnDeleteFolder(wxCommandEvent& event)
 void Subversion2::OnFileExplorerRevertItem(wxCommandEvent& event)
 {
     // Coming from the file explorer
+    if(wxMessageBox(_("You are about to revert all your changes\nAre you sure?"),
+                    "CodeLite",
+                    wxICON_WARNING | wxYES_NO | wxCANCEL | wxCANCEL_DEFAULT | wxCENTER) != wxYES) {
+        return;
+    }
+    
     wxString command;
     wxString loginString;
 

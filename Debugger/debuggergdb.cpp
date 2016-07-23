@@ -39,6 +39,7 @@
 #include "wx/tokenzr.h"
 #include <algorithm>
 #include "file_logger.h"
+#include "globals.h"
 
 #ifdef __WXMSW__
 #include "windows.h"
@@ -57,6 +58,15 @@ BOOL CtrlHandler(DWORD fdwCtrlType)
     // return FALSE so other process in our group are allowed to process this event
     return FALSE;
 }
+
+static WINBOOL SigHandler(DWORD CtrlType)
+{
+	if (CtrlType == CTRL_C_EVENT) {
+		return true;
+	}
+	return false;
+}
+
 #endif
 
 #include <sys/types.h>
@@ -256,9 +266,8 @@ bool DbgGdb::Start(const DebugSessionInfo& si)
 #ifdef __WXMSW__
     if(GetIsRemoteDebugging()) {
         // This doesn't really make sense, but AttachConsole fails without it...
-        AllocConsole();
-        FreeConsole(); // Disconnect any existing console window.
-
+		wxMilliSleep(1000);
+		
         if(!AttachConsole(m_gdbProcess->GetPid()))
             m_observer->UpdateAddLine(wxString::Format(wxT("AttachConsole returned error %d"), GetLastError()));
 
@@ -266,7 +275,7 @@ bool DbgGdb::Start(const DebugSessionInfo& si)
         if(!m_info.showTerminal) SetWindowPos(GetConsoleWindow(), HWND_BOTTOM, 0, 0, 0, 0, SWP_HIDEWINDOW);
 
         // Finally we ignore SIGINT so we don't get killed by our own signal
-        signal(SIGINT, SIG_IGN);
+		SetConsoleCtrlHandler(SigHandler, true);
     }
 #endif
     m_gdbProcess->SetHardKill(true);
@@ -318,6 +327,13 @@ bool DbgGdb::Run(const wxString& args, const wxString& comm)
 
 void DbgGdb::DoCleanup()
 {
+#ifdef __WXMSW__
+    if(GetIsRemoteDebugging()) {
+		SetConsoleCtrlHandler(SigHandler, false);
+		FreeConsole(); // Disconnect any existing console window.
+    }
+#endif
+
     wxDELETE(m_gdbProcess);
     SetIsRecording(false);
     m_reverseDebugging = false;
@@ -380,7 +396,6 @@ bool DbgGdb::Break(const BreakpointInfo& bp)
 
     // by default, use full paths for the file name when setting breakpoints
     wxString tmpfileName(fn.GetFullPath());
-    ;
     if(m_info.useRelativeFilePaths) {
         // user set the option to use relative paths (file name w/o the full path)
         tmpfileName = fn.GetFullName();
@@ -445,7 +460,8 @@ bool DbgGdb::Break(const BreakpointInfo& bp)
     } else if(bp.bp_type != BP_type_watchpt) {
         // Function and Lineno locations can/should be prepended by a filename (but see later)
         if(!tmpfileName.IsEmpty() && bp.lineno > 0) {
-            breakWhere << wxT("\"\\\"") << tmpfileName << wxT(":") << bp.lineno << wxT("\\\"\"");
+            breakWhere << tmpfileName << wxT(":") << bp.lineno;
+            breakWhere.Prepend("\"").Append("\"");
         } else if(!bp.function_name.IsEmpty()) {
             if(bp.regex) {
                 // update the command
@@ -1046,7 +1062,11 @@ bool DbgGdb::DoInitializeGdb(const DebugSessionInfo& sessionInfo)
         ExecuteCmd(wxT("break assert"));
     }
 #endif
-
+    
+    if(!(m_info.flags & DebuggerInformation::kPrintObjectOff)) {
+        ExecuteCmd("set print object on");
+    }
+    
     ExecuteCmd(wxT("set width 0"));
     ExecuteCmd(wxT("set height 0"));
 

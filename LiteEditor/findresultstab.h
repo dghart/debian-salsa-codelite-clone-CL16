@@ -57,16 +57,7 @@ protected:
         std::list<int> indicators;
         typedef wxOrderedMap<wxString, History> Map_t;
     };
-    
-    enum eState {
-        kHeader,
-        kStartOfLine,
-        kFile,
-        kLineNumber,
-        kScope,
-        kMatch,
-    };
-    static eState m_curstate;
+
     History::Map_t m_history;
 
 protected:
@@ -103,10 +94,10 @@ public:
     FindResultsTab(wxWindow* parent, wxWindowID id, const wxString& name);
     ~FindResultsTab();
 
-    static void SetStyles(wxStyledTextCtrl* sci);
-    static void StyleText(wxStyledTextCtrl* ctrl, wxStyledTextEvent& e, bool hasSope = false);
-    static void ResetStyler();
-    
+    void SetStyles(wxStyledTextCtrl* sci);
+    void StyleText(wxStyledTextCtrl* ctrl, wxStyledTextEvent& e, bool hasSope = false);
+    void ResetStyler();
+
     void NextMatch();
     void PrevMatch();
 };

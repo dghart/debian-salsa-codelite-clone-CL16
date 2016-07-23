@@ -32,6 +32,8 @@
 #include "globals.h"
 #include "dbgcommanddlg.h"
 #include "debuggerconfigtool.h"
+#include "ColoursAndFontsManager.h"
+#include "lexer_configuration.h"
 
 ///////////////////////////////////////////////////
 // Misc Page
@@ -75,9 +77,14 @@ DebuggerPageStartupCmds::DebuggerPageStartupCmds(wxWindow* parent, const wxStrin
     : DbgPageStartupCmdsBase(parent)
     , m_title(title)
 {
+    LexerConf::Ptr_t lexer = ColoursAndFontsManager::Get().GetLexer("text", "Default");
+    if(lexer) {
+        lexer->Apply(m_textCtrlStartupCommands);
+    }
+    
     DebuggerInformation info;
     if(DebuggerMgr::Get().GetDebuggerInformation(title, info)) {
-        m_textCtrlStartupCommands->SetValue(info.startupCommands);
+        m_textCtrlStartupCommands->SetText(info.startupCommands);
     }
 }
 
@@ -105,6 +112,7 @@ DebuggerPage::DebuggerPage(wxWindow* parent, wxString title)
         m_raiseOnBpHit->SetValue(info.whenBreakpointHitRaiseCodelite);
         m_checkBoxCharArrAsPtr->SetValue(info.charArrAsPtr);
         m_checkBoxUsePrettyPrinting->SetValue(info.enableGDBPrettyPrinting);
+        m_checkBoxPrintObjectOn->SetValue(!(info.flags & DebuggerInformation::kPrintObjectOff));
     }
 }
 
@@ -310,6 +318,11 @@ void DebuggerSettingsDlg::OnOk(wxCommandEvent& e)
             info.whenBreakpointHitRaiseCodelite = page->m_raiseOnBpHit->IsChecked();
             info.charArrAsPtr = page->m_checkBoxCharArrAsPtr->IsChecked();
             info.enableGDBPrettyPrinting = page->m_checkBoxUsePrettyPrinting->IsChecked();
+            if(page->m_checkBoxPrintObjectOn->IsChecked()) {
+                info.flags &= ~DebuggerInformation::kPrintObjectOff;
+            } else {
+                info.flags |= DebuggerInformation::kPrintObjectOff;
+            }
             DebuggerMgr::Get().SetDebuggerInformation(page->m_title, info);
         }
 
@@ -336,7 +349,7 @@ void DebuggerSettingsDlg::OnOk(wxCommandEvent& e)
             // find the debugger
             DebuggerInformation info;
             DebuggerMgr::Get().GetDebuggerInformation(suCmds->m_title, info);
-            info.startupCommands = suCmds->m_textCtrlStartupCommands->GetValue();
+            info.startupCommands = suCmds->m_textCtrlStartupCommands->GetText();
             DebuggerMgr::Get().SetDebuggerInformation(suCmds->m_title, info);
         }
 

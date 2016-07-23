@@ -64,6 +64,8 @@ public:
     wxFontEncoding Encoding();
     static wxFontEncoding Encoding(const char* buff);
     void SetData(const char* buffer, size_t len);
+    void* GetData() const { return m_bom.GetData(); }
+    bool IsEmpty() const { return m_bom.IsEmpty(); }
 };
 
 class WXDLLIMPEXP_SDK clEventDisabler
@@ -105,8 +107,8 @@ WXDLLIMPEXP_SDK void PostCmdEvent(int eventId, void* clientData = NULL);
  * \param rText the text
  * \param imgId image id
  */
-WXDLLIMPEXP_SDK void
-SetColumnText(wxListCtrl* list, long indx, long column, const wxString& rText, int imgId = wxNOT_FOUND);
+WXDLLIMPEXP_SDK void SetColumnText(
+    wxListCtrl* list, long indx, long column, const wxString& rText, int imgId = wxNOT_FOUND);
 
 /**
  * \brief return column's text
@@ -131,10 +133,8 @@ WXDLLIMPEXP_SDK long AppendListCtrlRow(wxListCtrl* list);
  * \param encoding
  * \return true on success, false otherwise
  */
-WXDLLIMPEXP_SDK bool ReadFileWithConversion(const wxString& fileName,
-                                            wxString& content,
-                                            wxFontEncoding encoding = wxFONTENCODING_DEFAULT,
-                                            BOM* bom = NULL);
+WXDLLIMPEXP_SDK bool ReadFileWithConversion(
+    const wxString& fileName, wxString& content, wxFontEncoding encoding = wxFONTENCODING_DEFAULT, BOM* bom = NULL);
 
 /**
  * \brief write file using UTF8 converter
@@ -182,7 +182,8 @@ WXDLLIMPEXP_SDK bool IsValidCppFile(const wxString& id);
  * the return value is same as input. The variable is expanded
  * in the project context
  */
-WXDLLIMPEXP_SDK wxString ExpandVariables(const wxString& expression, ProjectPtr proj, IEditor* editor);
+WXDLLIMPEXP_SDK wxString ExpandVariables(
+    const wxString& expression, ProjectPtr proj, IEditor* editor, const wxString& filename = wxEmptyString);
 
 /**
  * * [DEPRECATED] DONT USE THIS METHOD ANYMORE - USE IMacroManager
@@ -192,11 +193,8 @@ WXDLLIMPEXP_SDK wxString ExpandVariables(const wxString& expression, ProjectPtr 
  * \param fileName file name, to help expand the $(CurrentFile) macro family
  * \return an expanded string. If a macro is unknown it is replaced by empty string
  */
-WXDLLIMPEXP_SDK wxString ExpandAllVariables(const wxString& expression,
-                                            clCxxWorkspace* workspace,
-                                            const wxString& projectName,
-                                            const wxString& selConf,
-                                            const wxString& fileName);
+WXDLLIMPEXP_SDK wxString ExpandAllVariables(const wxString& expression, clCxxWorkspace* workspace,
+    const wxString& projectName, const wxString& selConf, const wxString& fileName);
 
 /**
  * \brief copy entire directory content (recursievly) from source to target
@@ -294,10 +292,8 @@ WXDLLIMPEXP_SDK void GetProjectTemplateList(std::list<ProjectPtr>& list);
  * @param targetFileName the path of the file that was actually extracted
  * @return true on success, false otherwise
  */
-WXDLLIMPEXP_SDK bool ExtractFileFromZip(const wxString& zipPath,
-                                        const wxString& filename,
-                                        const wxString& targetDir,
-                                        wxString& targetFileName);
+WXDLLIMPEXP_SDK bool ExtractFileFromZip(
+    const wxString& zipPath, const wxString& filename, const wxString& targetDir, wxString& targetFileName);
 
 /**
  * @brief set the native Windows theme for the application
@@ -369,8 +365,8 @@ public:
  * @param maxsize the maximum number of items allowed in the arraystring. 0 means no maximum
  * @return the amended entries
  */
-WXDLLIMPEXP_SDK wxArrayString
-    ReturnWithStringPrepended(const wxArrayString& oldarray, const wxString& str, const size_t maxsize);
+WXDLLIMPEXP_SDK wxArrayString ReturnWithStringPrepended(
+    const wxArrayString& oldarray, const wxString& str, const size_t maxsize);
 
 /**
  * @brief return true if filename is a symbolic link
@@ -438,7 +434,25 @@ WXDLLIMPEXP_SDK void LaunchTerminalForDebugger(const wxString& title, wxString& 
  * @brief prompt the user with a wxRichMessageDialog with a checkbox "Don't show this message again"
  * @param message the message to show to the user
  * @param checkboxLabel the message to display next to the checkbox
- * @param dlgId a unique string ID which will be used for storing the user value incase he checks the 'dont annoy me
+ * @param dlgId a unique string ID which will be used for storing the user value in case he checks the 'dont annoy me
+ * again' checkbox
+ * @param yesLabel set a different label to the "Yes" button
+ * @param noLabel set a different label to the "No" button
+ * @param cancelLabel set a different label to the "Cancel" button
+ * @param style the wxRichMessageDialog style
+ * @param checkboxInitialValue
+ * @return wxRichMessageDialog::ShowModal() return value
+ */
+WXDLLIMPEXP_SDK wxStandardID PromptForYesNoCancelDialogWithCheckbox(const wxString& message, const wxString& dlgId,
+    const wxString& yesLabel = _("Yes"), const wxString& noLabel = _("No"), const wxString& cancelLabel = _("Cancel"),
+    const wxString& checkboxLabel = _("Remember my answer and don't ask me again"),
+    long style = wxYES_NO | wxCANCEL | wxICON_QUESTION | wxYES_DEFAULT, bool checkboxInitialValue = false);
+
+/**
+ * @brief prompt the user with a PromptForYesNoCancelDialogWithCheckbox minus the 'Cancel' button
+ * @param message the message to show to the user
+ * @param checkboxLabel the message to display next to the checkbox
+ * @param dlgId a unique string ID which will be used for storing the user value in case he checks the 'dont annoy me
  * again' checkbox
  * @param yesLabel set a different label to the "Yes" button
  * @param noLabel set a different label to the "No" button
@@ -446,14 +460,10 @@ WXDLLIMPEXP_SDK void LaunchTerminalForDebugger(const wxString& title, wxString& 
  * @param checkboxInitialValue
  * @return wxRichMessageDialog::ShowModal() return value
  */
-WXDLLIMPEXP_SDK wxStandardID
-    PromptForYesNoDialogWithCheckbox(const wxString& message,
-                                     const wxString& dlgId,
-                                     const wxString& yesLabel = _("Yes"),
-                                     const wxString& noLabel = _("No"),
-                                     const wxString& checkboxLabel = _("Remember my answer and don't ask me again"),
-                                     long style = wxYES_NO | wxICON_QUESTION | wxYES_DEFAULT,
-                                     bool checkboxInitialValue = false);
+WXDLLIMPEXP_SDK wxStandardID PromptForYesNoDialogWithCheckbox(const wxString& message, const wxString& dlgId,
+    const wxString& yesLabel = _("Yes"), const wxString& noLabel = _("No"),
+    const wxString& checkboxLabel = _("Remember my answer and don't ask me again"),
+    long style = wxYES_NO | wxICON_QUESTION | wxYES_DEFAULT, bool checkboxInitialValue = false);
 
 /**
  * @brief wrap string with quotes if needed
@@ -508,11 +518,8 @@ WXDLLIMPEXP_SDK void wxPGPropertyBooleanUseCheckbox(wxPropertyGrid* grid);
  */
 WXDLLIMPEXP_SDK void clRecalculateSTCHScrollBar(wxStyledTextCtrl* ctrl);
 
-WXDLLIMPEXP_SDK wxString clGetTextFromUser(const wxString& title,
-                                           const wxString& message,
-                                           const wxString& initialValue = "",
-                                           int charsToSelect = wxNOT_FOUND,
-                                           wxWindow* parent = NULL);
+WXDLLIMPEXP_SDK wxString clGetTextFromUser(const wxString& title, const wxString& message,
+    const wxString& initialValue = "", int charsToSelect = wxNOT_FOUND, wxWindow* parent = NULL);
 /**
  * @brief return the instance to the plugin manager. A convinience method
  */
@@ -523,5 +530,14 @@ WXDLLIMPEXP_SDK IManager* clGetManager();
  */
 WXDLLIMPEXP_SDK void clSetManager(IManager* manager);
 
-#endif // GLOBALS_H
+/**
+ * @brief remove terminal colours from buffer
+ */
+WXDLLIMPEXP_SDK void clStripTerminalColouring(const wxString& buffer, wxString& modbuffer);
 
+/**
+ * @brief return true if the name is valid
+ */
+WXDLLIMPEXP_SDK bool clIsVaidProjectName(const wxString& name);
+
+#endif // GLOBALS_H

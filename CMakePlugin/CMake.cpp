@@ -50,6 +50,8 @@
 // Declaration
 #include "CMake.h"
 #include "cl_standard_paths.h"
+#include "CMakeBuilder.h"
+#include "buildmanager.h"
 
 // C++
 #include <utility>
@@ -106,6 +108,9 @@ CMake::CMake(const wxFileName& path)
 {
     // Prepare database
     PrepareDatabase();
+    
+    // Register the CMake builder
+    BuildManagerST::Get()->AddBuilder(new CMakeBuilder());
 }
 
 /* ************************************************************************ */
@@ -383,7 +388,7 @@ CMake::LoadFromDatabase()
         }
 
     } catch (const wxSQLite3Exception& e) {
-        CL_ERROR("Error occured while loading data from CMake database: %s", e.GetMessage());
+        CL_ERROR("Error occurred while loading data from CMake database: %s", e.GetMessage());
     }
 
     // Everything is loaded
@@ -468,7 +473,7 @@ CMake::StoreIntoDatabase()
         db.Commit();
 
     } catch (wxSQLite3Exception &e) {
-        CL_ERROR("An error occured while storing CMake data into database: %s", e.GetMessage());
+        CL_ERROR("An error occurred while storing CMake data into database: %s", e.GetMessage());
     }
 }
 

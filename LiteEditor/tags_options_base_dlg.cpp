@@ -27,13 +27,13 @@ TagsOptionsBaseDlg::TagsOptionsBaseDlg(wxWindow* parent, wxWindowID id, const wx
     wxBoxSizer* mainSizer = new wxBoxSizer(wxVERTICAL);
     this->SetSizer(mainSizer);
     
-    m_treebook2 = new wxTreebook(this, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxBK_DEFAULT);
-    m_treebook2->SetName(wxT("m_treebook2"));
+    m_notebook87 = new wxNotebook(this, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxBK_DEFAULT);
+    m_notebook87->SetName(wxT("m_notebook87"));
     
-    mainSizer->Add(m_treebook2, 1, wxALL|wxEXPAND, 5);
+    mainSizer->Add(m_notebook87, 1, wxALL|wxEXPAND, 5);
     
-    m_paneDisplayAndBehavior = new wxPanel(m_treebook2, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxTAB_TRAVERSAL);
-    m_treebook2->AddPage(m_paneDisplayAndBehavior, _("Display and Behavior"), false, wxNOT_FOUND);
+    m_paneDisplayAndBehavior = new wxPanel(m_notebook87, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxTAB_TRAVERSAL);
+    m_notebook87->AddPage(m_paneDisplayAndBehavior, _("Display and Behavior"), false);
     
     wxBoxSizer* bSizer19 = new wxBoxSizer(wxVERTICAL);
     m_paneDisplayAndBehavior->SetSizer(bSizer19);
@@ -124,8 +124,8 @@ TagsOptionsBaseDlg::TagsOptionsBaseDlg(wxWindow* parent, wxWindowID id, const wx
     
     flexGridSizer59->Add(m_checkBoxDeepUsingNamespaceResolving, 0, wxALL, 5);
     
-    m_paneColouring = new wxPanel(m_treebook2, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxTAB_TRAVERSAL);
-    m_treebook2->AddPage(m_paneColouring, _("Colouring"), false, wxNOT_FOUND);
+    m_paneColouring = new wxPanel(m_notebook87, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxTAB_TRAVERSAL);
+    m_notebook87->AddPage(m_paneColouring, _("Colouring"), false);
     
     wxBoxSizer* bSizer16 = new wxBoxSizer(wxVERTICAL);
     m_paneColouring->SetSizer(bSizer16);
@@ -173,8 +173,8 @@ TagsOptionsBaseDlg::TagsOptionsBaseDlg(wxWindow* parent, wxWindowID id, const wx
     m_pgPropColourWorkspaceSymbols = m_pgMgrColouring->Append(  new wxFlagsProperty( _("Colour workspace symbols"), wxPG_LABEL, m_pgMgrColouringArr, m_pgMgrColouringIntArr, 0) );
     m_pgPropColourWorkspaceSymbols->SetHelpString(_("Select from the list below which symbols type should be coloured by codelite with different colour.\nThe colour is configurable from the 'Colours and Fonts' dialog"));
     
-    m_paneTriggering = new wxPanel(m_treebook2, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxTAB_TRAVERSAL);
-    m_treebook2->AddPage(m_paneTriggering, _("Triggering"), false, wxNOT_FOUND);
+    m_paneTriggering = new wxPanel(m_notebook87, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxTAB_TRAVERSAL);
+    m_notebook87->AddPage(m_paneTriggering, _("Triggering"), false);
     
     wxBoxSizer* bSizer17 = new wxBoxSizer(wxVERTICAL);
     m_paneTriggering->SetSizer(bSizer17);
@@ -214,21 +214,19 @@ TagsOptionsBaseDlg::TagsOptionsBaseDlg(wxWindow* parent, wxWindowID id, const wx
     
     fgSizer4->Add(m_checkAutoInsertSingleChoice, 0, wxALL, 5);
     
-    m_treebook2->AddPage(NULL, _("CTags"), false, wxNOT_FOUND);
+    m_pageCtags = new wxPanel(m_notebook87, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxTAB_TRAVERSAL);
+    m_notebook87->AddPage(m_pageCtags, _("CTags"), false);
     
-    m_panelCtagsSearchPaths = new wxPanel(m_treebook2, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxTAB_TRAVERSAL);
-    m_treebook2->InsertSubPage(3, m_panelCtagsSearchPaths, _("Search paths"), false, wxNOT_FOUND);
+    wxBoxSizer* boxSizer91 = new wxBoxSizer(wxVERTICAL);
+    m_pageCtags->SetSizer(boxSizer91);
     
-    wxBoxSizer* bSizer7 = new wxBoxSizer(wxVERTICAL);
-    m_panelCtagsSearchPaths->SetSizer(bSizer7);
+    m_notebook93 = new wxNotebook(m_pageCtags, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxBK_DEFAULT);
+    m_notebook93->SetName(wxT("m_notebook93"));
     
-    m_notebook36 = new wxNotebook(m_panelCtagsSearchPaths, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxBK_DEFAULT);
-    m_notebook36->SetName(wxT("m_notebook36"));
+    boxSizer91->Add(m_notebook93, 1, wxALL|wxEXPAND, 5);
     
-    bSizer7->Add(m_notebook36, 1, wxALL|wxEXPAND, 5);
-    
-    m_panel38 = new wxPanel(m_notebook36, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxTAB_TRAVERSAL);
-    m_notebook36->AddPage(m_panel38, _("Search Paths"), true);
+    m_panel38 = new wxPanel(m_notebook93, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxTAB_TRAVERSAL);
+    m_notebook93->AddPage(m_panel38, _("Search Paths"), true);
     
     wxBoxSizer* boxSizer30 = new wxBoxSizer(wxVERTICAL);
     m_panel38->SetSizer(boxSizer30);
@@ -245,16 +243,46 @@ TagsOptionsBaseDlg::TagsOptionsBaseDlg(wxWindow* parent, wxWindowID id, const wx
     
     boxSizer30->Add(bSizer9, 1, wxEXPAND, 5);
     
-    m_textCtrlCtagsSearchPaths = new wxTextCtrl(m_panel38, wxID_ANY, wxT(""), wxDefaultPosition, wxSize(-1, -1), wxTE_RICH2|wxTE_PROCESS_TAB|wxTE_PROCESS_ENTER|wxTE_MULTILINE);
-    #ifdef __WXMSW__
-    // To get the newer version of the font on MSW, we use font wxSYS_DEFAULT_GUI_FONT with family set to wxFONTFAMILY_TELETYPE
-    wxFont m_textCtrlCtagsSearchPathsFont = wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT);
-    m_textCtrlCtagsSearchPathsFont.SetFamily(wxFONTFAMILY_TELETYPE);
-    #else
-    wxFont m_textCtrlCtagsSearchPathsFont = wxSystemSettings::GetFont(wxSYS_ANSI_FIXED_FONT);
-    m_textCtrlCtagsSearchPathsFont.SetFamily(wxFONTFAMILY_TELETYPE);
-    #endif
+    m_textCtrlCtagsSearchPaths = new wxStyledTextCtrl(m_panel38, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), 0);
+    wxFont m_textCtrlCtagsSearchPathsFont = wxSystemSettings::GetFont(wxSYS_SYSTEM_FIXED_FONT);
     m_textCtrlCtagsSearchPaths->SetFont(m_textCtrlCtagsSearchPathsFont);
+    // Configure the fold margin
+    m_textCtrlCtagsSearchPaths->SetMarginType     (4, wxSTC_MARGIN_SYMBOL);
+    m_textCtrlCtagsSearchPaths->SetMarginMask     (4, wxSTC_MASK_FOLDERS);
+    m_textCtrlCtagsSearchPaths->SetMarginSensitive(4, true);
+    m_textCtrlCtagsSearchPaths->SetMarginWidth    (4, 0);
+    
+    // Configure the tracker margin
+    m_textCtrlCtagsSearchPaths->SetMarginWidth(1, 0);
+    
+    // Configure the symbol margin
+    m_textCtrlCtagsSearchPaths->SetMarginType (2, wxSTC_MARGIN_SYMBOL);
+    m_textCtrlCtagsSearchPaths->SetMarginMask (2, ~(wxSTC_MASK_FOLDERS));
+    m_textCtrlCtagsSearchPaths->SetMarginWidth(2, 0);
+    m_textCtrlCtagsSearchPaths->SetMarginSensitive(2, true);
+    
+    // Configure the line numbers margin
+    m_textCtrlCtagsSearchPaths->SetMarginType(0, wxSTC_MARGIN_NUMBER);
+    m_textCtrlCtagsSearchPaths->SetMarginWidth(0,0);
+    
+    // Configure the line symbol margin
+    m_textCtrlCtagsSearchPaths->SetMarginType(3, wxSTC_MARGIN_FORE);
+    m_textCtrlCtagsSearchPaths->SetMarginMask(3, 0);
+    m_textCtrlCtagsSearchPaths->SetMarginWidth(3,0);
+    // Select the lexer
+    m_textCtrlCtagsSearchPaths->SetLexer(wxSTC_LEX_NULL);
+    // Set default font / styles
+    m_textCtrlCtagsSearchPaths->StyleClearAll();
+    for(int i=0; i<wxSTC_STYLE_MAX; ++i) {
+        m_textCtrlCtagsSearchPaths->StyleSetFont(i, m_textCtrlCtagsSearchPathsFont);
+    }
+    m_textCtrlCtagsSearchPaths->SetWrapMode(0);
+    m_textCtrlCtagsSearchPaths->SetIndentationGuides(0);
+    m_textCtrlCtagsSearchPaths->SetKeyWords(0, wxT(""));
+    m_textCtrlCtagsSearchPaths->SetKeyWords(1, wxT(""));
+    m_textCtrlCtagsSearchPaths->SetKeyWords(2, wxT(""));
+    m_textCtrlCtagsSearchPaths->SetKeyWords(3, wxT(""));
+    m_textCtrlCtagsSearchPaths->SetKeyWords(4, wxT(""));
     
     bSizer9->Add(m_textCtrlCtagsSearchPaths, 1, wxALL|wxEXPAND, 5);
     
@@ -271,8 +299,8 @@ TagsOptionsBaseDlg::TagsOptionsBaseDlg(wxWindow* parent, wxWindowID id, const wx
     
     bSizer8->Add(m_buttonCtagsSuggest, 0, wxALL, 5);
     
-    m_panel40 = new wxPanel(m_notebook36, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxTAB_TRAVERSAL);
-    m_notebook36->AddPage(m_panel40, _("Exclude Paths"), false);
+    m_panel40 = new wxPanel(m_notebook93, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxTAB_TRAVERSAL);
+    m_notebook93->AddPage(m_panel40, _("Exclude Paths"), false);
     
     wxBoxSizer* boxSizer42 = new wxBoxSizer(wxVERTICAL);
     m_panel40->SetSizer(boxSizer42);
@@ -289,16 +317,41 @@ TagsOptionsBaseDlg::TagsOptionsBaseDlg(wxWindow* parent, wxWindowID id, const wx
     
     boxSizer42->Add(bSizer91, 1, wxEXPAND, 5);
     
-    m_textCtrlCtagsExcludePaths = new wxTextCtrl(m_panel40, wxID_ANY, wxT(""), wxDefaultPosition, wxSize(-1, -1), wxTE_RICH2|wxTE_PROCESS_TAB|wxTE_PROCESS_ENTER|wxTE_MULTILINE);
-    #ifdef __WXMSW__
-    // To get the newer version of the font on MSW, we use font wxSYS_DEFAULT_GUI_FONT with family set to wxFONTFAMILY_TELETYPE
-    wxFont m_textCtrlCtagsExcludePathsFont = wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT);
-    m_textCtrlCtagsExcludePathsFont.SetFamily(wxFONTFAMILY_TELETYPE);
-    #else
-    wxFont m_textCtrlCtagsExcludePathsFont = wxSystemSettings::GetFont(wxSYS_ANSI_FIXED_FONT);
-    m_textCtrlCtagsExcludePathsFont.SetFamily(wxFONTFAMILY_TELETYPE);
-    #endif
-    m_textCtrlCtagsExcludePaths->SetFont(m_textCtrlCtagsExcludePathsFont);
+    m_textCtrlCtagsExcludePaths = new wxStyledTextCtrl(m_panel40, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), 0);
+    // Configure the fold margin
+    m_textCtrlCtagsExcludePaths->SetMarginType     (4, wxSTC_MARGIN_SYMBOL);
+    m_textCtrlCtagsExcludePaths->SetMarginMask     (4, wxSTC_MASK_FOLDERS);
+    m_textCtrlCtagsExcludePaths->SetMarginSensitive(4, true);
+    m_textCtrlCtagsExcludePaths->SetMarginWidth    (4, 0);
+    
+    // Configure the tracker margin
+    m_textCtrlCtagsExcludePaths->SetMarginWidth(1, 0);
+    
+    // Configure the symbol margin
+    m_textCtrlCtagsExcludePaths->SetMarginType (2, wxSTC_MARGIN_SYMBOL);
+    m_textCtrlCtagsExcludePaths->SetMarginMask (2, ~(wxSTC_MASK_FOLDERS));
+    m_textCtrlCtagsExcludePaths->SetMarginWidth(2, 0);
+    m_textCtrlCtagsExcludePaths->SetMarginSensitive(2, true);
+    
+    // Configure the line numbers margin
+    m_textCtrlCtagsExcludePaths->SetMarginType(0, wxSTC_MARGIN_NUMBER);
+    m_textCtrlCtagsExcludePaths->SetMarginWidth(0,0);
+    
+    // Configure the line symbol margin
+    m_textCtrlCtagsExcludePaths->SetMarginType(3, wxSTC_MARGIN_FORE);
+    m_textCtrlCtagsExcludePaths->SetMarginMask(3, 0);
+    m_textCtrlCtagsExcludePaths->SetMarginWidth(3,0);
+    // Select the lexer
+    m_textCtrlCtagsExcludePaths->SetLexer(wxSTC_LEX_NULL);
+    // Set default font / styles
+    m_textCtrlCtagsExcludePaths->StyleClearAll();
+    m_textCtrlCtagsExcludePaths->SetWrapMode(0);
+    m_textCtrlCtagsExcludePaths->SetIndentationGuides(0);
+    m_textCtrlCtagsExcludePaths->SetKeyWords(0, wxT(""));
+    m_textCtrlCtagsExcludePaths->SetKeyWords(1, wxT(""));
+    m_textCtrlCtagsExcludePaths->SetKeyWords(2, wxT(""));
+    m_textCtrlCtagsExcludePaths->SetKeyWords(3, wxT(""));
+    m_textCtrlCtagsExcludePaths->SetKeyWords(4, wxT(""));
     
     bSizer91->Add(m_textCtrlCtagsExcludePaths, 1, wxALL|wxEXPAND, 5);
     
@@ -310,57 +363,16 @@ TagsOptionsBaseDlg::TagsOptionsBaseDlg(wxWindow* parent, wxWindowID id, const wx
     
     bSizer81->Add(m_buttonAddExcludePath, 0, wxALL|wxEXPAND, 5);
     
-    m_panelCtagsAdvanced = new wxPanel(m_treebook2, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxTAB_TRAVERSAL);
-    m_treebook2->InsertSubPage(3, m_panelCtagsAdvanced, _("Advanced"), false, wxNOT_FOUND);
+    m_panelCtagsAdvanced = new wxPanel(m_notebook93, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxTAB_TRAVERSAL);
+    m_notebook93->AddPage(m_panelCtagsAdvanced, _("Advanced"), false);
     
     wxBoxSizer* bSizer6 = new wxBoxSizer(wxVERTICAL);
     m_panelCtagsAdvanced->SetSizer(bSizer6);
     
-    wxFlexGridSizer* fgSizer2 = new wxFlexGridSizer(0, 2, 0, 0);
-    fgSizer2->SetFlexibleDirection( wxBOTH );
-    fgSizer2->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_SPECIFIED );
-    fgSizer2->AddGrowableCol(1);
-    
-    bSizer6->Add(fgSizer2, 0, wxALL|wxEXPAND, 5);
-    
-    m_staticText3 = new wxStaticText(m_panelCtagsAdvanced, wxID_ANY, _("File Types:"), wxDefaultPosition, wxSize(-1, -1), 0);
-    
-    fgSizer2->Add(m_staticText3, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5);
-    
-    m_textFileSpec = new wxTextCtrl(m_panelCtagsAdvanced, wxID_ANY, wxT(""), wxDefaultPosition, wxSize(-1, -1), 0);
-    #if wxVERSION_NUMBER >= 3000
-    m_textFileSpec->SetHint(wxT(""));
-    #endif
-    
-    fgSizer2->Add(m_textFileSpec, 0, wxALL|wxEXPAND|wxALIGN_CENTER_VERTICAL, 5);
-    
-    wxBoxSizer* bSizer14 = new wxBoxSizer(wxVERTICAL);
-    
-    bSizer6->Add(bSizer14, 0, wxEXPAND, 5);
-    
-    m_staticText92 = new wxStaticText(m_panelCtagsAdvanced, wxID_ANY, _("CodeLite can suggest a list of 'Tokens' that will be added to the 'Tokens' table based on parsing the following header files \n(space separated list):"), wxDefaultPosition, wxSize(-1, -1), 0);
-    
-    bSizer14->Add(m_staticText92, 0, wxALL|wxEXPAND, 5);
-    
-    wxBoxSizer* bSizer15 = new wxBoxSizer(wxHORIZONTAL);
-    
-    bSizer14->Add(bSizer15, 1, wxEXPAND, 5);
-    
-    m_textCtrlFilesList = new wxTextCtrl(m_panelCtagsAdvanced, wxID_ANY, wxT(""), wxDefaultPosition, wxSize(-1, -1), 0);
-    #if wxVERSION_NUMBER >= 3000
-    m_textCtrlFilesList->SetHint(wxT(""));
-    #endif
-    
-    bSizer15->Add(m_textCtrlFilesList, 1, wxALL|wxALIGN_CENTER_VERTICAL, 5);
-    
-    m_buttonParse = new wxButton(m_panelCtagsAdvanced, wxID_ANY, _("Parse!"), wxDefaultPosition, wxSize(-1, -1), 0);
-    
-    bSizer15->Add(m_buttonParse, 0, wxALL, 5);
-    
     m_notebook2 = new wxNotebook(m_panelCtagsAdvanced, wxID_ANY, wxDefaultPosition, wxSize(-1, -1), 0);
     m_notebook2->SetName(wxT("m_notebook2"));
     
-    bSizer6->Add(m_notebook2, 1, wxALL|wxEXPAND, 5);
+    bSizer6->Add(m_notebook2, 1, wxEXPAND, 5);
     
     m_panelClangGeneral = new wxPanel(m_notebook2, wxID_ANY, wxDefaultPosition, wxSize(-1, -1), wxTAB_TRAVERSAL);
     m_panelClangGeneral->SetToolTip(_("List here list of tokens to be pre-processed by codelite-indexer. \nUsually, you would like to add here macros which confuse the parser\nClick the below link to read more about this feature and the syntax supported.\n"));
@@ -369,16 +381,41 @@ TagsOptionsBaseDlg::TagsOptionsBaseDlg(wxWindow* parent, wxWindowID id, const wx
     wxBoxSizer* bSizer5 = new wxBoxSizer(wxVERTICAL);
     m_panelClangGeneral->SetSizer(bSizer5);
     
-    m_textPrep = new wxTextCtrl(m_panelClangGeneral, wxID_ANY, wxT(""), wxDefaultPosition, wxSize(-1, -1), wxTE_RICH2|wxTE_PROCESS_TAB|wxTE_PROCESS_ENTER|wxTE_MULTILINE|wxTE_DONTWRAP);
-    #ifdef __WXMSW__
-    // To get the newer version of the font on MSW, we use font wxSYS_DEFAULT_GUI_FONT with family set to wxFONTFAMILY_TELETYPE
-    wxFont m_textPrepFont = wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT);
-    m_textPrepFont.SetFamily(wxFONTFAMILY_TELETYPE);
-    #else
-    wxFont m_textPrepFont = wxSystemSettings::GetFont(wxSYS_ANSI_FIXED_FONT);
-    m_textPrepFont.SetFamily(wxFONTFAMILY_TELETYPE);
-    #endif
-    m_textPrep->SetFont(m_textPrepFont);
+    m_textPrep = new wxStyledTextCtrl(m_panelClangGeneral, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), 0);
+    // Configure the fold margin
+    m_textPrep->SetMarginType     (4, wxSTC_MARGIN_SYMBOL);
+    m_textPrep->SetMarginMask     (4, wxSTC_MASK_FOLDERS);
+    m_textPrep->SetMarginSensitive(4, true);
+    m_textPrep->SetMarginWidth    (4, 0);
+    
+    // Configure the tracker margin
+    m_textPrep->SetMarginWidth(1, 0);
+    
+    // Configure the symbol margin
+    m_textPrep->SetMarginType (2, wxSTC_MARGIN_SYMBOL);
+    m_textPrep->SetMarginMask (2, ~(wxSTC_MASK_FOLDERS));
+    m_textPrep->SetMarginWidth(2, 0);
+    m_textPrep->SetMarginSensitive(2, true);
+    
+    // Configure the line numbers margin
+    m_textPrep->SetMarginType(0, wxSTC_MARGIN_NUMBER);
+    m_textPrep->SetMarginWidth(0,0);
+    
+    // Configure the line symbol margin
+    m_textPrep->SetMarginType(3, wxSTC_MARGIN_FORE);
+    m_textPrep->SetMarginMask(3, 0);
+    m_textPrep->SetMarginWidth(3,0);
+    // Select the lexer
+    m_textPrep->SetLexer(wxSTC_LEX_NULL);
+    // Set default font / styles
+    m_textPrep->StyleClearAll();
+    m_textPrep->SetWrapMode(0);
+    m_textPrep->SetIndentationGuides(0);
+    m_textPrep->SetKeyWords(0, wxT(""));
+    m_textPrep->SetKeyWords(1, wxT(""));
+    m_textPrep->SetKeyWords(2, wxT(""));
+    m_textPrep->SetKeyWords(3, wxT(""));
+    m_textPrep->SetKeyWords(4, wxT(""));
     
     bSizer5->Add(m_textPrep, 1, wxEXPAND, 5);
     
@@ -413,21 +450,66 @@ TagsOptionsBaseDlg::TagsOptionsBaseDlg(wxWindow* parent, wxWindowID id, const wx
     
     sbSizer521->Add(m_staticText91, 0, wxALL|wxEXPAND, 5);
     
-    m_textTypes = new wxTextCtrl(m_panel5, wxID_ANY, wxT(""), wxDefaultPosition, wxSize(-1, -1), wxTE_RICH2|wxTE_MULTILINE);
-    #ifdef __WXMSW__
-    // To get the newer version of the font on MSW, we use font wxSYS_DEFAULT_GUI_FONT with family set to wxFONTFAMILY_TELETYPE
-    wxFont m_textTypesFont = wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT);
-    m_textTypesFont.SetFamily(wxFONTFAMILY_TELETYPE);
-    #else
-    wxFont m_textTypesFont = wxSystemSettings::GetFont(wxSYS_ANSI_FIXED_FONT);
-    m_textTypesFont.SetFamily(wxFONTFAMILY_TELETYPE);
-    #endif
-    m_textTypes->SetFont(m_textTypesFont);
+    m_textTypes = new wxStyledTextCtrl(m_panel5, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), 0);
+    // Configure the fold margin
+    m_textTypes->SetMarginType     (4, wxSTC_MARGIN_SYMBOL);
+    m_textTypes->SetMarginMask     (4, wxSTC_MASK_FOLDERS);
+    m_textTypes->SetMarginSensitive(4, true);
+    m_textTypes->SetMarginWidth    (4, 0);
+    
+    // Configure the tracker margin
+    m_textTypes->SetMarginWidth(1, 0);
+    
+    // Configure the symbol margin
+    m_textTypes->SetMarginType (2, wxSTC_MARGIN_SYMBOL);
+    m_textTypes->SetMarginMask (2, ~(wxSTC_MASK_FOLDERS));
+    m_textTypes->SetMarginWidth(2, 0);
+    m_textTypes->SetMarginSensitive(2, true);
+    
+    // Configure the line numbers margin
+    m_textTypes->SetMarginType(0, wxSTC_MARGIN_NUMBER);
+    m_textTypes->SetMarginWidth(0,0);
+    
+    // Configure the line symbol margin
+    m_textTypes->SetMarginType(3, wxSTC_MARGIN_FORE);
+    m_textTypes->SetMarginMask(3, 0);
+    m_textTypes->SetMarginWidth(3,0);
+    // Select the lexer
+    m_textTypes->SetLexer(wxSTC_LEX_NULL);
+    // Set default font / styles
+    m_textTypes->StyleClearAll();
+    m_textTypes->SetWrapMode(0);
+    m_textTypes->SetIndentationGuides(0);
+    m_textTypes->SetKeyWords(0, wxT(""));
+    m_textTypes->SetKeyWords(1, wxT(""));
+    m_textTypes->SetKeyWords(2, wxT(""));
+    m_textTypes->SetKeyWords(3, wxT(""));
+    m_textTypes->SetKeyWords(4, wxT(""));
     
     bSizer13->Add(m_textTypes, 1, wxEXPAND, 5);
     
-    m_panelClang = new wxPanel(m_treebook2, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxTAB_TRAVERSAL);
-    m_treebook2->AddPage(m_panelClang, _("Clang"), false, wxNOT_FOUND);
+    wxBoxSizer* bSizer14 = new wxBoxSizer(wxVERTICAL);
+    
+    bSizer6->Add(bSizer14, 0, wxEXPAND, 5);
+    
+    wxBoxSizer* bSizer15 = new wxBoxSizer(wxHORIZONTAL);
+    
+    bSizer14->Add(bSizer15, 1, wxEXPAND, 5);
+    
+    m_textCtrlFilesList = new wxTextCtrl(m_panelCtagsAdvanced, wxID_ANY, wxT(""), wxDefaultPosition, wxSize(-1, -1), 0);
+    m_textCtrlFilesList->SetToolTip(_("CodeLite can suggest a list of 'Tokens' that will be added to the 'Tokens' table based on parsing the following header files"));
+    #if wxVERSION_NUMBER >= 3000
+    m_textCtrlFilesList->SetHint(wxT(""));
+    #endif
+    
+    bSizer15->Add(m_textCtrlFilesList, 1, wxALL|wxALIGN_CENTER_VERTICAL, 5);
+    
+    m_buttonParse = new wxButton(m_panelCtagsAdvanced, wxID_ANY, _("Parse!"), wxDefaultPosition, wxSize(-1, -1), 0);
+    
+    bSizer15->Add(m_buttonParse, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5);
+    
+    m_panelClang = new wxPanel(m_notebook87, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), wxTAB_TRAVERSAL);
+    m_notebook87->AddPage(m_panelClang, _("Clang"), false);
     
     wxBoxSizer* bSizer18 = new wxBoxSizer(wxVERTICAL);
     m_panelClang->SetSizer(bSizer18);
@@ -472,19 +554,44 @@ TagsOptionsBaseDlg::TagsOptionsBaseDlg(wxWindow* parent, wxWindowID id, const wx
     wxBoxSizer* bSizer24 = new wxBoxSizer(wxVERTICAL);
     m_panel8->SetSizer(bSizer24);
     
-    m_textCtrlClangSearchPaths = new wxTextCtrl(m_panel8, wxID_ANY, wxT(""), wxDefaultPosition, wxSize(-1, -1), wxTE_RICH2|wxTE_PROCESS_TAB|wxTE_PROCESS_ENTER|wxTE_MULTILINE);
-    #ifdef __WXMSW__
-    // To get the newer version of the font on MSW, we use font wxSYS_DEFAULT_GUI_FONT with family set to wxFONTFAMILY_TELETYPE
-    wxFont m_textCtrlClangSearchPathsFont = wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT);
-    m_textCtrlClangSearchPathsFont.SetFamily(wxFONTFAMILY_TELETYPE);
-    #else
-    wxFont m_textCtrlClangSearchPathsFont = wxSystemSettings::GetFont(wxSYS_ANSI_FIXED_FONT);
-    m_textCtrlClangSearchPathsFont.SetFamily(wxFONTFAMILY_TELETYPE);
-    #endif
-    m_textCtrlClangSearchPaths->SetFont(m_textCtrlClangSearchPathsFont);
+    m_textCtrlClangSearchPaths = new wxStyledTextCtrl(m_panel8, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), 0);
     m_textCtrlClangSearchPaths->SetToolTip(_("Add here search paths used by clang for locating include files"));
+    // Configure the fold margin
+    m_textCtrlClangSearchPaths->SetMarginType     (4, wxSTC_MARGIN_SYMBOL);
+    m_textCtrlClangSearchPaths->SetMarginMask     (4, wxSTC_MASK_FOLDERS);
+    m_textCtrlClangSearchPaths->SetMarginSensitive(4, true);
+    m_textCtrlClangSearchPaths->SetMarginWidth    (4, 0);
     
-    bSizer24->Add(m_textCtrlClangSearchPaths, 1, wxEXPAND, 5);
+    // Configure the tracker margin
+    m_textCtrlClangSearchPaths->SetMarginWidth(1, 0);
+    
+    // Configure the symbol margin
+    m_textCtrlClangSearchPaths->SetMarginType (2, wxSTC_MARGIN_SYMBOL);
+    m_textCtrlClangSearchPaths->SetMarginMask (2, ~(wxSTC_MASK_FOLDERS));
+    m_textCtrlClangSearchPaths->SetMarginWidth(2, 0);
+    m_textCtrlClangSearchPaths->SetMarginSensitive(2, true);
+    
+    // Configure the line numbers margin
+    m_textCtrlClangSearchPaths->SetMarginType(0, wxSTC_MARGIN_NUMBER);
+    m_textCtrlClangSearchPaths->SetMarginWidth(0,0);
+    
+    // Configure the line symbol margin
+    m_textCtrlClangSearchPaths->SetMarginType(3, wxSTC_MARGIN_FORE);
+    m_textCtrlClangSearchPaths->SetMarginMask(3, 0);
+    m_textCtrlClangSearchPaths->SetMarginWidth(3,0);
+    // Select the lexer
+    m_textCtrlClangSearchPaths->SetLexer(wxSTC_LEX_NULL);
+    // Set default font / styles
+    m_textCtrlClangSearchPaths->StyleClearAll();
+    m_textCtrlClangSearchPaths->SetWrapMode(0);
+    m_textCtrlClangSearchPaths->SetIndentationGuides(0);
+    m_textCtrlClangSearchPaths->SetKeyWords(0, wxT(""));
+    m_textCtrlClangSearchPaths->SetKeyWords(1, wxT(""));
+    m_textCtrlClangSearchPaths->SetKeyWords(2, wxT(""));
+    m_textCtrlClangSearchPaths->SetKeyWords(3, wxT(""));
+    m_textCtrlClangSearchPaths->SetKeyWords(4, wxT(""));
+    
+    bSizer24->Add(m_textCtrlClangSearchPaths, 1, wxEXPAND, 0);
     
     m_buttonSuggest = new wxButton(m_panel8, wxID_ANY, _("Suggest search paths..."), wxDefaultPosition, wxSize(-1, -1), 0);
     
@@ -524,41 +631,34 @@ TagsOptionsBaseDlg::TagsOptionsBaseDlg(wxWindow* parent, wxWindowID id, const wx
     
     fgSizerClangCache->Add(m_choiceCachePolicy, 0, wxALL|wxEXPAND|wxALIGN_RIGHT, 5);
     
-    wxBoxSizer* bSizer3 = new wxBoxSizer(wxHORIZONTAL);
+    m_stdBtnSizer95 = new wxStdDialogButtonSizer();
     
-    mainSizer->Add(bSizer3, 0, wxALL|wxALIGN_CENTER_HORIZONTAL, 5);
+    mainSizer->Add(m_stdBtnSizer95, 0, wxALL|wxALIGN_CENTER_HORIZONTAL, 10);
     
-    m_buttonOK = new wxButton(this, wxID_OK, _("&OK"), wxDefaultPosition, wxSize(-1, -1), 0);
-    m_buttonOK->SetDefault();
+    m_button97 = new wxButton(this, wxID_OK, wxT(""), wxDefaultPosition, wxSize(-1, -1), 0);
+    m_button97->SetDefault();
+    m_stdBtnSizer95->AddButton(m_button97);
     
-    bSizer3->Add(m_buttonOK, 0, wxALL, 5);
+    m_button99 = new wxButton(this, wxID_CANCEL, wxT(""), wxDefaultPosition, wxSize(-1, -1), 0);
+    m_stdBtnSizer95->AddButton(m_button99);
+    m_stdBtnSizer95->Realize();
     
-    m_buttonCancel = new wxButton(this, wxID_CANCEL, _("Cancel"), wxDefaultPosition, wxSize(-1, -1), 0);
-    
-    bSizer3->Add(m_buttonCancel, 0, wxALL, 5);
-    
-    
-    #if wxVERSION_NUMBER >= 2900
-    if(!wxPersistenceManager::Get().Find(m_treebook2)){
-        wxPersistenceManager::Get().RegisterAndRestore(m_treebook2);
-    } else {
-        wxPersistenceManager::Get().Restore(m_treebook2);
-    }
-    #endif
-    m_treebook2->ExpandNode( 0, true );
-    m_treebook2->ExpandNode( 1, true );
-    m_treebook2->ExpandNode( 2, true );
-    m_treebook2->ExpandNode( 3, true );
-    m_treebook2->ExpandNode( 4, true );
     
     #if wxVERSION_NUMBER >= 2900
-    if(!wxPersistenceManager::Get().Find(m_notebook36)){
-        wxPersistenceManager::Get().RegisterAndRestore(m_notebook36);
+    if(!wxPersistenceManager::Get().Find(m_notebook87)){
+        wxPersistenceManager::Get().RegisterAndRestore(m_notebook87);
     } else {
-        wxPersistenceManager::Get().Restore(m_notebook36);
+        wxPersistenceManager::Get().Restore(m_notebook87);
     }
     #endif
-    m_treebook2->ExpandNode( 5, true );
+    
+    #if wxVERSION_NUMBER >= 2900
+    if(!wxPersistenceManager::Get().Find(m_notebook93)){
+        wxPersistenceManager::Get().RegisterAndRestore(m_notebook93);
+    } else {
+        wxPersistenceManager::Get().Restore(m_notebook93);
+    }
+    #endif
     
     #if wxVERSION_NUMBER >= 2900
     if(!wxPersistenceManager::Get().Find(m_notebook2)){
@@ -567,7 +667,6 @@ TagsOptionsBaseDlg::TagsOptionsBaseDlg(wxWindow* parent, wxWindowID id, const wx
         wxPersistenceManager::Get().Restore(m_notebook2);
     }
     #endif
-    m_treebook2->ExpandNode( 6, true );
     
     #if wxVERSION_NUMBER >= 2900
     if(!wxPersistenceManager::Get().Find(m_notebookClang)){
@@ -578,11 +677,15 @@ TagsOptionsBaseDlg::TagsOptionsBaseDlg(wxWindow* parent, wxWindowID id, const wx
     #endif
     
     SetName(wxT("TagsOptionsBaseDlg"));
-    SetSizeHints(-1,-1);
-    if ( GetSizer() ) {
+    SetSize(-1,-1);
+    if (GetSizer()) {
          GetSizer()->Fit(this);
     }
-    CentreOnParent(wxBOTH);
+    if(GetParent()) {
+        CentreOnParent(wxBOTH);
+    } else {
+        CentreOnScreen(wxBOTH);
+    }
 #if wxVERSION_NUMBER >= 2900
     if(!wxPersistenceManager::Get().Find(this)) {
         wxPersistenceManager::Get().RegisterAndRestore(this);
@@ -601,13 +704,12 @@ TagsOptionsBaseDlg::TagsOptionsBaseDlg(wxWindow* parent, wxWindowID id, const wx
     m_buttonParse->Connect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(TagsOptionsBaseDlg::OnFileSelectedUI), NULL, this);
     m_notebookClang->Connect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(TagsOptionsBaseDlg::OnClangCCEnabledUI), NULL, this);
     m_checkBoxClangFirst->Connect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(TagsOptionsBaseDlg::OnClangCCEnabledUI), NULL, this);
-    m_textCtrlClangSearchPaths->Connect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(TagsOptionsBaseDlg::OnClangCCEnabledUI), NULL, this);
     m_buttonSuggest->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(TagsOptionsBaseDlg::OnSuggestSearchPaths), NULL, this);
     m_buttonSuggest->Connect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(TagsOptionsBaseDlg::OnClangCCEnabledUI), NULL, this);
     m_staticText101->Connect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(TagsOptionsBaseDlg::OnClangCCEnabledUI), NULL, this);
     m_buttonClearCache->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(TagsOptionsBaseDlg::OnClearClangCache), NULL, this);
     m_buttonClearCache->Connect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(TagsOptionsBaseDlg::OnClearClangCacheUI), NULL, this);
-    m_buttonOK->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(TagsOptionsBaseDlg::OnButtonOK), NULL, this);
+    m_button97->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(TagsOptionsBaseDlg::OnButtonOK), NULL, this);
     
 }
 
@@ -623,12 +725,11 @@ TagsOptionsBaseDlg::~TagsOptionsBaseDlg()
     m_buttonParse->Disconnect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(TagsOptionsBaseDlg::OnFileSelectedUI), NULL, this);
     m_notebookClang->Disconnect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(TagsOptionsBaseDlg::OnClangCCEnabledUI), NULL, this);
     m_checkBoxClangFirst->Disconnect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(TagsOptionsBaseDlg::OnClangCCEnabledUI), NULL, this);
-    m_textCtrlClangSearchPaths->Disconnect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(TagsOptionsBaseDlg::OnClangCCEnabledUI), NULL, this);
     m_buttonSuggest->Disconnect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(TagsOptionsBaseDlg::OnSuggestSearchPaths), NULL, this);
     m_buttonSuggest->Disconnect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(TagsOptionsBaseDlg::OnClangCCEnabledUI), NULL, this);
     m_staticText101->Disconnect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(TagsOptionsBaseDlg::OnClangCCEnabledUI), NULL, this);
     m_buttonClearCache->Disconnect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(TagsOptionsBaseDlg::OnClearClangCache), NULL, this);
     m_buttonClearCache->Disconnect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(TagsOptionsBaseDlg::OnClearClangCacheUI), NULL, this);
-    m_buttonOK->Disconnect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(TagsOptionsBaseDlg::OnButtonOK), NULL, this);
+    m_button97->Disconnect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(TagsOptionsBaseDlg::OnButtonOK), NULL, this);
     
 }

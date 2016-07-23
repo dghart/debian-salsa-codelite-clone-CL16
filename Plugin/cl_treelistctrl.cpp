@@ -74,6 +74,13 @@
 
 #include <wx/log.h> // only required for debugging purpose
 
+#ifndef __WXOSX__
+#if wxVERSION_NUMBER > 3100
+    // The 'Tree' of wxTreeItemAttr no longer exists
+    #define wxTreeItemAttr wxItemAttr
+#endif
+#endif
+
 // ---------------------------------------------------------------------------
 // array types
 // ---------------------------------------------------------------------------
@@ -1388,7 +1395,7 @@ void clTreeListHeaderWindow::OnMouse(wxMouseEvent& event)
         // end of the current column
         int xpos = 0;
 
-        // find the column where this event occured
+        // find the column where this event occurred
         int countCol = GetColumnCount();
         for(int column = 0; column < countCol; column++) {
             if(!IsColumnShown(column)) continue; // do next if not shown

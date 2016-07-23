@@ -89,6 +89,8 @@ TagsOptionsData::TagsOptionsData()
     // Initialize defaults
     m_languages.Add(wxT("C++"));
     m_tokens.Add(wxT("EXPORT"));
+    m_tokens.Add(wxT("_GLIBCXX_BEGIN_NAMESPACE_VERSION"));
+    m_tokens.Add(wxT("_GLIBCXX_END_NAMESPACE_VERSION"));
     m_tokens.Add(wxT("_GLIBCXX_NOEXCEPT"));
     m_tokens.Add(wxT("_NOEXCEPT"));
     m_tokens.Add(wxT("WXDLLIMPEXP_CORE"));
@@ -122,6 +124,7 @@ TagsOptionsData::TagsOptionsData()
     m_tokens.Add(wxT("WINAPI"));
     m_tokens.Add(wxT("__nonnull"));
     m_tokens.Add(wxT("noexcept"));
+    m_tokens.Add(wxT("wxOVERRIDE"));
     m_tokens.Add("final"); // ignore "final" keyword
 #if defined(__WXGTK__)
     m_tokens.Add(wxT("wxTopLevelWindowNative=wxTopLevelWindowGTK"));
@@ -212,6 +215,7 @@ TagsOptionsData::TagsOptionsData()
     m_types.Add(wxT("std::multimap::const_iterator=std::pair<_Key,_Tp>"));
     m_types.Add(wxT("wxOrderedMap::iterator=std::pair<Key,Value>"));
     m_types.Add(wxT("wxOrderedMap::const_iterator=std::pair<Key,Value>"));
+    m_types.Add(wxT("boost::shared_ptr::type=T"));
 
     DoUpdateTokensWxMap();
     DoUpdateTokensWxMapReversed();

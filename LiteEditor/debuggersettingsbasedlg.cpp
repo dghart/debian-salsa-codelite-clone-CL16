@@ -54,7 +54,7 @@ DebuggerSettingsBaseDlg::DebuggerSettingsBaseDlg(wxWindow* parent, wxWindowID id
     #endif
     
     SetName(wxT("DebuggerSettingsBaseDlg"));
-    SetSizeHints(-1,-1);
+    SetSize(-1,-1);
     if (GetSizer()) {
          GetSizer()->Fit(this);
     }
@@ -94,21 +94,46 @@ DbgPageStartupCmdsBase::DbgPageStartupCmdsBase(wxWindow* parent, wxWindowID id, 
     wxBoxSizer* bSizer7 = new wxBoxSizer(wxVERTICAL);
     this->SetSizer(bSizer7);
     
-    m_textCtrlStartupCommands = new wxTextCtrl(this, wxID_ANY, wxT(""), wxDefaultPosition, wxSize(-1, -1), wxTE_RICH2|wxTE_PROCESS_TAB|wxTE_PROCESS_ENTER|wxTE_MULTILINE);
-    #ifdef __WXMSW__
-    // To get the newer version of the font on MSW, we use font wxSYS_DEFAULT_GUI_FONT with family set to wxFONTFAMILY_TELETYPE
-    wxFont m_textCtrlStartupCommandsFont = wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT);
-    m_textCtrlStartupCommandsFont.SetFamily(wxFONTFAMILY_TELETYPE);
-    #else
-    wxFont m_textCtrlStartupCommandsFont = wxSystemSettings::GetFont(wxSYS_ANSI_FIXED_FONT);
-    m_textCtrlStartupCommandsFont.SetFamily(wxFONTFAMILY_TELETYPE);
-    #endif
-    m_textCtrlStartupCommands->SetFont(m_textCtrlStartupCommandsFont);
+    m_textCtrlStartupCommands = new wxStyledTextCtrl(this, wxID_ANY, wxDefaultPosition, wxSize(-1,-1), 0);
+    // Configure the fold margin
+    m_textCtrlStartupCommands->SetMarginType     (4, wxSTC_MARGIN_SYMBOL);
+    m_textCtrlStartupCommands->SetMarginMask     (4, wxSTC_MASK_FOLDERS);
+    m_textCtrlStartupCommands->SetMarginSensitive(4, true);
+    m_textCtrlStartupCommands->SetMarginWidth    (4, 0);
+    
+    // Configure the tracker margin
+    m_textCtrlStartupCommands->SetMarginWidth(1, 0);
+    
+    // Configure the symbol margin
+    m_textCtrlStartupCommands->SetMarginType (2, wxSTC_MARGIN_SYMBOL);
+    m_textCtrlStartupCommands->SetMarginMask (2, ~(wxSTC_MASK_FOLDERS));
+    m_textCtrlStartupCommands->SetMarginWidth(2, 0);
+    m_textCtrlStartupCommands->SetMarginSensitive(2, true);
+    
+    // Configure the line numbers margin
+    m_textCtrlStartupCommands->SetMarginType(0, wxSTC_MARGIN_NUMBER);
+    m_textCtrlStartupCommands->SetMarginWidth(0,0);
+    
+    // Configure the line symbol margin
+    m_textCtrlStartupCommands->SetMarginType(3, wxSTC_MARGIN_FORE);
+    m_textCtrlStartupCommands->SetMarginMask(3, 0);
+    m_textCtrlStartupCommands->SetMarginWidth(3,0);
+    // Select the lexer
+    m_textCtrlStartupCommands->SetLexer(wxSTC_LEX_NULL);
+    // Set default font / styles
+    m_textCtrlStartupCommands->StyleClearAll();
+    m_textCtrlStartupCommands->SetWrapMode(0);
+    m_textCtrlStartupCommands->SetIndentationGuides(0);
+    m_textCtrlStartupCommands->SetKeyWords(0, wxT(""));
+    m_textCtrlStartupCommands->SetKeyWords(1, wxT(""));
+    m_textCtrlStartupCommands->SetKeyWords(2, wxT(""));
+    m_textCtrlStartupCommands->SetKeyWords(3, wxT(""));
+    m_textCtrlStartupCommands->SetKeyWords(4, wxT(""));
     
     bSizer7->Add(m_textCtrlStartupCommands, 1, wxALL|wxEXPAND, 5);
     
     SetName(wxT("DbgPageStartupCmdsBase"));
-    SetSizeHints(-1,-1);
+    SetSize(-1,-1);
     if (GetSizer()) {
          GetSizer()->Fit(this);
     }
@@ -163,7 +188,7 @@ PreDefinedTypesPageBase::PreDefinedTypesPageBase(wxWindow* parent, wxWindowID id
     bSizer6->Add(m_buttonDelete, 0, wxALL|wxEXPAND, 5);
     
     SetName(wxT("PreDefinedTypesPageBase"));
-    SetSizeHints(-1,-1);
+    SetSize(-1,-1);
     if (GetSizer()) {
          GetSizer()->Fit(this);
     }
@@ -251,7 +276,7 @@ NewPreDefinedSetBaseDlg::NewPreDefinedSetBaseDlg(wxWindow* parent, wxWindowID id
     bSizer18->Add(m_button10, 0, wxALL, 5);
     
     SetName(wxT("NewPreDefinedSetBaseDlg"));
-    SetSizeHints(-1,-1);
+    SetSize(-1,-1);
     if (GetSizer()) {
          GetSizer()->Fit(this);
     }
@@ -415,8 +440,14 @@ DbgPageGeneralBase::DbgPageGeneralBase(wxWindow* parent, wxWindowID id, const wx
     
     fgSizer21->Add(0, 0, 0, wxALL, 5);
     
+    m_checkBoxPrintObjectOn = new wxCheckBox(m_panel6, wxID_ANY, _("Print object ON"), wxDefaultPosition, wxSize(-1,-1), 0);
+    m_checkBoxPrintObjectOn->SetValue(false);
+    m_checkBoxPrintObjectOn->SetToolTip(_("When displaying a pointer to an object, identify the actual (derived) type of the object rather than the declared type, using the virtual function table."));
+    
+    fgSizer21->Add(m_checkBoxPrintObjectOn, 0, wxALL, 5);
+    
     SetName(wxT("DbgPageGeneralBase"));
-    SetSizeHints(-1,-1);
+    SetSize(-1,-1);
     if (GetSizer()) {
          GetSizer()->Fit(this);
     }
@@ -516,7 +547,7 @@ DbgPageMiscBase::DbgPageMiscBase(wxWindow* parent, wxWindowID id, const wxPoint&
     gSizer5->Add(m_textCtrlCygwinPathCommand, 0, wxLEFT|wxRIGHT|wxBOTTOM|wxEXPAND|wxALIGN_CENTER_VERTICAL, 5);
     
     SetName(wxT("DbgPageMiscBase"));
-    SetSizeHints(-1,-1);
+    SetSize(-1,-1);
     if (GetSizer()) {
          GetSizer()->Fit(this);
     }
@@ -581,7 +612,7 @@ DbgPagePreDefTypesBase::DbgPagePreDefTypesBase(wxWindow* parent, wxWindowID id, 
     sbSizer5->Add(m_notebookPreDefTypes, 1, wxEXPAND, 5);
     
     SetName(wxT("DbgPagePreDefTypesBase"));
-    SetSizeHints(-1,-1);
+    SetSize(-1,-1);
     if (GetSizer()) {
          GetSizer()->Fit(this);
     }
@@ -698,7 +729,7 @@ DebuggerDisassemblyTabBase::DebuggerDisassemblyTabBase(wxWindow* parent, wxWindo
     m_dvListCtrlRegisters->AppendTextColumn(_("Value"), wxDATAVIEW_CELL_INERT, 150, wxALIGN_LEFT);
     
     SetName(wxT("DebuggerDisassemblyTabBase"));
-    SetSizeHints(500,300);
+    SetSize(500,300);
     if (GetSizer()) {
          GetSizer()->Fit(this);
     }
@@ -745,7 +776,7 @@ LocalsTableBase::LocalsTableBase(wxWindow* parent, wxWindowID id, const wxPoint&
     boxSizer29->Add(m_listTable, 1, wxALL|wxEXPAND, 2);
     
     SetName(wxT("LocalsTableBase"));
-    SetSizeHints(500,300);
+    SetSize(500,300);
     if (GetSizer()) {
          GetSizer()->Fit(this);
     }

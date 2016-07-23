@@ -27,8 +27,6 @@
 #include <map>
 #include <wx/menu.h>
 #include <wx/toolbar.h>
-#include <wx/choice.h>
-#include <wx/arrstr.h>
 #include <wx/splitter.h>
 #include <wx/checklst.h>
 #include <wx/stc/stc.h>
@@ -56,6 +54,8 @@ protected:
     wxFilePickerCtrl* m_pathGIT;
     wxStaticText* m_staticText54;
     wxFilePickerCtrl* m_pathGITK;
+    wxStaticText* m_staticText355;
+    wxTextCtrl* m_textCtrlGitShell;
     wxPanel* m_panel234;
     wxStaticText* m_staticText246;
     wxTextCtrl* m_textCtrlGlobalName;
@@ -82,6 +82,8 @@ public:
     wxFilePickerCtrl* GetPathGIT() { return m_pathGIT; }
     wxStaticText* GetStaticText54() { return m_staticText54; }
     wxFilePickerCtrl* GetPathGITK() { return m_pathGITK; }
+    wxStaticText* GetStaticText355() { return m_staticText355; }
+    wxTextCtrl* GetTextCtrlGitShell() { return m_textCtrlGitShell; }
     wxPanel* GetPanel232() { return m_panel232; }
     wxStaticText* GetStaticText246() { return m_staticText246; }
     wxTextCtrl* GetTextCtrlGlobalName() { return m_textCtrlGlobalName; }
@@ -106,11 +108,11 @@ class GitCommitDlgBase : public wxDialog
 {
 public:
     enum {
-        ID_TOGGLE_CHECKALL = 6001,
+        ID_GIT_COMMIT_HISTORY = 6001,
+        ID_TOGGLE_CHECKALL = 6002,
     };
 protected:
     wxAuiToolBar* m_auibar;
-    wxChoice* m_choiceRecentCommits;
     wxSplitterWindow* m_splitterMain;
     wxPanel* m_panel3;
     wxSplitterWindow* m_splitterInner;
@@ -128,14 +130,14 @@ protected:
 
 protected:
     virtual void OnToggleCheckAll(wxCommandEvent& event) { event.Skip(); }
-    virtual void OnRecentCommitSelected(wxCommandEvent& event) { event.Skip(); }
+    virtual void OnCommitHistory(wxCommandEvent& event) { event.Skip(); }
+    virtual void OnCommitHistoryUI(wxUpdateUIEvent& event) { event.Skip(); }
     virtual void OnClearGitCommitHistory(wxCommandEvent& event) { event.Skip(); }
     virtual void OnClearGitCommitHistoryUI(wxUpdateUIEvent& event) { event.Skip(); }
     virtual void OnChangeFile(wxCommandEvent& event) { event.Skip(); }
     virtual void OnCommitOK(wxCommandEvent& event) { event.Skip(); }
 
 public:
-    wxChoice* GetChoiceRecentCommits() { return m_choiceRecentCommits; }
     wxAuiToolBar* GetAuibar() { return m_auibar; }
     wxCheckListBox* GetListBox() { return m_listBox; }
     wxPanel* GetPanel1() { return m_panel1; }

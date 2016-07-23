@@ -42,6 +42,8 @@
 #include <ICompilerLocator.h>
 #include <wx/msgdlg.h>
 #include "clSingleChoiceDialog.h"
+#include "ColoursAndFontsManager.h"
+#include "lexer_configuration.h"
 
 //---------------------------------------------------------
 
@@ -49,7 +51,15 @@ TagsOptionsDlg::TagsOptionsDlg(wxWindow* parent, const TagsOptionsData& data)
     : TagsOptionsBaseDlg(parent)
     , m_data(data)
 {
-    MSWSetNativeTheme(m_treebook2->GetTreeCtrl());
+    LexerConf::Ptr_t lexer = ColoursAndFontsManager::Get().GetLexer("text");
+    if(lexer) {
+        lexer->Apply(m_textCtrlClangSearchPaths);
+        lexer->Apply(m_textCtrlCtagsExcludePaths);
+        lexer->Apply(m_textCtrlCtagsSearchPaths);
+        lexer->Apply(m_textPrep);
+        lexer->Apply(m_textTypes);
+    }
+    
     ::wxPGPropertyBooleanUseCheckbox(m_pgMgrColouring->GetGrid());
     Centre();
     GetSizer()->Fit(this);
@@ -98,7 +108,6 @@ TagsOptionsDlg::TagsOptionsDlg(wxWindow* parent, const TagsOptionsData& data)
     m_textPrep->SetValue(m_data.GetTokens());
     m_textTypes->SetValue(m_data.GetTypes());
     m_textCtrlFilesList->SetValue(m_data.GetMacrosFiles());
-    m_textFileSpec->SetValue(m_data.GetFileSpec());
 
 //----------------------------------------------------
 // Clang page
@@ -172,7 +181,6 @@ void TagsOptionsDlg::CopyData()
     //----------------------------------------------------
     // CTags advanced paths
     //----------------------------------------------------
-    m_data.SetFileSpec(m_textFileSpec->GetValue());
     m_data.SetTokens(m_textPrep->GetValue());
     m_data.SetTypes(m_textTypes->GetValue());
     m_data.SetMacrosFiles(m_textCtrlFilesList->GetValue());
@@ -332,7 +340,7 @@ void TagsOptionsDlg::OnSuggestCtags(wxCommandEvent& event)
     DoSuggest(m_textCtrlCtagsSearchPaths);
 }
 
-void TagsOptionsDlg::DoSuggest(wxTextCtrl* textCtrl)
+void TagsOptionsDlg::DoSuggest(wxStyledTextCtrl* textCtrl)
 {
     CompilerPtrVec_t allCompilers = BuildSettingsConfigST::Get()->GetAllCompilers();
 

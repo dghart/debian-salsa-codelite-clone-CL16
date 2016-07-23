@@ -35,9 +35,10 @@ class IManager;
 class WXDLLIMPEXP_SDK clStatusBar : public wxCustomStatusBar
 {
     IManager* m_mgr;
-    wxBitmap m_bmpBuild;
     wxBitmap m_bmpBuildError;
     wxBitmap m_bmpBuildWarnings;
+    wxBitmap m_bmpSourceControl;
+    wxString m_sourceControlTabName;
 
 protected:
     void OnPageChanged(wxCommandEvent& event);
@@ -69,10 +70,14 @@ public:
 
     /**
      * @brief set the whitespace information (Tabs vs Spaces)
-     * @param whitespaceInfo
      */
-    void SetWhitespaceInfo(const wxString& whitespaceInfo);
-
+    void SetWhitespaceInfo();
+    
+    /**
+     * @brief clear the whitespace info fields
+     */
+    void ClearWhitespaceInfo();
+    
     /**
      * @brief update the language field
      */
@@ -94,6 +99,12 @@ public:
      * @brief stop the animation
      */
     void StopAnimation();
+
+    /**
+     * @brief set a bitmap (16x16) in the source control section
+     * and optionally, provide an output tab name to toggle when the bitmap is clicked
+     */
+    void SetSourceControlBitmap(const wxBitmap& bmp, const wxString& outputTabName, const wxString& tooltip);
 };
 
 #endif // CLSTATUSBAR_H

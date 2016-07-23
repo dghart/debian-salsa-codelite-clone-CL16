@@ -424,3 +424,21 @@ void ReplaceInFilesPanel::OnHoldOpenUpdateUI(wxUpdateUIEvent& e)
         e.Check(false);
     }
 }
+
+void ReplaceInFilesPanel::OnMouseDClick(wxStyledTextEvent& e)
+{
+    int clickedLine = wxNOT_FOUND;
+    m_styler->HitTest(m_sci, e, clickedLine);
+
+    // Did we clicked on a togglable line?
+    int toggleLine = m_styler->TestToggle(m_sci, e);
+    if(toggleLine != wxNOT_FOUND) {
+        m_sci->ToggleFold(toggleLine);
+
+    } else {
+        MatchInfo_t::const_iterator m = m_matchInfo.find(clickedLine);
+        if(m != m_matchInfo.end()) {
+            DoOpenSearchResult(m->second, NULL, m->first);
+        }
+    }
+}

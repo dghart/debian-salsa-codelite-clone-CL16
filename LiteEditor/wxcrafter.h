@@ -273,7 +273,7 @@ protected:
 public:
     wxPanel* GetMainPanel() { return m_mainPanel; }
     wxToolBar* GetToolbar() { return m_toolbar; }
-    EditorFrameBase(wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("EditorFrame"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize(-1,-1), long style = wxDEFAULT_FRAME_STYLE|wxFRAME_NO_TASKBAR|wxFRAME_FLOAT_ON_PARENT);
+    EditorFrameBase(wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("EditorFrame"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize(-1,-1), long style = wxDEFAULT_FRAME_STYLE|wxFRAME_FLOAT_ON_PARENT);
     virtual ~EditorFrameBase();
 };
 
@@ -303,6 +303,8 @@ protected:
     wxChoice* m_choiceCompiler;
     wxStaticText* m_staticText418;
     wxChoice* m_choiceDebugger;
+    wxStaticText* m_staticText569;
+    wxChoice* m_choiceBuildSystem;
 
 protected:
     virtual void OnPageChanging(wxWizardEvent& event) { event.Skip(); }
@@ -332,8 +334,10 @@ public:
     wxChoice* GetChoiceCompiler() { return m_choiceCompiler; }
     wxStaticText* GetStaticText418() { return m_staticText418; }
     wxChoice* GetChoiceDebugger() { return m_choiceDebugger; }
+    wxStaticText* GetStaticText569() { return m_staticText569; }
+    wxChoice* GetChoiceBuildSystem() { return m_choiceBuildSystem; }
     wxWizardPageSimple* GetWizardPageToolchain() { return m_wizardPageToolchain; }
-    NewProjectWizardBase(wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("New Project Wizard"), const wxBitmap& bmp = wxNullBitmap, const wxPoint& pos = wxDefaultPosition, long style = wxDEFAULT_DIALOG_STYLE);
+    NewProjectWizardBase(wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("New Project Wizard"), const wxBitmap& bmp = wxNullBitmap, const wxPoint& pos = wxDefaultPosition, long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER);
     wxWizardPageSimple* GetFirstPage() const { if(!m_pages.empty()) return m_pages.at(0); return NULL; }
     virtual ~NewProjectWizardBase();
 };

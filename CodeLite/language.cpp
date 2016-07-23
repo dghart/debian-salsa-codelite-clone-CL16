@@ -41,6 +41,7 @@
 #include "CxxPreProcessor.h"
 #include "CxxUsingNamespaceCollector.h"
 #include "CxxTemplateFunction.h"
+#include "CxxScannerTokens.h"
 
 //#define __PERFORMANCE
 #include "performance.h"
@@ -143,8 +144,8 @@ ParsedToken* Language::ParseTokens(const wxString& scopeName)
         }
 
         if(result.m_isaType) {
-            pt->SetTypeScope(result.m_scope.empty() ? wxString(wxT("<global>")) :
-                                                      wxString::From8BitData(result.m_scope.c_str()));
+            pt->SetTypeScope(
+                result.m_scope.empty() ? wxString(wxT("<global>")) : wxString::From8BitData(result.m_scope.c_str()));
             pt->SetTypeName(wxString::From8BitData(result.m_name.c_str()));
 
         } else if(result.m_isGlobalScope) {
@@ -156,8 +157,8 @@ ParsedToken* Language::ParseTokens(const wxString& scopeName)
             // special handle for 'this' keyword
             //-----------------------------------------
 
-            pt->SetTypeScope(result.m_scope.empty() ? wxString(wxT("<global>")) :
-                                                      wxString::From8BitData(result.m_scope.c_str()));
+            pt->SetTypeScope(
+                result.m_scope.empty() ? wxString(wxT("<global>")) : wxString::From8BitData(result.m_scope.c_str()));
             if(scopeName == wxT("<global>")) {
                 ParsedToken::DeleteTokens(header);
                 return NULL;
@@ -202,11 +203,11 @@ ParsedToken* Language::ParseTokens(const wxString& scopeName)
         delim.Clear();
         subscript = false;
     }
-    
+
     if(header && header->GetNext() && header->GetName().IsEmpty() && header->GetOperator() == "::") {
         // a chain with more than one token and the first token is simple "::"
         // Delete the first token from the list
-        ParsedToken *newHeader = header->GetNext();
+        ParsedToken* newHeader = header->GetNext();
         newHeader->SetPrev(NULL);
         wxDELETE(header);
         header = newHeader;
@@ -318,18 +319,16 @@ bool Language::NextToken(wxString& token, wxString& delim, bool& subscriptOperat
 
 void Language::SetAutoCompDeliemters(const std::vector<wxString>& delimArr) { m_delimArr = delimArr; }
 
-bool Language::ProcessExpression(const wxString& stmt,
-                                 const wxString& text,
-                                 const wxFileName& fn,
-                                 int lineno,
-                                 wxString& typeName,              // output
-                                 wxString& typeScope,             // output
-                                 wxString& oper,                  // output
-                                 wxString& scopeTemplateInitList) // output
+bool Language::ProcessExpression(const wxString& stmt, const wxString& text, const wxFileName& fn, int lineno,
+    wxString& typeName,              // output
+    wxString& typeScope,             // output
+    wxString& oper,                  // output
+    wxString& scopeTemplateInitList) // output
 {
     CL_DEBUG(wxT(" >>> Language::ProcessExpression started ..."));
 
     bool evaluationSucceeded = true;
+    m_templateArgs.clear();
 
     wxString statement(stmt);
 
@@ -420,7 +419,7 @@ bool Language::ProcessExpression(const wxString& stmt,
 
         if(container.current->GetIsTemplate() && container.current->GetTemplateArgList().IsEmpty()) {
             // We got no template declaration...
-            container.current->SetTemplateArgList(DoExtractTemplateDeclarationArgs(container.current));
+            container.current->SetTemplateArgList(DoExtractTemplateDeclarationArgs(container.current), m_templateArgs);
         }
 
         int retryCount(0);
@@ -802,7 +801,7 @@ wxString Language::GetScopeName(const wxString& in, std::vector<wxString>* addit
         wxArrayString moreScopes = GetTagsManager()->BreakToOuterScopes(scope);
         for(size_t i = 0; i < moreScopes.GetCount(); i++) {
             if(moreScopes.Item(i) != scope &&
-               std::find(additionlNS->begin(), additionlNS->end(), moreScopes.Item(i)) == additionlNS->end()) {
+                std::find(additionlNS->begin(), additionlNS->end(), moreScopes.Item(i)) == additionlNS->end()) {
                 additionlNS->push_back(moreScopes.Item(i));
             }
         }
@@ -855,7 +854,7 @@ bool Language::ProcessToken(TokenContainer* tokeContainer)
 
         CL_DEBUG(wxT("Parsing for local variables..."));
         CL_DEBUG1("Current scrope:\n%s\n", GetVisibleScope());
-        
+
         const wxCharBuffer buf = _C(GetVisibleScope());
         const wxCharBuffer buf2 = _C(GetLastFunctionSignature() + wxT(";"));
         get_variables(buf.data(), li, ignoreTokens, false);
@@ -953,7 +952,7 @@ bool Language::ProcessToken(TokenContainer* tokeContainer)
             // if we are a "member" or " variable"
             // try to locate the template initialization list
             bool isTyperef = !tags.at(0)->GetTyperef().IsEmpty();
-            
+
             TagEntryPtr tag = tags.at(0);
             if(!isTyperef && (tags.at(0)->GetKind() == wxT("member") || tags.at(0)->GetKind() == wxT("variable"))) {
                 const wxCharBuffer buf = _C(tags.at(0)->GetPattern());
@@ -978,10 +977,10 @@ bool Language::ProcessToken(TokenContainer* tokeContainer)
                 // Parse the definition list
                 CxxTemplateFunction ctf(tag);
                 ctf.ParseDefinitionList();
-                
+
                 if(!ctf.GetList().IsEmpty()) {
                     token->SetIsTemplate(true);
-                    token->SetTemplateArgList(ctf.GetList());
+                    token->SetTemplateArgList(ctf.GetList(), m_templateArgs);
                 }
             }
             // fall through...
@@ -996,10 +995,8 @@ bool Language::ProcessToken(TokenContainer* tokeContainer)
     return false;
 }
 
-bool Language::CorrectUsingNamespace(wxString& type,
-                                     wxString& typeScope,
-                                     const wxString& parentScope,
-                                     std::vector<TagEntryPtr>& tags)
+bool Language::CorrectUsingNamespace(
+    wxString& type, wxString& typeScope, const wxString& parentScope, std::vector<TagEntryPtr>& tags)
 {
     wxString strippedScope(typeScope);
     wxArrayString tmplInitList;
@@ -1047,12 +1044,8 @@ bool Language::CorrectUsingNamespace(wxString& type,
     return true;
 }
 
-bool Language::DoSearchByNameAndScope(const wxString& name,
-                                      const wxString& scopeName,
-                                      std::vector<TagEntryPtr>& tags,
-                                      wxString& type,
-                                      wxString& typeScope,
-                                      bool testGlobalScope)
+bool Language::DoSearchByNameAndScope(const wxString& name, const wxString& scopeName, std::vector<TagEntryPtr>& tags,
+    wxString& type, wxString& typeScope, bool testGlobalScope)
 {
     PERF_BLOCK("DoSearchByNameAndScope")
     {
@@ -1343,7 +1336,7 @@ void Language::GetLocalVariables(const wxString& in, std::vector<TagEntryPtr>& t
             // Don't suggest what we have typed so far
             if(flags & PartialMatch && tmpTagName == tmpName) continue;
             if(flags & ExactMatch && tmpTagName != tmpName) continue;
-            
+
         } // else no name is specified, collect all tags
 
         TagEntryPtr tag(new TagEntry());
@@ -1377,6 +1370,73 @@ bool Language::OnArrowOperatorOverloading(ParsedToken* token)
     GetTagsManager()->GetDereferenceOperator(token->GetPath(), tags);
 
     if(tags.size() == 1) {
+#if 0
+        wxString pattern = tags.at(0)->GetPattern();
+        // strip the pattern from ctags regex chars
+        pattern = pattern.BeforeLast(wxT('$'));
+        pattern = pattern.AfterFirst(wxT('^'));
+
+        Scanner_t cppScanner = ::LexerNew(pattern);
+        bool cont = true;
+        int depth = 0;
+        CxxLexerToken lexerToken;
+        std::vector<wxString> parts;
+        while(cont && ::LexerNext(cppScanner, lexerToken)) {
+            switch(lexerToken.type) {
+            case T_OPERATOR:
+                cont = false;
+                break;
+            case T_IDENTIFIER:
+                if(depth == 0) {
+                    parts.push_back(lexerToken.text);
+                }
+                break;
+            // Dont collect these keywords
+            case T_TYPENAME:
+            case T_CLASS:
+            case T_STRUCT:
+            case T_EXPLICIT:
+            case T_UNION:
+            case T_NAMESPACE:
+                break;
+            case '<':
+                depth++;
+                break;
+            case '>':
+                depth--;
+                break;
+            default:
+                if(depth == 0) {
+                    parts.push_back(lexerToken.text);
+                }
+                break;
+            }
+        }
+        ::LexerDestroy(&cppScanner);
+        if(parts.empty()) {
+            return false;
+        }
+
+        typeName = parts.back();
+        parts.pop_back();
+        if(!parts.empty()) {
+            parts.pop_back(); // remove the '::'
+        }
+
+        typeScope.clear();
+        // Convert the vector to string
+        for(size_t i = 0; i < parts.size(); ++i) {
+            typeScope << parts.at(i);
+        }
+        if(typeScope.IsEmpty()) {
+            typeScope = token->GetPath();
+        }
+
+        token->SetTypeName(typeName);
+        token->SetTypeScope(typeScope);
+        DoIsTypeAndScopeExist(token);
+        ret = true;
+#else
         // loop over the tags and scan for operator -> overloading
         // we found our overloading operator
         // extract the 'real' type from the pattern
@@ -1394,6 +1454,7 @@ bool Language::OnArrowOperatorOverloading(ParsedToken* token)
             DoIsTypeAndScopeExist(token);
             ret = true;
         }
+#endif
     }
     return ret;
 }
@@ -1533,7 +1594,7 @@ void Language::CheckForTemplateAndTypedef(ParsedToken* token)
             if(tags.size() == 1 && !tags.at(0)->IsTypedef()) {
 
                 // Not a typedef
-                token->SetTemplateArgList(DoExtractTemplateDeclarationArgs(tags.at(0)));
+                token->SetTemplateArgList(DoExtractTemplateDeclarationArgs(tags.at(0)), m_templateArgs);
                 token->SetIsTemplate(token->GetTemplateArgList().IsEmpty() == false);
 
             } else if(tags.size() == 1) {
@@ -1743,7 +1804,7 @@ wxString TemplateHelper::Substitute(const wxString& name)
         if(where != wxNOT_FOUND) {
             // it exists, return the name in the templateInstantiation list
             if(templateInstantiationVector.at(i).GetCount() > (size_t)where &&
-               templateInstantiationVector.at(i).Item(where) != name)
+                templateInstantiationVector.at(i).Item(where) != name)
                 return templateInstantiationVector.at(i).Item(where);
         }
     }
@@ -1785,7 +1846,7 @@ void Language::SetAdditionalScopes(const std::vector<wxString>& additionalScopes
         // "using namespace" may not contains current namespace, so make sure we add it
         for(size_t i = 0; i < additionalScopes.size(); i++) {
             if(!(std::find(this->m_additionalScopes.begin(), this->m_additionalScopes.end(), additionalScopes.at(i)) !=
-                 this->m_additionalScopes.end())) {
+                   this->m_additionalScopes.end())) {
                 this->m_additionalScopes.push_back(additionalScopes.at(i));
             }
         }
@@ -1831,7 +1892,7 @@ bool Language::OnSubscriptOperator(ParsedToken* token)
 
 void Language::ExcuteUserTypes(ParsedToken* token, const wxString& entryPath)
 {
-    const std::map<wxString, wxString> typeMap = GetTagsManager()->GetCtagsOptions().GetTypesMap();
+    std::map<wxString, wxString> typeMap = GetTagsManager()->GetCtagsOptions().GetTypesMap();
     // HACK1: Let the user override the parser decisions
     wxString path = entryPath.IsEmpty() ? token->GetPath() : entryPath;
     std::map<wxString, wxString>::const_iterator where = typeMap.find(path);
@@ -1870,6 +1931,11 @@ bool Language::DoIsTypeAndScopeExist(ParsedToken* token)
 {
     // Check to see if this is a primitve type...
     if(is_primitive_type(token->GetTypeName().mb_str(wxConvUTF8).data())) {
+        return true;
+    }
+
+    // Does the typename is happen to be a template argument?
+    if(m_templateArgs.count(token->GetTypeName())) {
         return true;
     }
 
@@ -1943,7 +2009,7 @@ void Language::DoExtractTemplateInitListFromInheritance(TagEntryPtr tag, ParsedT
                 if(tags.size() == 1) {
                     wxArrayString newArgList = DoExtractTemplateDeclarationArgs(tags.at(0));
                     if(newArgList.IsEmpty() == false) {
-                        token->SetTemplateArgList(newArgList);
+                        token->SetTemplateArgList(newArgList, m_templateArgs);
                     }
                 }
             }
@@ -2011,7 +2077,7 @@ void Language::DoExtractTemplateArgsFromSelf(ParsedToken* token)
     GetTagsManager()->FindByPath(token->GetPath(), tags);
     if(tags.size() == 1 && !tags.at(0)->IsTypedef()) {
         // Not a typedef
-        token->SetTemplateArgList(DoExtractTemplateDeclarationArgs(tags.at(0)));
+        token->SetTemplateArgList(DoExtractTemplateDeclarationArgs(tags.at(0)), m_templateArgs);
         token->SetIsTemplate(token->GetTemplateArgList().IsEmpty() == false);
     }
 }
@@ -2094,10 +2160,8 @@ int Language::DoReadClassName(CppScanner& scanner, wxString& clsname) const
     return 0;
 }
 
-bool Language::InsertFunctionDecl(const wxString& clsname,
-                                  const wxString& functionDecl,
-                                  wxString& sourceContent,
-                                  int visibility)
+bool Language::InsertFunctionDecl(
+    const wxString& clsname, const wxString& functionDecl, wxString& sourceContent, int visibility)
 {
     // detemine the visibility requested
     int typeVisibility = lexPUBLIC;
@@ -2228,11 +2292,8 @@ bool Language::InsertFunctionDecl(const wxString& clsname,
     return true;
 }
 
-void Language::InsertFunctionImpl(const wxString& clsname,
-                                  const wxString& functionImpl,
-                                  const wxString& filename,
-                                  wxString& sourceContent,
-                                  int& insertedLine)
+void Language::InsertFunctionImpl(const wxString& clsname, const wxString& functionImpl, const wxString& filename,
+    wxString& sourceContent, int& insertedLine)
 {
     insertedLine = wxNOT_FOUND;
     if(sourceContent.EndsWith(wxT("\n")) == false) sourceContent << wxT("\n");

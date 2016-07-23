@@ -64,6 +64,8 @@
 #include <wx/msgdlg.h>
 #include <wx/utils.h>
 #include "clCommandProcessor.h"
+#include "clStatusBar.h"
+#include "bitmap_loader.h"
 
 #ifdef __WXGTK__
 #include <sys/wait.h>
@@ -491,6 +493,13 @@ void GitPlugin::DoSetRepoPath(const wxString& repoPath, bool promptUser)
 
         m_repositoryDirectory = dir;
         GIT_MESSAGE("Git repo path is now set to '%s'", m_repositoryDirectory);
+
+        // Update the status bar icon to reflect that we are using "Git"
+        clStatusBar* sb = m_mgr->GetStatusBar();
+        if(sb) {
+            sb->SetSourceControlBitmap(
+                m_mgr->GetStdIcons()->LoadBitmap("git"), "Git", _("Using Git\nClick to open the Git view"));
+        }
         AddDefaultActions();
         ProcessGitActionQueue();
     }
@@ -1471,8 +1480,9 @@ void GitPlugin::OnProcessTerminated(clProcessEvent& event)
     }
 
     if(m_commandOutput.StartsWith(wxT("fatal")) || m_commandOutput.StartsWith(wxT("error"))) {
-        wxString msg = _("There was a problem while performing a git action.\n"
-                         "Last command output:\n");
+        wxString msg =
+            _("There was a problem while performing a git action.\n"
+              "Last command output:\n");
         msg << m_commandOutput;
         wxMessageBox(msg, _("git error"), wxICON_ERROR | wxOK, m_topWindow);
         // Last action failed, clear queue
@@ -2257,9 +2267,9 @@ void GitPlugin::OnFileMenu(clContextMenuEvent& event)
 
 void GitPlugin::OnOpenMSYSGit(wxCommandEvent& e)
 {
-    GitLocator locator;
-    wxString bashcommand;
-    if(locator.MSWGetGitShellCommand(bashcommand)) {
+    GitEntry entry;
+    wxString bashcommand = entry.Load().GetGitShellCommand();
+    if(!bashcommand.IsEmpty()) {
         DirSaver ds;
         IEditor* editor = m_mgr->GetActiveEditor();
         if(editor) {

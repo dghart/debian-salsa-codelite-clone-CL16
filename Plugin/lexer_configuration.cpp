@@ -290,6 +290,10 @@ void LexerConf::Apply(wxStyledTextCtrl* ctrl, bool applyKeywords)
     ctrl->StyleClearAll();
     ctrl->SetStyleBits(ctrl->GetStyleBitsNeeded());
 
+#ifdef __WXMSW__
+    ctrl->SetUseAntiAliasing(true);
+#endif
+
     OptionsConfigPtr options = EditorConfigST::Get()->GetOptions();
     bool tooltip(false);
 
@@ -519,6 +523,12 @@ void LexerConf::Apply(wxStyledTextCtrl* ctrl, bool applyKeywords)
     ctrl->SetUseTabs(options->GetIndentUsesTabs());
     ctrl->SetTabWidth(options->GetTabWidth());
     ctrl->SetIndent(options->GetIndentWidth());
+    
+    // Overide TAB vs Space settings incase the file is a makefile
+    // It is not an option for Makefile to use SPACES
+    if(GetName().Lower() == "makefile") {
+        ctrl->SetUseTabs(true);
+    }
 }
 
 const StyleProperty& LexerConf::GetProperty(int propertyId) const
