@@ -28,7 +28,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
          if ( !tokens.IsEmpty() ) {
 --- a/LiteEditor/manager.cpp
 +++ b/LiteEditor/manager.cpp
-@@ -1937,7 +1937,7 @@ void Manager::DbgStart(long attachPid)
+@@ -1956,7 +1956,7 @@ void Manager::DbgStart(long attachPid)
      wxString terminal;
      wxArrayString tokens;
      wxArrayString configuredTerminal;
@@ -63,16 +63,3 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
              sprintf(command, "gnome-terminal -t 'gdb' -e 'gdb -p %d'", getpid());
          } else if(ExeLocator::Locate(wxT("konsole"), where)) {
              sprintf(command, "konsole -T 'gdb' -e 'gdb -p %d'", getpid());
---- a/Runtime/codelite_xterm
-+++ b/Runtime/codelite_xterm
-@@ -4,9 +4,7 @@
- ## which allows codelite to export LD_LIBRARY_PATH into the exterm
- ## shell
- 
--# Force xterm to provide at least a scrollbar, and 1000 lines of scrollback,
--# in case the user hasn't set any preferences of his own in ~/.Xresources
--terminal="xterm -sb -sl 1000"
-+terminal="x-terminal-emulator"
- program_title=$1
- 
- if [ "$program_title" = "" ]; then

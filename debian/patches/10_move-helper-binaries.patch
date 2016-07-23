@@ -4,9 +4,9 @@ Author: James Cowgill <jcowgill@debian.org>
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- a/LiteEditor/manager.cpp
 +++ b/LiteEditor/manager.cpp
-@@ -1480,8 +1480,7 @@ wxString Manager::GetProjectExecutionCom
+@@ -1499,8 +1499,7 @@ wxString Manager::GetProjectExecutionCom
      wd = bldConf->GetWorkingDirectory();
-     wd = ExpandVariables(wd, GetProject(projectName), clMainFrame::Get()->GetMainBook()->GetActiveEditor());
+     wd = MacroManager::Instance()->Expand(wd, NULL, projectName);
  
 -    wxFileName fnCodeliteTerminal(clStandardPaths::Get().GetExecutablePath());
 -    fnCodeliteTerminal.SetFullName("codelite-terminal");
@@ -14,7 +14,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  
      wxString title;
      title << cmd << " " << cmdArgs;
-@@ -1533,8 +1532,7 @@ wxString Manager::GetProjectExecutionCom
+@@ -1552,8 +1551,7 @@ wxString Manager::GetProjectExecutionCom
              wxString command;
              if(bldConf->GetPauseWhenExecEnds()) {
                  wxString ld_lib_path;
@@ -26,7 +26,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
                      command << wxT("/bin/sh -f ") << exeWrapper.GetFullPath() << wxT(" LD_LIBRARY_PATH=") << ld_lib_path
 --- a/Plugin/globals.cpp
 +++ b/Plugin/globals.cpp
-@@ -1744,7 +1744,7 @@ IProcess* LaunchTerminal(const wxString&
+@@ -1760,7 +1760,7 @@ IProcess* LaunchTerminal(const wxString&
  
  #else
      wxString command;
@@ -35,7 +35,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  
  #if defined(__WXMAC__)
      command << "/usr/bin/open \"" << fnCodeliteTerminal.GetPath(true) << "codelite-terminal.app\" --args ";
-@@ -1773,8 +1773,7 @@ wxString MakeExecInShellCommand(const wx
+@@ -1789,8 +1789,7 @@ wxString MakeExecInShellCommand(const wx
      wxString title(cmd);
  
      OptionsConfigPtr opts = EditorConfigST::Get()->GetOptions();
@@ -45,7 +45,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  
  // change directory to the working directory
  #if defined(__WXMAC__)
-@@ -1806,8 +1805,7 @@ wxString MakeExecInShellCommand(const wx
+@@ -1822,8 +1821,7 @@ wxString MakeExecInShellCommand(const wx
          // build the command
          wxString command;
          wxString ld_lib_path;
@@ -86,7 +86,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  //-------------------------------------------------------
  // wxWidgets Connect macros
  //-------------------------------------------------------
-@@ -107,7 +109,7 @@ const wxString CLEAN_PROJECT_PREFIX = _(
+@@ -106,7 +108,7 @@
  #ifdef __WXGTK__
  #define TERMINAL_CMD                                               \
      wxString::Format(wxT("%s/codelite_xterm '$(TITLE)' '$(CMD)'"), \

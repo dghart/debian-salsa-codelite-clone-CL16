@@ -5,7 +5,7 @@ Forwarded: not-needed
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -496,7 +496,6 @@ if(APPLE)
+@@ -522,7 +522,6 @@ if(APPLE)
      add_subdirectory(sqlite3)
  endif()
  
@@ -13,7 +13,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  add_subdirectory(sdk/wxshapeframework)
  add_subdirectory(sdk/databaselayer)
  add_subdirectory(CodeLite)
-@@ -572,9 +571,7 @@ if(APPLE)
+@@ -598,9 +597,7 @@ if(APPLE)
      add_dependencies(wxsqlite3 sqlite3lib)
  endif()
  
