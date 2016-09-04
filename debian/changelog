@@ -1,8 +1,9 @@
-codelite (9.2+dfsg-2) UNRELEASED; urgency=medium
+codelite (9.2+dfsg-2) unstable; urgency=medium
 
-  *
+  * Build against LLVM 3.8. (Closes: #836607)
+  * Update list of arches to use LLVM on.
 
- -- James Cowgill <jcowgill@debian.org>  Sun, 04 Sep 2016 14:10:06 +0100
+ -- James Cowgill <jcowgill@debian.org>  Sun, 04 Sep 2016 15:43:55 +0100
 
 codelite (9.2+dfsg-1) unstable; urgency=medium
 
