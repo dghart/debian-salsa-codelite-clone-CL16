@@ -6,7 +6,7 @@ Forwarded: not-needed
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- a/CodeLite/procutils.cpp
 +++ b/CodeLite/procutils.cpp
-@@ -430,7 +430,7 @@ bool ProcUtils::Shell(const wxString& pr
+@@ -429,7 +429,7 @@ bool ProcUtils::Shell(const wxString& pr
          terminal = where;
      }
      cmd = terminal;*/
@@ -17,7 +17,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
          if(!tokens.IsEmpty()) {
 --- a/codelite_terminal/procutils.cpp
 +++ b/codelite_terminal/procutils.cpp
-@@ -434,7 +434,7 @@ bool ProcUtils::Shell(const wxString &pr
+@@ -432,7 +432,7 @@ bool ProcUtils::Shell(const wxString &pr
      	terminal = where;
      }
      cmd = terminal;*/
@@ -28,7 +28,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
          if ( !tokens.IsEmpty() ) {
 --- a/LiteEditor/manager.cpp
 +++ b/LiteEditor/manager.cpp
-@@ -1956,7 +1956,7 @@ void Manager::DbgStart(long attachPid)
+@@ -1959,7 +1959,7 @@ void Manager::DbgStart(long attachPid)
      wxString terminal;
      wxArrayString tokens;
      wxArrayString configuredTerminal;
@@ -52,7 +52,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  		terminal = wxT("konsole");
 --- a/LiteEditor/app.cpp
 +++ b/LiteEditor/app.cpp
-@@ -222,7 +222,9 @@ static void WaitForDebugger(int signo)
+@@ -201,7 +201,9 @@ static void WaitForDebugger(int signo)
          char command[256];
          memset(command, 0, sizeof(command));
  

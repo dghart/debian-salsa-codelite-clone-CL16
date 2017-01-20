@@ -4,7 +4,7 @@ Author: James Cowgill <jcowgill@debian.org>
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- a/LiteEditor/manager.cpp
 +++ b/LiteEditor/manager.cpp
-@@ -1499,8 +1499,7 @@ wxString Manager::GetProjectExecutionCom
+@@ -1511,8 +1511,7 @@ wxString Manager::GetProjectExecutionCom
      wd = bldConf->GetWorkingDirectory();
      wd = MacroManager::Instance()->Expand(wd, NULL, projectName);
  
@@ -14,7 +14,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  
      wxString title;
      title << cmd << " " << cmdArgs;
-@@ -1552,8 +1551,7 @@ wxString Manager::GetProjectExecutionCom
+@@ -1555,8 +1554,7 @@ wxString Manager::GetProjectExecutionCom
              wxString command;
              if(bldConf->GetPauseWhenExecEnds()) {
                  wxString ld_lib_path;
@@ -26,7 +26,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
                      command << wxT("/bin/sh -f ") << exeWrapper.GetFullPath() << wxT(" LD_LIBRARY_PATH=") << ld_lib_path
 --- a/Plugin/globals.cpp
 +++ b/Plugin/globals.cpp
-@@ -1760,7 +1760,7 @@ IProcess* LaunchTerminal(const wxString&
+@@ -1764,7 +1764,7 @@ IProcess* LaunchTerminal(const wxString&
  
  #else
      wxString command;
@@ -35,7 +35,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  
  #if defined(__WXMAC__)
      command << "/usr/bin/open \"" << fnCodeliteTerminal.GetPath(true) << "codelite-terminal.app\" --args ";
-@@ -1789,8 +1789,7 @@ wxString MakeExecInShellCommand(const wx
+@@ -1793,8 +1793,7 @@ wxString MakeExecInShellCommand(const wx
      wxString title(cmd);
  
      OptionsConfigPtr opts = EditorConfigST::Get()->GetOptions();
@@ -45,7 +45,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  
  // change directory to the working directory
  #if defined(__WXMAC__)
-@@ -1822,8 +1821,7 @@ wxString MakeExecInShellCommand(const wx
+@@ -1826,8 +1825,7 @@ wxString MakeExecInShellCommand(const wx
          // build the command
          wxString command;
          wxString ld_lib_path;
@@ -97,7 +97,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  #else
 --- a/LiteEditor/app.cpp
 +++ b/LiteEditor/app.cpp
-@@ -677,8 +677,7 @@ bool CodeLiteApp::OnInit()
+@@ -671,8 +671,7 @@ bool CodeLiteApp::OnInit()
  #endif
      wxString oldpath;
      wxGetEnv(wxT("PATH"), &oldpath);
@@ -109,7 +109,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  
 --- a/CodeLite/procutils.cpp
 +++ b/CodeLite/procutils.cpp
-@@ -434,22 +434,11 @@ bool ProcUtils::Shell(const wxString& pr
+@@ -433,22 +433,11 @@ bool ProcUtils::Shell(const wxString& pr
      if(!programConsoleCommand.IsEmpty()) {
          tokens = wxStringTokenize(programConsoleCommand, wxT(" "), wxTOKEN_STRTOK);
          if(!tokens.IsEmpty()) {
@@ -136,7 +136,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
      }
 --- a/codelite_terminal/procutils.cpp
 +++ b/codelite_terminal/procutils.cpp
-@@ -438,22 +438,11 @@ bool ProcUtils::Shell(const wxString &pr
+@@ -436,22 +436,11 @@ bool ProcUtils::Shell(const wxString &pr
      if ( !programConsoleCommand.IsEmpty() ) {
          tokens = wxStringTokenize ( programConsoleCommand, wxT ( " " ), wxTOKEN_STRTOK );
          if ( !tokens.IsEmpty() ) {
@@ -163,7 +163,7 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
      }
 --- a/CodeLite/cl_standard_paths.cpp
 +++ b/CodeLite/cl_standard_paths.cpp
-@@ -90,8 +90,7 @@ wxString clStandardPaths::GetDataDir() c
+@@ -96,8 +96,7 @@ wxString clStandardPaths::GetDataDir() c
  
  wxString clStandardPaths::GetBinFolder() const
  {
