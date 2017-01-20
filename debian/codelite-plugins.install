@@ -1,3 +1,4 @@
+usr/lib/codelite/AutoSave.so
 usr/lib/codelite/CMakePlugin.so
 usr/lib/codelite/CallGraph.so
 usr/lib/codelite/CodeFormatter.so
@@ -5,6 +6,7 @@ usr/lib/codelite/CodeLiteDiff.so
 usr/lib/codelite/ContinuousBuild.so
 usr/lib/codelite/Copyright.so
 usr/lib/codelite/DatabaseExplorer.so
+usr/lib/codelite/EditorConfigPlugin.so
 usr/lib/codelite/ExternalTools.so
 usr/lib/codelite/HelpPlugin.so
 usr/lib/codelite/MemCheck.so
@@ -14,6 +16,7 @@ usr/lib/codelite/SFTP.so
 usr/lib/codelite/SpellCheck.so
 usr/lib/codelite/SnipWiz.so
 usr/lib/codelite/Subversion.so
+usr/lib/codelite/Tail.so
 usr/lib/codelite/Tweaks.so
 usr/lib/codelite/UnitTestsPP.so
 usr/lib/codelite/WebTools.so
