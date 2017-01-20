@@ -145,10 +145,14 @@
       <File Name="clEditorWordCharsLocker.cpp"/>
       <File Name="clEditorColouriseLocker.h"/>
       <File Name="clEditorColouriseLocker.cpp"/>
+      <File Name="clEditorEditEventsHandler.h"/>
+      <File Name="clEditorEditEventsHandler.cpp"/>
     </VirtualDirectory>
     <File Name="CMakeLists.txt"/>
     <File Name="clWorkspaceManager.h"/>
     <File Name="clWorkspaceManager.cpp"/>
+    <File Name="EnvironmentVariablesDlg.h"/>
+    <File Name="EnvironmentVariablesDlg.cpp"/>
   </VirtualDirectory>
   <VirtualDirectory Name="include">
     <File Name="async_executable_cmd.h"/>
@@ -253,8 +257,6 @@
     <File Name="evnvarlist.h"/>
     <File Name="plugindata.cpp"/>
     <File Name="plugindata.h"/>
-    <File Name="commentconfigdata.cpp"/>
-    <File Name="commentconfigdata.h"/>
     <File Name="quickdebuginfo.cpp"/>
     <File Name="quickdebuginfo.h"/>
     <File Name="windowattrmanager.cpp"/>
@@ -355,6 +357,7 @@
       <File Name="clSelectSymbolDialog.h"/>
       <File Name="clSelectSymbolDialog.cpp"/>
       <File Name="nameanddescdlg.wxcp"/>
+      <File Name="envvar_table_dlg.wxcp"/>
     </VirtualDirectory>
     <VirtualDirectory Name="Notebook">
       <File Name="drawingutils.cpp"/>
@@ -462,6 +465,7 @@
       <File Name="clSelectSymbolDialogBase_plugin_bitmaps.cpp"/>
       <File Name="nameanddescdlg_plugin_bitmaps.cpp"/>
       <File Name="MacrosBaseDlg_plugin_bitmaps.cpp"/>
+      <File Name="EnvironmentVariablesDlgBaseBitmaps.cpp"/>
     </VirtualDirectory>
     <VirtualDirectory Name="base">
       <File Name="VirtualDirectorySelectorBase.h"/>
@@ -482,6 +486,8 @@
       <File Name="openresourcedialogmodel.h"/>
       <File Name="clSelectSymbolDialogBase.h"/>
       <File Name="clSelectSymbolDialogBase.cpp"/>
+      <File Name="EnvironmentVariablesDlgBase.h"/>
+      <File Name="EnvironmentVariablesDlgBase.cpp"/>
     </VirtualDirectory>
     <File Name="openresourcedialogbase.wxcp"/>
     <File Name="plugin_general_wxcp.wxcp"/>
@@ -539,22 +545,12 @@
     <File Name="CompilerLocatorGCC.cpp"/>
     <File Name="CompilerLocatorCrossGCC.h"/>
     <File Name="CompilerLocatorCrossGCC.cpp"/>
-    <File Name="CompilerLocatorMSVC10.cpp"/>
-    <File Name="CompilerLocatorMSVC10.h"/>
-    <File Name="CompilerLocatorMSVCBase.h"/>
-    <File Name="CompilerLocatorMSVCBase.cpp"/>
-    <File Name="CompilerLocatorMSVC11.h"/>
-    <File Name="CompilerLocatorMSVC11.cpp"/>
-    <File Name="CompilerLocatorMSVC12.h"/>
-    <File Name="CompilerLocatorMSVC12.cpp"/>
+    <File Name="CompilerLocatorMSVC.h"/>
+    <File Name="CompilerLocatorMSVC.cpp"/>
     <File Name="CompilerLocatorCLANG.h"/>
     <File Name="CompilerLocatorCLANG.cpp"/>
-    <File Name="CompilerLocatorMSVC9.h"/>
-    <File Name="CompilerLocatorMSVC9.cpp"/>
     <File Name="CompilerLocatorCygwin.h"/>
     <File Name="CompilerLocatorCygwin.cpp"/>
-    <File Name="CompilerLocatorMSVC14.h"/>
-    <File Name="CompilerLocatorMSVC14.cpp"/>
   </VirtualDirectory>
   <VirtualDirectory Name="Zip">
     <File Name="clZipReader.cpp"/>

@@ -540,4 +540,23 @@ WXDLLIMPEXP_SDK void clStripTerminalColouring(const wxString& buffer, wxString& 
  */
 WXDLLIMPEXP_SDK bool clIsVaidProjectName(const wxString& name);
 
+/**
+ * @brief support for Hi-Res displays
+ */
+WXDLLIMPEXP_SDK double clGetContentScaleFactor();
+
+/**
+ * @brief return the real bitmap size for Hi-DPI screens
+ */
+WXDLLIMPEXP_SDK int clGetScaledSize(int size);
+
+/**
+ * @param signo singal number
+ * @brief send signo to the
+ * @param processID the process ID to kill
+ * @param kill_whole_group kill the process group
+ * @param as_superuser send the signal as superuser
+ */
+WXDLLIMPEXP_SDK void clKill(int processID, wxSignal signo, bool kill_whole_group = false, bool as_superuser = false);
+
 #endif // GLOBALS_H

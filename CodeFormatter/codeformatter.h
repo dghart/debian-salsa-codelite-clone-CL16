@@ -44,7 +44,10 @@ private:
                        int& cursorPosition,
                        int startOffset,
                        int length,
-                       const FormatOptions& options);
+                       const FormatOptions& options,
+                       const wxFileName& originalFileName);
+
+    void DoFormatXmlSource(IEditor* editor);
 
 public:
     /**

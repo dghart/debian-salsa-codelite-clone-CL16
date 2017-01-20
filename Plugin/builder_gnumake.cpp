@@ -868,7 +868,7 @@ void BuilderGnuMake::CreateFileTargets(ProjectPtr proj, const wxString& confToBu
                 if(supportPreprocessOnlyFiles) {
                     text << preprocessedFile << wxT(": ") << rel_paths.at(i).GetFullPath(wxPATH_UNIX) << wxT("\n");
                     text << wxT("\t") << compilerMacro << wxT(" ") << cmpOptions
-                         << wxT(" $(IncludePath) $(PreprocessOnlySwitch) $(OutputSwitch) ") << preprocessedFile
+                         << wxT(" $(IncludePath) $(PreprocessOnlySwitch) $(OutputSwitch) ") << preprocessedFile << wxT(" ")
                          << source_file_to_compile << wxT("\n\n");
                 }
 
@@ -912,7 +912,6 @@ void BuilderGnuMake::CreateCleanTargets(ProjectPtr proj, const wxString& confToB
     wxString cmpType = bldConf->GetCompilerType();
     // get the compiler settings
     CompilerPtr cmp = BuildSettingsConfigST::Get()->GetCompiler(cmpType);
-    std::vector<wxFileName> abs_files, rel_paths;
 
     // Can we use asterisk in the clean command?
     wxString imd = GetIntermediateFolder(bldConf);
@@ -1100,7 +1099,6 @@ BuilderGnuMake::CreateTargets(const wxString& type, BuildConfigPtr bldConf, wxSt
     // know that a re-link is required
     if(bldConf->IsLinkerRequired() && markRebuilt) {
         text << wxT("\t@$(MakeDirCommand) \"") << DoGetMarkerFileDir(wxEmptyString) << wxT("\"\n");
-
         text << wxT("\t@echo rebuilt > ") << DoGetMarkerFileDir(projName) << wxT("\n");
     }
 }
@@ -1840,7 +1838,6 @@ wxString BuilderGnuMake::DoGetCompilerMacro(const wxString& filename)
 
 wxString BuilderGnuMake::DoGetTargetPrefix(const wxFileName& filename, const wxString& cwd, CompilerPtr cmp)
 {
-    const wxArrayString& dirs = filename.GetDirs();
     wxString lastDir;
     wxString ret;
 
@@ -1853,9 +1850,11 @@ wxString BuilderGnuMake::DoGetTargetPrefix(const wxFileName& filename, const wxS
     }
 
     // remove cwd from filename
-    int start = wxFileName(cwd).GetDirCount();
-
-    for(size_t i = start + 1; i < filename.GetDirCount(); i++) {
+    wxFileName relpath = filename;
+    relpath.MakeRelativeTo(cwd);
+    
+    const wxArrayString& dirs = relpath.GetDirs();
+    for(int i = 0; i < (int)dirs.size(); ++i) {
         lastDir = dirs.Item(i);
 
         // Handle special directory paths

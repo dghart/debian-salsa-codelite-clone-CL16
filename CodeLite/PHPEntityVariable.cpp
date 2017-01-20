@@ -6,6 +6,7 @@
 PHPEntityVariable::PHPEntityVariable() {}
 
 PHPEntityVariable::~PHPEntityVariable() {}
+
 void PHPEntityVariable::PrintStdout(int indent) const
 {
     wxString indentString(' ', indent);
@@ -80,17 +81,17 @@ void PHPEntityVariable::Store(wxSQLite3Database& db)
 {
     if(IsFunctionArg() || IsMember() || IsDefine()) {
         try {
-            wxSQLite3Statement statement =
-                db.PrepareStatement("INSERT OR REPLACE INTO VARIABLES_TABLE VALUES (NULL, "
-                                    ":SCOPE_ID, :FUNCTION_ID, :NAME, :FULLNAME, :SCOPE, :TYPEHINT, "
-                                    ":FLAGS, :DOC_COMMENT, :LINE_NUMBER, :FILE_NAME)");
+            wxSQLite3Statement statement = db.PrepareStatement(
+                "INSERT OR REPLACE INTO VARIABLES_TABLE VALUES (NULL, "
+                ":SCOPE_ID, :FUNCTION_ID, :NAME, :FULLNAME, :SCOPE, :TYPEHINT, :DEFAULT_VALUE, "
+                ":FLAGS, :DOC_COMMENT, :LINE_NUMBER, :FILE_NAME)");
             wxLongLong functionId, scopeId;
             if(IsFunctionArg()) {
                 functionId = Parent()->GetDbId();
             } else {
                 functionId = -1;
             }
-            
+
             if(IsMember() || IsDefine()) {
                 scopeId = Parent()->GetDbId();
             } else {
@@ -102,6 +103,7 @@ void PHPEntityVariable::Store(wxSQLite3Database& db)
             statement.Bind(statement.GetParamIndex(":FULLNAME"), GetFullName());
             statement.Bind(statement.GetParamIndex(":SCOPE"), GetScope());
             statement.Bind(statement.GetParamIndex(":TYPEHINT"), GetTypeHint());
+            statement.Bind(statement.GetParamIndex(":DEFAULT_VALUE"), GetDefaultValue());
             statement.Bind(statement.GetParamIndex(":FLAGS"), (int)GetFlags());
             statement.Bind(statement.GetParamIndex(":DOC_COMMENT"), GetDocComment());
             statement.Bind(statement.GetParamIndex(":LINE_NUMBER"), GetLine());
@@ -125,6 +127,7 @@ void PHPEntityVariable::FromResultSet(wxSQLite3ResultSet& res)
     SetDocComment(res.GetString("DOC_COMMENT"));
     SetLine(res.GetInt("LINE_NUMBER"));
     SetFilename(res.GetString("FILE_NAME"));
+    SetDefaultValue(res.GetString("DEFAULT_VALUE"));
 }
 
 wxString PHPEntityVariable::GetScope() const
@@ -135,7 +138,7 @@ wxString PHPEntityVariable::GetScope() const
 
     } else if(parent && parent->Is(kEntityTypeClass) && IsMember()) {
         return parent->GetFullName();
-        
+
     } else if(parent && parent->Is(kEntityTypeNamespace) && IsDefine()) {
         return parent->GetFullName();
 
@@ -157,11 +160,20 @@ wxString PHPEntityVariable::GetNameNoDollar() const
     name.Trim().Trim(false);
     return name;
 }
-wxString PHPEntityVariable::FormatPhpDoc() const
+wxString PHPEntityVariable::FormatPhpDoc(const CommentConfigData& data) const
 {
     wxString doc;
-    doc << "/**\n"
+    doc << data.GetCommentBlockPrefix() << "\n"
         << " * @var " << GetTypeHint() << "\n"
         << " */";
     return doc;
+}
+
+wxString PHPEntityVariable::ToTooltip() const
+{
+    if(IsConst() && !GetDefaultValue().IsEmpty()) {
+        return GetDefaultValue();
+    } else {
+        return wxEmptyString;
+    }
 }

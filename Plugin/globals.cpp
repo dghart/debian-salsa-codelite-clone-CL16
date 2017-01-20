@@ -78,12 +78,16 @@
 #include "clGetTextFromUserDialog.h"
 #include "fileutils.h"
 #include "macromanager.h"
+#include <wx/dcscreen.h>
 
 #ifdef __WXMSW__
 #include <Uxtheme.h>
 #else
 #include <unistd.h>
 #include <sys/wait.h>
+#endif
+#ifdef __WXGTK20__
+#include <gtk/gtk.h>
 #endif
 
 const wxEventType wxEVT_COMMAND_CL_INTERNAL_0_ARGS = ::wxNewEventType();
@@ -815,8 +819,8 @@ void WrapInShell(wxString& cmd)
 #if 0
     command << "\"" << cmd << "\"";
 #else
-    if(cmd.StartsWith("\"")) {
-        command << "\"" << cmd << "\"\"";
+    if(cmd.StartsWith("\"") && !cmd.EndsWith("\"")) {
+        command << "\"" << cmd << "\"";
     } else {
         command << cmd;
     }
@@ -2185,4 +2189,52 @@ void clStripTerminalColouring(const wxString& buffer, wxString& modbuffer)
 bool clIsVaidProjectName(const wxString& name)
 {
     return name.find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-") == wxString::npos;
+}
+
+double clGetContentScaleFactor()
+{
+    static bool once = false;
+    static double res = 1.0;
+    if(!once) {
+        once = true;
+#ifdef __WXGTK__
+        GdkScreen* screen = gdk_screen_get_default();
+        if(screen) {
+            res = gdk_screen_get_resolution(screen) / 96.;
+        }
+#else
+        res = (wxScreenDC().GetPPI().y / 96.);
+#endif
+    }
+    return res;
+}
+
+int clGetScaledSize(int size)
+{
+    if(clGetContentScaleFactor() >= 1.5) {
+        return size * 2;
+    } else {
+        return size;
+    }
+}
+
+void clKill(int processID, wxSignal signo, bool kill_whole_group, bool as_superuser)
+{
+#ifdef __WXMSW__
+    wxUnusedVar(as_superuser);
+    ::wxKill(processID, signo, NULL, kill_whole_group ? wxKILL_CHILDREN : wxKILL_NOCHILDREN);
+#else
+    wxString sudoAskpass = ::wxGetenv("SUDO_ASKPASS");
+    if(as_superuser && wxFileName::Exists("/usr/bin/sudo") && wxFileName::Exists(sudoAskpass)) {
+        wxString cmd;
+        cmd << "/usr/bin/sudo --askpass kill -" << (int)signo << " ";
+        if(kill_whole_group) {
+            cmd << "-";
+        }
+        cmd << processID;
+        system(cmd.mb_str(wxConvUTF8).data());
+    } else {
+        ::wxKill(processID, signo, NULL, kill_whole_group ? wxKILL_CHILDREN : wxKILL_NOCHILDREN);
+    }
+#endif
 }

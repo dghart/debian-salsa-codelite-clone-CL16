@@ -60,11 +60,8 @@ static const wxString PHPSample = "<?php\n"
                                   "  }\n"
                                   "}\n";
 
-CodeFormatterDlg::CodeFormatterDlg(wxWindow* parent,
-                                   IManager* mgr,
-                                   CodeFormatter* cf,
-                                   const FormatOptions& opts,
-                                   const wxString& sampleCode)
+CodeFormatterDlg::CodeFormatterDlg(
+    wxWindow* parent, IManager* mgr, CodeFormatter* cf, const FormatOptions& opts, const wxString& sampleCode)
     : CodeFormatterBaseDlg(parent)
     , m_cf(cf)
     , m_sampleCode(sampleCode)
@@ -92,11 +89,11 @@ CodeFormatterDlg::CodeFormatterDlg(wxWindow* parent,
     // set the selection based on the editor
     IEditor* editor = m_mgr->GetActiveEditor();
     if(editor && FileExtManager::IsPHPFile(editor->GetFileName())) {
-        m_treebook->SetSelection(4);
+        m_notebook->SetSelection(2); // PHP page
     } else if(editor && FileExtManager::IsCxxFile(editor->GetFileName())) {
-        m_treebook->SetSelection(1);
+        m_notebook->SetSelection(1); // CXX page
     } else {
-        m_treebook->SetSelection(0);
+        m_notebook->SetSelection(0); // General
     }
 
     SetName("CodeFormatterDlg");
@@ -110,7 +107,7 @@ void CodeFormatterDlg::InitDialog()
         text->Apply(m_stc);
         text->Apply(m_stcFixerPreview);
     }
-    
+
     long formatOptions = (m_options.GetOptions() & AS_ALL_FORMAT_OPTIONS);
     long indentOptions = (m_options.GetOptions() & AS_ALL_INDENT_OPTIONS);
     m_pgPropIndentation->SetValue(indentOptions);
@@ -175,7 +172,11 @@ void CodeFormatterDlg::InitDialog()
 
     } else if(m_options.GetClangFormatOptions() & kClangFormatLLVM) {
         m_pgPropClangFormatStyle->SetValueFromInt(kClangFormatLLVM, wxPG_FULL_VALUE);
+
+    } else if(m_options.GetClangFormatOptions() & kClangFormatFile) {
+        m_pgPropClangFormatStyle->SetValueFromInt(kClangFormatFile, wxPG_FULL_VALUE);
     }
+
     m_pgPropClangFormattingOptions->SetValue((int)m_options.GetClangFormatOptions());
     m_pgPropClangBraceBreakStyle->SetValue((int)m_options.GetClangBreakBeforeBrace());
     m_pgPropColumnLimit->SetValue((int)m_options.GetClangColumnLimit());
@@ -262,7 +263,7 @@ void CodeFormatterDlg::UpdatePreview()
         m_stcPhpPreview->SetText(output);
         m_stcPhpPreview->SetEditable(false);
     }
-    
+
     {
         // Update the preview command
         m_stcFixerPreview->SetEditable(true);

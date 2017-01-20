@@ -14,7 +14,7 @@ cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
 ## Optional command line arguments:                                                                                                                             #
 ##                                                                                                                                                              #
 ##      -DCMAKE_BUILD_TYPE=Release|Debug|DebugFull // Build release, debug + optimisation or debug without optimisation (for others see the Cmake docs)         #
-##      -DPREFIX="<some-prefix>"                   // Installation prefix, default is set to /usr                                                               #
+##      -DCL_PREFIX="<some-prefix>"                // Installation prefix. The default on unix is /usr/                                                         #
 ##      -DENABLE_CLANG=1|0                         // Build codelite with clang code completion support?, default is 1 (with clang)                             #
 ##      -DWITH_WXC=1|0                             // Build wxCrafter (sources are not part of codelite distribution) default is 0                              #
 ##      -DCOPY_WX_LIBS=1|0                         // Incorporate the wxWidgets libs into CodeLite so the binary doesn't depend on them. default is 0           #
@@ -28,6 +28,10 @@ cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
 ##      -DENABLE_LLDB=1|0                          // When set to 0 codelite won't try to build or link to the lldb debugger. Default is 1 on Unix platforms    #
 #################################################################################################################################################################
 
+if (NOT CMAKE_VERSION VERSION_LESS 3.1) # THIS MUST STAY AT THE TOP OF THE FILE
+    cmake_policy(VERSION 3.1) # Doing this prevents multiple, very verbose warnings about policy CMP0053 not being set
+endif()
+
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
 #############################################
@@ -39,9 +43,15 @@ if(APPLE)
   execute_process(COMMAND make type=release os=osx WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/PCH)
 endif()
 
+
+if ( PREFIX ) # Apparently cmake uses $PREFIX internally, so we shouldn't set it ourselves
+  message("**** Setting -DPREFIX is deprecated. Please use -DCL_PREFIX in future")
+  set ( CL_PREFIX ${PREFIX} )
+  unset ( PREFIX ) # Unfortunately this doesn't seem to work. Nor does ENV(PREFIX) or setting it to ""
+endif()
+
 ## Generate compile_commands.json file for code completion
 set( CMAKE_EXPORT_COMPILE_COMMANDS 1 )
-set( CL_PREFIX "/usr" )
 
 if (CMAKE_CURRENT_LIST_DIR) # since cmake 2.8.3
     set( CL_SRC_ROOT ${CMAKE_CURRENT_LIST_DIR})
@@ -65,13 +75,21 @@ set( WITH_SFTP 1 )
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-declarations") # Avoid very multiple warnings spam due to deprecated wx methods
 
+if( UNIX AND NOT APPLE)
+	if (CMAKE_SIZEOF_VOID_P EQUAL 8)
+		set(CMAKE_LIBRARY_ARCHITECTURE "x86_64-linux-gnu")
+	else()
+		set(CMAKE_LIBRARY_ARCHITECTURE "i386-linux-gnu")
+	endif()
+endif()
+
 if ( UNIX )
-	# Configure CCache if available
-	find_program(CCACHE_FOUND ccache)
-	if (CCACHE_FOUND)
-		set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
-		set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
-	endif(CCACHE_FOUND)
+    # Configure CCache if available
+    find_program(CCACHE_FOUND ccache)
+    if (CCACHE_FOUND)
+        set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
+        set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
+    endif(CCACHE_FOUND)
 endif(UNIX)
 
 if ( UNIX )
@@ -142,9 +160,8 @@ endif (UNIX OR MINGW)
 ########################################
 
 set( CL_INSTALL_LIBDIR "lib" )
-if ( PREFIX )
-  set ( CL_PREFIX ${PREFIX} )
-else()
+
+if ( NOT CL_PREFIX )
     # If the caller hasn't set his own destination, install to a multi-arch lib dir if applicable
     if (CMAKE_VERSION VERSION_GREATER 2.8.7 AND ( UNIX AND NOT APPLE ))
         if (CMAKE_VERSION VERSION_GREATER 3.0.0)
@@ -156,7 +173,9 @@ else()
         include (GNUInstallDirs) # defines CMAKE_INSTALL_LIBDIR to lib or lib64 or whatever. Available since cmake 2.8.8
         set( CL_INSTALL_LIBDIR ${CMAKE_INSTALL_LIBDIR} )
     endif()
-endif(PREFIX)
+    
+    set( CL_PREFIX "/usr" )
+endif(NOT CL_PREFIX)
 
 ## Try to link-to or build lldb?
 if (UNIX)
@@ -209,6 +228,29 @@ if ( WITH_SFTP )
     endif ( UNIX AND NOT APPLE OR MINGW )
     message("-- LIBSSH_LIB is set to ${LIBSSH_LIB}")
 endif ( WITH_SFTP )
+
+## On UNIX we require GTK
+if (UNIX AND NOT APPLE)
+    if (GTK_VERSION EQUAL 3)
+        set(OLD_CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}) # Cache the current value
+        set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
+        find_package(GTK3)
+        set(CMAKE_MODULE_PATH ${OLD_CMAKE_MODULE_PATH}) # Reset, else the official path isn't used again :/
+        if (GTK3_FOUND)
+            include_directories(${GTK3_INCLUDE_DIRS})
+        else (GTK3_FOUND)
+            message(FATAL_ERROR "Could not locate GTK.")
+        endif (GTK3_FOUND)
+    else()
+        find_package(GTK2)
+        if (GTK2_FOUND)
+            include_directories(${GTK2_INCLUDE_DIRS})
+        else (GTK2_FOUND)
+            message(FATAL_ERROR "Could not locate GTK.")
+        endif (GTK2_FOUND)
+    endif()
+
+endif (UNIX AND NOT APPLE)
 
 ## enable clang support?
 if(ENABLE_CLANG MATCHES 0)
@@ -404,7 +446,7 @@ if ( MAKE_DEB )
 
     set(CPACK_GENERATOR                   "DEB")
     set(CPACK_PACKAGE_NAME                "CodeLite")
-    set(CPACK_PACKAGE_VERSION             "9.2.0")
+    set(CPACK_PACKAGE_VERSION             "10.0.0")
     set(CPACK_DEBIAN_PACKAGE_MAINTAINER   "Eran Ifrah <eran.ifrah@gmail.com>")
     set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "C/C++/PHP and Node.js IDE (Integrated Development Environment)")
     set(CPACK_DEBIAN_PACKAGE_SECTION      "devel")
@@ -462,8 +504,8 @@ if (USE_CLANG)
     message( "-- clang include path ${CLANG_INCLUDE} ")
     message( "-- clang binary ${CLANG_BINARY}" )
     message( "-- CL_SRC_ROOT is set to => " ${CL_SRC_ROOT} )
-    message( "-- PREFIX      is set to => " ${CL_PREFIX} )
-    message( "-- PREFIX/LIB_DIR is set to => " ${CL_PREFIX}/${CL_INSTALL_LIBDIR} )
+    message( "-- CL_PREFIX      is set to => " ${CL_PREFIX} )
+    message( "-- CL_PREFIX/LIB_DIR is set to => " ${CL_PREFIX}/${CL_INSTALL_LIBDIR} )
     message( "-- PLUGINS_DIR is set to => " ${PLUGINS_DIR} )
     message( "-- wx-config   is set to => " ${WX_TOOL} )
 else()
@@ -527,9 +569,9 @@ add_subdirectory(sdk/wxshapeframework)
 add_subdirectory(sdk/databaselayer)
 add_subdirectory(CodeLite)
 add_subdirectory(Plugin)
-add_subdirectory(abbreviation)
 
-if ( NOT NO_CPP_PLUGINS )
+if(NOT NO_CORE_PLUGINS)
+    add_subdirectory(abbreviation)
     add_subdirectory(CallGraph)
     add_subdirectory(ContinuousBuild)
     add_subdirectory(Debugger)
@@ -540,55 +582,61 @@ if ( NOT NO_CPP_PLUGINS )
     add_subdirectory(cppchecker)
     add_subdirectory(cscope)
     add_subdirectory(wxformbuilder)
-    
-if ( UNIX AND NOT APPLE )
-    ## Add valgrind plugin
-    add_subdirectory(MemCheck)
-endif ( UNIX AND NOT APPLE )
+    add_subdirectory(Tweaks)
+    add_subdirectory(CodeFormatter)
+    add_subdirectory(Copyright)
+    add_subdirectory(DatabaseExplorer)
+    add_subdirectory(ExternalTools)
+    add_subdirectory(SnipWiz)
+    add_subdirectory(Subversion2)
+    add_subdirectory(ZoomNavigator)
+    add_subdirectory(git)
+    add_subdirectory(CMakePlugin)
+    add_subdirectory(CodeLiteDiff)
+    add_subdirectory(SpellChecker)
+    add_subdirectory(AutoSave)
+    add_subdirectory(Tail)
+    add_subdirectory(EditorConfigPlugin)
 
-    if(IS_DIRECTORY "${CL_SRC_ROOT}/wxcrafter")
-        add_subdirectory(wxcrafter)
+    if (WITH_SFTP)
+        add_subdirectory(SFTP)
+    endif(WITH_SFTP)
+
+    if (WITH_LLDB)
+        add_subdirectory(LLDBDebugger)
     endif()
-
-    if ( APPLE )
+    
+    add_subdirectory(codelitephp)
+    add_subdirectory(WordCompletion)
+    add_subdirectory(HelpPlugin)
+    add_subdirectory(WebTools)
+    
+    if(UNIX AND NOT APPLE)
+        ## Add valgrind plugin
+        add_subdirectory(MemCheck)
+    endif(UNIX AND NOT APPLE)
+    
+    if(APPLE)
         message("-- Adding MacBundler...")
         add_subdirectory(MacBundler)
-    endif ( APPLE )
-endif ( NOT NO_CPP_PLUGINS )
+    endif(APPLE)
+endif(NOT NO_CORE_PLUGINS)
 
-add_subdirectory(Tweaks)
-add_subdirectory(CodeFormatter)
-add_subdirectory(Copyright)
-add_subdirectory(DatabaseExplorer)
-add_subdirectory(ExternalTools)
-add_subdirectory(SnipWiz)
-add_subdirectory(Subversion2)
-add_subdirectory(ZoomNavigator)
-add_subdirectory(git)
-add_subdirectory(CMakePlugin)
-add_subdirectory(CodeLiteDiff)
-add_subdirectory(SpellChecker)
-
-if (WITH_SFTP)
-    add_subdirectory(SFTP)
-endif(WITH_SFTP)
-
-if (WITH_LLDB)
-    add_subdirectory(LLDBDebugger)
+# wxCrafter is not a core plugin so we include it we find the directory
+if(IS_DIRECTORY "${CL_SRC_ROOT}/wxcrafter")
+    add_subdirectory(wxcrafter)
 endif()
-add_subdirectory(codelitephp)
-add_subdirectory(WordCompletion)
-add_subdirectory(HelpPlugin)
-## Executables
-add_subdirectory(LiteEditor)
-add_subdirectory(codelitegcc)
-add_subdirectory(codelite_make)
-add_subdirectory(codelite_terminal)
-add_subdirectory(sdk/codelite_indexer)
-add_subdirectory(sdk/codelite_cppcheck)
-add_subdirectory(codelite_echo)
-add_subdirectory(WebTools)
 
+## Executables
+if(NOT SDK_ONLY)
+    add_subdirectory(LiteEditor)
+    add_subdirectory(codelitegcc)
+    add_subdirectory(codelite_make)
+    add_subdirectory(codelite_terminal)
+    add_subdirectory(sdk/codelite_indexer)
+    add_subdirectory(sdk/codelite_cppcheck)
+    add_subdirectory(codelite_echo)
+endif()
 ##
 ## Setup the proper dependencies
 ##
@@ -603,7 +651,10 @@ add_dependencies(databaselayersqlite wxsqlite3)
 add_dependencies(wxshapeframework wxsqlite3)
 add_dependencies(libcodelite wxshapeframework databaselayersqlite wxsqlite3)
 add_dependencies(plugin libcodelite)
-add_dependencies(codelite plugin)
+
+if(NOT SDK_ONLY)
+    add_dependencies(codelite plugin)
+endif()
 
 ## Include our custom plugin.cmake module
 include(plugin)
@@ -611,5 +662,3 @@ include(plugin)
 ## Scan for user plugins
 CL_SCAN_FOR_PLUGINS()
 
-# Don't unset this earlier: it would affect the plugins' CMakeLists.txts
-unset(PREFIX CACHE)
