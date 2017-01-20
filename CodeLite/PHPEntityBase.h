@@ -37,6 +37,7 @@
 #include <wx/wxcrtvararg.h> // Needed for wxPrintf
 #include "smart_ptr.h"
 #include <set>
+#include "commentconfigdata.h"
 
 // The entity type
 enum eEntityType {
@@ -121,7 +122,7 @@ public:
     /**
      * @brief generate a php doc comment that matches this entry
      */
-    virtual wxString FormatPhpDoc() const = 0;
+    virtual wxString FormatPhpDoc(const CommentConfigData& data) const = 0;
 
     // Setters / Getters
     void SetFlag(size_t flag, bool b = true) { b ? this->m_flags |= flag : this->m_flags &= ~flag; }
@@ -157,7 +158,12 @@ public:
      * @brief print this object to the stdout
      */
     virtual void PrintStdout(int indent) const = 0;
-
+    
+    /**
+     * @brief convert this object into a string tooltip
+     */
+    virtual wxString ToTooltip() const { return wxEmptyString; }
+    
     /**
      * @brief return a nicely formatted string to display for this
      * entity, mainly used for UI purposes
@@ -183,7 +189,12 @@ public:
      * @brief add a child to this scope
      */
     void AddChild(PHPEntityBase::Ptr_t child);
-
+    
+    /**
+     * @brief remove a child
+     */
+    void RemoveChild(PHPEntityBase::Ptr_t child);
+    
     /**
      * @brief convert this base class to its concrete
      * @return

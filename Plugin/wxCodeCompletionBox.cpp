@@ -20,10 +20,10 @@
 #include "CxxTemplateFunction.h"
 #include <wx/app.h>
 
-#define LINES_PER_PAGE 8
-#define Y_SPACER 2
-#define SCROLLBAR_WIDTH 12
-#define BOX_WIDTH (400 + SCROLLBAR_WIDTH)
+static int LINES_PER_PAGE = 8;
+static int Y_SPACER = 2;
+static int SCROLLBAR_WIDTH = 12;
+static int BOX_WIDTH = 400 + SCROLLBAR_WIDTH;
 
 wxCodeCompletionBox::BmpVec_t wxCodeCompletionBox::m_defaultBitmaps;
 
@@ -38,9 +38,21 @@ wxCodeCompletionBox::wxCodeCompletionBox(wxWindow* parent, wxEvtHandler* eventOb
     , m_flags(flags)
 {
     SetBackgroundStyle(wxBG_STYLE_PAINT);
-    
     m_ccFont = DrawingUtils::GetDefaultFixedFont();
     SetCursor(wxCURSOR_HAND);
+
+    // Update the BOX_WIDTH to contains at least 30 chars
+    static int once = false;
+    if(!once) {
+        once = true;
+        wxMemoryDC memDC;
+        wxBitmap bmp(1, 1);
+        memDC.SelectObject(bmp);
+        memDC.SetFont(m_ccFont);
+        wxString sampleString('X', 50);
+        wxSize sz = memDC.GetTextExtent(sampleString);
+        BOX_WIDTH = sz.GetWidth() + SCROLLBAR_WIDTH;
+    }
 
     // Calculate the size of the box
     int singleLineHeight = GetSingleLineHeight();
@@ -143,7 +155,7 @@ void wxCodeCompletionBox::OnPaint(wxPaintEvent& event)
 {
     // Paint the background colour
     wxAutoBufferedPaintDC dc(m_canvas);
-    
+
     // Invalidate all item rects before we draw them
     for(size_t i = 0; i < m_entries.size(); ++i) {
         m_entries.at(i)->m_itemRect = wxRect();
@@ -156,8 +168,6 @@ void wxCodeCompletionBox::OnPaint(wxPaintEvent& event)
                           rect.GetHeight());
 
     dc.SetFont(m_ccFont);
-
-    wxSize textSize = dc.GetTextExtent("Tp");
     int singleLineHeight = GetSingleLineHeight();
 
     m_canvas->PrepareDC(dc);
@@ -192,13 +202,14 @@ void wxCodeCompletionBox::OnPaint(wxPaintEvent& event)
     }
 
     // Paint the entries, starting from m_index => m_index + 7
-    wxCoord y = 2;
-    wxCoord x = m_bitmaps.empty() ? 2 : 20;
-
+    wxCoord y =  0; // Initial coord for drawing the first line
+    wxCoord textX = m_bitmaps.empty() ? 2 : clGetScaledSize(20);
+    wxCoord bmpX = clGetScaledSize(2);
+    
     // Draw all items from firstIndex => lastIndex
     for(int i = firstIndex; i < lastIndex; ++i) {
         bool isSelected = (i == m_index);
-        wxRect itemRect(2, y, rect.GetWidth(), singleLineHeight);
+        wxRect itemRect(0, y, rect.GetWidth(), singleLineHeight);
         if(isSelected) {
             // highlight the selection
             dc.SetBrush(m_selection);
@@ -209,15 +220,13 @@ void wxCodeCompletionBox::OnPaint(wxPaintEvent& event)
         dc.SetTextForeground(isSelected ? m_selectedTextColour : m_textColour);
         dc.SetPen(m_lightBorder);
         dc.DrawLine(2, y, itemRect.GetWidth() + 2, y);
-        y += 1;
-        y += Y_SPACER;
-
+        
         // If this item has a bitmap, draw it
         wxCodeCompletionBoxEntry::Ptr_t entry = m_entries.at(i);
         if(entry->GetImgIndex() != wxNOT_FOUND && entry->GetImgIndex() < (int)m_bitmaps.size()) {
             const wxBitmap& bmp = m_bitmaps.at(entry->GetImgIndex());
             wxCoord bmpY = ((singleLineHeight - bmp.GetScaledHeight()) / 2) + itemRect.y;
-            dc.DrawBitmap(bmp, 2, bmpY);
+            dc.DrawBitmap(bmp, bmpX, bmpY);
         }
 
         // Draw the text
@@ -226,14 +235,14 @@ void wxCodeCompletionBox::OnPaint(wxPaintEvent& event)
         // Truncate the text to fit the screen
         wxString choppedText;
         DrawingUtils::TruncateText(entry->GetText(), itemRect.GetWidth(), dc, choppedText);
-
-        dc.DrawText(choppedText, x, y);
+        
+        wxSize itemTextSize = dc.GetTextExtent(choppedText);
+        wxCoord textY = ((singleLineHeight - itemTextSize.GetHeight()) / 2) + itemRect.y;
+        dc.DrawText(choppedText, textX, textY);
         dc.DestroyClippingRegion();
-        y += textSize.y;
-        y += Y_SPACER;
+        y += singleLineHeight;
         dc.SetPen(m_darkBorder);
         dc.DrawLine(2, y, itemRect.GetWidth() + 2, y);
-        y += 1;
         entry->m_itemRect = itemRect;
     }
 
@@ -415,11 +424,11 @@ int wxCodeCompletionBox::GetSingleLineHeight() const
     wxBitmap bmp(1, 1);
     wxMemoryDC memDC(bmp);
     memDC.SetFont(m_ccFont);
+    m_canvas->PrepareDC(memDC);
     wxSize size = memDC.GetTextExtent("Tp");
-
-    int singleLineHeight = size.y + (2 * Y_SPACER) + 2; // the extra pixel is for the border line
-    if(singleLineHeight < 16) {
-        singleLineHeight = 16; // at least 16 pixels for image
+    int singleLineHeight = size.y + (2 * Y_SPACER) + clGetScaledSize(2); // the extra pixel is for the border line
+    if(singleLineHeight < clGetScaledSize(16)) {
+        singleLineHeight = clGetScaledSize(16) + clGetScaledSize(2); // at least 16 pixels for image
     }
     return singleLineHeight;
 }

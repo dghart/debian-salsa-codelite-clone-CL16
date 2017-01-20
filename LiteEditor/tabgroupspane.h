@@ -63,7 +63,6 @@ class TabgroupsPane : public wxPanel
         TGM_ID_CutItem,
         TGM_ID_RemoveItem
     };
-    std::map<wxString, int> _imgIdx;
     ThemeHandlerHelper* m_themeHelper;
 
 public:
@@ -71,10 +70,12 @@ public:
     TabgroupsPane(wxWindow* parent, const wxString& caption);
     ~TabgroupsPane();
     void DisplayTabgroups();
-    void ClearTabgroups() { m_tree->DeleteChildren(m_tree->GetRootItem()); }
     bool AddNewTabgroupToTree(const wxString& newfilepath, wxTreeItemId selection = wxTreeItemId());
-
+    void FileDropped(const wxString& filename);
+    
 protected:
+    void AddFile(const wxString& filename);
+    
     void AddTreeItem(const wxString& tabgroupname,
                      const wxArrayString& tabfilepaths,
                      const wxTreeItemId insertafter = wxTreeItemId());
@@ -100,7 +101,7 @@ protected:
 
     void OnBeginDrag(wxTreeEvent& event);
     void OnEndDrag(wxTreeEvent& event);
-
+    void OnWorkspaceClosed(wxCommandEvent& e);
     wxTreeCtrl* m_tree;
     /*!
      * \brief Stores the dragged item during DnD

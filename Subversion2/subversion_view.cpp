@@ -166,7 +166,7 @@ SubversionView::SubversionView(wxWindow* parent, Subversion2* plugin)
     EventNotifier::Get()->Connect(wxEVT_FILE_SAVED, clCommandEventHandler(SubversionView::OnFileSaved), NULL, this);
     EventNotifier::Get()->Connect(
         wxEVT_PROJ_FILE_ADDED, clCommandEventHandler(SubversionView::OnFileAdded), NULL, this);
-    EventNotifier::Get()->Connect(wxEVT_FILE_RENAMED, wxCommandEventHandler(SubversionView::OnFileRenamed), NULL, this);
+    EventNotifier::Get()->Bind(wxEVT_FILE_RENAMED, &SubversionView::OnFileRenamed, this);
     EventNotifier::Get()->Connect(
         wxEVT_ACTIVE_EDITOR_CHANGED, wxCommandEventHandler(SubversionView::OnActiveEditorChanged), NULL, this);
 
@@ -227,6 +227,7 @@ void SubversionView::OnTreeMenu(wxTreeEvent& event)
 void SubversionView::CreatGUIControls()
 {
     MSWSetNativeTheme(m_treeCtrl);
+    m_treeCtrl->SetFont(wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT));
 
     // Assign the image list
     BitmapLoader* bmpLoader = m_plugin->GetManager()->GetStdIcons();
@@ -235,15 +236,15 @@ void SubversionView::CreatGUIControls()
     wxImageList* imageList = bmpLoader->MakeStandardMimeImageList();
 
     // Append the subversion unique icons
-    FOLDER_IMG_ID = imageList->Add(bmpLoader->LoadBitmap(wxT("mime/16/folder")));
-    MODIFIED_IMG_ID = imageList->Add(bmpLoader->LoadBitmap(wxT("subversion/16/modified")));
-    NEW_IMG_ID = imageList->Add(bmpLoader->LoadBitmap(wxT("subversion/16/new")));
-    DELETED_IMG_ID = imageList->Add(bmpLoader->LoadBitmap(wxT("subversion/16/deleted")));
-    CONFLICT_IMG_ID = imageList->Add(bmpLoader->LoadBitmap(wxT("subversion/16/conflict")));
-    UNVERSIONED_IMG_ID = imageList->Add(bmpLoader->LoadBitmap(wxT("subversion/16/unversioned")));
-    PROJECT_IMG_ID = imageList->Add(bmpLoader->LoadBitmap(wxT("workspace/16/project")));
-    WORKSPACE_IMG_ID = imageList->Add(bmpLoader->LoadBitmap(wxT("workspace/16/workspace")));
-    LOCKED_IMG_ID = imageList->Add(bmpLoader->LoadBitmap(wxT("subversion/16/locked")));
+    FOLDER_IMG_ID = imageList->Add(bmpLoader->LoadBitmap(wxT("folder-yellow")));
+    MODIFIED_IMG_ID = imageList->Add(bmpLoader->LoadBitmap(wxT("error")));
+    NEW_IMG_ID = imageList->Add(bmpLoader->LoadBitmap(wxT("plus")));
+    DELETED_IMG_ID = imageList->Add(bmpLoader->LoadBitmap(wxT("minus")));
+    CONFLICT_IMG_ID = imageList->Add(bmpLoader->LoadBitmap(wxT("warning")));
+    UNVERSIONED_IMG_ID = imageList->Add(bmpLoader->LoadBitmap(wxT("info")));
+    PROJECT_IMG_ID = imageList->Add(bmpLoader->LoadBitmap(wxT("project")));
+    WORKSPACE_IMG_ID = imageList->Add(bmpLoader->LoadBitmap(wxT("php-workspace")));
+    LOCKED_IMG_ID = imageList->Add(bmpLoader->LoadBitmap(wxT("lock")));
 
     m_treeCtrl->AssignImageList(imageList);
 
@@ -331,7 +332,7 @@ void SubversionView::OnWorkspaceLoaded(wxCommandEvent& event)
     }
 
     if(!m_plugin->IsPathUnderSvn(path)) {
-        OnCloseView(event);
+        DoCloseView();
 
     } else {
         DoRootDirChanged(path);
@@ -565,9 +566,6 @@ void SubversionView::CreateFileMenu(wxMenu* menu)
 
 void SubversionView::CreateRootMenu(wxMenu* menu)
 {
-    menu->Append(XRCID("svn_close_view"), wxT("Close"));
-    menu->AppendSeparator();
-
     menu->Append(XRCID("svn_update"), wxT("Update"));
     menu->Append(XRCID("svn_commit"), wxT("Commit"));
     menu->AppendSeparator();
@@ -591,6 +589,11 @@ void SubversionView::CreateRootMenu(wxMenu* menu)
 
     menu->AppendSeparator();
     menu->Append(XRCID("svn_properties"), _("Properties..."));
+
+    menu->AppendSeparator();
+    wxMenuItem* menuItem = new wxMenuItem(menu, XRCID("svn_close_view"), _("Close"));
+    menuItem->SetBitmap(m_plugin->GetManager()->GetStdIcons()->LoadBitmap("file_close"));
+    menu->Append(menuItem);
 }
 
 void SubversionView::DoGetPaths(const wxTreeItemId& parent, wxArrayString& paths)
@@ -921,14 +924,12 @@ void SubversionView::OnFileAdded(clCommandEvent& event)
     }
 }
 
-void SubversionView::OnFileRenamed(wxCommandEvent& event)
+void SubversionView::OnFileRenamed(clFileSystemEvent& event)
 {
-    wxArrayString* files = (wxArrayString*)event.GetClientData();
-
     // If the Svn Client Version is set to 0.0 it means that we dont have SVN client installed
-    if(m_plugin->GetSvnClientVersion() && files && (m_plugin->GetSettings().GetFlags() & SvnRenameFileInRepo)) {
-        wxString oldName = files->Item(0);
-        wxString newName = files->Item(1);
+    if(m_plugin->GetSvnClientVersion() && (m_plugin->GetSettings().GetFlags() & SvnRenameFileInRepo)) {
+        wxString oldName = event.GetPath();
+        wxString newName = event.GetNewpath();
 
         if(m_plugin->IsPathUnderSvn(wxFileName(oldName).GetPath()) == false) {
             event.Skip();
@@ -940,8 +941,9 @@ void SubversionView::OnFileRenamed(wxCommandEvent& event)
         m_plugin->GetConsole()->Execute(
             command, DoGetCurRepoPath(), new SvnDefaultCommandHandler(m_plugin, event.GetId(), this));
 
-    } else
+    } else {
         event.Skip();
+    }
 }
 
 void SubversionView::OnShowSvnInfo(wxCommandEvent& event)
@@ -1125,8 +1127,7 @@ void SubversionView::DisconnectEvents()
     EventNotifier::Get()->Disconnect(wxEVT_FILE_SAVED, clCommandEventHandler(SubversionView::OnFileSaved), NULL, this);
     EventNotifier::Get()->Disconnect(
         wxEVT_PROJ_FILE_ADDED, clCommandEventHandler(SubversionView::OnFileAdded), NULL, this);
-    EventNotifier::Get()->Disconnect(
-        wxEVT_FILE_RENAMED, wxCommandEventHandler(SubversionView::OnFileRenamed), NULL, this);
+    EventNotifier::Get()->Unbind(wxEVT_FILE_RENAMED, &SubversionView::OnFileRenamed, this);
     EventNotifier::Get()->Disconnect(
         wxEVT_ACTIVE_EDITOR_CHANGED, wxCommandEventHandler(SubversionView::OnActiveEditorChanged), NULL, this);
 }
@@ -1365,8 +1366,16 @@ void SubversionView::OnSciStcChange(wxStyledTextEvent& event)
 
 void SubversionView::OnCloseView(wxCommandEvent& event)
 {
-    DoChangeRootPathUI("");
+    if(::wxMessageBox(_("Close SVN view?"), _("Confirm"), wxICON_QUESTION | wxYES_NO | wxCANCEL | wxCANCEL_DEFAULT) !=
+        wxYES) {
+        return;
+    }
+    DoCloseView();
+}
 
+void SubversionView::DoCloseView()
+{
+    DoChangeRootPathUI("");
     wxCommandEvent dummy;
     OnClearOuptut(dummy);
 }

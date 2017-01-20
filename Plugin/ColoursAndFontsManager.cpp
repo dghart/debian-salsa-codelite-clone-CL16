@@ -205,6 +205,11 @@ LexerConf::Ptr_t ColoursAndFontsManager::DoAddLexer(wxXmlNode* node)
         lexer->SetKeyWords(lexer->GetKeyWords(0) + " final", 0);
     }
     
+    // Add C++ keyword "override"
+    if(lexer->GetName() == "c++" && !lexer->GetKeyWords(0).Contains("override")) {
+        lexer->SetKeyWords(lexer->GetKeyWords(0) + " override", 0);
+    }
+    
     // Hack: fix Java lexer which is using the same
     // file extensions as C++...
     if(lexer->GetName() == "java" && lexer->GetFileSpec().Contains(".cpp")) {
@@ -248,6 +253,11 @@ LexerConf::Ptr_t ColoursAndFontsManager::DoAddLexer(wxXmlNode* node)
     // Add *.scss file extension to the css lexer
     if(lexer->GetName() == "css" && !lexer->GetFileSpec().Contains(".scss")) {
         lexer->SetFileSpec(lexer->GetFileSpec() + ";*.scss");
+    }
+
+    // Add *.less file extension to the css lexer
+    if(lexer->GetName() == "css" && !lexer->GetFileSpec().Contains(".less")) {
+        lexer->SetFileSpec(lexer->GetFileSpec() + ";*.less");
     }
     
     // Upgrade the lexer colours
@@ -543,12 +553,9 @@ void ColoursAndFontsManager::OnLexerFilesLoaded(const std::vector<wxXmlDocument*
     wxFileName fnUserLexers(clStandardPaths::Get().GetUserDataDir(), "lexers.json");
     fnUserLexers.AppendDir("lexers");
 
-// Default installation lexers
-#ifdef USE_POSIX_LAYOUT
-    wxFileName defaultLexersFileName(clStandardPaths::Get().GetDataDir() + wxT(INSTALL_DIR), "");
-#else
+    // Default installation lexers
     wxFileName defaultLexersFileName(clStandardPaths::Get().GetDataDir(), "");
-#endif
+
     defaultLexersFileName.AppendDir("lexers");
     defaultLexersFileName.SetFullName("lexers.json");
     
@@ -736,6 +743,15 @@ LexerConf::Ptr_t ColoursAndFontsManager::DoAddLexer(JSONElement json)
     if(lexer->GetName() == "c++" && !lexer->GetKeyWords(0).Contains("final")) {
         lexer->SetKeyWords(lexer->GetKeyWords(0) + " final", 0);
     }
+    
+    if(lexer->GetName() == "c++" && !lexer->GetKeyWords(0).Contains("override")) {
+        lexer->SetKeyWords(lexer->GetKeyWords(0) + " override", 0);
+    }
+    
+    // Add Arduino sketches files as C++ (*.ino)
+    if(lexer->GetName() == "c++" && !lexer->GetFileSpec().Contains(".ino")) {
+        lexer->SetFileSpec(lexer->GetFileSpec() + ";*.ino");
+    }
 
     // Hack: fix Java lexer which is using the same
     // file extensions as C++...
@@ -769,6 +785,11 @@ LexerConf::Ptr_t ColoursAndFontsManager::DoAddLexer(JSONElement json)
         lexer->SetFileSpec("*.css");
     }
     
+    // Add *.less file extension to the css lexer
+    if(lexer->GetName() == "css" && !lexer->GetFileSpec().Contains(".less")) {
+        lexer->SetFileSpec(lexer->GetFileSpec() + ";*.less");
+    }
+    
     if(lexer->GetName() == "php" && !lexer->GetFileSpec().Contains(".html")) {
         lexer->SetFileSpec(lexer->GetFileSpec() + ";*.html;*.htm;*.xhtml");
     }
@@ -779,6 +800,10 @@ LexerConf::Ptr_t ColoursAndFontsManager::DoAddLexer(JSONElement json)
     
     if(lexer->GetName() == "php" && !lexer->GetFileSpec().Contains(".php5")) {
         lexer->SetFileSpec(lexer->GetFileSpec() + ";*.php5");
+    }
+
+    if(lexer->GetName() == "php" && !lexer->GetFileSpec().Contains(".ctp")) {
+        lexer->SetFileSpec(lexer->GetFileSpec() + ";*.ctp");
     }
 
     // Add wxcp file extension to the JavaScript lexer

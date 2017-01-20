@@ -34,6 +34,7 @@
 #include <cl_command_event.h>
 #include "wx_ordered_map.h"
 #include "clTreeKeyboardInput.h"
+#include "clFileSystemEvent.h"
 
 class IManager;
 class ItemData;
@@ -46,6 +47,7 @@ class PHPWorkspaceView : public PHPWorkspaceViewBase
     std::map<wxString, wxTreeItemId> m_filesItems;
     std::map<wxString, wxTreeItemId> m_foldersItems;
     clTreeKeyboardInput::Ptr_t m_keyboardHelper;
+    bool m_scanInProgress;
 
 private:
     enum {
@@ -58,6 +60,7 @@ protected:
     void OnFolderDropped(clCommandEvent& event);
 
     virtual void OnCollapseUI(wxUpdateUIEvent& event);
+    virtual void OnStartDebuggerListenerUI(wxUpdateUIEvent& event);
     virtual void OnSetupRemoteUploadUI(wxUpdateUIEvent& event);
     virtual void OnItemActivated(wxTreeEvent& event);
     virtual void OnMenu(wxTreeEvent& event);
@@ -70,8 +73,9 @@ protected:
     virtual void OnProjectSettings(wxCommandEvent& event);
     virtual void OnActiveProjectSettingsUI(wxUpdateUIEvent& event);
     void DoGetSelectedFiles(wxArrayString& files);
-    void DoGetSelectedFolders(wxArrayString &paths);
-    
+    void DoGetSelectedFolders(wxArrayString& paths);
+    void DoSetStatusBarText(const wxString& text, int timeOut);
+
     // Helpers
     void DoSortItems();
     wxTreeItemId DoAddFolder(const wxString& project, const wxString& path);
@@ -91,7 +95,7 @@ protected:
 #if USE_SFTP
     void DoOpenSSHAccountManager();
 #endif
-    
+
     /**
      * @brief construct the project in the tree view
      * @param projectItem
@@ -142,12 +146,18 @@ protected:
     void OnWorkspaceRenamed(PHPEvent& e);
     void OnFindInFilesShowing(clCommandEvent& e);
     void OnToggleAutoUpload(wxCommandEvent& e);
-
+    void OnStartDebuggerListener(wxCommandEvent& e);
+    
     // Php parser events
     void OnPhpParserStarted(clParseEvent& event);
     void OnPhpParserProgress(clParseEvent& event);
     void OnPhpParserDone(clParseEvent& event);
 
+    // PHP Workspace events
+    void OnWorkspaceSyncStart(clCommandEvent& event);
+    void OnWorkspaceSyncEnd(clCommandEvent& event);
+    void OnFileSaveAs(clFileSystemEvent& event);
+    
 public:
     /** Constructor */
     PHPWorkspaceView(wxWindow* parent, IManager* mgr);
@@ -159,8 +169,8 @@ public:
      */
     void CreateNewProject(PHPProject::CreateData cd);
 
-    void LoadWorkspace();
-    void UnLoadWorkspace();
+    void LoadWorkspaceView();
+    void UnLoadWorkspaceView();
 
     void ReportParseThreadProgress(size_t curIndex, size_t total);
     void ReportParseThreadDone();

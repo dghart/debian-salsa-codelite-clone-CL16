@@ -42,6 +42,7 @@ class ContextCpp : public ContextBase
 
     static wxBitmap m_cppFileBmp;
     static wxBitmap m_hFileBmp;
+    static wxBitmap m_otherFileBmp;
 
 protected:
     void OnShowCodeNavMenu(clCodeCompletionEvent& e);
@@ -59,7 +60,7 @@ private:
     void DoUpdateCalltipHighlight();
 
 public:
-    virtual void ColourContextTokens(const wxArrayString& workspaceTokens);
+    virtual void ColourContextTokens(const wxString& workspaceTokensStr, const wxString& localsTokensStr);
     /**
      * @brief
      * @return
@@ -154,7 +155,7 @@ private:
     bool DoGetSingatureRange(int line, int& start, int& end, LEditor* ctrl);
 
 public:
-    void DoMakeDoxyCommentString(DoxygenComment& dc);
+    void DoMakeDoxyCommentString(DoxygenComment& dc, const wxString& blockPrefix);
 
 private:
     /**

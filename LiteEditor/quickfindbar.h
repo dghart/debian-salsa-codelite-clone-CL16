@@ -30,6 +30,7 @@
 #include "wxFlatButton.h"
 #include <wx/combobox.h>
 #include "wxFlatButtonBar.h"
+#include "clEditorEditEventsHandler.h"
 
 class QuickFindBarOptionsMenu;
 class wxStyledTextCtrl;
@@ -91,6 +92,9 @@ protected:
     bool m_disableTextUpdateEvent;
     friend class QuickFindBarOptionsMenu;
 
+    clEditEventsHandler::Ptr_t m_findEventsHandler;
+    clEditEventsHandler::Ptr_t m_replaceEventsHandler;
+
 public:
     enum {
         ID_TOOL_REPLACE = 1000,
@@ -106,6 +110,7 @@ public:
 
     enum {
         kSearchForward = (1 << 0),
+        kDisableDisplayErrorMessages = (1 << 1),
     };
 
 private:
@@ -118,7 +123,9 @@ private:
 protected:
     virtual void OnReplaceKeyDown(wxKeyEvent& event);
     virtual void OnFindKeyDown(wxKeyEvent& event);
-    void DoSearch(size_t searchFlags);
+    bool DoSearch(size_t searchFlags);
+    void DoSearchCB(size_t searchFlags) { DoSearch(searchFlags); }
+    void DoReplace();
     void DoSetCaretAtEndOfText();
     void DoFixRegexParen(wxString& findwhat);
     wxString DoGetSelectedText();
@@ -163,7 +170,7 @@ protected:
     void OnReplaceInSelectionUI(wxUpdateUIEvent& event);
     void OnQuickFindCommandEvent(wxCommandEvent& event);
     void OnReceivingFocus(wxFocusEvent& event);
-    void OnReleaseEditor(wxCommandEvent& e);
+    void OnReleaseEditor(clFindEvent& e);
 
     void OnFindNext(wxCommandEvent& e);
     void OnFindPrevious(wxCommandEvent& e);

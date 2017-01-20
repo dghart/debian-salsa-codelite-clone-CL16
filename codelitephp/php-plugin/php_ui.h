@@ -4,8 +4,8 @@
 // Do not modify this file by hand!
 //////////////////////////////////////////////////////////////////////
 
-#ifndef CODELITEPHP_PHP_PLUGIN_PHP_UI_BASE_CLASSES_H
-#define CODELITEPHP_PHP_PLUGIN_PHP_UI_BASE_CLASSES_H
+#ifndef _CODELITEPHP_PHP_PLUGIN_PHP_UI_BASE_CLASSES_H
+#define _CODELITEPHP_PHP_PLUGIN_PHP_UI_BASE_CLASSES_H
 
 #include <wx/settings.h>
 #include <wx/xrc/xmlres.h>
@@ -32,12 +32,12 @@
 #include <wx/aui/auibar.h>
 #include <map>
 #include <wx/menu.h>
-#include <wx/toolbar.h>
 #include <wx/gauge.h>
 #include <wx/treectrl.h>
 #include "my_tree_view.h"
 #include <wx/aui/auibook.h>
 #include "Notebook.h"
+#include <wx/toolbar.h>
 #include "xdebuglocalsviewmodel.h"
 #include <wx/bitmap.h>
 #include <wx/icon.h>
@@ -57,6 +57,16 @@
 #include <wx/persist/bookctrl.h>
 #include <wx/persist/treebook.h>
 #endif
+
+#ifdef WXC_FROM_DIP
+#undef WXC_FROM_DIP
+#endif
+#if wxVERSION_NUMBER >= 3100
+#define WXC_FROM_DIP(x) wxWindow::FromDIP(x, NULL)
+#else
+#define WXC_FROM_DIP(x) x
+#endif
+
 
 class QuickOutlineDlgBase : public wxDialog
 {
@@ -340,38 +350,23 @@ public:
     wxDirPickerCtrl* GetDirPickerSource() { return m_dirPickerSource; }
     wxStaticText* GetStaticText123() { return m_staticText123; }
     wxTextCtrl* GetTextCtrlRemote() { return m_textCtrlRemote; }
-    FileMappingDlgBase(wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("File Mapping"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize(400,200), long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER);
+    FileMappingDlgBase(wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("File Mapping"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize(-1,-1), long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER);
     virtual ~FileMappingDlgBase();
 };
 
 
 class PHPWorkspaceViewBase : public wxPanel
 {
-public:
-    enum {
-        ID_PHP_PROJECT_SETTINGS = 8001,
-        ID_TOOL_COLLAPSE = 8002,
-        ID_UPLOAD_CLOUD = 8003,
-    };
 protected:
     wxAuiToolBar* m_auibar29;
-    std::map<int, wxMenu*> m_dropdownMenus;
     wxGauge* m_gaugeParseProgress;
     MyTreeView* m_treeCtrlView;
 
 protected:
-    virtual void OnActiveProjectSettings(wxCommandEvent& event) { event.Skip(); }
-    virtual void OnActiveProjectSettingsUI(wxUpdateUIEvent& event) { event.Skip(); }
-    virtual void OnSetupRemoteUploadUI(wxUpdateUIEvent& event) { event.Skip(); }
-    virtual void OnSetupRemoteUpload(wxAuiToolBarEvent& event) { event.Skip(); }
-    virtual void OnCollapse(wxCommandEvent& event) { event.Skip(); }
-    virtual void OnCollapseUI(wxUpdateUIEvent& event) { event.Skip(); }
     virtual void OnMenu(wxTreeEvent& event) { event.Skip(); }
     virtual void OnItemActivated(wxTreeEvent& event) { event.Skip(); }
 
 public:
-
-    virtual void ShowAuiToolMenu(wxAuiToolBarEvent& event);
     wxAuiToolBar* GetAuibar29() { return m_auibar29; }
     wxGauge* GetGaugeParseProgress() { return m_gaugeParseProgress; }
     MyTreeView* GetTreeCtrlView() { return m_treeCtrlView; }
@@ -441,6 +436,10 @@ class PHPImages : public wxImageList
 protected:
     // Maintain a map of all bitmaps representd by their name
     std::map<wxString, wxBitmap> m_bitmaps;
+    // The requested image resolution (can be one of @2x, @1.5x, @1.25x or an empty string (the default)
+    wxString m_resolution;
+    int m_imagesWidth;
+    int m_imagesHeight;
 
 
 protected:
@@ -448,10 +447,15 @@ protected:
 public:
     PHPImages();
     const wxBitmap& Bitmap(const wxString &name) const {
-        if ( !m_bitmaps.count(name) )
+        if ( !m_bitmaps.count(name + m_resolution) )
             return wxNullBitmap;
-        return m_bitmaps.find(name)->second;
+        return m_bitmaps.find(name + m_resolution)->second;
     }
+
+    void SetBitmapResolution(const wxString &res = wxEmptyString) {
+        m_resolution = res;
+    }
+
     virtual ~PHPImages();
 };
 
