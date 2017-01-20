@@ -13,7 +13,7 @@ CONFIG_EXTRA := \
     -DLIBCLANG_T=/usr/lib/$(DEB_HOST_MULTIARCH)/libclang-$(LLVM_VERSION).so \
     -DLIBCLANG_INCLUDE_T=/usr/lib/llvm-$(LLVM_VERSION)/include/ \
     -DLIBLLDB_T=/usr/lib/$(DEB_HOST_MULTIARCH)/liblldb-$(LLVM_VERSION).so \
-    -DLIBCLANG_INCLUDE_T=/usr/lib/llvm-$(LLVM_VERSION)/include/
+    -DLIBLLDB_INCLUDE_T=/usr/lib/llvm-$(LLVM_VERSION)/include/
 
 # Disable clang / lldb on arches where they're not available (yet)
 #  Remember to update debian/control when changing these
