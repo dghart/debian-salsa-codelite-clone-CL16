@@ -31,7 +31,7 @@ Files-Excluded:
 Files: *
 Copyright: 2007-2014 Eran Ifrah <eran.ifrah@gmail.com>
            2011-2014 David Hart <david@codelite.co.uk>
-           2014-2015 The CodeLite Team
+           2014-2016 The CodeLite Team
 License: CodeLite
 
 Files: CMakePlugin/*
@@ -242,7 +242,7 @@ License: CodeLite
 Files: debian/*
 Copyright: 2009 Chow Loong Jin <hyperair@ubuntu.com>
            2010 Alessio Treglia <quadrispro@ubuntu.com>
-           2014-2016 James Cowgill <jcowgill@debian.org>
+           2014-2017 James Cowgill <jcowgill@debian.org>
 License: GPL-2+
 
 License: BSL-1.0
