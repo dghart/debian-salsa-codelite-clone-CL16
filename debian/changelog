@@ -1,3 +1,9 @@
+codelite (10.0+dfsg-1) UNRELEASED; urgency=medium
+
+  *
+
+ -- James Cowgill <jcowgill@debian.org>  Fri, 20 Jan 2017 09:01:11 +0000
+
 codelite (9.2+dfsg-2) unstable; urgency=medium
 
   * Build against LLVM 3.8. (Closes: #836607)
