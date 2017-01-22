@@ -8,3 +8,4 @@
 24_default_no_check_for_updates.patch
 25_shlibs-adjustments.patch
 26_remove_hardcoded_x86.patch
+27_gtk2-libs.patch

@@ -1,0 +1,91 @@
+Description: Remove unnessesary find_package(GTK2) calls
+ Due to a bug in CMake, the second time find_package(GTK2) is called, the wrong
+ value is written to GTK2_LIBRARIES and not all the libs are linked against.
+ Since the first find_package call happens at the top-level, we can just remove
+ the calls in subdirectories.
+ See: https://gitlab.kitware.com/cmake/cmake/issues/16582
+Author: James Cowgill <jcowgill@debian.org>
+Forwarded: no
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+--- a/DatabaseExplorer/CMakeLists.txt
++++ b/DatabaseExplorer/CMakeLists.txt
+@@ -34,30 +34,6 @@ if ( WITH_MYSQL )
+     add_definitions( -DDBL_USE_MYSQL=1 )
+ endif ( WITH_MYSQL )
+ 
+-## On UNIX we require GTK
+-if (UNIX AND NOT APPLE)
+-
+-    if (GTK_VERSION EQUAL 3)
+-        set(OLD_CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}) # Cache the current value
+-        set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
+-        find_package(GTK3)
+-        set(CMAKE_MODULE_PATH ${OLD_CMAKE_MODULE_PATH}) # Reset, else the official path isn't used again :/
+-        if (GTK3_FOUND)
+-            include_directories(${GTK3_INCLUDE_DIRS})
+-        else (GTK3_FOUND)
+-            message(FATAL_ERROR "Could not locate GTK.")
+-        endif (GTK3_FOUND)
+-    else()
+-        find_package(GTK2)
+-        if (GTK2_FOUND)
+-            include_directories(${GTK2_INCLUDE_DIRS})
+-        else (GTK2_FOUND)
+-            message(FATAL_ERROR "Could not locate GTK.")
+-        endif (GTK2_FOUND)
+-    endif()
+-
+-endif (UNIX AND NOT APPLE)
+-
+ if ( USE_PCH )
+     add_definitions(-include "${CL_PCH_FILE}")
+     add_definitions(-Winvalid-pch)
+--- a/Plugin/CMakeLists.txt
++++ b/Plugin/CMakeLists.txt
+@@ -34,30 +34,6 @@ if ( APPLE )
+     add_definitions(-fPIC)
+ endif()
+ 
+-## On UNIX we require GTK
+-if (UNIX AND NOT APPLE)
+-
+-    if (GTK_VERSION EQUAL 3)
+-        set(OLD_CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}) # Cache the current value
+-        set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
+-        find_package(GTK3)
+-        set(CMAKE_MODULE_PATH ${OLD_CMAKE_MODULE_PATH}) # Reset, else the official path isn't used again :/
+-        if (GTK3_FOUND)
+-            include_directories(${GTK3_INCLUDE_DIRS})
+-        else (GTK3_FOUND)
+-            message(FATAL_ERROR "Could not locate GTK.")
+-        endif (GTK3_FOUND)
+-    else()
+-        find_package(GTK2)
+-        if (GTK2_FOUND)
+-            include_directories(${GTK2_INCLUDE_DIRS})
+-        else (GTK2_FOUND)
+-            message(FATAL_ERROR "Could not locate GTK.")
+-        endif (GTK2_FOUND)
+-    endif()
+-
+-endif (UNIX AND NOT APPLE)
+-
+ # Additional libraries for UNIX-like systems
+ set( ADDITIONAL_LIBRARIES "" )
+ 
+--- a/CodeLite/CMakeLists.txt
++++ b/CodeLite/CMakeLists.txt
+@@ -122,6 +122,12 @@ else (UNIX AND NOT APPLE)
+                           -lz -lcrypto)
+ endif ( UNIX AND NOT APPLE )
+ 
++if(GTK2_FOUND)
++    target_link_libraries(libcodelite ${GTK2_LIBRARIES})
++else(GTK2_FOUND)
++    target_link_libraries(libcodelite ${GTK3_LIBRARIES})
++endif()
++
+ if (NOT MINGW)
+     if(APPLE)
+         install(TARGETS libcodelite DESTINATION ${CMAKE_BINARY_DIR}/codelite.app/Contents/MacOS/)
