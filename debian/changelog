@@ -1,8 +1,24 @@
-codelite (10.0+dfsg-1) UNRELEASED; urgency=medium
+codelite (10.0+dfsg-1) unstable; urgency=medium
 
-  *
+  * New upstream release.
 
- -- James Cowgill <jcowgill@debian.org>  Fri, 20 Jan 2017 09:01:11 +0000
+  * debian/control, debian/rules:
+    - Switch to LLVM 3.9.
+    - Fix typo to fix FTBFS with LLVM 3.9. (Closes: #850161)
+    - Update Clang / LLDB architectures list.
+  * debian/copyright:
+    - Update copyright dates.
+  * debian/codelite-plugins.install:
+    - Install new plugins.
+  * debian/patches:
+    - Refresh patches.
+    - Remove hardcoding of CMAKE_LIBRARY_ARCHITECTURE to x86.
+    - Remove unnecessary find_package(GTK2) calls (to workaround CMake bug).
+    - Add patch to fix various spelling mistakes.
+  * debian/source:
+    - Remove local-options.
+
+ -- James Cowgill <jcowgill@debian.org>  Mon, 23 Jan 2017 11:34:44 +0000
 
 codelite (9.2+dfsg-2) unstable; urgency=medium
 
