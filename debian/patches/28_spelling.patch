@@ -343,13 +343,27 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
      if(choices.GetCount() == 0) return;
  
 -    wxString choice = wxGetSingleChoice(_("Jump to modifed file"), _("Modifed files"), choices, m_topWindow);
-+    wxString choice = wxGetSingleChoice(_("Jump to modifed file"), _("Modified files"), choices, m_topWindow);
++    wxString choice = wxGetSingleChoice(_("Jump to modified file"), _("Modified files"), choices, m_topWindow);
      if(!choice.IsEmpty()) {
          wxTreeItemId id = modifiedIDs[choice];
          if(id.IsOk()) {
+@@ -1338,7 +1338,7 @@ void GitPlugin::FinishGitListAction(cons
+         m_trackedFiles.swap(gitFileSet);
+ 
+     } else if(ga.action == gitListModified) {
+-        m_mgr->SetStatusMessage(_("Colouring modifed git files..."), 0);
++        m_mgr->SetStatusMessage(_("Colouring modified git files..."), 0);
+         // Reset modified files
+         ColourFileTree(m_mgr->GetTree(TreeFileView), m_modifiedFiles, OverlayTool::Bmp_OK);
+         // First get an up to date map of the filepaths/treeitemids
 --- a/translations/codelite.pot
 +++ b/translations/codelite.pot
-@@ -4184,7 +4184,7 @@ msgid "Jump to modifed file"
+@@ -4180,11 +4180,11 @@ msgid "Reset repository"
+ msgstr ""
+ 
+ #: git/git.cpp:863
+-msgid "Jump to modifed file"
++msgid "Jump to modified file"
  msgstr ""
  
  #: git/git.cpp:863
@@ -358,6 +372,15 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  msgstr ""
  
  #: git/git.cpp:1336
+@@ -4192,7 +4192,7 @@ msgid "Colouring tracked git files..."
+ msgstr ""
+ 
+ #: git/git.cpp:1341
+-msgid "Colouring modifed git files..."
++msgid "Colouring modified git files..."
+ msgstr ""
+ 
+ #: git/git.cpp:1424
 @@ -13793,7 +13793,7 @@ msgid "Selected Text Background Colour:"
  msgstr ""
  
@@ -425,7 +448,12 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  msgstr "至少键入的字符数："
  
  #: LiteEditor/tags_options_base_dlg.cpp:207
-@@ -17912,7 +17912,7 @@ msgid "Jump to modifed file"
+@@ -17908,11 +17908,11 @@ msgid "Are you sure that you want to dis
+ msgstr "你确定要放弃所有本地变更？"
+ 
+ #: git/git.cpp:841
+-msgid "Jump to modifed file"
++msgid "Jump to modified file"
  msgstr "跳转到已修改文件"
  
  #: git/git.cpp:841
@@ -434,3 +462,12 @@ This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
  msgstr "已修改的文件"
  
  #: git/git.cpp:1255
+@@ -17920,7 +17920,7 @@ msgid "Colouring tracked git files..."
+ msgstr "着色跟踪的 git 文件..."
+ 
+ #: git/git.cpp:1260
+-msgid "Colouring modifed git files..."
++msgid "Colouring modified git files..."
+ msgstr "着色已修改的 git 文件..."
+ 
+ #: git/git.cpp:1343
