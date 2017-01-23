@@ -1,4 +1,4 @@
-Description: Remove unnessesary find_package(GTK2) calls
+Description: Remove unnecessary find_package(GTK2) calls
  Due to a bug in CMake, the second time find_package(GTK2) is called, the wrong
  value is written to GTK2_LIBRARIES and not all the libs are linked against.
  Since the first find_package call happens at the top-level, we can just remove
