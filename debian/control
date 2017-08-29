@@ -9,7 +9,7 @@ Build-Depends:
  libclang-5.0-dev [amd64 arm64 armel armhf i386 mips mips64el mipsel powerpc ppc64 ppc64el sparc64 s390x],
  libgtk2.0-dev,
  libhunspell-dev,
- liblldb-5.0-dev [amd64 armel armhf i386 mips mipsel],
+ liblldb-5.0-dev [amd64 arm64 armel armhf i386 mips mipsel],
  libssh-gcrypt-dev,
  libwxgtk3.0-dev,
  libwxsqlite3-3.0-dev,
