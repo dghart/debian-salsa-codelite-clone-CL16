@@ -24,7 +24,7 @@ CONFIG_EXTRA += $(if $(filter $(DEB_HOST_ARCH),$(ARCH_CLANG)),,-DENABLE_CLANG=0)
 CONFIG_EXTRA += $(if $(filter $(DEB_HOST_ARCH),$(ARCH_LLDB)),,-DENABLE_LLDB=0)
 
 %:
-	dh $@ --parallel
+	dh $@
 
 override_dh_auto_configure:
 	dh_auto_configure -- $(CONFIG_EXTRA)
