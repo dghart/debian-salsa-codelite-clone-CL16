@@ -1,8 +1,16 @@
-codelite (10.0+dfsg-2) UNRELEASED; urgency=medium
+codelite (10.0+dfsg-2) unstable; urgency=medium
 
-  *
+  * debian/copyright:
+    - Use https Format URL in debian/copyright.
+  * debian/control:
+    - Switch to LLVM 5.0. (Closes: #873406)
+    - Enable LLDB on arm64.
+    - Bump standards to 4.1.0 (no changes).
+    - Use https Homepage URL.
+  * debian/compat:
+    - Use debhelper 10.
 
- -- James Cowgill <jcowgill@debian.org>  Tue, 29 Aug 2017 11:36:20 +0100
+ -- James Cowgill <jcowgill@debian.org>  Tue, 29 Aug 2017 12:22:56 +0100
 
 codelite (10.0+dfsg-1) unstable; urgency=medium
 
