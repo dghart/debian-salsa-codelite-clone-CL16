@@ -1,4 +1,4 @@
-Description: Remove build options not nessesary for Debian
+Description: Remove build options not necessary for Debian
  Do not duplicate all the Debian build flags.
  Stripping is done by dh_strip separately.
 Author: James Cowgill <jcowgill@debian.org>
