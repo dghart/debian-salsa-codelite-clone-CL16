@@ -6,7 +6,7 @@ DEB_HOST_MULTIARCH ?= $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed
 
-LLVM_VERSION := 5.0
+LLVM_VERSION := 6.0
 
 CONFIG_EXTRA := \
     -DCMAKE_INSTALL_LIBDIR=lib \
