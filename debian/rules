@@ -5,14 +5,15 @@ include /usr/share/dpkg/architecture.mk
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed
 
-LLVM_VERSION := 6.0
+LLVM_INCDIR = $(shell llvm-config --includedir)
+LLVM_LIBDIR = $(shell llvm-config --libdir)
 
-CONFIG_EXTRA := \
+CONFIG_EXTRA = \
     -DCMAKE_INSTALL_LIBDIR=lib \
-    -DLIBCLANG_T=/usr/lib/$(DEB_HOST_MULTIARCH)/libclang-$(LLVM_VERSION).so \
-    -DLIBCLANG_INCLUDE_T=/usr/lib/llvm-$(LLVM_VERSION)/include/ \
-    -DLIBLLDB_T=/usr/lib/$(DEB_HOST_MULTIARCH)/liblldb-$(LLVM_VERSION).so \
-    -DLIBLLDB_INCLUDE_T=/usr/lib/llvm-$(LLVM_VERSION)/include/
+    -DLIBCLANG_T=$(LLVM_LIBDIR)/libclang.so \
+    -DLIBCLANG_INCLUDE_T=$(LLVM_INCDIR)
+    -DLIBLLDB_T=$(LLVM_LIBDIR)/liblldb.so \
+    -DLIBLLDB_INCLUDE_T=$(LLVM_INCDIR)
 
 # Disable clang / lldb on arches where they're not available (yet)
 #  Remember to update debian/control when changing these
