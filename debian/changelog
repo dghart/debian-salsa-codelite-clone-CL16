@@ -1,3 +1,9 @@
+codelite (10.0+dfsg-4) UNRELEASED; urgency=medium
+
+  *
+
+ -- James Cowgill <jcowgill@debian.org>  Fri, 02 Nov 2018 21:46:19 +0000
+
 codelite (10.0+dfsg-3) unstable; urgency=medium
 
   * debian/control, debian/rules:
