@@ -1,8 +1,9 @@
-codelite (10.0+dfsg-4) UNRELEASED; urgency=medium
+codelite (10.0+dfsg-4) unstable; urgency=medium
 
-  *
+  * Build using packages from llvm-defaults. (Closes: #912803)
+  * d/patches: Drop gtk libs patch when building with newer CMake.
 
- -- James Cowgill <jcowgill@debian.org>  Fri, 02 Nov 2018 21:46:19 +0000
+ -- James Cowgill <jcowgill@debian.org>  Wed, 07 Nov 2018 21:20:16 +0000
 
 codelite (10.0+dfsg-3) unstable; urgency=medium
 
