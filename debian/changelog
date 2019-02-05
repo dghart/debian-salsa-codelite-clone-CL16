@@ -22,6 +22,12 @@ codelite (12.0+dfsg-1) unstable; urgency=medium
 
  -- David Hart <david@codelite.co.uk>  Sun, 03 Feb 2019 17:59:36 +0000
 
+codelite (10.0+dfsg-5) unstable; urgency=medium
+
+  * Oprhaning this package. (See: #852312)
+
+ -- James Cowgill <jcowgill@debian.org>  Mon, 10 Dec 2018 12:11:03 +0000
+
 codelite (10.0+dfsg-4) unstable; urgency=medium
 
   * Build using packages from llvm-defaults. (Closes: #912803)
