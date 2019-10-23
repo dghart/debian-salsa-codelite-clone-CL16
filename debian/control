@@ -20,7 +20,7 @@ Build-Depends:
  pkg-config
 Standards-Version: 4.4.1
 Rules-Requires-Root: no
-Homepage: https://www.codelite.org
+Homepage: https://codelite.org
 Vcs-Git: https://salsa.debian.org/debian/codelite.git
 Vcs-Browser: https://salsa.debian.org/debian/codelite
 
