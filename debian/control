@@ -34,7 +34,7 @@ Recommends:
  gcc,
  g++,
  xterm | x-terminal-emulator
-Suggests: codelite-plugins
+Suggests: codelite-plugins, python3
 Description: Powerful and lightweight IDE
  CodeLite is a powerful and lightweight IDE specializing in C, C++, PHP and
  Javascript. Its features include:
