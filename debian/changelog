@@ -12,11 +12,12 @@ codelite (14.0+dfsg-1) unstable; urgency=medium
 
   * debian/control:
     - Bump standards to 4.5.0.
+    - Change Recommends: qt4-qmake to qt5-qmake.
 
   * debian/lintian-overrides:
     - Add override for file-references-package-build-path false positive.
 
- -- David Hart <david@codelite.org>  Thu, 12 Mar 2020 14:05:34 +0000
+ -- David Hart <david@codelite.org>  Fri, 13 Mar 2020 19:20:23 +0000
 
 codelite (13.0+dfsg-1) unstable; urgency=medium
 

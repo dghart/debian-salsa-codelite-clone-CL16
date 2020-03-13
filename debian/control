@@ -60,7 +60,7 @@ Recommends:
  cppcheck (>= 1.54),
  libunittest++-dev,
  nodejs,
- qt4-qmake,
+ qt5-qmake,
  valgrind,
  websocketpp-dev,
  libasio-dev
