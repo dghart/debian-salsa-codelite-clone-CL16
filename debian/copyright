@@ -27,6 +27,7 @@ Files-Excluded:
  Runtime/debugserver
  Runtime/src
  Runtime/OpenTerm
+ tools
  UnitTest++
 
 Files: *
