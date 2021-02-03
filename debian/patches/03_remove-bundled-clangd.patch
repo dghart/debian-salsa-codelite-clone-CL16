@@ -1,0 +1,22 @@
+Description: Remove bundled wxsqlite3 from CMakeLists.txt files
+Author: David Hart <david@codelite.org>
+Forwarded: not-needed
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+diff --git a/LiteEditor/CMakeLists.txt b/LiteEditor/CMakeLists.txt
+index b62e3c77f..1e1912d20 100644
+--- a/LiteEditor/CMakeLists.txt
++++ b/LiteEditor/CMakeLists.txt
+@@ -90,9 +90,9 @@ if(NOT APPLE)
+     install(FILES ${CL_SRC_ROOT}/Runtime/codelite-bitmaps-light.zip DESTINATION ${CL_PREFIX}/share/codelite)
+     
+     # extra clangd + clang-format tools
+-    if (UNIX)
+-        install(FILES ${CL_SRC_ROOT}/tools/linux/clang-tools.tgz DESTINATION ${CL_PREFIX}/share/codelite)
+-    endif()
++#    if (UNIX)
++#        install(FILES ${CL_SRC_ROOT}/tools/linux/clang-tools.tgz DESTINATION ${CL_PREFIX}/share/codelite)
++#    endif()
+     
+     ## License file
+     install(FILES ${CL_SRC_ROOT}/LICENSE DESTINATION ${CL_PREFIX}/share/codelite)
