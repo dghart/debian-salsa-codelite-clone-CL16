@@ -1,3 +1,38 @@
+codelite (15.0+dfsg-1) unstable; urgency=medium
+
+  * QA upload.
+
+  * New upstream release.
+
+  * d/patches:
+    - Refresh patches.
+    - Drop 3 patches applied upstream.
+
+  * d/control:
+    - Bump standards to 4.5.1.
+
+  * d/source/lintian-overrides:
+    - Remove override for the defunct testsuite-autopkgtest-missing.
+
+  * d/codelite-plugins.lintian-overrides:
+    - Remove 2 no-longer-needed overrides.
+
+  * d/copyright:
+    - Add a new entry, tools, to Files-Excluded.
+
+  * d/not-installed:
+    - Add this to cope with the bump from debhelper-compat to 13, which fails
+    - builds that contain uninstalled files instead of just warning about them
+
+  * d/watch:
+    - Bump version to 4.0
+
+  * d/upstream/metadata:
+    - Add Repository and Repository-Browse fields
+    - Add Bug-Database and Bug-Submit fields
+
+ -- David Hart <david@codelite.org>  Thu, 04 Feb 2021 19:37:54 +0000
+
 codelite (14.0+dfsg-1) unstable; urgency=medium
 
   * QA upload.
