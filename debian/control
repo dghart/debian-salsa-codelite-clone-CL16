@@ -3,7 +3,7 @@ Section: devel
 Priority: optional
 Maintainer: Debian QA Group <packages@qa.debian.org>
 Build-Depends:
- debhelper-compat (= 12),
+ debhelper-compat (= 13),
  debhelper (>= 12),
  cmake (>= 3.8),
  dpkg-dev (>= 1.16.1.1),

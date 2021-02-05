@@ -9,6 +9,7 @@ codelite (15.0+dfsg-1) unstable; urgency=medium
     - Drop 3 patches applied upstream.
 
   * d/control:
+    - Bump debhelper-compat to 13.
     - Bump standards to 4.5.1.
 
   * d/source/lintian-overrides:
