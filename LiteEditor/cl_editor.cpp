@@ -332,7 +332,10 @@ clEditor::clEditor(wxWindow* parent)
     , m_lastEndLine(0)
     , m_lastLineCount(0)
 {
+#if !CL_USE_NATIVEBOOK
     Hide();
+#endif
+
 #ifdef __WXGTK3__
     wxStyledTextCtrl::Create(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxBORDER_DEFAULT);
 #else
@@ -371,7 +374,7 @@ clEditor::clEditor(wxWindow* parent)
     Bind(wxEVT_FRD_CLEARBOOKMARKS, &clEditor::OnFindDialog, this);
     Bind(wxCMD_EVENT_REMOVE_MATCH_INDICATOR, &clEditor::OnRemoveMatchInidicator, this);
     Bind(wxEVT_STC_ZOOM, &clEditor::OnZoom, this);
-    DoUpdateOptions();
+    UpdateOptions();
     PreferencesChanged();
     EventNotifier::Get()->Bind(wxEVT_EDITOR_CONFIG_CHANGED, &clEditor::OnEditorConfigChanged, this);
     m_commandsProcessor.SetParent(this);
@@ -423,7 +426,7 @@ clEditor::clEditor(wxWindow* parent)
     // Notify that this instance is being instantiated
     clCommandEvent initEvent(wxEVT_EDITOR_INITIALIZING);
     initEvent.SetEventObject(this);
-    EventNotifier::Get()->AddPendingEvent(initEvent);
+    EventNotifier::Get()->ProcessEvent(initEvent);
 }
 
 clEditor::~clEditor()
@@ -875,8 +878,12 @@ void clEditor::SetProperties()
     // when using Makefile we _must_ use the TABS
     SetUseTabs((GetContext()->GetName().Lower() == "makefile") ? true : options->GetIndentUsesTabs());
 
-    SetTabWidth(options->GetTabWidth());
-    SetIndent(options->GetIndentWidth());
+    size_t tabWidth = options->GetTabWidth();
+    SetTabWidth(tabWidth);
+
+    size_t indentWidth = options->GetIndentWidth();
+    SetIndent(indentWidth);
+
     SetIndentationGuides(options->GetShowIndentationGuidelines() ? 3 : 0);
 
     size_t frame_flags = clMainFrame::Get()->GetFrameGeneralInfo().GetFlags();
@@ -1362,7 +1369,7 @@ void clEditor::OnSciUpdateUI(wxStyledTextEvent& event)
     RecalcHorizontalScrollbar();
 
     // get the current position
-    if((curLine != m_lastLine) && clMainFrame::Get()->GetMainBook()->IsNavBarShown()) {
+    if((curLine != m_lastLine)) {
         clCodeCompletionEvent evtUpdateNavBar(wxEVT_CC_UPDATE_NAVBAR);
         evtUpdateNavBar.SetEditor(this);
         evtUpdateNavBar.SetLineNumber(curLine);
@@ -1710,7 +1717,7 @@ void clEditor::UpdateBreakpoints()
     ManagerST::Get()->GetBreakpointsMgr()->DeleteAllBreakpointsByFileName(GetFileName().GetFullPath());
 
     // iterate over the array and update the breakpoint manager with updated line numbers for each breakpoint
-    std::map<int, std::vector<BreakpointInfo>>::iterator iter = m_breakpointsInfo.begin();
+    std::map<int, std::vector<clDebuggerBreakpoint>>::iterator iter = m_breakpointsInfo.begin();
     for(; iter != m_breakpointsInfo.end(); iter++) {
         int handle = iter->first;
         int line = MarkerLineFromHandle(handle);
@@ -2386,7 +2393,7 @@ void clEditor::FindAndSelectV(const wxString& _pattern, const wxString& name, in
     ClearSelections();
     strings.Add(_pattern);
     strings.Add(name);
-    CallAfter(&clEditor::DoFindAndSelectV, strings, pos);
+    DoFindAndSelectV(strings, pos);
 }
 
 void clEditor::DoFindAndSelectV(const wxArrayString& strings, int pos) // Called with CallAfter()
@@ -3180,7 +3187,7 @@ void clEditor::OpenFile()
     GetCommandsProcessor().Reset();
 
     // Update the editor properties
-    DoUpdateOptions();
+    UpdateOptions();
     SetProperties();
     UpdateLineNumberMarginWidth();
     UpdateColours();
@@ -3616,7 +3623,7 @@ void clEditor::DoBreakptContextMenu(wxPoint pt)
     menu.Append(XRCID("insert_disabled_breakpoint"), wxString(_("Add a Disabled Breakpoint")));
     menu.Append(XRCID("insert_cond_breakpoint"), wxString(_("Add a Conditional Breakpoint..")));
 
-    BreakpointInfo& bp =
+    clDebuggerBreakpoint& bp =
         ManagerST::Get()->GetBreakpointsMgr()->GetBreakpoint(GetFileName().GetFullPath(), GetCurrentLine() + 1);
 
     // What we show depends on whether there's already a bp here (or several)
@@ -3754,7 +3761,7 @@ void clEditor::ToggleBreakpoint(int lineno)
         return;
     }
 
-    const BreakpointInfo& bp =
+    const clDebuggerBreakpoint& bp =
         ManagerST::Get()->GetBreakpointsMgr()->GetBreakpoint(GetFileName().GetFullPath(), lineno);
 
     if(bp.IsNull()) {
@@ -3830,7 +3837,7 @@ void clEditor::DelAllCompilerMarkers()
 
 // Maybe one day we'll display multiple bps differently
 void clEditor::SetBreakpointMarker(int lineno, BreakpointType bptype, bool is_disabled,
-                                   const std::vector<BreakpointInfo>& bps)
+                                   const std::vector<clDebuggerBreakpoint>& bps)
 {
     BPtoMarker bpm = GetMarkerForBreakpt(bptype);
     sci_marker_types markertype = is_disabled ? bpm.marker_disabled : bpm.marker;
@@ -4866,7 +4873,7 @@ wxMenu* clEditor::DoCreateDebuggerWatchMenu(const wxString& word)
     return menu;
 }
 
-void clEditor::DoUpdateOptions()
+void clEditor::UpdateOptions()
 {
     // Start by getting the global settings
     m_options = EditorConfigST::Get()->GetOptions();
@@ -5134,7 +5141,7 @@ void clEditor::ToggleBreakpointEnablement()
     int lineno = GetCurrentLine() + 1;
 
     BreakptMgr* bm = ManagerST::Get()->GetBreakpointsMgr();
-    BreakpointInfo bp = bm->GetBreakpoint(GetFileName().GetFullPath(), lineno);
+    clDebuggerBreakpoint bp = bm->GetBreakpoint(GetFileName().GetFullPath(), lineno);
     if(bp.IsNull())
         return;
 
@@ -5408,7 +5415,7 @@ void clEditor::CenterLine(int line, int col)
 void clEditor::OnEditorConfigChanged(wxCommandEvent& event)
 {
     event.Skip();
-    DoUpdateOptions();
+    UpdateOptions();
     SetProperties();
     UpdateLineNumbers();
 }
@@ -5805,6 +5812,9 @@ void clEditor::ReloadFromDisk(bool keepUndoHistory)
     m_modifyTime = GetFileLastModifiedTime();
     SetSavePoint();
 
+    UpdateOptions();
+    SetProperties();
+
     if(!keepUndoHistory) {
         EmptyUndoBuffer();
         GetCommandsProcessor().Reset();
@@ -5921,7 +5931,9 @@ void clEditor::UpdateLineNumberMarginWidth()
 {
     int newLineCount = GetLineCount();
     int newWidthCount = log10(newLineCount) + 2;
-    SetMarginWidth(NUMBER_MARGIN_ID, newWidthCount * TextWidth(wxSTC_STYLE_LINENUMBER, "X"));
+    SetMarginWidth(NUMBER_MARGIN_ID, GetOptions()->GetDisplayLineNumbers()
+                                         ? (newWidthCount * TextWidth(wxSTC_STYLE_LINENUMBER, "X"))
+                                         : 0);
 }
 
 void clEditor::OnZoom(wxStyledTextEvent& event)

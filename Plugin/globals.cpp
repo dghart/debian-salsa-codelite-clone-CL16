@@ -85,7 +85,7 @@
 #include <wx/zipstrm.h>
 
 #ifdef __WXMSW__
-#include <Uxtheme.h>
+#include <UxTheme.h>
 #else
 #include <sys/wait.h>
 #include <unistd.h>
@@ -97,31 +97,56 @@
 const wxEventType wxEVT_COMMAND_CL_INTERNAL_0_ARGS = ::wxNewEventType();
 const wxEventType wxEVT_COMMAND_CL_INTERNAL_1_ARGS = ::wxNewEventType();
 
-#if defined(__WXMSW__) && defined(_WIN64)
+#ifdef __WXMSW__
+
+typedef BOOL(WINAPI* ADMFA)(BOOL allow);                    // AllowDarkModeForApp
+typedef BOOL(WINAPI* ADMFW)(HWND window, BOOL allow);       // AllowDarkModeForWindow
+typedef void(WINAPI* FMT)();                                // FlushMenuThemes
+typedef HRESULT(WINAPI* DSWA)(HWND, DWORD, LPCVOID, DWORD); // DwmSetWindowAttribute
+
 BOOL CALLBACK DarkExplorerChildProc(HWND hwnd, LPARAM lparam)
 {
     if(!IsWindow(hwnd))
         return TRUE;
+
     const BOOL is_darktheme = (BOOL)lparam;
-    SetWindowTheme(hwnd, is_darktheme ? L"DarkMode_Explorer" : L"Explorer", NULL);
+    static const HMODULE huxtheme = GetModuleHandle(L"uxtheme.dll");
+
+    if(huxtheme) {
+        SetWindowTheme(hwnd, is_darktheme ? L"DarkMode_Explorer" : L"Explorer", NULL);
+        static const ADMFW _AllowDarkModeForWindow = (ADMFW)GetProcAddress(huxtheme, MAKEINTRESOURCEA(133));
+        if(_AllowDarkModeForWindow)
+            _AllowDarkModeForWindow(hwnd, is_darktheme);
+    }
     InvalidateRect(hwnd, nullptr, TRUE);
     return TRUE;
 }
-#endif
 
 void MSWSetWindowDarkTheme(wxWindow* win)
 {
-#if defined(__WXMSW__) && defined(_WIN64)
-    if(!win) {
-        return;
-    }
     bool b = ColoursAndFontsManager::Get().IsDarkTheme();
-    SetWindowTheme(win->GetHandle(), b ? L"DarkMode_Explorer" : L"Explore", NULL);
-    EnumChildWindows(win->GetHandle(), &DarkExplorerChildProc, (BOOL)b);
-#else
-    wxUnusedVar(win);
-#endif
+    static const HMODULE huxtheme = GetModuleHandle(L"uxtheme.dll");
+    if(huxtheme) {
+        SetWindowTheme(win->GetHandle(), b ? L"DarkMode_Explorer" : L"Explorer", NULL);
+        static const ADMFA _AllowDarkModeForApp = (ADMFA)GetProcAddress(huxtheme, MAKEINTRESOURCEA(135));
+        static const ADMFW _AllowDarkModeForWindow = (ADMFW)GetProcAddress(huxtheme, MAKEINTRESOURCEA(133));
+        if(_AllowDarkModeForApp && _AllowDarkModeForWindow) {
+            _AllowDarkModeForApp(b);
+            _AllowDarkModeForWindow(win->GetHandle(), b);
+            EnumChildWindows(win->GetHandle(), &DarkExplorerChildProc, b);
+        
+            const FMT _FlushMenuThemes = (FMT)GetProcAddress(huxtheme, MAKEINTRESOURCEA(136));
+        
+            if(_FlushMenuThemes)
+                _FlushMenuThemes();
+            InvalidateRect(win->GetHandle(), nullptr, FALSE); // HACK
+        }
+    }
 }
+
+#else
+void MSWSetWindowDarkTheme(wxWindow* win) { wxUnusedVar(win); }
+#endif
 
 // --------------------------------------------------------
 // Internal handler to handle queuing requests...
@@ -781,16 +806,7 @@ bool IsFileReadOnly(const wxFileName& filename)
 void FillFromSmiColonString(wxArrayString& arr, const wxString& str)
 {
     arr.clear();
-    wxStringTokenizer tkz(str, wxT(";"));
-    while(tkz.HasMoreTokens()) {
-
-        wxString token = tkz.NextToken();
-        token.Trim().Trim(false);
-        if(token.IsEmpty()) {
-            continue;
-        }
-        arr.Add(token.Trim());
-    }
+    arr = StringUtils::BuildArgv(str);
 }
 
 wxString ArrayToSmiColonString(const wxArrayString& array)
@@ -845,7 +861,7 @@ bool clIsMSYSEnvironment()
             isMSYS = false;
         } else {
             out.MakeLower();
-            isMSYS = out.Contains("mingw") && out.Contains("msys");
+            isMSYS = out.Contains("mingw") || out.Contains("msys");
         }
     }
     return isMSYS;
@@ -2003,9 +2019,7 @@ void clKill(int processID, wxSignal signo, bool kill_whole_group, bool as_superu
     ::wxKill(processID, signo, NULL, kill_whole_group ? wxKILL_CHILDREN : wxKILL_NOCHILDREN);
 #else
     wxString sudoAskpass = ::wxGetenv("SUDO_ASKPASS");
-    const char* sudo_path;
-
-    sudo_path = "/usr/bin/sudo";
+    const char* sudo_path = "/usr/bin/sudo";
     if(!wxFileName::Exists(sudo_path)) {
         sudo_path = "/usr/local/bin/sudo";
     }
@@ -2201,5 +2215,17 @@ int clGetSize(int size, const wxWindow* win)
     return win->FromDIP(size);
 #else
     return size;
+#endif
+}
+
+bool clIsWaylandSession()
+{
+#ifdef __WXGTK__
+    // Try to detect if this is a Wayland session; we have some Wayland-workaround code
+    wxString sesstype("XDG_SESSION_TYPE"), session_type;
+    wxGetEnv(sesstype, &session_type);
+    return session_type.Lower().Contains("wayland");
+#else
+    return false;
 #endif
 }

@@ -250,7 +250,7 @@ FSConfigPageBase::FSConfigPageBase(wxWindow* parent, wxWindowID id, const wxPoin
     flexGridSizer33->SetFlexibleDirection(wxBOTH);
     flexGridSizer33->SetNonFlexibleGrowMode(wxFLEX_GROWMODE_SPECIFIED);
     flexGridSizer33->AddGrowableCol(1);
-    flexGridSizer33->AddGrowableRow(1);
+    flexGridSizer33->AddGrowableRow(2);
     m_panelGeneral->SetSizer(flexGridSizer33);
 
     m_staticText109 = new wxStaticText(m_panelGeneral, wxID_ANY, _("Executable:"), wxDefaultPosition,
@@ -264,6 +264,17 @@ FSConfigPageBase::FSConfigPageBase(wxWindow* parent, wxWindowID id, const wxPoin
     m_filePickerExe->SetToolTip(_("The executable to use for debugging / executing"));
 
     flexGridSizer33->Add(m_filePickerExe, 0, wxALL | wxEXPAND, WXC_FROM_DIP(5));
+
+    m_staticText191 = new wxStaticText(m_panelGeneral, wxID_ANY, _("Working directory:"), wxDefaultPosition,
+                                       wxDLG_UNIT(m_panelGeneral, wxSize(-1, -1)), 0);
+
+    flexGridSizer33->Add(m_staticText191, 0, wxALL, WXC_FROM_DIP(5));
+
+    m_dirPickerWD = new wxDirPickerCtrl(m_panelGeneral, wxID_ANY, wxEmptyString, _("Select a folder"),
+                                        wxDefaultPosition, wxDLG_UNIT(m_panelGeneral, wxSize(-1, -1)),
+                                        wxDIRP_SMALL | wxDIRP_DEFAULT_STYLE | wxDIRP_USE_TEXTCTRL);
+
+    flexGridSizer33->Add(m_dirPickerWD, 0, wxALL | wxEXPAND, WXC_FROM_DIP(5));
 
     m_staticText113 = new wxStaticText(m_panelGeneral, wxID_ANY, _("Arguments:"), wxDefaultPosition,
                                        wxDLG_UNIT(m_panelGeneral, wxSize(-1, -1)), 0);
@@ -309,6 +320,19 @@ FSConfigPageBase::FSConfigPageBase(wxWindow* parent, wxWindowID id, const wxPoin
 
     flexGridSizer33->Add(m_textCtrlArgs, 1, wxALL | wxEXPAND, WXC_FROM_DIP(5));
 
+    m_staticText125 = new wxStaticText(m_panelGeneral, wxID_ANY, _("Tool chain:"), wxDefaultPosition,
+                                       wxDLG_UNIT(m_panelGeneral, wxSize(-1, -1)), 0);
+    m_staticText125->SetToolTip(_("Select the toolchain to use"));
+
+    flexGridSizer33->Add(m_staticText125, 0, wxALL | wxALIGN_RIGHT | wxALIGN_CENTER_VERTICAL, WXC_FROM_DIP(5));
+
+    wxArrayString m_choiceCompilerArr;
+    m_choiceCompiler = new clThemedChoice(m_panelGeneral, wxID_ANY, wxDefaultPosition,
+                                          wxDLG_UNIT(m_panelGeneral, wxSize(-1, -1)), m_choiceCompilerArr, 0);
+    m_choiceCompiler->SetToolTip(_("Select the toolchain to use"));
+
+    flexGridSizer33->Add(m_choiceCompiler, 0, wxALL | wxEXPAND, WXC_FROM_DIP(5));
+
     m_staticText179 = new wxStaticText(m_panelGeneral, wxID_ANY, _("Debugger:"), wxDefaultPosition,
                                        wxDLG_UNIT(m_panelGeneral, wxSize(-1, -1)), 0);
 
@@ -349,32 +373,38 @@ FSConfigPageBase::FSConfigPageBase(wxWindow* parent, wxWindowID id, const wxPoin
 
     flexGridSizer33->Add(m_textCtrlExcludeFiles, 0, wxALL | wxEXPAND, WXC_FROM_DIP(5));
 
+    m_staticText207 = new wxStaticText(m_panelGeneral, wxID_ANY, _("Exclude paths:"), wxDefaultPosition,
+                                       wxDLG_UNIT(m_panelGeneral, wxSize(-1, -1)), 0);
+
+    flexGridSizer33->Add(m_staticText207, 0, wxALL | wxALIGN_RIGHT | wxALIGN_CENTER_VERTICAL, WXC_FROM_DIP(5));
+
+    wxBoxSizer* boxSizer209 = new wxBoxSizer(wxHORIZONTAL);
+
+    flexGridSizer33->Add(boxSizer209, 1, wxEXPAND, WXC_FROM_DIP(5));
+
+    m_textCtrlExcludePaths = new wxTextCtrl(m_panelGeneral, wxID_ANY, wxT(""), wxDefaultPosition,
+                                            wxDLG_UNIT(m_panelGeneral, wxSize(-1, -1)), 0);
+    m_textCtrlExcludePaths->SetToolTip(
+        _("Add here list of paths to be ignored.\nThe path is expected to be relative to the root folder of the "
+          "workspace\nIgnored paths will still be visible in the tree, but they will not be\nused in workspace "
+          "operations (find in files, code completion etc)"));
+#if wxVERSION_NUMBER >= 3000
+    m_textCtrlExcludePaths->SetHint(wxT(""));
+#endif
+
+    boxSizer209->Add(m_textCtrlExcludePaths, 1, wxALL, WXC_FROM_DIP(5));
+
+    m_button213 = new wxButton(m_panelGeneral, wxID_ANY, _("Edit"), wxDefaultPosition,
+                               wxDLG_UNIT(m_panelGeneral, wxSize(-1, -1)), 0);
+
+    boxSizer209->Add(m_button213, 0, wxALL | wxEXPAND, WXC_FROM_DIP(5));
+
     m_panelBuild =
         new wxPanel(m_notebook, wxID_ANY, wxDefaultPosition, wxDLG_UNIT(m_notebook, wxSize(-1, -1)), wxTAB_TRAVERSAL);
     m_notebook->AddPage(m_panelBuild, _("Build"), false);
 
     wxBoxSizer* boxSizer30 = new wxBoxSizer(wxVERTICAL);
     m_panelBuild->SetSizer(boxSizer30);
-
-    wxFlexGridSizer* flexGridSizer123 = new wxFlexGridSizer(0, 2, 0, 0);
-    flexGridSizer123->SetFlexibleDirection(wxBOTH);
-    flexGridSizer123->SetNonFlexibleGrowMode(wxFLEX_GROWMODE_SPECIFIED);
-    flexGridSizer123->AddGrowableCol(1);
-
-    boxSizer30->Add(flexGridSizer123, 0, wxALL | wxEXPAND, WXC_FROM_DIP(5));
-
-    m_staticText125 = new wxStaticText(m_panelBuild, wxID_ANY, _("Tool chain:"), wxDefaultPosition,
-                                       wxDLG_UNIT(m_panelBuild, wxSize(-1, -1)), 0);
-    m_staticText125->SetToolTip(_("Select the toolchain to use"));
-
-    flexGridSizer123->Add(m_staticText125, 0, wxALL | wxALIGN_RIGHT | wxALIGN_CENTER_VERTICAL, WXC_FROM_DIP(5));
-
-    wxArrayString m_choiceCompilerArr;
-    m_choiceCompiler = new wxChoice(m_panelBuild, wxID_ANY, wxDefaultPosition, wxDLG_UNIT(m_panelBuild, wxSize(-1, -1)),
-                                    m_choiceCompilerArr, 0);
-    m_choiceCompiler->SetToolTip(_("Select the toolchain to use"));
-
-    flexGridSizer123->Add(m_choiceCompiler, 0, wxALL | wxEXPAND, WXC_FROM_DIP(5));
 
     wxBoxSizer* boxSizer38 = new wxBoxSizer(wxHORIZONTAL);
 
@@ -426,9 +456,6 @@ FSConfigPageBase::FSConfigPageBase(wxWindow* parent, wxWindowID id, const wxPoin
 
     m_stcCCFlags = new wxStyledTextCtrl(m_panelCodeCompletion, wxID_ANY, wxDefaultPosition,
                                         wxDLG_UNIT(m_panelCodeCompletion, wxSize(-1, -1)), 0);
-    m_stcCCFlags->SetToolTip(_("Place your build flags one-per-line here.\nFor "
-                               "example:\n\n-I/home/eran/include\n-I/home/eran/wx/include\n-DSOME=1\n`wx-config "
-                               "--cflags`\n\nThese flags will be used by CodeLite for better\ncode completion"));
     m_stcCCFlags->SetFocus();
     // Configure the fold margin
     m_stcCCFlags->SetMarginType(4, wxSTC_MARGIN_SYMBOL);
@@ -466,15 +493,6 @@ FSConfigPageBase::FSConfigPageBase(wxWindow* parent, wxWindowID id, const wxPoin
     m_stcCCFlags->SetKeyWords(4, wxT(""));
 
     boxSizer22->Add(m_stcCCFlags, 1, wxALL | wxEXPAND, WXC_FROM_DIP(5));
-
-    m_checkBoxCreateCompileFlags =
-        new wxCheckBox(m_panelCodeCompletion, wxID_ANY, _("Use this content to create a compile_flags.txt file"),
-                       wxDefaultPosition, wxDLG_UNIT(m_panelCodeCompletion, wxSize(-1, -1)), 0);
-    m_checkBoxCreateCompileFlags->SetValue(true);
-    m_checkBoxCreateCompileFlags->SetToolTip(
-        _("Use this content to create a compile_flags.txt file\nThis is useful when using clangd for code completion"));
-
-    boxSizer22->Add(m_checkBoxCreateCompileFlags, 0, wxALL, WXC_FROM_DIP(5));
 
     m_panelEnv =
         new wxPanel(m_notebook, wxID_ANY, wxDefaultPosition, wxDLG_UNIT(m_notebook, wxSize(-1, -1)), wxTAB_TRAVERSAL);
@@ -582,12 +600,23 @@ FSConfigPageBase::FSConfigPageBase(wxWindow* parent, wxWindowID id, const wxPoin
 
     flexGridSizer155->Add(m_button169, 0, wxALL | wxALIGN_TOP, WXC_FROM_DIP(5));
 
+    flexGridSizer155->Add(0, 0, 1, wxALL, WXC_FROM_DIP(5));
+
+    m_checkBoxRemoteBuild = new wxCheckBox(m_panelRemote, wxID_ANY, _("Use remote build"), wxDefaultPosition,
+                                           wxDLG_UNIT(m_panelRemote, wxSize(-1, -1)), 0);
+    m_checkBoxRemoteBuild->SetValue(false);
+    m_checkBoxRemoteBuild->SetToolTip(_("Execute the build commands on the remote machine"));
+
+    flexGridSizer155->Add(m_checkBoxRemoteBuild, 0, wxALL | wxEXPAND, WXC_FROM_DIP(5));
+
     SetName(wxT("FSConfigPageBase"));
     SetSize(wxDLG_UNIT(this, wxSize(-1, -1)));
     if(GetSizer()) {
         GetSizer()->Fit(this);
     }
     // Connect events
+    m_button213->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(FSConfigPageBase::OnEditExcludePaths),
+                         NULL, this);
     m_dvListCtrlTargets->Connect(wxEVT_COMMAND_DATAVIEW_ITEM_ACTIVATED,
                                  wxDataViewEventHandler(FSConfigPageBase::OnTargetActivated), NULL, this);
     m_buttonNew->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(FSConfigPageBase::OnNewTarget), NULL,
@@ -609,10 +638,14 @@ FSConfigPageBase::FSConfigPageBase(wxWindow* parent, wxWindowID id, const wxPoin
     m_button169->Connect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(FSConfigPageBase::OnRemoteEnabledUI), NULL, this);
     m_button169->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(FSConfigPageBase::OnSSHBrowse), NULL,
                          this);
+    m_checkBoxRemoteBuild->Connect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(FSConfigPageBase::OnRemoteEnabledUI), NULL,
+                                   this);
 }
 
 FSConfigPageBase::~FSConfigPageBase()
 {
+    m_button213->Disconnect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(FSConfigPageBase::OnEditExcludePaths),
+                            NULL, this);
     m_dvListCtrlTargets->Disconnect(wxEVT_COMMAND_DATAVIEW_ITEM_ACTIVATED,
                                     wxDataViewEventHandler(FSConfigPageBase::OnTargetActivated), NULL, this);
     m_buttonNew->Disconnect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(FSConfigPageBase::OnNewTarget), NULL,
@@ -634,6 +667,8 @@ FSConfigPageBase::~FSConfigPageBase()
     m_button169->Disconnect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(FSConfigPageBase::OnRemoteEnabledUI), NULL, this);
     m_button169->Disconnect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(FSConfigPageBase::OnSSHBrowse), NULL,
                             this);
+    m_checkBoxRemoteBuild->Disconnect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(FSConfigPageBase::OnRemoteEnabledUI),
+                                      NULL, this);
 }
 
 NewFileSystemWorkspaceDialogBase::NewFileSystemWorkspaceDialogBase(wxWindow* parent, wxWindowID id,

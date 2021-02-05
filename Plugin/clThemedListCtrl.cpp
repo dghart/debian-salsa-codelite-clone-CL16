@@ -1,43 +1,52 @@
 #include "ColoursAndFontsManager.h"
+#include "clSystemSettings.h"
 #include "clThemedListCtrl.h"
+#include "cl_config.h"
 #include "codelite_events.h"
 #include "event_notifier.h"
 #include "lexer_configuration.h"
 #include <wx/settings.h>
-#include "cl_config.h"
-#include "clSystemSettings.h"
 
 #ifdef __WXMSW__
-#define LIST_STYLE wxDV_ENABLE_SEARCH | wxBORDER_NONE
+#define LIST_STYLE wxDV_ENABLE_SEARCH | wxBORDER_NONE | wxDV_ROW_LINES
 #else
-#define LIST_STYLE wxDV_ENABLE_SEARCH | wxBORDER_NONE
+#define LIST_STYLE wxDV_ENABLE_SEARCH | wxBORDER_NONE | wxDV_ROW_LINES
 #endif
 
-clThemedListCtrl::clThemedListCtrl(wxWindow* parent, wxWindowID id, const wxPoint& pos, const wxSize& size, long style)
-    : clDataViewListCtrl(parent, id, pos, size, (style | LIST_STYLE) & ~(wxDV_ROW_LINES) )
+#if 0
+static bool SortFunc(clRowEntry* a, clRowEntry* b)
 {
-    EventNotifier::Get()->Bind(wxEVT_CL_THEME_CHANGED, &clThemedListCtrl::OnThemeChanged, this);
-    SetSortFunction(nullptr);
+    const wxString& label_a = a->GetLabel();
+    const wxString& label_b = b->GetLabel();
+    return (label_b.CmpNoCase(label_a) < 0);
+}
+#endif
+
+clThemedListCtrlBase::clThemedListCtrlBase(wxWindow* parent, wxWindowID id, const wxPoint& pos, const wxSize& size,
+                                           long style)
+    : clDataViewListCtrl(parent, id, pos, size, (style | LIST_STYLE))
+{
+    EventNotifier::Get()->Bind(wxEVT_CL_THEME_CHANGED, &clThemedListCtrlBase::OnThemeChanged, this);
     SetNativeTheme(true);
     ApplyTheme();
-    
+
     // Enable keyboard search
     m_keyboard.reset(new clTreeKeyboardInput(this));
 }
 
-clThemedListCtrl::~clThemedListCtrl()
+clThemedListCtrlBase::~clThemedListCtrlBase()
 {
     m_keyboard.reset(nullptr);
-    EventNotifier::Get()->Unbind(wxEVT_CL_THEME_CHANGED, &clThemedListCtrl::OnThemeChanged, this);
+    EventNotifier::Get()->Unbind(wxEVT_CL_THEME_CHANGED, &clThemedListCtrlBase::OnThemeChanged, this);
 }
 
-void clThemedListCtrl::OnThemeChanged(wxCommandEvent& event)
+void clThemedListCtrlBase::OnThemeChanged(wxCommandEvent& event)
 {
     event.Skip();
     ApplyTheme();
 }
 
-void clThemedListCtrl::ApplyTheme()
+void clThemedListCtrlBase::ApplyTheme()
 {
     LexerConf::Ptr_t lexer = ColoursAndFontsManager::Get().GetLexer("text");
     clColours colours;
@@ -53,13 +62,13 @@ void clThemedListCtrl::ApplyTheme()
         baseColour = clConfig::Get().Read("BaseColour", baseColour);
         colours.InitFromColour(baseColour);
     }
-    
+
     // Set the built-in search colours
     wxColour highlightColur = clSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHT);
     wxColour textColour = clSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHTTEXT);
     colours.SetMatchedItemBgText(highlightColur);
     colours.SetMatchedItemText(textColour);
-    
+
     // When not using custom colours, use system defaults
     if(!useCustomColour) {
         colours.SetSelItemBgColour(clSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHT));
@@ -72,4 +81,27 @@ void clThemedListCtrl::ApplyTheme()
     // When using custom bg colour, don't use native drawings
     this->SetNativeTheme(!useCustomColour);
     this->SetColours(colours);
+}
+
+clThemedListCtrl::~clThemedListCtrl() {}
+
+clThemedListCtrl::clThemedListCtrl(wxWindow* parent, wxWindowID id, const wxPoint& pos, const wxSize& size, long style)
+    : clThemedListCtrlBase(parent, id, pos, size, (style | LIST_STYLE))
+{
+    SetSortFunction(nullptr);
+}
+
+clThemedOrderedListCtrl::~clThemedOrderedListCtrl() {}
+
+clThemedOrderedListCtrl::clThemedOrderedListCtrl(wxWindow* parent, wxWindowID id, const wxPoint& pos,
+                                                 const wxSize& size, long style)
+    : clThemedListCtrlBase(parent, id, pos, size, (style | LIST_STYLE))
+{
+    // auto sort_func = [this](clRowEntry* a, clRowEntry* b) {
+    //     size_t column = this->GetSortedColumn();
+    //     const wxString& label_a = a->GetLabel(column);
+    //     const wxString& label_b = a->GetLabel(column);
+    //     return (label_b.CmpNoCase(label_a) < 0);
+    // };
+    SetSortFunction(nullptr);
 }

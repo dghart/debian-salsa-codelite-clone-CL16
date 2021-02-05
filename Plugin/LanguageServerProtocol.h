@@ -49,22 +49,20 @@ class WXDLLIMPEXP_SDK LanguageServerProtocol : public ServiceProvider
     wxString m_name;
     wxEvtHandler* m_owner = nullptr;
     LSPNetwork::Ptr_t m_network;
-    wxArrayString m_lspCommand;
-    wxString m_workingDirectory;
-    wxStringSet_t m_filesSent;
+    wxString m_initOptions;
+    wxStringMap_t m_filesSent;
     wxStringSet_t m_languages;
     wxString m_outputBuffer;
     wxString m_rootFolder;
-    wxString m_connectionString;
     IPathConverter::Ptr_t m_pathConverter;
-
+    clEnvList_t m_env;
+    LSPStartupInfo m_startupInfo;
     // initialization
     eState m_state = kUnInitialized;
     int m_initializeRequestID = wxNOT_FOUND;
 
     // Parsing queue
     LSPRequestMessageQueue m_Queue;
-    size_t m_createFlags = 0;
     wxStringSet_t m_unimplementedMethods;
     bool m_disaplayDiagnostics = true;
     int m_lastCompletionRequestId = wxNOT_FOUND;
@@ -86,6 +84,7 @@ protected:
     void OnFindSymbolImpl(clCodeCompletionEvent& event);
     void OnFindSymbol(clCodeCompletionEvent& event);
     void OnFunctionCallTip(clCodeCompletionEvent& event);
+    void OnQuickOutline(clCodeCompletionEvent& event);
 
 protected:
     void DoClear();
@@ -95,6 +94,9 @@ protected:
     void ProcessQueue();
     static wxString GetLanguageId(const wxFileName& fn);
     static wxString GetLanguageId(const wxString& fn);
+    void UpdateFileSent(const wxFileName& filename, const std::string& fileContent);
+    bool IsFileChangedSinceLastParse(const wxFileName& filename, const std::string& fileContent) const;
+    bool FindImplFile(const wxString& headerFile, wxArrayString& implfilesArr);
 
 protected:
     /**
@@ -165,13 +167,14 @@ public:
 
     /**
      * @brief start LSP server and connect to it (e.g. clangd)
-     * @param lspCommand LSP server command
-     * @param connectionString
+     * @param LSPStartupInfo which contains the command to execute, working directory and other process related stuff
+     * @param env environment vriables for this LSP
+     * @param initOptions initialization options to pass to the LSP
      * @param rootFolder the LSP root folder (to be passed during the 'initialize' request)
      * @param languages supported languages by this LSP
      */
-    bool Start(const wxArrayString& lspCommand, const wxString& connectionString, const wxString& workingDirectory,
-               const wxString& rootFolder, const wxArrayString& languages, size_t flags);
+    bool Start(const LSPStartupInfo& startupInfo, const clEnvList_t& env, const wxString& initOptions,
+               const wxString& rootFolder, const wxArrayString& languages);
 
     /**
      * @brief same as above, but reuse the current parameters
@@ -220,6 +223,11 @@ public:
      * @brief tell the server to close editor
      */
     void CloseEditor(IEditor* editor);
+
+    /**
+     * @brief get list of symbols for the current editor
+     */
+    void DocumentSymbols(IEditor* editor);
 };
 
 #endif // CLLANGUAGESERVER_H

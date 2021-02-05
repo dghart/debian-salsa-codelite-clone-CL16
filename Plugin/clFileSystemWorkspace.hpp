@@ -3,8 +3,11 @@
 
 #include "IWorkspace.h"
 #include "asyncprocess.h"
+#include "clBacktickCache.hpp"
 #include "clConsoleBase.h"
+#include "clDebuggerBreakpointStore.hpp"
 #include "clDebuggerTerminal.h"
+#include "clFileCache.hpp"
 #include "clFileSystemEvent.h"
 #include "clFileSystemWorkspaceConfig.hpp"
 #include "clRemoteBuilder.hpp"
@@ -16,7 +19,7 @@
 #include <unordered_set>
 #include <vector>
 #include <wx/arrstr.h>
-#include "clFileCache.hpp"
+#include "parse_thread.h"
 
 class clFileSystemWorkspaceView;
 class WXDLLIMPEXP_SDK clFileSystemWorkspace : public IWorkspace
@@ -34,6 +37,7 @@ class WXDLLIMPEXP_SDK clFileSystemWorkspace : public IWorkspace
     clRemoteBuilder::Ptr_t m_remoteBuilder;
     clDebuggerTerminalPOSIX m_debuggerTerminal;
     int m_execPID = wxNOT_FOUND;
+    clBacktickCache::ptr_t m_backtickCache;
 
 protected:
     void CacheFiles(bool force = false);
@@ -44,10 +48,10 @@ protected:
     CompilerPtr GetCompiler();
 
     /**
-     * @brief return the executable to run + args
+     * @brief return the executable to run + args + working directory
      * this method also expands all macros/env variables
      */
-    void GetExecutable(wxString& exe, wxString& args);
+    void GetExecutable(wxString& exe, wxString& args, wxString& wd);
 
     //===--------------------------
     // Event handlers
@@ -66,7 +70,7 @@ protected:
     void OnAllEditorsClosed(wxCommandEvent& event);
     void OnScanCompleted(clFileSystemEvent& event);
     void OnParseWorkspace(wxCommandEvent& event);
-    void OnParseThreadScanIncludeCompleted(wxCommandEvent& event);
+    void OnParseThreadScanIncludeCompleted(clParseThreadEvent& event);
     void OnBuildProcessTerminated(clProcessEvent& event);
     void OnBuildProcessOutput(clProcessEvent& event);
     void OnSaveSession(clCommandEvent& event);
@@ -97,6 +101,7 @@ public:
     virtual wxString GetActiveProjectName() const;
     virtual wxFileName GetFileName() const;
     virtual wxString GetFilesMask() const;
+    virtual wxString GetExcludeFolders() const;
     virtual wxFileName GetProjectFileName(const wxString& projectName) const;
     virtual void GetProjectFiles(const wxString& projectName, wxArrayString& files) const;
     virtual wxString GetProjectFromFile(const wxFileName& filename) const;
@@ -114,6 +119,11 @@ public:
     /// Specific API
     ///===--------------------------
     clFileSystemWorkspaceView* GetView() { return m_view; }
+
+    /**
+     * @brief return the backticks cache used by this workspace
+     */
+    clBacktickCache::ptr_t GetBackticksCache() { return m_backtickCache; }
 
     /**
      * @brief create an empty workspace at a given folder
@@ -162,6 +172,12 @@ public:
      * Note that this method does NOT update the UI in anyways.
      */
     void FileSystemUpdated();
+
+    /**
+     * @brief create compile_flags.txt for the selected configuration
+     * and fire generation event
+     */
+    void CreateCompileFlagsFile();
 };
 
 wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_SDK, wxEVT_FS_SCAN_COMPLETED, clFileSystemEvent);

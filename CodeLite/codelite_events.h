@@ -26,9 +26,9 @@
 #ifndef CODELITE_EVENTS_H
 #define CODELITE_EVENTS_H
 
-#include "codelite_exports.h"
-#include "cl_command_event.h"
 #include "clFileSystemEvent.h"
+#include "cl_command_event.h"
+#include "codelite_exports.h"
 
 // ------------------------------------------------------------------------
 //
@@ -124,9 +124,6 @@ wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_FOLDER_CREATED, clFileSystemEvent
 // A file was "Save as" by the user
 // This event can also be fired if the user selected "Duplicate Tab"
 wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_FILE_SAVEAS, clFileSystemEvent);
-
-// clientData is list of files which have been retagged (std::vector<wxFileName>*)
-wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_FILE_RETAGGED, wxCommandEvent);
 
 // The active editor was changed
 wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_ACTIVE_EDITOR_CHANGED, wxCommandEvent);
@@ -277,16 +274,27 @@ wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_DEBUG_ENDING, clDebugEvent);
 // clientData is NULL
 wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_DEBUG_ENDED, clDebugEvent);
 
-// set when the editor gains or loses
-// the control over the debugger
-wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_DEBUG_EDITOR_LOST_CONTROL, wxCommandEvent);
-wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_DEBUG_EDITOR_GOT_CONTROL, wxCommandEvent);
+// Debugger is requesting to open a file and set the marker at a given position
+wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_DEBUG_SET_FILELINE, clDebugEvent);
 
 // Notify the debugger to update the active pane
 wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_DEBUGGER_REFRESH_PANE, clDebugEvent);
 
+// Breakpoints were modified programmatically
+wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_BREAKPOINTS_UPDATED, clDebugEvent);
+
+// Breakpoints were modified by the breakpoint management panel
+wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_BREAKPOINTS_UI_UPDATED, clDebugEvent);
+
+// Breakpoint was toggled in an editor (removed or added)
+// check the filename
+wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_BREAKPOINTS_UI_EDITOR_UPDATED, clDebugEvent);
+
 // Instruct the debugger to update the memory
 wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_DEBUGGER_SET_MEMORY, clDebugEvent);
+
+// User initiated debug session from the Debug -> Quick Debug menu option
+wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_QUICK_DEBUG, clDebugEvent);
 
 // Quick debug dialog is showing. The handler can set some parameters
 // such as the debugger to use, exe to debug etc
@@ -295,6 +303,16 @@ wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_QUICK_DEBUG_DLG_SHOWING, clDebugE
 // Quick debug dialog is dismissed. Use this event to persist any setting the user might have
 // updated in the UI
 wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_QUICK_DEBUG_DLG_DISMISSED_OK, clDebugEvent);
+
+//-------------------------------------------------------------------------------------
+///
+// set when the editor gains or loses
+// the control over the debugger
+wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_DEBUG_EDITOR_LOST_CONTROL, wxCommandEvent);
+wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_CL, wxEVT_DEBUG_EDITOR_GOT_CONTROL, wxCommandEvent);
+
+//-------------------------------------------------------------------------------------
+
 
 //-------------------------------------------------------------------------------------
 //-------------------------------------------------------------------------------------

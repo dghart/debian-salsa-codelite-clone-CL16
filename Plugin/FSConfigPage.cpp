@@ -1,9 +1,20 @@
 #include "BuildTargetDlg.h"
 #include "ColoursAndFontsManager.h"
+#include "CompileCommandsGenerator.h"
+#include "EditDlg.h"
 #include "FSConfigPage.h"
+#include "StringUtils.h"
 #include "build_settings_config.h"
+#include "clFileSystemWorkspace.hpp"
 #include "debuggermanager.h"
+#include "event_notifier.h"
+#include "file_logger.h"
+#include "fileextmanager.h"
+#include "fileutils.h"
+#include "globals.h"
+#include "macromanager.h"
 #include "macros.h"
+#include <wx/msgdlg.h>
 #include <wx/tokenzr.h>
 
 #if USE_SFTP
@@ -35,7 +46,6 @@ FSConfigPage::FSConfigPage(wxWindow* parent, clFileSystemWorkspaceConfig::Ptr_t 
     m_filePickerExe->SetPath(m_config->GetExecutable());
     m_textCtrlArgs->ChangeValue(m_config->GetArgs());
     m_stcEnv->SetText(m_config->GetEnvironment());
-    m_checkBoxCreateCompileFlags->SetValue(m_config->ShouldCreateCompileFlags());
     const auto& targets = m_config->GetBuildTargets();
     for(const auto& vt : targets) {
         wxDataViewItem item = m_dvListCtrlTargets->AppendItem(vt.first);
@@ -49,10 +59,13 @@ FSConfigPage::FSConfigPage(wxWindow* parent, clFileSystemWorkspaceConfig::Ptr_t 
     DoUpdateSSHAcounts();
 
     m_checkBoxEnableRemote->SetValue(config->IsRemoteEnabled());
+    m_checkBoxRemoteBuild->SetValue(config->IsRemoteBuild());
     m_textCtrlRemoteFolder->ChangeValue(config->GetRemoteFolder());
     m_choiceDebuggers->Append(DebuggerMgr::Get().GetAvailableDebuggers());
     m_choiceDebuggers->SetStringSelection(config->GetDebugger());
     m_textCtrlExcludeFiles->ChangeValue(config->GetExcludeFilesPattern());
+    m_textCtrlExcludePaths->ChangeValue(config->GetExecludePaths());
+    m_dirPickerWD->SetPath(config->GetWorkingDirectory());
 }
 
 FSConfigPage::~FSConfigPage() {}
@@ -107,7 +120,6 @@ void FSConfigPage::Save()
         targets.insert({ name, command });
     }
 
-    m_config->SetCreateCompileFlags(m_checkBoxCreateCompileFlags->IsChecked());
     m_config->SetBuildTargets(targets);
     m_config->SetCompileFlags(::wxStringTokenize(m_stcCCFlags->GetText(), "\r\n", wxTOKEN_STRTOK));
     m_config->SetFileExtensions(m_textCtrlFileExt->GetValue());
@@ -117,9 +129,12 @@ void FSConfigPage::Save()
     m_config->SetCompiler(m_choiceCompiler->GetStringSelection());
     m_config->SetRemoteFolder(m_textCtrlRemoteFolder->GetValue());
     m_config->SetRemoteEnabled(m_checkBoxEnableRemote->IsChecked());
+    m_config->SetRemoteBuild(m_checkBoxRemoteBuild->IsChecked());
     m_config->SetRemoteAccount(m_choiceSSHAccount->GetStringSelection());
     m_config->SetDebugger(m_choiceDebuggers->GetStringSelection());
     m_config->SetExcludeFilesPattern(m_textCtrlExcludeFiles->GetValue());
+    m_config->SetExcludePaths(m_textCtrlExcludePaths->GetValue());
+    m_config->SetWorkingDirectory(m_dirPickerWD->GetPath());
 }
 
 void FSConfigPage::OnTargetActivated(wxDataViewEvent& event)
@@ -155,7 +170,9 @@ void FSConfigPage::OnSSHBrowse(wxCommandEvent& event)
 #if USE_SFTP
     SFTPBrowserDlg dlg(GetParent(), _("Choose folder"), "", clSFTP::SFTP_BROWSE_FOLDERS);
     dlg.Initialize(m_choiceSSHAccount->GetStringSelection(), m_textCtrlRemoteFolder->GetValue());
-    if(dlg.ShowModal() == wxID_OK) { m_textCtrlRemoteFolder->ChangeValue(dlg.GetPath()); }
+    if(dlg.ShowModal() == wxID_OK) {
+        m_textCtrlRemoteFolder->ChangeValue(dlg.GetPath());
+    }
 #endif
 }
 
@@ -183,7 +200,9 @@ void FSConfigPage::DoUpdateSSHAcounts()
     int sel = wxNOT_FOUND;
     for(const auto& v : accounts) {
         int where = m_choiceSSHAccount->Append(v.GetAccountName());
-        if(sel == wxNOT_FOUND && (v.GetAccountName() == selectedAccount)) { sel = where; }
+        if(sel == wxNOT_FOUND && (v.GetAccountName() == selectedAccount)) {
+            sel = where;
+        }
     }
     if(sel != wxNOT_FOUND) {
         m_choiceSSHAccount->SetSelection(sel);
@@ -200,4 +219,21 @@ void FSConfigPage::OnEnableRemoteUI(wxUpdateUIEvent& event)
 #else
     event.Enable(false);
 #endif
+}
+
+void FSConfigPage::OnEditExcludePaths(wxCommandEvent& event)
+{
+    wxUnusedVar(event);
+
+    wxArrayString paths = StringUtils::BuildArgv(m_textCtrlExcludePaths->GetValue());
+    wxString value;
+    if(!paths.IsEmpty()) {
+        value = wxJoin(paths, '\n');
+    }
+    value = ::clGetStringFromUser(value, wxGetTopLevelParent(this));
+    if(!value.IsEmpty()) {
+        wxArrayString lines = ::wxStringTokenize(value, "\n", wxTOKEN_STRTOK);
+        value = wxJoin(lines, ';');
+        m_textCtrlExcludePaths->ChangeValue(value);
+    }
 }

@@ -4,6 +4,7 @@
 
 #include "ColoursAndFontsManager.h"
 #include "Notebook.h"
+#include "clGenericNotebook.hpp"
 #include "clSystemSettings.h"
 #include "clTabRenderer.h"
 #include "clTabRendererClassic.h"
@@ -87,7 +88,9 @@ void clTabColours::InitLightColours()
     }
 
     activeTabInnerPenColour = activeTabBgColour;
-    if(DrawingUtils::IsDark(activeTabBgColour)) { activeTabTextColour = *wxWHITE; }
+    if(DrawingUtils::IsDark(activeTabBgColour)) {
+        activeTabTextColour = *wxWHITE;
+    }
 
     tabAreaColour = faceColour;
     markerColour = clConfig::Get().Read("ActiveTabMarkerColour", wxColour("#dc7633"));
@@ -128,9 +131,11 @@ clTabInfo::clTabInfo(clTabCtrl* tabCtrl, size_t style, wxWindow* page, const wxS
     , m_textWidth(0)
     , m_xButtonState(eButtonState::kDisabled)
 {
-    SetBestXButtonSize(tabCtrl);
+    SetBestXButtonSize(nullptr);
     CalculateOffsets(style);
-    if(m_bitmap.IsOk()) { m_disabledBitmp = DrawingUtils::CreateDisabledBitmap(m_bitmap); }
+    if(m_bitmap.IsOk()) {
+        m_disabledBitmp = DrawingUtils::CreateDisabledBitmap(m_bitmap);
+    }
 }
 
 clTabInfo::clTabInfo(clTabCtrl* tabCtrl)
@@ -146,7 +151,7 @@ clTabInfo::clTabInfo(clTabCtrl* tabCtrl)
     , m_textWidth(0)
     , m_xButtonState(eButtonState::kDisabled)
 {
-    SetBestXButtonSize(tabCtrl);
+    SetBestXButtonSize(nullptr);
     CalculateOffsets(0);
 }
 
@@ -210,7 +215,9 @@ void clTabInfo::CalculateOffsets(size_t style, wxDC& dc)
     m_width += M_spacer;
     m_width += S_spacer;
 
-    if((style & kNotebook_UnderlineActiveTab) && bVerticalTabs) { m_width += 8; }
+    if((style & kNotebook_UnderlineActiveTab) && bVerticalTabs) {
+        m_width += 8;
+    }
     // Update the rect width
     m_rect.SetWidth(m_width);
     m_rect.SetHeight(m_height);
@@ -233,7 +240,9 @@ void clTabInfo::CalculateOffsets(size_t style)
 void clTabInfo::SetBitmap(const wxBitmap& bitmap, size_t style)
 {
     this->m_bitmap = bitmap;
-    if(m_bitmap.IsOk()) { m_disabledBitmp = DrawingUtils::CreateDisabledBitmap(m_bitmap); }
+    if(m_bitmap.IsOk()) {
+        m_disabledBitmp = DrawingUtils::CreateDisabledBitmap(m_bitmap);
+    }
     CalculateOffsets(style);
 }
 
@@ -371,7 +380,9 @@ int clTabRenderer::GetDefaultBitmapHeight(int Y_spacer)
 {
     int bmpHeight = 0;
     wxBitmap dummyBmp = clGetManager()->GetStdIcons()->LoadBitmap("cog");
-    if(dummyBmp.IsOk()) { bmpHeight = dummyBmp.GetScaledHeight() + (2 * Y_spacer); }
+    if(dummyBmp.IsOk()) {
+        bmpHeight = dummyBmp.GetScaledHeight() + (2 * Y_spacer);
+    }
     return bmpHeight;
 }
 
@@ -390,7 +401,9 @@ clTabRenderer::Ptr_t clTabRenderer::CreateRenderer(const wxWindow* win, size_t t
         return clTabRenderer::Ptr_t(Create(win, "MINIMAL"));
     }
     clTabRenderer* r = Create(win, name);
-    if(!r) { r = Create(win, "DEFAULT"); }
+    if(!r) {
+        r = Create(win, "DEFAULT");
+    }
     return clTabRenderer::Ptr_t(r);
 }
 
@@ -458,7 +471,9 @@ void clTabRenderer::AdjustColours(clTabColours& colours, size_t style)
 
 void clTabRenderer::DrawMarker(wxDC& dc, const clTabInfo& tabInfo, const clTabColours& colours, size_t style)
 {
-    if((style & kNotebook_UnderlineActiveTab) == 0) { return; }
+    if((style & kNotebook_UnderlineActiveTab) == 0) {
+        return;
+    }
     wxPen markerPen(colours.markerColour);
     // Draw marker line if needed
     // wxRect confinedRect = parent->GetClientRect();
@@ -483,9 +498,11 @@ void clTabRenderer::DrawMarker(wxDC& dc, const clTabInfo& tabInfo, const clTabCo
             p1 = tabInfo.GetRect().GetTopLeft();
             p2 = tabInfo.GetRect().GetTopRight();
         } else {
-            direction = wxUP;
-            p1 = tabInfo.GetRect().GetBottomLeft();
-            p2 = tabInfo.GetRect().GetBottomRight();
+            direction = wxRIGHT;
+            p1 = tabInfo.GetRect().GetTopLeft();
+            p2 = tabInfo.GetRect().GetBottomLeft();
+            p1.x--;
+            p2.x--;
         }
         dc.SetPen(markerPen);
         DrawMarkerLine(dc, p1, p2, direction);
@@ -497,9 +514,11 @@ void clTabRenderer::DrawMarker(wxDC& dc, const clTabInfo& tabInfo, const clTabCo
             p2 = tabInfo.GetRect().GetBottomRight();
 
         } else {
-            direction = wxDOWN;
+            direction = wxRIGHT;
             p1 = tabInfo.GetRect().GetTopLeft();
-            p2 = tabInfo.GetRect().GetTopRight();
+            p2 = tabInfo.GetRect().GetBottomLeft();
+            p1.x--;
+            p2.x--;
         }
         dc.SetPen(markerPen);
         DrawMarkerLine(dc, p1, p2, direction);
@@ -534,13 +553,19 @@ int clTabRenderer::GetXButtonSize() { return X_BUTTON_SIZE; }
 
 void clTabRenderer::RegisterRenderer(clTabRenderer* renderer)
 {
-    if(!renderer) { return; }
-    if(ms_Renderes.count(renderer->GetName())) { return; }
+    if(!renderer) {
+        return;
+    }
+    if(ms_Renderes.count(renderer->GetName())) {
+        return;
+    }
     ms_Renderes.insert({ renderer->GetName(), renderer });
 }
 
 clTabRenderer* clTabRenderer::Create(const wxWindow* parent, const wxString& name)
 {
-    if(ms_Renderes.count(name) == 0) { return nullptr; }
+    if(ms_Renderes.count(name) == 0) {
+        return nullptr;
+    }
     return ms_Renderes.find(name)->second->New(parent);
 }

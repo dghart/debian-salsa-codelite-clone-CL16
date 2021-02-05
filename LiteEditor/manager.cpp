@@ -67,6 +67,8 @@
 #include "clFileSystemWorkspace.hpp"
 #include "clKeyboardManager.h"
 #include "clProfileHandler.h"
+#include "clSFTPEvent.h"
+#include "clSFTPManager.hpp"
 #include "clWorkspaceManager.h"
 #include "clWorkspaceView.h"
 #include "cl_command_event.h"
@@ -209,10 +211,9 @@ Manager::Manager(void)
     Bind(wxEVT_ASYNC_PROCESS_TERMINATED, &Manager::OnProcessEnd, this);
 
     Connect(wxEVT_CMD_RESTART_CODELITE, wxCommandEventHandler(Manager::OnCmdRestart), NULL, this);
-
-    Connect(wxEVT_PARSE_THREAD_SCAN_INCLUDES_DONE, wxCommandEventHandler(Manager::OnIncludeFilesScanDone), NULL, this);
+    Connect(wxPARSE_THREAD_SCAN_INCLUDES_DONE, clParseThreadEventHandler(Manager::OnIncludeFilesScanDone), NULL, this);
     Connect(wxEVT_CMD_DB_CONTENT_CACHE_COMPLETED, wxCommandEventHandler(Manager::OnDbContentCacherLoaded), NULL, this);
-    Connect(wxEVT_PARSE_THREAD_SUGGEST_COLOUR_TOKENS, clCommandEventHandler(Manager::OnParserThreadSuggestColourTokens),
+    Connect(wxPARSE_THREAD_SUGGEST_COLOUR_TOKENS, clParseThreadEventHandler(Manager::OnParserThreadSuggestColourTokens),
             NULL, this);
 
     EventNotifier::Get()->Connect(wxEVT_CMD_PROJ_SETTINGS_SAVED,
@@ -226,12 +227,17 @@ Manager::Manager(void)
     EventNotifier::Get()->Bind(wxEVT_DEBUGGER_REFRESH_PANE, &Manager::OnUpdateDebuggerActiveView, this);
     EventNotifier::Get()->Bind(wxEVT_DEBUGGER_SET_MEMORY, &Manager::OnDebuggerSetMemory, this);
     EventNotifier::Get()->Bind(wxEVT_TOOLTIP_DESTROY, &Manager::OnHideGdbTooltip, this);
-
+    EventNotifier::Get()->Bind(wxEVT_DEBUG_ENDING, &Manager::OnDebuggerStopping, this);
+    EventNotifier::Get()->Bind(wxEVT_DEBUG_ENDED, &Manager::OnDebuggerStopped, this);
+    EventNotifier::Get()->Bind(wxEVT_DEBUG_SET_FILELINE, &Manager::OnDebuggerAtFileLine, this);
     // Add new workspace type
     clWorkspaceManager::Get().RegisterWorkspace(new clCxxWorkspace());
 
     // Instantiate the profile manager
     clProfileHandler::Get();
+
+    // extract and install clang-tools if needed (GTK only)
+    InstallClangTools();
 }
 
 Manager::~Manager(void)
@@ -252,6 +258,9 @@ Manager::~Manager(void)
     EventNotifier::Get()->Unbind(wxEVT_FINDINFILES_DLG_SHOWING, &Manager::OnFindInFilesShowing, this);
     EventNotifier::Get()->Unbind(wxEVT_DEBUGGER_REFRESH_PANE, &Manager::OnUpdateDebuggerActiveView, this);
     EventNotifier::Get()->Unbind(wxEVT_DEBUGGER_SET_MEMORY, &Manager::OnDebuggerSetMemory, this);
+    EventNotifier::Get()->Unbind(wxEVT_DEBUG_ENDING, &Manager::OnDebuggerStopping, this);
+    EventNotifier::Get()->Unbind(wxEVT_DEBUG_ENDED, &Manager::OnDebuggerStopped, this);
+    EventNotifier::Get()->Unbind(wxEVT_DEBUG_SET_FILELINE, &Manager::OnDebuggerAtFileLine, this);
 
     // stop background processes
     IDebugger* debugger = DebuggerMgr::Get().GetActiveDebugger();
@@ -338,6 +347,7 @@ void Manager::OpenWorkspace(const wxString& path)
     }
 
     DoSetupWorkspace(path);
+    clGetManager()->ClosePage(_("Welcome!"));
 }
 
 void Manager::ReloadWorkspace()
@@ -351,7 +361,6 @@ void Manager::ReloadWorkspace()
     DbgStop();
     clCxxWorkspaceST::Get()->ReloadWorkspace();
     DoSetupWorkspace(clCxxWorkspaceST::Get()->GetWorkspaceFileName().GetFullPath());
-
     EventNotifier::Get()->NotifyWorkspaceReloadEndEvent(clCxxWorkspaceST::Get()->GetWorkspaceFileName().GetFullPath());
 }
 
@@ -442,7 +451,6 @@ void Manager::CloseWorkspace()
     // since we closed the workspace, we also need to set the 'LastActiveWorkspaceName' to be
     // default
     SessionManager::Get().SetLastSession(wxT("Default"));
-
     clCxxWorkspaceST::Get()->CloseWorkspace();
 
 #ifdef __WXMSW__
@@ -464,7 +472,7 @@ void Manager::CloseWorkspace()
 
     // Clear the parser thread search paths
     ParseThreadST::Get()->ClearPaths();
-    
+
     if(!IsShutdownInProgress()) {
         SendCmdEvent(wxEVT_WORKSPACE_CLOSED);
     }
@@ -555,7 +563,7 @@ void Manager::CreateProject(ProjectData& data, const wxString& workspaceFolder)
 
         // Update the build system
         bldConf->SetBuildSystem(data.m_builderName);
-        if(data.m_builderName == "CodeLite Make Generator") {
+        if(data.m_builderName == "CodeLite Make Generator" || data.m_builderName == "CodeLite Makefile Generator") {
             bldConf->SetIntermediateDirectory("");
             bldConf->SetOutputFileName("$(ProjectName)");
             bldConf->SetCommand("$(WorkspacePath)/build-$(WorkspaceConfiguration)/bin/$(OutputFile)");
@@ -600,12 +608,23 @@ void Manager::CreateProject(ProjectData& data, const wxString& workspaceFolder)
         DirSaver ds;
         wxSetWorkingDirectory(proj->GetFileName().GetPath());
 
+        wxString workingDirectory = wxGetCwd();
         // get list of files
         std::vector<wxFileName> files;
         data.m_srcProject->GetFilesAsVectorOfFileName(files);
         for(size_t i = 0; i < files.size(); i++) {
-            wxFileName f(files.at(i));
-            wxCopyFile(f.GetFullPath(), f.GetFullName());
+            wxFileName targetFile(workingDirectory, files[i].GetFullName());
+            wxFileName sourceFile(files[i].GetFullPath());
+            if(targetFile.FileExists()) {
+                // Prompt the user
+                wxString message;
+                message << _("A file with similar name '") << targetFile.GetFullName() << _("' already exists") << "\n";
+                message << _("Overwrite it?");
+                if(wxYES != ::wxMessageBox(message, _("Warning"), wxYES_NO | wxCANCEL_DEFAULT | wxCANCEL)) {
+                    continue;
+                }
+            }
+            wxCopyFile(sourceFile.GetFullPath(), targetFile.GetFullPath());
         }
     }
 
@@ -1016,34 +1035,32 @@ void Manager::RetagWorkspace(TagsManager::RetagType type)
     // Create a parsing request
     ParseRequest* parsingRequest = new ParseRequest(clMainFrame::Get());
     clDEBUG() << "Filtering non relevant files..." << clEndl;
-    parsingRequest->_workspaceFiles.reserve(projectFiles.size());
-
-    for(size_t i = 0; i < projectFiles.size(); i++) {
-        // filter any non valid coding file
-        const wxFileName& fn = projectFiles[i];
-        parsingRequest->_workspaceFiles.push_back(fn.GetFullPath().ToAscii().data());
+    wxArrayString arrfiles;
+    arrfiles.Alloc(projectFiles.size());
+    for(const wxFileName& fn : projectFiles) {
+        arrfiles.Add(fn.GetFullPath());
     }
-
+    parsingRequest->SetWorkspaceFiles(arrfiles);
     clDEBUG() << "Filtering non relevant files...done" << clEndl;
 
-    if(parsingRequest->_workspaceFiles.empty()) {
+    if(parsingRequest->GetWorkspaceFiles().empty()) {
         SetRetagInProgress(false);
         delete parsingRequest;
         return;
     }
 
     if(type == TagsManager::Retag_Full || type == TagsManager::Retag_Quick) {
-        parsingRequest->setType(ParseRequest::PR_PARSEINCLUDES);
-        parsingRequest->setDbFile(TagsManagerST::Get()->GetDatabase()->GetDatabaseFileName().GetFullPath().c_str());
-        parsingRequest->_evtHandler = this;
-        parsingRequest->_quickRetag = (type == TagsManager::Retag_Quick);
+        parsingRequest->SetType(ParseRequest::PR_PARSEINCLUDES);
+        parsingRequest->SetDbfile(TagsManagerST::Get()->GetDatabase()->GetDatabaseFileName().GetFullPath());
+        parsingRequest->SetParent(this);
+        parsingRequest->SetQuickRetag(type == TagsManager::Retag_Quick);
         ParseThreadST::Get()->Add(parsingRequest);
         clMainFrame::Get()->GetStatusBar()->SetMessage("Scanning for include files to parse...");
 
     } else if(type == TagsManager::Retag_Quick_No_Scan) {
-        parsingRequest->setType(ParseRequest::PR_PARSE_FILE_NO_INCLUDES);
-        parsingRequest->setDbFile(TagsManagerST::Get()->GetDatabase()->GetDatabaseFileName().GetFullPath().c_str());
-        parsingRequest->_quickRetag = true;
+        parsingRequest->SetType(ParseRequest::PR_PARSE_FILE_NO_INCLUDES);
+        parsingRequest->SetDbfile(TagsManagerST::Get()->GetDatabase()->GetDatabaseFileName().GetFullPath());
+        parsingRequest->SetQuickRetag(true);
         ParseThreadST::Get()->Add(parsingRequest);
     }
 }
@@ -1064,9 +1081,9 @@ void Manager::RetagFile(const wxString& filename)
 
     // Put a request to the parsing thread
     ParseRequest* req = new ParseRequest(clMainFrame::Get());
-    req->setDbFile(TagsManagerST::Get()->GetDatabase()->GetDatabaseFileName().GetFullPath().c_str());
-    req->setFile(absFile.GetFullPath().c_str());
-    req->setType(ParseRequest::PR_FILESAVED);
+    req->SetDbfile(TagsManagerST::Get()->GetDatabase()->GetDatabaseFileName().GetFullPath());
+    req->SetFile(absFile.GetFullPath());
+    req->SetType(ParseRequest::PR_FILESAVED);
     ParseThreadST::Get()->Add(req);
     clMainFrame::Get()->GetStatusBar()->SetMessage((wxString() << _("Parsing file:") << absFile.GetFullName()));
 }
@@ -1443,7 +1460,6 @@ void Manager::RetagProject(const wxString& projectName, bool quickRetag)
     std::vector<wxFileName> projectFiles;
     proj->GetFilesAsVectorOfFileName(projectFiles);
     TagsManagerST::Get()->RetagFiles(projectFiles, quickRetag ? TagsManager::Retag_Quick : TagsManager::Retag_Full);
-    SendCmdEvent(wxEVT_FILE_RETAGGED, (void*)&projectFiles);
 }
 
 void Manager::GetProjectFiles(const wxString& project, wxArrayString& files)
@@ -2184,11 +2200,23 @@ void Manager::DbgStart(long attachPid)
     }
 
     // We can now get all the gathered breakpoints from the manager
-    std::vector<BreakpointInfo> bps;
+    std::vector<clDebuggerBreakpoint> bps;
 
     // since files may have been updated and the breakpoints may have been moved,
     // delete all the information
     GetBreakpointsMgr()->GetBreakpoints(bps);
+
+    // notify plugins that we're about to start debugging
+    clDebugEvent eventStarting(wxEVT_DEBUG_STARTING);
+    eventStarting.SetClientData(&startup_info);
+    if(EventNotifier::Get()->ProcessEvent(eventStarting)) {
+        return;
+    }
+
+    if(!eventStarting.GetBreakpoints().empty()) {
+        bps.swap(eventStarting.GetBreakpoints());
+    }
+
     // Take the opportunity to store them in the pending array too
     GetBreakpointsMgr()->SetPendingBreakpoints(bps);
 
@@ -2203,15 +2231,6 @@ void Manager::DbgStart(long attachPid)
             return;
         }
 #endif
-    }
-
-    // notify plugins that we're about to start debugging
-    {
-        clDebugEvent eventStarting(wxEVT_DEBUG_STARTING);
-        eventStarting.SetClientData(&startup_info);
-        if(EventNotifier::Get()->ProcessEvent(eventStarting)) {
-            return;
-        }
     }
 
     // read
@@ -2321,21 +2340,23 @@ void Manager::DbgStart(long attachPid)
     }
 }
 
-void Manager::DbgStop()
+void Manager::OnDebuggerStopping(clDebugEvent& event)
 {
-    {
-        IDebugger* dbgr = DebuggerMgr::Get().GetActiveDebugger();
+    event.Skip();
+    clDEBUG() << "Debugger stopping..." << clEndl;
+    IDebugger* dbgr = DebuggerMgr::Get().GetActiveDebugger();
+    wxUnusedVar(dbgr);
+    // Store the current layout as "Debug" layout
+    GetPerspectiveManager().SavePerspective(DEBUG_LAYOUT);
+}
 
-        if(dbgr && dbgr->IsRunning()) {
-// If the debugger is running assume that the current perspective is the
-// one that we want to use for our debugging purposes
-#ifndef __WXMAC__
-            GetPerspectiveManager().SavePerspective(DEBUG_LAYOUT);
-#endif
-        }
-        GetPerspectiveManager().LoadPerspective(NORMAL_LAYOUT);
-    }
-
+void Manager::OnDebuggerStopped(clDebugEvent& event)
+{
+    // Debugger stopped. Cleanup UI layout & store session values
+    event.Skip();
+    clDEBUG() << "Debugger stopped!" << clEndl;
+    // Restore the Normal layout
+    GetPerspectiveManager().LoadPerspective(NORMAL_LAYOUT);
     if(m_watchDlg) {
         m_watchDlg->Destroy();
         m_watchDlg = NULL;
@@ -2362,36 +2383,22 @@ void Manager::DbgStop()
 
     // Clear the ascii viewer
     clMainFrame::Get()->GetDebuggerPane()->GetAsciiViewer()->UpdateView(wxT(""), wxT(""));
+
     // update toolbar state
     UpdateStopped();
-
-    IDebugger* dbgr = DebuggerMgr::Get().GetActiveDebugger();
-    if(!dbgr) {
-        return;
-    }
-
     m_dbgCurrentFrameInfo.Clear();
-    if(!dbgr->IsRunning()) {
-        clDebugEvent eventEnd(wxEVT_DEBUG_ENDED);
-        EventNotifier::Get()->ProcessEvent(eventEnd);
-        return;
-    }
+}
 
-    // notify plugins that the debugger is about to be stopped
-    {
-        clDebugEvent eventEnding(wxEVT_DEBUG_ENDING);
-        EventNotifier::Get()->ProcessEvent(eventEnding);
-    }
+void Manager::DbgStop()
+{
+    IDebugger* dbgr = DebuggerMgr::Get().GetActiveDebugger();
+    CHECK_PTR_RET(dbgr);
 
-    if(dbgr->IsRunning())
+    if(dbgr->IsRunning()) {
+        clDEBUG() << "Stopping the debugger... (user request)" << clEndl;
         dbgr->Stop();
-
+    }
     DebuggerMgr::Get().SetActiveDebugger(wxEmptyString);
-    DebugMessage(_("Debug session ended\n"));
-
-    // notify plugins that the debugger stopped
-    clDebugEvent eventEnd(wxEVT_DEBUG_ENDED);
-    EventNotifier::Get()->ProcessEvent(eventEnd);
 }
 
 void Manager::DbgMarkDebuggerLine(const wxString& fileName, int lineno)
@@ -2510,22 +2517,6 @@ void Manager::UpdateAddLine(const wxString& line, const bool OnlyIfLoggingOn /*=
     }
 
     DebugMessage(line + wxT("\n"));
-}
-
-void Manager::UpdateFileLine(const wxString& filename, int lineno, bool repositionEditor)
-{
-    wxString fileName = filename;
-    long lineNumber = lineno;
-    if(m_frameLineno != wxNOT_FOUND) {
-        lineNumber = m_frameLineno;
-        m_frameLineno = wxNOT_FOUND;
-    }
-
-    if(repositionEditor) {
-        DbgMarkDebuggerLine(fileName, lineNumber);
-    }
-
-    UpdateDebuggerPane();
 }
 
 void Manager::UpdateGotControl(const DebuggerEventData& e)
@@ -2659,7 +2650,6 @@ void Manager::UpdateGotControl(const DebuggerEventData& e)
     }
 
     case DBG_EXITED_NORMALLY:
-        // debugging finished, stop the debugger process
         DbgStop();
         break;
     default:
@@ -3073,17 +3063,6 @@ void Manager::DebuggerUpdate(const DebuggerEventData& event)
         UpdateLostControl();
         break;
 
-    case DBG_UR_FILE_LINE:
-        // in some cases we don't physically reposition the file+line position, such as during updates made by user
-        // actions (like add watch)
-        // but since this app uses a debugger refresh to update newly added watch values, it automatically
-        // repositions the editor always. this isn't always desirable behavior, so we pass a parameter indicating
-        // for certain operations if an override was used
-        UpdateFileLine(event.m_file, event.m_line, true);
-        // raise the flag for the next call, as this "override" is only used once per consumption
-        ManagerST::Get()->SetRepositionEditor(true);
-        break;
-
     case DBG_UR_FRAMEDEPTH: {
         long frameDepth(0);
         event.m_frameInfo.level.ToLong(&frameDepth);
@@ -3493,19 +3472,18 @@ void Manager::UpdateParserPaths(bool notify)
     }
 }
 
-void Manager::OnIncludeFilesScanDone(wxCommandEvent& event)
+void Manager::OnIncludeFilesScanDone(clParseThreadEvent& event)
 {
     clMainFrame::Get()->GetStatusBar()->SetMessage(_("Retagging..."));
 
     wxBusyCursor busyCursor;
-    std::set<wxString>* fileSet = (std::set<wxString>*)event.GetClientData();
-
+    wxStringSet_t uniqueList;
     wxArrayString projects;
     GetProjectList(projects);
 
     clDEBUG() << "Scan for include files is done";
-
     clDEBUG() << "Building project file list...";
+
     std::vector<wxFileName> projectFiles;
     for(size_t i = 0; i < projects.GetCount(); i++) {
         ProjectPtr proj = GetProject(projects.Item(i));
@@ -3516,46 +3494,32 @@ void Manager::OnIncludeFilesScanDone(wxCommandEvent& event)
 
     // add to this set the workspace files to create a unique list of
     // files
-    for(size_t i = 0; i < projectFiles.size(); i++) {
-        wxString fn(projectFiles.at(i).GetFullPath());
-        fileSet->insert(fn);
-    }
-    clDEBUG() << "Building project file list...done";
-
-    clDEBUG() << "Converting set to vector...";
-    // recreate the list in the form of vector (the API requirs vector)
-    projectFiles.clear();
-    std::set<wxString>::iterator iter = fileSet->begin();
-    projectFiles.reserve(fileSet->size());
-
-    for(; iter != fileSet->end(); ++iter) {
-        wxFileName fn(*iter);
+    for(wxFileName& fn : projectFiles) {
         if(fn.IsRelative()) {
             fn.MakeAbsolute();
         }
-        projectFiles.push_back(fn);
+        uniqueList.insert(fn.GetFullPath());
     }
+
+    for(const wxString& file : event.GetFiles()) {
+        uniqueList.insert(file);
+    }
+
+    clDEBUG() << "Building project file list...done";
+    clDEBUG() << "Converting set to vector...";
+
+    wxArrayString arrFiles;
+    arrFiles.Alloc(uniqueList.size());
+
+    for(const wxString& filename : uniqueList) {
+        arrFiles.Add(filename);
+    }
+    // recreate the list in the form of vector (the API requirs vector)
     clDEBUG() << "Converting set to vector...done";
 
-#if !USE_PARSER_TREAD_FOR_RETAGGING_WORKSPACE
-    wxStopWatch sw;
-    sw.Start();
-#endif
-
-    // -----------------------------------------------
-    // tag them
-    // -----------------------------------------------
-    TagsManagerST::Get()->RetagFiles(projectFiles, event.GetInt() ? TagsManager::Retag_Quick : TagsManager::Retag_Full);
-
-#if !USE_PARSER_TREAD_FOR_RETAGGING_WORKSPACE
-    long end = sw.Time();
-    clMainFrame::Get()->SetStatusMessage(_("Done"), 0);
-    clLogMessage(wxT("INFO: Retag workspace completed in %d seconds (%d files were scanned)"), (end) / 1000,
-                 projectFiles.size());
-    SendCmdEvent(wxEVT_FILE_RETAGGED, (void*)&projectFiles);
-#endif
-
-    wxDELETE(fileSet);
+    // tag'em
+    TagsManagerST::Get()->RetagFiles(arrFiles,
+                                     event.IsQuickParse() ? TagsManager::Retag_Quick : TagsManager::Retag_Full);
 }
 
 void Manager::DoSaveAllFilesBeforeBuild()
@@ -3755,14 +3719,15 @@ bool Manager::StartTTY(const wxString& title, wxString& tty)
 #endif
 }
 
-void Manager::OnParserThreadSuggestColourTokens(clCommandEvent& event)
+void Manager::OnParserThreadSuggestColourTokens(clParseThreadEvent& event)
 {
     const wxArrayString& tokens = event.GetStrings();
-    wxString locals, classes;
-    if(tokens.size() == 2) {
-        classes = tokens.Item(0);
-        locals = tokens.Item(1);
+    if(tokens.size() != 2) {
+        return;
     }
+
+    const wxString& classes = tokens.Item(0);
+    const wxString& locals = tokens.Item(1);
 
     wxString originatingFile = event.GetFileName();
 
@@ -3883,4 +3848,91 @@ void Manager::OnFindInFilesShowing(clFindInFilesEvent& event)
                                                         "*.xml;*.json;*.sql;*.txt;*.plist;CMakeLists.txt;*.rc;*.iss")));
         event.SetPaths(clConfig::Get().Read("FindInFiles/CXX/LookIn", wxString("<Entire Workspace>")));
     }
+}
+
+void Manager::OnDebuggerAtFileLine(clDebugEvent& event)
+{
+    event.Skip();
+    if(event.IsSSHDebugging()) {
+#if USE_SFTP
+        DbgUnMarkDebuggerLine();
+        if(event.GetLineNumber() < 0) {
+            return;
+        }
+        // Open the file using ssh
+        auto editor = clSFTPManager::Get().OpenFile(event.GetFileName(), event.GetSshAccount());
+        if(editor) {
+            clEditor* cl_editor = dynamic_cast<clEditor*>(editor);
+            if(cl_editor) {
+                cl_editor->HighlightLine(event.GetLineNumber());
+                cl_editor->SetEnsureCaretIsVisible(cl_editor->PositionFromLine(event.GetLineNumber() - 1), false);
+            }
+        }
+#endif
+    } else {
+        const wxString& fileName = event.GetFileName();
+        long lineNumber = event.GetLineNumber();
+        if(m_frameLineno != wxNOT_FOUND) {
+            lineNumber = m_frameLineno;
+            m_frameLineno = wxNOT_FOUND;
+        }
+
+        DbgMarkDebuggerLine(fileName, lineNumber);
+        UpdateDebuggerPane();
+        SetRepositionEditor(true);
+    }
+}
+
+void Manager::InstallClangTools()
+{
+#ifdef __WXGTK__
+    // Extract clang-tools.tgz if needed
+    // see if we need to copy it from the installation folder
+    wxFileName toolsFile(clStandardPaths::Get().GetDataDir(), "clang-tools.tgz");
+    wxFileName clangd_exe(clStandardPaths::Get().GetUserDataDir(), "clangd");
+    clangd_exe.AppendDir("lsp");
+    clangd_exe.AppendDir("clang-tools");
+    if(clangd_exe.FileExists()) {
+        // this clang-format requires LD_LIBRARY_PATH set properly
+        wxString ldLibPath = ::wxGetenv("LD_LIBRARY_PATH");
+        if(!ldLibPath.IsEmpty()) {
+            ldLibPath << ":";
+        }
+        ldLibPath << clangd_exe.GetPath();
+        ::wxSetEnv("LD_LIBRARY_PATH", ldLibPath);
+        return;
+    }
+
+    if(toolsFile.FileExists()) {
+        wxString clang_tools_tgz = toolsFile.GetFullPath();
+        ::WrapWithQuotes(clang_tools_tgz);
+
+        wxFileName fnToolsDir(clStandardPaths::Get().GetUserDataDir(), "");
+        fnToolsDir.AppendDir("lsp");
+        wxString tools_local_folder = fnToolsDir.GetPath();
+        ::WrapWithQuotes(tools_local_folder);
+
+        // sh -c 'mkdir -p ~/.codelite/lsp/ && tar xvfz /usr/share/codelite/clang-tools.tgz -C ~/.codelite/lsp/'
+        wxString command;
+        command << "mkdir -p " << tools_local_folder << " && tar xvfz " << clang_tools_tgz << " -C "
+                << tools_local_folder;
+        ::WrapInShell(command);
+
+        clDEBUG() << "Running:" << command << clEndl;
+        IProcess::Ptr_t process(::CreateSyncProcess(command));
+        if(process) {
+            wxString output;
+            process->WaitForTerminate(output);
+            clDEBUG() << output << clEndl;
+
+            // this clang-format requires LD_LIBRARY_PATH set properly
+            wxString ldLibPath = ::wxGetenv("LD_LIBRARY_PATH");
+            if(!ldLibPath.IsEmpty()) {
+                ldLibPath << ":";
+            }
+            ldLibPath << clangd_exe.GetPath();
+            ::wxSetEnv("LD_LIBRARY_PATH", ldLibPath);
+        }
+    }
+#endif
 }

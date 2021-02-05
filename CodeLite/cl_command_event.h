@@ -26,16 +26,18 @@
 #ifndef CLCOMMANDEVENT_H
 #define CLCOMMANDEVENT_H
 
+#include "LSP/CompletionItem.h"
+#include "clDebuggerBreakpoint.hpp"
 #include "clEditorConfig.h"
 #include "clGotoEntry.h"
 #include "codelite_exports.h"
 #include "entry.h"
+#include "ssh_account_info.h"
 #include "wxCodeCompletionBoxEntry.hpp"
 #include <vector>
 #include <wx/arrstr.h>
 #include <wx/event.h>
 #include <wx/sharedptr.h>
-#include "LSP/CompletionItem.h"
 
 // Set of flags that can be passed within the 'S{G}etInt' function of clCommandEvent
 enum {
@@ -66,7 +68,8 @@ public:
     {
         // Because GetString() can retrieve the string text only on demand, we
         // need to copy it explicitly.
-        if(m_cmdString.empty()) m_cmdString = event.GetString();
+        if(m_cmdString.empty())
+            m_cmdString = event.GetString();
     }
 
     virtual ~wxCommandEvent() {}
@@ -391,6 +394,10 @@ class WXDLLIMPEXP_CL clDebugEvent : public clCommandEvent
     wxString m_memoryAddress;    // wxEVT_DEBUGGER_SET_MEMORY
     wxString m_memoryBlockValue; // wxEVT_DEBUGGER_SET_MEMORY
     size_t m_memoryBlockSize;    // wxEVT_DEBUGGER_SET_MEMORY
+    clDebuggerBreakpoint::Vec_t m_breakpoints;
+    bool m_isSSHDebugging = false;
+    SSHAccountInfo m_sshAccount;
+    wxString m_alternateDebuggerPath; // Holds the path to an alternate debugger executable
 
 public:
     // Special features not available by all the debuggers
@@ -412,6 +419,15 @@ public:
     virtual ~clDebugEvent();
     virtual wxEvent* Clone() const { return new clDebugEvent(*this); };
 
+    void SetAlternateDebuggerPath(const wxString& alternateDebuggerPath)
+    {
+        this->m_alternateDebuggerPath = alternateDebuggerPath;
+    }
+    const wxString& GetAlternateDebuggerPath() const { return m_alternateDebuggerPath; }
+    void SetSshAccount(const SSHAccountInfo& sshAccount) { this->m_sshAccount = sshAccount; }
+    const SSHAccountInfo& GetSshAccount() const { return m_sshAccount; }
+    void SetIsSSHDebugging(bool isSSHDebugging) { this->m_isSSHDebugging = isSSHDebugging; }
+    bool IsSSHDebugging() const { return m_isSSHDebugging; }
     void SetFeatures(size_t features) { m_features = features; }
     size_t GetFeatures() const { return m_features; }
     void SetDebuggerName(const wxString& debuggerName) { this->m_debuggerName = debuggerName; }
@@ -436,6 +452,9 @@ public:
     const wxString& GetMemoryAddress() const { return m_memoryAddress; }
     size_t GetMemoryBlockSize() const { return m_memoryBlockSize; }
     const wxString& GetMemoryBlockValue() const { return m_memoryBlockValue; }
+    void SetBreakpoints(const clDebuggerBreakpoint::Vec_t& breakpoints) { this->m_breakpoints = breakpoints; }
+    const clDebuggerBreakpoint::Vec_t& GetBreakpoints() const { return m_breakpoints; }
+    clDebuggerBreakpoint::Vec_t& GetBreakpoints() { return m_breakpoints; }
 };
 
 typedef void (wxEvtHandler::*clDebugEventFunction)(clDebugEvent&);

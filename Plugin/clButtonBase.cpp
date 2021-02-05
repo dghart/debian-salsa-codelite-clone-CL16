@@ -1,12 +1,12 @@
 #include "clButtonBase.h"
+#include <wx/anybutton.h>
+#include <wx/buffer.h>
 #include <wx/dcbuffer.h>
 #include <wx/dcgraph.h>
-#include <wx/buffer.h>
 #include <wx/renderer.h>
 #include <wx/settings.h>
-#include <wx/anybutton.h>
 
-#define TEXT_SPACER 10
+#define TEXT_SPACER 5
 
 #ifdef __WXMSW__
 #define BUTTON_RADIUS 0.0
@@ -14,6 +14,22 @@
 #define BUTTON_RADIUS 3.0
 #endif
 
+#if wxUSE_NATIVE_BUTTON
+clButtonBase::clButtonBase() {}
+
+clButtonBase::clButtonBase(wxWindow* parent, wxWindowID id, const wxString& label, const wxPoint& pos,
+                           const wxSize& size, long style, const wxValidator& validator, const wxString& name)
+    : wxButton(parent, id, label, pos, size, style, validator, name)
+{
+}
+
+bool clButtonBase::Create(wxWindow* parent, wxWindowID id, const wxString& label, const wxPoint& pos,
+                          const wxSize& size, long style, const wxValidator& validator, const wxString& name)
+{
+    return wxButton::Create(parent, id, label, pos, size, style, validator, name);
+}
+clButtonBase::~clButtonBase() {}
+#else
 clButtonBase::clButtonBase() {}
 
 clButtonBase::clButtonBase(wxWindow* parent, wxWindowID id, const wxString& label, const wxPoint& pos,
@@ -34,13 +50,18 @@ bool clButtonBase::Create(wxWindow* parent, wxWindowID id, const wxString& label
     wxUnusedVar(validator);
     m_buttonStyle = style;
     SetText(label);
-    if(!wxControl::Create(parent, id, pos, size, wxTAB_TRAVERSAL | wxNO_BORDER | wxWANTS_CHARS)) { return false; }
+    if(!wxControl::Create(parent, id, pos, size, wxTAB_TRAVERSAL | wxNO_BORDER | wxWANTS_CHARS)) {
+        return false;
+    }
     Initialise();
     return true;
 }
 
 clButtonBase::~clButtonBase() { UnBindEvents(); }
 
+#endif
+
+#if !wxUSE_NATIVE_BUTTON
 void clButtonBase::BindEvents()
 {
     Bind(wxEVT_PAINT, &clButtonBase::OnPaint, this);
@@ -94,7 +115,9 @@ void clButtonBase::OnErasebg(wxEraseEvent& event) { wxUnusedVar(event); }
 void clButtonBase::OnLeftDown(wxMouseEvent& event)
 {
     event.Skip();
-    if(!IsEnabled()) { return; }
+    if(!IsEnabled()) {
+        return;
+    }
 
     m_state = eButtonState::kPressed;
     CaptureMouse();
@@ -104,13 +127,19 @@ void clButtonBase::OnLeftDown(wxMouseEvent& event)
 void clButtonBase::OnLeftUp(wxMouseEvent& event)
 {
     event.Skip();
-    if(HasCapture()) { ReleaseMouse(); }
-    if(!IsEnabled()) { return; }
+    if(HasCapture()) {
+        ReleaseMouse();
+    }
+    if(!IsEnabled()) {
+        return;
+    }
 
     wxRect rect = GetClientRect();
     if(rect.Contains(event.GetPosition())) {
         m_state = eButtonState::kHover;
-        PostClickEvent();
+        wxCommandEvent eventClick(wxEVT_BUTTON);
+        eventClick.SetEventObject(this);
+        GetEventHandler()->ProcessEvent(eventClick);
     } else {
         m_state = eButtonState::kNormal;
     }
@@ -198,25 +227,37 @@ void clButtonBase::Render(wxDC& dc)
         dc.DrawLine(rr.GetTopLeft(), rr.GetTopRight());
     }
 
-    // Draw the bitmap first
-    int xx = TEXT_SPACER;
+    wxRect bitmap_rect;
+    wxRect text_rect;
+    wxRect arrow_rect;
+
     if(GetBitmap().IsOk()) {
-        wxRect bitmapRect(xx, 0, GetBitmap().GetScaledWidth(), GetBitmap().GetScaledHeight());
+        bitmap_rect.SetX(2 * TEXT_SPACER);
+        bitmap_rect.SetWidth(GetBitmap().GetScaledWidth() + TEXT_SPACER);
+        bitmap_rect.SetHeight(GetBitmap().GetScaledHeight());
+        bitmap_rect.SetY(0);
+    }
+
+    if(HasDropDownMenu()) {
+        arrow_rect.SetWidth((2 * TEXT_SPACER) + rect.GetHeight());
+        arrow_rect.SetX(rect.GetWidth() - arrow_rect.GetWidth());
+        arrow_rect.SetY(0);
+        arrow_rect.SetHeight(rect.GetHeight());
+    }
+
+    if(!GetText().IsEmpty()) {
+        text_rect.SetX(GetBitmap().IsOk() ? bitmap_rect.GetRight() : TEXT_SPACER);
+        text_rect.SetY(0);
+        text_rect.SetRight(HasDropDownMenu() ? arrow_rect.GetLeft() : (rect.GetRight() - TEXT_SPACER));
+        text_rect.SetHeight(rect.GetHeight());
+    }
+
+    // Draw the bitmap first
+    if(GetBitmap().IsOk()) {
+        wxRect bitmapRect = bitmap_rect;
         bitmapRect = bitmapRect.CenterIn(rect, wxVERTICAL);
         dc.DrawBitmap(GetBitmap(), bitmapRect.GetTopLeft());
-        xx += bitmapRect.GetWidth();
-        xx += TEXT_SPACER;
     }
-
-    // Draw the text
-    int textWidth = rect.GetWidth() - (2 * TEXT_SPACER);
-    if(GetBitmap().IsOk()) {
-        // Reduce the space used by the bitmap
-        textWidth -= GetBitmap().GetScaledWidth();
-        textWidth -= TEXT_SPACER;
-    }
-
-    if(HasDropDownMenu()) { textWidth -= rect.GetHeight(); }
 
     // Setup some colours (text and dropdown)
     wxColour textColour = m_colours.GetItemTextColour();
@@ -228,16 +269,8 @@ void clButtonBase::Render(wxDC& dc)
         dropDownColour = dropDownColour.ChangeLightness(isDark ? 70 : 110);
     }
 
-    wxRect textBoundingRect(xx, 0, textWidth, rect.GetHeight());
-    wxRect arrowRect;
-    if(HasDropDownMenu()) {
-        arrowRect.SetX(textBoundingRect.GetRight() + TEXT_SPACER);
-        arrowRect.SetY(0);
-        arrowRect.SetWidth(rect.GetHeight());
-        arrowRect.SetHeight(rect.GetHeight());
-    }
-
     if(!GetText().IsEmpty()) {
+        wxRect textBoundingRect = text_rect;
         dc.SetFont(DrawingUtils::GetDefaultGuiFont());
         textBoundingRect = textBoundingRect.CenterIn(rect, wxVERTICAL);
         dc.SetTextForeground(textColour);
@@ -245,28 +278,21 @@ void clButtonBase::Render(wxDC& dc)
         // Truncate the text to fit the drawing area
         wxString fixedText;
         DrawingUtils::TruncateText(GetText(), textBoundingRect.GetWidth(), dc, fixedText);
-
-        // dc.SetPen(*wxBLUE);
-        // dc.SetBrush(*wxTRANSPARENT_BRUSH);
-        // dc.DrawRectangle(textBoundingRect);
-
         dc.DrawLabel(fixedText, textBoundingRect, wxALIGN_CENTRE);
         dc.DestroyClippingRegion();
     }
 
     if(HasDropDownMenu()) {
         // Draw an arrow
+        wxRect arrowRect(0, 0, rect.GetHeight(), rect.GetHeight());
+        arrowRect = arrowRect.CenterIn(arrow_rect);
         int arrowHeight = arrowRect.GetHeight() / 4;
         int arrowWidth = arrowRect.GetWidth() / 2;
         wxRect r(0, 0, arrowWidth, arrowHeight);
         r = r.CenterIn(arrowRect);
 
-        // dc.SetPen(*wxRED);
-        // dc.SetBrush(*wxTRANSPARENT_BRUSH);
-        // dc.DrawRectangle(arrowRect);
-
         wxPoint downCenterPoint = wxPoint(r.GetBottomLeft().x + r.GetWidth() / 2, r.GetBottom());
-        dc.SetPen(wxPen(dropDownColour, 3));
+        dc.SetPen(wxPen(dropDownColour, 2));
         dc.DrawLine(r.GetTopLeft(), downCenterPoint);
         dc.DrawLine(r.GetTopRight(), downCenterPoint);
     }
@@ -328,7 +354,9 @@ wxSize clButtonBase::GetBestSize() const
     buttonWidth += TEXT_SPACER;
 
     // Drop down arrow width
-    if(HasDropDownMenu()) { buttonWidth += buttonHeight; }
+    if(HasDropDownMenu()) {
+        buttonWidth += buttonHeight;
+    }
     return wxSize(buttonWidth, buttonHeight);
 }
 
@@ -376,23 +404,11 @@ void clButtonBase::OnIdle(wxIdleEvent& event)
 size_t clButtonBase::GetDrawingFlags() const
 {
     size_t flags = 0;
-    if(IsEnabled()) { flags |= kDrawingFlagEnabled; }
+    if(IsEnabled()) {
+        flags |= kDrawingFlagEnabled;
+    }
     return flags;
 }
-
-void clButtonBase::SetText(const wxString& text)
-{
-    // strip menemonics, not very efficient...
-    wxString tmp = text;
-    tmp.Replace("&&", "@@");
-    tmp.Replace("&", "");
-    tmp.Replace("@@", "&");
-    m_text = tmp;
-    SetSizeHints(GetBestSize());
-    if(GetParent() && GetParent()->GetSizer()) { GetParent()->Layout(); }
-    Refresh();
-}
-
 void clButtonBase::SetDefault() {}
 
 void clButtonBase::OnSize(wxSizeEvent& event)
@@ -400,6 +416,18 @@ void clButtonBase::OnSize(wxSizeEvent& event)
     event.Skip();
     Refresh();
 }
+void clButtonBase::SetBitmap(const wxBitmap& bmp)
+{
+    m_bitmap = bmp;
+    SetSizeHints(GetBestSize());
+    if(GetParent() && GetParent()->GetSizer()) {
+        GetParent()->Layout();
+    }
+    Refresh();
+}
+
+const wxBitmap& clButtonBase::GetBitmap() const { return m_bitmap; }
+#endif
 
 void clButtonBase::SetHasDropDownMenu(bool hasDropDownMenu)
 {
@@ -407,26 +435,44 @@ void clButtonBase::SetHasDropDownMenu(bool hasDropDownMenu)
     Refresh();
 }
 
-void clButtonBase::SetBitmap(const wxBitmap& bmp)
+void clButtonBase::ShowMenu(wxMenu& menu, wxPoint* point)
 {
-    m_bitmap = bmp;
-    SetSizeHints(GetBestSize());
-    if(GetParent() && GetParent()->GetSizer()) { GetParent()->Layout(); }
-    Refresh();
-}
-
-const wxBitmap& clButtonBase::GetBitmap() const { return m_bitmap; }
-
-void clButtonBase::ShowMenu(wxMenu& menu)
-{
+#if !wxUSE_NATIVE_BUTTON
     SetPressed();
     Refresh();
-
-    wxPoint menuPos = GetClientRect().GetBottomLeft();
-#ifdef __WXOSX__
-    menuPos.y += 5;
 #endif
+
+    wxPoint menuPos;
+    if(point) {
+        menuPos = *point;
+    } else {
+        menuPos = GetClientRect().GetBottomLeft();
+#ifdef __WXOSX__
+        menuPos.y += 5;
+#endif
+    }
     PopupMenu(&menu, menuPos);
+#if !wxUSE_NATIVE_BUTTON
     SetNormal();
     Refresh();
+#endif
+}
+
+void clButtonBase::SetText(const wxString& text)
+{
+#if wxUSE_NATIVE_BUTTON
+    wxButton::SetLabel(text);
+#else
+    // strip menemonics, not very efficient...
+    wxString tmp = text;
+    tmp.Replace("&&", "@@");
+    tmp.Replace("&", "");
+    tmp.Replace("@@", "&");
+    m_text = tmp;
+    SetSizeHints(GetBestSize());
+    if(GetParent() && GetParent()->GetSizer()) {
+        GetParent()->Layout();
+    }
+    Refresh();
+#endif
 }

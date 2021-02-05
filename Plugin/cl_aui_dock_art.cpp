@@ -24,6 +24,7 @@
 //////////////////////////////////////////////////////////////////////////////
 
 #include "clStatusBar.h"
+#include "clSystemSettings.h"
 #include "clTabRenderer.h"
 #include "cl_aui_dock_art.h"
 #include "cl_command_event.h"
@@ -37,9 +38,17 @@
 #include <wx/dcmemory.h>
 #include <wx/settings.h>
 #include <wx/xrc/xmlres.h>
-#include "clSystemSettings.h"
 
 // --------------------------------------------
+static bool IsRectOK(wxDC& dc, const wxRect& rect)
+{
+    const wxSize dc_size = dc.GetSize();
+
+    if(0 > rect.x || 0 > rect.y || 0 >= rect.width || 0 >= rect.height || dc_size.GetWidth() < (rect.x + rect.width) ||
+       dc_size.GetHeight() < (rect.y + rect.height))
+        return (false);
+    return (true);
+}
 
 static wxString wxAuiChopText(wxDC& dc, const wxString& text, int max_size)
 {
@@ -47,7 +56,8 @@ static wxString wxAuiChopText(wxDC& dc, const wxString& text, int max_size)
 
     // first check if the text fits with no problems
     dc.GetTextExtent(text, &x, &y);
-    if(x <= max_size) return text;
+    if(x <= max_size)
+        return text;
 
     size_t i, len = text.Length();
     size_t last_good_length = 0;
@@ -56,7 +66,8 @@ static wxString wxAuiChopText(wxDC& dc, const wxString& text, int max_size)
         s += wxT("...");
 
         dc.GetTextExtent(s, &x, &y);
-        if(x > max_size) break;
+        if(x > max_size)
+            break;
 
         last_good_length = i;
     }
@@ -88,8 +99,10 @@ clAuiDockArt::clAuiDockArt(IManager* manager)
         event.Skip();
         m_bgColour = DrawingUtils::GetPanelBgColour();
         bool useCustomColour = clConfig::Get().Read("UseCustomBaseColour", false);
-        if(useCustomColour) { m_bgColour = clConfig::Get().Read("BaseColour", m_bgColour); }
-        
+        if(useCustomColour) {
+            m_bgColour = clConfig::Get().Read("BaseColour", m_bgColour);
+        }
+
         // Trigger a refresh
         m_manager->GetDockingManager()->Update();
     });
@@ -105,6 +118,8 @@ void clAuiDockArt::DrawPaneButton(wxDC& dc, wxWindow* window, int button, int bu
 {
     wxRect buttonRect = _rect;
 
+    if(!IsRectOK(dc, _rect))
+        return;
     // Make sure that the height and width of the button are equals
     if(buttonRect.GetWidth() != buttonRect.GetHeight()) {
         buttonRect.SetHeight(wxMin(buttonRect.GetHeight(), buttonRect.GetWidth()));
@@ -149,11 +164,10 @@ void clAuiDockArt::DrawPaneButton(wxDC& dc, wxWindow* window, int button, int bu
 void clAuiDockArt::DrawCaption(wxDC& dc, wxWindow* window, const wxString& text, const wxRect& rect,
                                wxAuiPaneInfo& pane)
 {
-    wxRect tmpRect(wxPoint(0, 0), rect.GetSize());
+    wxRect tmpRect;
 
-    // Hackishly prevent assertions on linux
-    if(tmpRect.GetHeight() == 0) tmpRect.SetHeight(1);
-    if(tmpRect.GetWidth() == 0) tmpRect.SetWidth(1);
+    if(!IsRectOK(dc, rect))
+        return;
 
 #if defined(__WXOSX__)
     tmpRect = rect;
@@ -186,15 +200,23 @@ void clAuiDockArt::DrawCaption(wxDC& dc, wxWindow* window, const wxString& text,
     wxRect clip_rect = tmpRect;
     clip_rect.width -= 3; // text offset
     clip_rect.width -= 2; // button padding
-    if(pane.HasCloseButton()) { clip_rect.width -= m_buttonSize; }
-    if(pane.HasPinButton()) { clip_rect.width -= m_buttonSize; }
-    if(pane.HasMaximizeButton()) { clip_rect.width -= m_buttonSize; }
+    if(pane.HasCloseButton()) {
+        clip_rect.width -= m_buttonSize;
+    }
+    if(pane.HasPinButton()) {
+        clip_rect.width -= m_buttonSize;
+    }
+    if(pane.HasMaximizeButton()) {
+        clip_rect.width -= m_buttonSize;
+    }
 
     wxString draw_text = wxAuiChopText(dc, text, clip_rect.width);
     wxSize textSize = dc.GetTextExtent(draw_text);
 
     dc.DrawText(draw_text, tmpRect.x + 3 + caption_offset, tmpRect.y + ((tmpRect.height - textSize.y) / 2));
 #else
+    tmpRect = rect;
+    tmpRect.SetPosition(wxPoint(0, 0));
     wxBitmap bmp(tmpRect.GetSize());
     {
         wxMemoryDC memDc;
@@ -223,9 +245,12 @@ void clAuiDockArt::DrawCaption(wxDC& dc, wxWindow* window, const wxString& text,
         wxRect clip_rect = tmpRect;
         clip_rect.width -= caption_offset; // text offset
         clip_rect.width -= 2;              // button padding
-        if(pane.HasCloseButton()) clip_rect.width -= m_buttonSize;
-        if(pane.HasPinButton()) clip_rect.width -= m_buttonSize;
-        if(pane.HasMaximizeButton()) clip_rect.width -= m_buttonSize;
+        if(pane.HasCloseButton())
+            clip_rect.width -= m_buttonSize;
+        if(pane.HasPinButton())
+            clip_rect.width -= m_buttonSize;
+        if(pane.HasMaximizeButton())
+            clip_rect.width -= m_buttonSize;
 
         // Truncate the text if needed
         wxString draw_text = wxAuiChopText(gdc, text, clip_rect.width);
@@ -244,6 +269,8 @@ void clAuiDockArt::DrawCaption(wxDC& dc, wxWindow* window, const wxString& text,
 
 void clAuiDockArt::DrawBackground(wxDC& dc, wxWindow* window, int orientation, const wxRect& rect)
 {
+    if(!IsRectOK(dc, rect))
+        return;
     wxUnusedVar(window);
     wxUnusedVar(orientation);
     dc.SetPen(m_bgColour);
@@ -253,6 +280,8 @@ void clAuiDockArt::DrawBackground(wxDC& dc, wxWindow* window, int orientation, c
 
 void clAuiDockArt::DrawBorder(wxDC& dc, wxWindow* window, const wxRect& rect, wxAuiPaneInfo& pane)
 {
+    if(!IsRectOK(dc, rect))
+        return;
     dc.SetPen(m_bgColour);
     dc.SetBrush(*wxTRANSPARENT_BRUSH);
     dc.DrawRectangle(rect);
@@ -260,10 +289,17 @@ void clAuiDockArt::DrawBorder(wxDC& dc, wxWindow* window, const wxRect& rect, wx
 
 void clAuiDockArt::DrawSash(wxDC& dc, wxWindow* window, int orientation, const wxRect& rect)
 {
+    if(!IsRectOK(dc, rect))
+        return;
+
     wxUnusedVar(window);
     wxUnusedVar(orientation);
-    dc.SetPen(*wxTRANSPARENT_PEN);
-    dc.SetBrush(m_bgColour);
+
+    wxColour c = clSystemSettings::GetColour(wxSYS_COLOUR_3DFACE);
+    c = c.ChangeLightness(DrawingUtils::IsDark(c) ? 115 : 85);
+
+    dc.SetPen(c);
+    dc.SetBrush(c);
     dc.DrawRectangle(rect);
 }
 

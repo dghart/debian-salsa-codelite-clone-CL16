@@ -13,7 +13,7 @@ os_name=`uname -s`
 if [ ${os_name} == "Darwin" ]; then
     echo rm -f $curdir/build-release/codelite.app.tar.gz
     rm -f $curdir/build-release/codelite.app.tar.gz
-    cpu_count=`sysctl -n hw.physicalcpu`
+    cpu_count=`sysctl -n hw.ncpu`
 else
     cpu_count=`nproc`
 fi
@@ -75,7 +75,7 @@ linux_build() {
 # Build and upload
 if [ ${os_name} == "Darwin" ]; then
     cd build-release
-    cmake -DCMAKE_BUILD_TYPE=Release .. -DWITH_PCH=1
+    cmake -DCMAKE_BUILD_TYPE=Release .. 
     make -j${cpu_count} && make install
     if [ "${upload_file}" == "yes" ]; then
         tar cvfz codelite.app.tar.gz codelite.app/*

@@ -261,9 +261,10 @@ public:
 
     /**
      * @brief parse source file (from memory) and return list of tags
-     * If "filename" is passed, each returned TagEntryPtr will have it as its "FileName" attribute
+     * If "filename" is passed, each returned TagEntryPtr will have it as its "File" attribute
      */
-    TagEntryPtrVector_t ParseBuffer(const wxString& content, const wxString& filename = "");
+    TagEntryPtrVector_t ParseBuffer(const wxString& content, const wxString& filename = wxEmptyString,
+                                    const wxString& kinds = "cdefgmnpstuv");
 
     /**
      * load all symbols of fileName from the database and return them
@@ -396,6 +397,8 @@ public:
      * @param files list of files, in absolute path, to retag
      */
     void RetagFiles(const std::vector<wxFileName>& files, RetagType type, wxEvtHandler* cb = NULL);
+    void RetagFiles(const wxArrayString& files, RetagType type, wxEvtHandler* cb = NULL);
+    void RetagFiles(const std::vector<wxString>& files, RetagType type, wxEvtHandler* cb = NULL);
 
     /**
      * Close the workspace database
@@ -530,7 +533,7 @@ public:
      * @param source Source file name
      * @param tags String containing the ctags output
      */
-    void SourceToTags(const wxFileName& source, wxString& tags);
+    void SourceToTags(const wxFileName& source, wxString& tags, const wxString& kinds = "cdefgmnpstuv");
 
     /**
      * return list of files from the database(s). The returned list is ordered
@@ -751,7 +754,7 @@ public:
      * @return stripped functions signature
      */
     wxString NormalizeFunctionSig(const wxString& sig, size_t flags = Normalize_Func_Name,
-                                  std::vector<std::pair<int, int> >* paramLen = NULL);
+                                  std::vector<std::pair<int, int>>* paramLen = NULL);
 
     /**
      * @brief return map of un-implemented methods of given scope
@@ -796,7 +799,8 @@ public:
      * @param tags wxString containing the tags to parse
      * @return tag tree, must be freed by caller
      */
-    TagTreePtr TreeFromTags(const wxString& tags, int& count);
+    static TagTreePtr TreeFromTags(const wxString& tags, int& count);
+    static TagTreePtr TreeFromTags(const wxArrayString& tags, int& count);
 
     /**
      * @brief clear the underlying caching mechanism
@@ -879,13 +883,14 @@ public:
      */
     wxString WrapLines(const wxString& str);
 
-    //    void GetVariables(const std::string& in,
-    //                      VariableList& li,
-    //                      const std::map<std::string, std::string>& ignoreMap,
-    //                      bool isUsedWithinFunc);
-    //    void GetVariables(const wxFileName& filename, wxArrayString& locals);
     void GetFunctionTipFromTags(const std::vector<TagEntryPtr>& tags, const wxString& word,
                                 std::vector<TagEntryPtr>& tips);
+
+    /**
+     * @brief list document symbols. this is for colouring purposes
+     * this function is thread safe
+     */
+    void GetDoucmentSymbols(const wxFileName& file, TagEntryPtrVector_t& tags);
 
     /**
      * @brief create doxygen comment from a tag
@@ -895,6 +900,7 @@ public:
     DoxygenComment DoCreateDoxygenComment(TagEntryPtr tag, wxChar keyPrefix);
 
 protected:
+    void DoTagsFromText(const wxString& text, std::vector<TagEntryPtr>& tags);
     void DoFindByNameAndScope(const wxString& name, const wxString& scope, std::vector<TagEntryPtr>& tags);
     void DoFilterDuplicatesByTagID(std::vector<TagEntryPtr>& src, std::vector<TagEntryPtr>& target);
     void DoFilterDuplicatesBySignature(std::vector<TagEntryPtr>& src, std::vector<TagEntryPtr>& target);

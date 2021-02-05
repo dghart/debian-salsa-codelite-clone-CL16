@@ -217,6 +217,10 @@ clDebugEvent& clDebugEvent::operator=(const clDebugEvent& other)
     m_memoryBlockSize = other.m_memoryBlockSize;
     m_memoryAddress = other.m_memoryAddress;
     m_memoryBlockValue = other.m_memoryBlockValue;
+    m_breakpoints = other.m_breakpoints;
+    m_isSSHDebugging = other.m_isSSHDebugging;
+    m_sshAccount = other.m_sshAccount;
+    m_alternateDebuggerPath = other.m_alternateDebuggerPath;
     return *this;
 }
 
@@ -469,7 +473,9 @@ clGotoEvent::~clGotoEvent() {}
 
 clGotoEvent& clGotoEvent::operator=(const clGotoEvent& src)
 {
-    if(this == &src) { return *this; }
+    if(this == &src) {
+        return *this;
+    }
     clCommandEvent::operator=(src);
     m_entries = src.m_entries;
     m_entry = src.m_entry;
@@ -492,7 +498,9 @@ wxEvent* clSourceControlEvent::Clone() const { return new clSourceControlEvent(*
 
 clSourceControlEvent& clSourceControlEvent::operator=(const clSourceControlEvent& src)
 {
-    if(this == &src) { return *this; }
+    if(this == &src) {
+        return *this;
+    }
     clCommandEvent::operator=(src);
     m_sourceControlName = src.m_sourceControlName;
     return *this;

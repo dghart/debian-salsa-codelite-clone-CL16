@@ -25,6 +25,7 @@
 
 #include "ColoursAndFontsManager.h"
 #include "Notebook.h"
+#include "clSystemSettings.h"
 #include "clTabRendererClassic.h"
 #include "clTabRendererCurved.h"
 #include "clTabRendererSquare.h"
@@ -43,7 +44,6 @@
 #include <wx/stc/stc.h>
 #include <wx/textctrl.h>
 #include <wx/treectrl.h>
-#include "clSystemSettings.h"
 #if USE_AUI_NOTEBOOK
 #include "clAuiMainNotebookTabArt.h"
 #include <wx/aui/tabart.h>
@@ -74,6 +74,7 @@ void ThemeHandlerHelper::OnThemeChanged(wxCommandEvent& e)
 
 void ThemeHandlerHelper::UpdateColours(wxWindow* topWindow)
 {
+    return;
     // Collect all toolbars
     std::queue<wxWindow*> q;
     std::vector<wxAuiToolBar*> toolbars;
@@ -87,56 +88,29 @@ void ThemeHandlerHelper::UpdateColours(wxWindow* topWindow)
     while(!q.empty()) {
         wxWindow* w = q.front();
         q.pop();
-        if(dynamic_cast<wxAuiToolBar*>(w)) {
-            toolbars.push_back(dynamic_cast<wxAuiToolBar*>(w));
-        } else {
-            if(IS_TYPEOF(wxListBox, w) || IS_TYPEOF(wxDataViewCtrl, w) || IS_TYPEOF(wxListCtrl, w)) {
-                w->SetBackgroundColour(bgColour);
-                w->SetForegroundColour(fgColour);
-                w->Refresh();
-            } else if(IS_TYPEOF(wxStyledTextCtrl, w)) {
-                // wxSTC requires different method
-                wxStyledTextCtrl* stc = dynamic_cast<wxStyledTextCtrl*>(w);
-                if(stc->GetLexer() == wxSTC_LEX_NULL) {
-                    if(!textLexer) {
-                        // Only modify text lexers
-                        for(int i = 0; i < wxSTC_STYLE_MAX; i++) {
-                            stc->StyleSetBackground(i, bgColour);
-                            stc->StyleSetForeground(i, fgColour);
-                        }
-
-                    } else {
-                        textLexer->Apply(stc);
+        if(IS_TYPEOF(wxStyledTextCtrl, w)) {
+            // wxSTC requires different method
+            wxStyledTextCtrl* stc = dynamic_cast<wxStyledTextCtrl*>(w);
+            if(stc->GetLexer() == wxSTC_LEX_NULL) {
+                if(!textLexer) {
+                    // Only modify text lexers
+                    for(int i = 0; i < wxSTC_STYLE_MAX; i++) {
+                        stc->StyleSetBackground(i, bgColour);
+                        stc->StyleSetForeground(i, fgColour);
                     }
+
+                } else {
+                    textLexer->Apply(stc);
                 }
-                w->Refresh();
             }
-            wxWindowList::compatibility_iterator iter = w->GetChildren().GetFirst();
-            while(iter) {
-                q.push(iter->GetData());
-                iter = iter->GetNext();
-            }
+            w->Refresh();
+        }
+        wxWindowList::compatibility_iterator iter = w->GetChildren().GetFirst();
+        while(iter) {
+            q.push(iter->GetData());
+            iter = iter->GetNext();
         }
     }
-
-    //    std::for_each(toolbars.begin(), toolbars.end(), [&](wxAuiToolBar* tb) {
-    //        // Update the art if needed
-    //        CLMainAuiTBArt* art = dynamic_cast<CLMainAuiTBArt*>(tb->GetArtProvider());
-    //        if(!art) { tb->SetArtProvider(new CLMainAuiTBArt()); }
-    //
-    //#ifndef __WXOSX__
-    //        for(size_t i = 0; i < tb->GetToolCount(); ++i) {
-    //            wxAuiToolBarItem* tbItem = tb->FindToolByIndex(i);
-    //            if(tbItem->GetBitmap().IsOk() &&
-    //               (tbItem->GetKind() == wxITEM_NORMAL || tbItem->GetKind() == wxITEM_CHECK ||
-    //                tbItem->GetKind() == wxITEM_DROPDOWN || tbItem->GetKind() == wxITEM_RADIO)) {
-    //                tbItem->SetDisabledBitmap(DrawingUtils::CreateDisabledBitmap(tbItem->GetBitmap()));
-    //            }
-    //        }
-    //#endif
-    //        tb->Refresh();
-    //    });
-
     DoUpdateNotebookStyle(m_window);
 }
 
@@ -154,7 +128,9 @@ public:
                  wxRect* outTabRect, wxRect* outButtonRect, int* xExtent)
     {
         if(pane.active) {
-            if(DrawingUtils::IsDark(m_activeTabBgColour)) { dc.SetTextForeground(*wxWHITE); }
+            if(DrawingUtils::IsDark(m_activeTabBgColour)) {
+                dc.SetTextForeground(*wxWHITE);
+            }
         } else {
             // set the default text colour
             dc.SetTextForeground(DrawingUtils::GetPanelTextColour());
@@ -181,7 +157,9 @@ public:
                  wxRect* outTabRect, wxRect* outButtonRect, int* xExtent)
     {
         if(pane.active) {
-            if(DrawingUtils::IsDark(m_activeTabBgColour)) { dc.SetTextForeground(*wxWHITE); }
+            if(DrawingUtils::IsDark(m_activeTabBgColour)) {
+                dc.SetTextForeground(*wxWHITE);
+            }
         } else {
             // set the default text colour
             dc.SetTextForeground(DrawingUtils::GetPanelTextColour());
@@ -198,24 +176,41 @@ public:
 #endif
 void ThemeHandlerHelper::DoUpdateNotebookStyle(wxWindow* win)
 {
-    if(!win) { return; }
-    if(dynamic_cast<Notebook*>(win)) {
-        Notebook* book = dynamic_cast<Notebook*>(win);
-        book->SetArt(clTabRenderer::CreateRenderer(book, book->GetStyle()));
-        LexerConf::Ptr_t lexer = ColoursAndFontsManager::Get().GetLexer("text");
-        wxColour activeTabBgColuor;
-        if(lexer) { activeTabBgColuor = lexer->GetProperty(0).GetBgColour(); }
-
-        // Enable tab switching using the mouse scrollbar
-        book->EnableStyle(kNotebook_MouseScrollSwitchTabs,
-                          EditorConfigST::Get()->GetOptions()->IsMouseScrollSwitchTabs());
+    if(!win) {
+        return;
     }
-    
-    wxWindowList::compatibility_iterator pclNode = win->GetChildren().GetFirst();
-    while(pclNode) {
-        wxWindow* pclChild = pclNode->GetData();
-        this->DoUpdateNotebookStyle(pclChild);
-        pclNode = pclNode->GetNext();
+    std::vector<wxWindow*> Q;
+    std::unordered_set<wxWindow*> V; // keep track of visited windows
+    Q.push_back(win);
+    V.insert(win);
+    while(!Q.empty()) {
+        auto p = Q.back();
+        Q.pop_back();
+
+        Notebook* book = dynamic_cast<Notebook*>(p);
+        if(book) {
+            book->SetArt(clTabRenderer::CreateRenderer(book, book->GetStyle()));
+            LexerConf::Ptr_t lexer = ColoursAndFontsManager::Get().GetLexer("text");
+            wxColour activeTabBgColuor;
+            if(lexer) {
+                activeTabBgColuor = lexer->GetProperty(0).GetBgColour();
+            }
+
+            // Enable tab switching using the mouse scrollbar
+            book->EnableStyle(kNotebook_MouseScrollSwitchTabs,
+                              EditorConfigST::Get()->GetOptions()->IsMouseScrollSwitchTabs());
+        }
+
+        auto iter = p->GetChildren().GetFirst();
+        while(iter) {
+            auto child = iter->GetData();
+            if(child && V.count(child) == 0) {
+                // make sure we won't visit this child again
+                V.insert(child);
+                Q.push_back(child);
+            }
+            iter = iter->GetNext();
+        }
     }
 }
 

@@ -2,6 +2,7 @@
 #define LANGUAGESERVERENTRY_H
 
 #include "LSPNetwork.h"
+#include "asyncprocess.h"
 #include "cl_config.h"
 #include <map>
 #include <vector>
@@ -21,6 +22,10 @@ class LanguageServerEntry
     wxStringSet_t m_unimplementedMethods;
     bool m_disaplayDiagnostics = true;
     wxString m_command;
+    wxString m_initOptions;
+    clEnvList_t m_env;
+    bool m_remoteLSP = false;
+    wxString m_sshAccount;
 
 public:
     // use 'map' to keep the items sorted by name
@@ -93,6 +98,14 @@ public:
     const wxString& GetName() const { return m_name; }
     eNetworkType GetNetType() const;
     bool IsAutoRestart() const;
+    void SetInitOptions(const wxString& initOptions) { this->m_initOptions = initOptions; }
+    const wxString& GetInitOptions() const { return m_initOptions; }
+    const clEnvList_t& GetEnv() const { return m_env; }
+    void SetEnv(const clEnvList_t& env) { this->m_env = env; }
+    void SetSshAccount(const wxString& sshAccount) { this->m_sshAccount = sshAccount; }
+    const wxString& GetSshAccount() const { return m_sshAccount; }
+    void SetRemoteLSP(bool remoteLSP) { this->m_remoteLSP = remoteLSP; }
+    bool IsRemoteLSP() const { return m_remoteLSP; }
 };
 
 #endif // LANGUAGESERVERENTRY_H

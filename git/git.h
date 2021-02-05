@@ -35,21 +35,20 @@
 
 #include <wx/progdlg.h>
 
-#include "plugin.h"
 #include "asyncprocess.h"
-#include "processreaderthread.h"
-#include <queue>
-#include <set>
-#include <wx/progdlg.h>
-#include "project.h" // wxStringSet_t
-#include <map>
-#include "overlaytool.h"
+#include "clTabTogglerHelper.h"
 #include "cl_command_event.h"
 #include "gitentry.h"
-#include "cl_command_event.h"
 #include "gitui.h"
+#include "overlaytool.h"
+#include "plugin.h"
+#include "processreaderthread.h"
+#include "project.h" // wxStringSet_t
+#include <map>
+#include <queue>
+#include <set>
 #include <vector>
-#include "clTabTogglerHelper.h"
+#include <wx/progdlg.h>
 
 class clTreeCtrl;
 class clCommandProcessor;
@@ -127,6 +126,7 @@ class GitPlugin : public IPlugin
         gitBranchSwitchRemote,
         gitCommitList,
         gitBlame,
+        gitBlameSummary,
         gitRevlist,
         gitRebase,
         gitGarbageCollection,
@@ -173,6 +173,10 @@ class GitPlugin : public IPlugin
     clCommandProcessor* m_commandProcessor;
     clTabTogglerHelper::Ptr_t m_tabToggler;
     GitBlameDlg* m_gitBlameDlg;
+    std::unordered_map<wxString, std::vector<wxString>>
+        m_blameMap; // contains file: comment per line (extracted from the 'git blame' info)
+    size_t m_configFlags = 0;
+    wxString m_lastBlameMessage;
 
 private:
     void DoCreateTreeImages();
@@ -208,8 +212,9 @@ private:
     void DoGetFileViewSelectedFiles(wxArrayString& files, bool relativeToRepo);
     void DoShowDiffsForFiles(const wxArrayString& files, bool useFileAsBase = false);
     void DoSetRepoPath(const wxString& repoPath = "", bool promptUser = true);
-    void DoRecoverFromGitCommandError();
-
+    void DoRecoverFromGitCommandError(bool clear_queue = true);
+    void DoLoadBlameInfo(bool clearCache);
+    void DoUpdateBlameInfo(const wxString& info, const wxString& fullpath);
     DECLARE_EVENT_TABLE()
 
     // Event handlers
@@ -222,6 +227,7 @@ private:
 
     void OnFileCreated(clFileSystemEvent& event);
     void OnReplaceInFiles(clFileSystemEvent& event);
+    void OnEditorChanged(wxCommandEvent& event);
     void OnFileSaved(clCommandEvent& e);
     void OnFilesAddedToProject(clCommandEvent& e);
     void OnFilesRemovedFromProject(clCommandEvent& e);
@@ -256,7 +262,8 @@ private:
     void OnActiveProjectChanged(clProjectSettingsEvent& event);
     void OnFileGitBlame(wxCommandEvent& event);
     void OnAppActivated(wxCommandEvent& event);
-
+    void OnUpdateNavBar(clCodeCompletionEvent& event);
+    void OnEditorClosed(wxCommandEvent& event);
 #if 0
     void OnBisectStart(wxCommandEvent& e);
     void OnBisectGood(wxCommandEvent& e);
@@ -274,9 +281,12 @@ private:
     void OnFolderStashPop(wxCommandEvent& event);
     void OnFolderGitBash(wxCommandEvent& event);
 
+    // Respond to local events
+    void OnGitActionDone(clSourceControlEvent& event);
+    
 public:
     GitPlugin(IManager* manager);
-    ~GitPlugin();
+    virtual ~GitPlugin();
 
     void StoreWorkspaceRepoDetails();
     void WorkspaceClosed();

@@ -120,10 +120,12 @@ class clMainFrame : public wxFrame
 
 #ifndef __WXMSW__
     ZombieReaperPOSIX m_zombieReaper;
+#else
+    HMENU hMenu = nullptr; // Menu bar
 #endif
 
 #ifdef __WXGTK__
-    bool m_isWaylandSession;
+    bool m_isWaylandSession = false;
 #endif
 
     // Maintain a set of core toolbars (i.e. toolbars not owned by any plugin)
@@ -149,13 +151,21 @@ protected:
     void DoShowToolbars(bool show, bool update = true);
     void InitializeLogo();
     void DoFullscreen(bool b);
+    void DoShowMenuBar(bool show);
 
 public:
-    virtual void Raise();
+    void Raise() override;
+
     static clMainFrame* Get();
     static void Initialize(bool loadLastSession);
 
     clInfoBar* GetMessageBar() { return m_infoBar; }
+
+    /**
+     * @brief return the menu bar
+     * @return
+     */
+    wxMenuBar* GetMenuBar() const override;
 
     /**
      * @brief goto anything..
@@ -367,7 +377,7 @@ private:
      * @brief show the startup wizard
      * @return true if a restart is needed
      */
-    bool StartSetupWizard();
+    bool StartSetupWizard(bool firstTime);
 
     /**
      * @brief see if the wizard changed developer profile
@@ -385,8 +395,7 @@ private:
     void SetNoSavePerspectivePrompt(bool devProfileChanged) { m_noSavePerspectivePrompt = devProfileChanged; }
 
     void DoShowCaptions(bool show);
-    
-    
+
 public:
     void ViewPane(const wxString& paneName, bool checked);
     void ShowOrHideCaptions();
@@ -509,6 +518,7 @@ protected:
     void OnMarkEditorReadonlyUI(wxUpdateUIEvent& e);
     void OnDetachEditorUI(wxUpdateUIEvent& e);
     void OnQuickDebug(wxCommandEvent& e);
+    void OnStartQuickDebug(clDebugEvent& e);
     void OnQuickDebugUI(wxUpdateUIEvent& e);
     void OnDebugCoreDump(wxCommandEvent& e);
     void OnNextFiFMatch(wxCommandEvent& e);
@@ -525,13 +535,13 @@ protected:
     void OnRenameSymbol(clRefactoringEvent& e);
 
     // handle symbol tree events
-    void OnParsingThreadMessage(wxCommandEvent& e);
+    void OnParsingThreadMessage(clParseThreadEvent& e);
     void OnDatabaseUpgrade(wxCommandEvent& e);
     void OnDatabaseUpgradeInternally(wxCommandEvent& e);
     void OnRefreshPerspectiveMenu(wxCommandEvent& e);
-    void OnClearTagsCache(wxCommandEvent& e);
-    void OnRetaggingCompelted(wxCommandEvent& e);
-    void OnRetaggingProgress(wxCommandEvent& e);
+    void OnClearTagsCache(clParseThreadEvent& e);
+    void OnRetaggingCompleted(clParseThreadEvent& e);
+    void OnRetaggingProgress(clParseThreadEvent& e);
 
     void OnRecentFile(wxCommandEvent& event);
     void OnRecentWorkspace(wxCommandEvent& event);
@@ -633,7 +643,7 @@ protected:
     void OnLoadPerspective(wxCommandEvent& e);
     void OnWorkspaceSettings(wxCommandEvent& e);
     void OnWorkspaceEditorPreferences(wxCommandEvent& e);
-    void OnParserThreadReady(wxCommandEvent& e);
+    void OnParserThreadReady(clParseThreadEvent& e);
 
     // Clang
     void OnPchCacheStarted(wxCommandEvent& e);

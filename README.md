@@ -22,8 +22,8 @@ Building CodeLite on Linux
 
 To build CodeLite on your computer you will need these packages:
 
- - wxWidgets 3.1 or later
- - The GTK development package: often called libgtk2.0-dev or wxGTK-devel, or similar
+ - wxWidgets 3.0 or later development packages (or a self-build)
+ - The GTK development packages: often called libgtk-3-dev or gtk3-devel, or similar
  - pkg-config (which usually comes with the GTK dev package)
  - The build-essential package (or the relevant bit of it: G++, Make etc)
  - CMake
@@ -32,9 +32,9 @@ To build CodeLite on your computer you will need these packages:
 You should have wxWidgets 3.0 or later built on your machine. If you don't know how to build (or you're just lazy...) you can [download wxWidgets from CodeLite's repository][6].
 
 
-On Ubuntu / Debian you can install all of the above (except for wxWidgets 3.0) by typing:
+On Ubuntu / Debian you can install all of the above by typing:
 
-    sudo apt-get install libgtk2.0-dev pkg-config build-essential git cmake libssh-dev libwxbase3.0-dev libsqlite3-dev libwxsqlite3-3.0-dev
+    sudo apt-get install libgtk-3-dev pkg-config build-essential git cmake libssh-dev libwxgtk3.0-gtk3-dev libsqlite3-dev
 
 Git clone the sources:
 
@@ -120,8 +120,6 @@ Git clone the sources:
  - Make sure that the project **CodeLiteIDE** is selected (the active project uses **bold** font)
  - Select the **Win_x64_Release** or **Win_x86_Release** (depending if you want to build a 32 or 64 bit version of CodeLite) and hit **F7**
  - When the compilation is over, close the workspace
- - Next, locate the workspace **codelite_utils/codelite_utils.workspce** and open it
- - Select the **Win_x64_Release** or **Win_x86_Release** (depending if you want to build a 32 or 64 bit version of CodeLite), hit **F7** and wait for the compilation to end
  - Close CodeLite
  - To update your installation with the new CodeLite, close CodeLite and from a cmd.exe window navigate to codelite-sources/Runtime/ and run the file **update64.bat** OR **update.bat** (again, depending on your selected arch).
 

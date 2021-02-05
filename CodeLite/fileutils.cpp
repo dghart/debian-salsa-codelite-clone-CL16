@@ -52,8 +52,10 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #endif
+#include <functional>
+#include <memory>
 #include <wx/filename.h>
-
+using namespace std;
 void FileUtils::OpenFileExplorer(const wxString& path)
 {
     // Wrap the path with quotes if needed
@@ -97,6 +99,22 @@ bool FileUtils::WriteFileContent(const wxFileName& fn, const wxString& content, 
 
 bool FileUtils::ReadFileContent(const wxFileName& fn, wxString& data, const wxMBConv& conv)
 {
+    std::string rawdata;
+    if(!ReadFileContentRaw(fn, rawdata)) {
+        return false;
+    }
+
+    // convert
+    data = wxString(rawdata.c_str(), conv, rawdata.length());
+    if(data.IsEmpty() && !rawdata.empty()) {
+        // Conversion failed
+        data = wxString::From8BitData(rawdata.c_str(), rawdata.length());
+    }
+    return true;
+}
+
+bool FileUtils::ReadFileContentRaw(const wxFileName& fn, std::string& data)
+{
     wxString filename = fn.GetFullPath();
     data.clear();
     const char* cfile = filename.mb_str(wxConvUTF8).data();
@@ -112,29 +130,23 @@ bool FileUtils::ReadFileContent(const wxFileName& fn, wxString& data, const wxMB
     fseek(fp, 0, SEEK_SET);
 
     // Allocate buffer for the read
-    char* buffer = (char*)malloc(fsize + 1);
-    long bytes_read = fread(buffer, 1, fsize, fp);
+    data.reserve(fsize + 1);
+
+    // use unique_ptr to auto release the buffer
+    unique_ptr<char, function<void(char*)>> buffer(new char[fsize + 1], [](char* d) { delete[] d; });
+
+    long bytes_read = fread(buffer.get(), 1, fsize, fp);
     if(bytes_read != fsize) {
         // failed to read
         clERROR() << "Failed to read file content:" << fn << "." << strerror(errno);
         fclose(fp);
-        free(buffer);
         return false;
     }
-    buffer[fsize] = 0;
-
-    // Close the handle
+    buffer.get()[fsize] = 0;
     fclose(fp);
 
-    // Convert it into wxString
-    data = wxString(buffer, conv, fsize);
-    if(data.IsEmpty() && fsize != 0) {
-        // Conversion failed
-        data = wxString::From8BitData(buffer, fsize);
-    }
-
-    // Release the C-buffer allocated earlier
-    free(buffer);
+    // Close the handle
+    data = buffer.get();
     return true;
 }
 
@@ -333,12 +345,12 @@ wxString FileUtils::DecodeURI(const wxString& uri)
 
 wxString FileUtils::EncodeURI(const wxString& uri)
 {
-    static std::unordered_map<int, wxString> sEncodeMap = {
-        { (int)'!', "%21" }, { (int)'#', "%23" }, { (int)'$', "%24" }, { (int)'&', "%26" }, { (int)'\'', "%27" },
-        { (int)'(', "%28" }, { (int)')', "%29" }, { (int)'*', "%2A" }, { (int)'+', "%2B" }, { (int)',', "%2C" },
-        { (int)';', "%3B" }, { (int)'=', "%3D" }, { (int)'?', "%3F" }, { (int)'@', "%40" }, { (int)'[', "%5B" },
-        { (int)']', "%5D" }, { (int)' ', "%20" }
-    };
+    static unordered_map<int, wxString> sEncodeMap = { { (int)'!', "%21" }, { (int)'#', "%23" },  { (int)'$', "%24" },
+                                                       { (int)'&', "%26" }, { (int)'\'', "%27" }, { (int)'(', "%28" },
+                                                       { (int)')', "%29" }, { (int)'*', "%2A" },  { (int)'+', "%2B" },
+                                                       { (int)',', "%2C" }, { (int)';', "%3B" },  { (int)'=', "%3D" },
+                                                       { (int)'?', "%3F" }, { (int)'@', "%40" },  { (int)'[', "%5B" },
+                                                       { (int)']', "%5D" }, { (int)' ', "%20" } };
 
     wxString encoded;
     for(size_t i = 0; i < uri.length(); ++i) {
@@ -735,4 +747,40 @@ bool FileUtils::FindExe(const wxString& name, wxFileName& exepath, const wxArray
 #endif
     }
     return false;
+}
+
+wxFileName FileUtils::CreateTempFileName(const wxString& folder, const wxString& prefix, const wxString& ext)
+{
+    static bool srandInit = false;
+    if(!srandInit) {
+        srand(time(nullptr));
+        srandInit = true;
+    }
+
+    static const char alphanum[] = "0123456789"
+                                   "abcdefghijklmnopqrstuvwxyz"
+                                   "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    size_t N = sizeof(alphanum) - 1;
+    wxString full_name = prefix;
+    full_name << "-";
+    for(size_t i = 0; i < 8; ++i) {
+        size_t index = rand() / (RAND_MAX / N + 1);
+        full_name += alphanum[index];
+    }
+    full_name += "." + ext;
+    return wxFileName(folder, full_name);
+}
+
+size_t FileUtils::FindSimilar(const wxFileName& filename, const std::vector<wxString>& extensions,
+                              std::vector<wxFileName>& vout)
+{
+    wxFileName fn(filename);
+    vout.reserve(extensions.size());
+    for(const wxString& ext : extensions) {
+        fn.SetExt(ext);
+        if(fn.FileExists()) {
+            vout.emplace_back(fn);
+        }
+    }
+    return vout.size();
 }

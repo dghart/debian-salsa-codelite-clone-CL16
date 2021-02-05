@@ -27,7 +27,6 @@
 
 #include "Notebook.h"
 #include "clEditorBar.h"
-#include "clMultiBook.h"
 #include "cl_command_event.h"
 #include "editorframe.h"
 #include "filehistory.h"
@@ -248,6 +247,7 @@ public:
     long GetBookStyle();
 
     void ApplySettingsChanges();
+    void ApplyTabLabelChanges();
     void UnHighlightAll();
     void DelAllBreakpointMarkers();
     void SetViewEOL(bool visible);

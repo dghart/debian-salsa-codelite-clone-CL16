@@ -26,12 +26,11 @@
 #ifndef SSHACCOUNTINFO_H
 #define SSHACCOUNTINFO_H
 
-#if USE_SFTP
 #include "cl_config.h" // Base class: clConfigItem
 #include <vector>
 #include "codelite_exports.h"
 
-class WXDLLIMPEXP_SDK SSHAccountInfo : public clConfigItem
+class WXDLLIMPEXP_CL SSHAccountInfo : public clConfigItem
 {
     wxString m_accountName;
     wxString m_username;
@@ -71,5 +70,4 @@ public:
     virtual void FromJSON(const JSONItem& json);
     virtual JSONItem ToJSON() const;
 };
-#endif // USE_SFTP
 #endif // SSHACCOUNTINFO_H

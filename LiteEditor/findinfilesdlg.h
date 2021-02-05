@@ -27,8 +27,8 @@
 
 #include "findinfiles_dlg.h"
 #include "findreplacedlg.h"
-#include "search_thread.h"
 #include "macros.h"
+#include "search_thread.h"
 
 class FindInFilesDialog : public FindInFilesDialogBase
 {
@@ -37,6 +37,8 @@ class FindInFilesDialog : public FindInFilesDialogBase
     bool m_transient = false;
 
 protected:
+    virtual void OnFindEnter(wxCommandEvent& event);
+    virtual void OnReplaceEnter(wxCommandEvent& event);
     wxArrayString GetPathsAsArray() const;
 
 protected:
@@ -52,6 +54,7 @@ protected:
     void DoSaveOpenFiles();
     void DoSetFileMask();
     void DoAddProjectFiles(const wxString& projectName, wxArrayString& files);
+    void DoSelectAll();
 
     // Set new search paths
     void DoSetSearchPaths(const wxString& paths);
